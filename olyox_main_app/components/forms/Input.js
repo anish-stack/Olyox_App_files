@@ -8,6 +8,7 @@ import { COLORS } from "../../constants/colors";
 const Input = ({
     icon,
     placeholder,
+    iconColour,
     secureTextEntry = false,
     onChangeText,
     value,
@@ -17,10 +18,10 @@ const Input = ({
     return (
         <View>
             <View style={[styles.inputContainer, error && styles.inputError]}>
-                <Icon 
-                    name={icon} 
-                    size={14} 
-                    color={error ? COLORS.error : COLORS.primary} 
+                <Icon
+                    name={icon}
+                    size={14}
+                    color={error ? COLORS.zom : iconColour}
                     style={styles.icon}
                 />
                 <TextInput
@@ -44,17 +45,17 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: COLORS.white,
-        borderRadius: 12,
+        // borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 12,
         marginVertical: 8,
-        borderWidth: 1,
+        // borderWidth: 1,
         borderColor: COLORS.border,
         shadowColor: COLORS.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
-        elevation: 2,
+        elevation: 1,
     },
     inputError: {
         borderColor: COLORS.error,

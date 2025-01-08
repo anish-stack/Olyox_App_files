@@ -4,7 +4,7 @@ import axios from 'axios';
 import { COLORS } from '../../constants/colors';
 
 const { width } = Dimensions.get('screen');
-const ITEM_WIDTH = (width - 52) / 2;
+const ITEM_WIDTH = (width - 75) / 4;
 
 
 
@@ -53,7 +53,7 @@ export default function Categories() {
                                 style={styles.icon}
                             />
                         </View>
-                        <Text style={styles.title}>{category.title}</Text>
+                        <Text numberOfLines={1} style={styles.title}>{category.title}</Text>
                     </TouchableOpacity>
                 ))}
             </View>
@@ -64,6 +64,7 @@ export default function Categories() {
 const styles = StyleSheet.create({
     container: {
         padding: 16,
+        marginBottom:12,
     },
     loadingContainer: {
         flex: 1,
@@ -74,28 +75,21 @@ const styles = StyleSheet.create({
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 16,
+        gap: 10,
     },
     categoryButton: {
         width: ITEM_WIDTH,
-        backgroundColor: 'rgba(237, 43, 38,0.8)',
+        // backgroundColor: '#EB5151',
 
         borderRadius: 12,
-        padding: 12,
+
         alignItems: 'center',
-        shadowColor: 'rgba(237, 43, 38,0.8)',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 3.84,
-        elevation: 5,
+
     },
     imageContainer: {
         width: 60,
         height: 60,
-        backgroundColor: 'rgba(237, 43, 38,0.7)',
+        backgroundColor: 'rgba(254, 8, 0, 0.2)',
         borderRadius: 52,
         justifyContent: 'center',
         alignItems: 'center',
@@ -107,9 +101,10 @@ const styles = StyleSheet.create({
         resizeMode: 'contain',
     },
     title: {
-        fontSize: 16,
+
+        fontSize: 12,
         fontWeight: '600',
-        color: '#ffffff',
+        color: '#000',
         textAlign: 'center',
     },
 });
