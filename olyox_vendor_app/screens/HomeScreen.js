@@ -1,33 +1,27 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, ScrollView } from 'react-native';
 import { COLORS } from '../constants/colors';
-import PaperExample from '../components/PaperExample';
-import ExampleComponent from '../components/ExampleComponent';
+import Layout from '../components/Layout/_layout';
+import Status from '../components/Status/Status';
+import OrderCount from '../components/OrderCount/OrderCount';
+import Graph from '../components/Graph/Graph';
 
 const HomeScreen = () => {
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.container}>
-        <Text style={styles.text}>Welcome to the Home Screen!</Text>
-        <ExampleComponent/>
-        <PaperExample />
-      </View>
-    </SafeAreaView>
+    <Layout>
+      <ScrollView contentContainerStyle={styles.scrollViewContent}>
+        <Status />
+        <OrderCount />
+        <Graph />
+      </ScrollView>
+    </Layout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    padding: 16,
-  },
-  text: {
-    color: COLORS.text,
-    fontSize: 18,
+  scrollViewContent: {
+    flexGrow: 1,
   },
 });
 
 export default HomeScreen;
-

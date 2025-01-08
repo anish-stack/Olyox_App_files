@@ -8,6 +8,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import HomeScreen from './screens/HomeScreen';
 import { store } from './redux/store';
+import Profile from './screens/Profile';
+import { NewOrder } from './screens/NewOrder';
 
 const Stack = createNativeStackNavigator();
 
@@ -19,7 +21,10 @@ export default function App() {
           <SafeAreaProvider>
             <NavigationContainer>
               <Stack.Navigator>
-                <Stack.Screen name="Home" component={HomeScreen} />
+                <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
+                <Stack.Screen name="Profile" options={{ headerShown: true }} component={Profile} />
+                <Stack.Screen name="New Order" options={{ headerShown: true }} text={'New Order'} component={NewOrder} />
+
               </Stack.Navigator>
             </NavigationContainer>
           </SafeAreaProvider>
