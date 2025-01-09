@@ -49,11 +49,11 @@ const Header = () => {
                 <View style={styles.searchContainer}>
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search What you Want To Eat, Ride, and Shift"
-                        placeholderTextColor={COLORS.white}
+                        placeholder="Search What you Want To Eat, Ride, and Shift ...."
+                        placeholderTextColor={COLORS.text}
                     />
                     <TouchableOpacity style={styles.searchIcon}>
-                        <Search size={20} color={COLORS.white} />
+                        <Search size={20} color={COLORS.text} />
                     </TouchableOpacity>
                 </View>
 
@@ -144,9 +144,11 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     searchContainer: {
+        backgroundColor:COLORS.white,
+
         flexDirection: "row",
         alignItems: "center",
-        borderColor: COLORS.white,
+        borderColor: COLORS.error,
         borderWidth: 1,
         borderRadius: 8,
         padding: 4,
@@ -154,7 +156,7 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         height: 35,
-        color: COLORS.white,
+        color: COLORS.error,
         fontSize: 12,
     },
     searchIcon: {
