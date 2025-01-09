@@ -11,6 +11,7 @@ import { store } from './redux/store';
 import Collect_Data from './Ride/First_Step_screen/Collect_Data';
 import Show_Cabs from './Ride/Show_near_by_cab/Show_Cabs';
 
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -47,9 +48,11 @@ export default function App() {
               <Stack.Navigator>
                 <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
 
+
                 {/* Booking Ride Start Here */}
                 <Stack.Screen name="Start_Booking_Ride" options={{ headerShown: false }} component={Collect_Data} />
                 <Stack.Screen name="second_step_of_booking" options={{ headerShown: false }} component={Show_Cabs} />
+
 
 
               </Stack.Navigator>
