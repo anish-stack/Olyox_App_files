@@ -10,12 +10,14 @@ import Categories from '../components/Categories/Categories';
 import Top_Hotel from '../Hotels/Top_Hotel/Top_Hotel';
 import TopFood from '../Foods/Top_Foods/TopFood';
 import BookARide from '../components/Book_A_Ride/BookARide';
+import ShowMap from '../Ride/Show_near_by_cab/ShowMap';
 
 const HomeScreen = () => {
   return (
     <Layout >
       <ScrollView>
         <OfferBanner />
+            {/* <ShowMap/> */}
         <Categories />
         <BookARide/>
         <Top_Hotel />

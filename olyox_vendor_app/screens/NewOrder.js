@@ -32,8 +32,10 @@ export function NewOrder() {
             paymentStatus: 'Pending'
         }
     ];
+    // const order = []
 
-    if (!order) {
+
+    if (order.length === 0) {
         return (
             <View style={styles.noOrderContainer}>
                 <Image source={require('../assets/no-orders.png')} style={styles.noOrderImage} />

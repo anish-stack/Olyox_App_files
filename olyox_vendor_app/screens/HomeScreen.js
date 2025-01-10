@@ -11,6 +11,7 @@ const HomeScreen = () => {
     <Layout>
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
         <Status />
+    
         <OrderCount />
         <Graph />
       </ScrollView>

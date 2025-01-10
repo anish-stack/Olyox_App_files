@@ -3,6 +3,7 @@ import React from 'react'
 import ShowMap from './ShowMap'
 import { useRoute } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScrollView } from 'react-native'
 
 export default function Show_Cabs() {
     const route = useRoute()
@@ -10,10 +11,12 @@ export default function Show_Cabs() {
     console.log(data)
     return (
        <SafeAreaView>
-         <View>
-            <Text>Show_Cabs</Text>
-            <ShowMap data={data} />
-        </View>
+        <ScrollView>
+        <View>
+          
+          <ShowMap data={data} />
+      </View>
+        </ScrollView>
        </SafeAreaView>
     )
 }
