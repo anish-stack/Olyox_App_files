@@ -10,6 +10,9 @@ import HomeScreen from './screens/HomeScreen';
 import { store } from './redux/store';
 import Collect_Data from './Ride/First_Step_screen/Collect_Data';
 import Show_Cabs from './Ride/Show_near_by_cab/Show_Cabs';
+import { BookingConfirmation } from './Ride/Show_near_by_cab/confirm_booking';
+import { DriverMatching } from './Ride/Show_near_by_cab/Driver_matching';
+import { RideConfirmed } from './Ride/Show_near_by_cab/Ride_Confirmed';
 
 
 const Stack = createNativeStackNavigator();
@@ -52,6 +55,10 @@ export default function App() {
                 {/* Booking Ride Start Here */}
                 <Stack.Screen name="Start_Booking_Ride" options={{ headerShown: false }} component={Collect_Data} />
                 <Stack.Screen name="second_step_of_booking" options={{ headerShown: false }} component={Show_Cabs} />
+                <Stack.Screen name="confirm_screen" options={{ headerShown: false }} component={BookingConfirmation} />
+                <Stack.Screen name="driver_match" options={{ headerShown: false }} component={DriverMatching} />
+                <Stack.Screen name="RideStarted" options={{ headerShown: false }} component={RideConfirmed} />
+
 
 
 

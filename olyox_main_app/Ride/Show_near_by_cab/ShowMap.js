@@ -1,326 +1,352 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
-  ActivityIndicator,
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
   Dimensions
 } from 'react-native';
-import { useRoute } from '@react-navigation/native';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
-import MapViewDirections from 'react-native-maps-directions';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import Map from '../Map/Map';
 
 const GOOGLE_MAPS_APIKEY = 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34';
-const { width } = Dimensions.get('window');
 
 export default function ShowMap() {
+  const [loading, setLoading] = useState(true);
+  const [selectedRide, setSelectedRide] = useState(null);
+
   const route = useRoute();
   const { data } = route.params || {};
-  const [loading, setLoading] = useState(true);
-  const [drivers, setDrivers] = useState([]);
-  const [selectedDriver, setSelectedDriver] = useState(null);
   const { dropoff, pickup } = data || {};
-  const origin = { latitude: pickup?.latitude, longitude: pickup?.longitude };
-  const destination = { latitude: dropoff?.latitude, longitude: dropoff?.longitude };
+
+  const origin = pickup?.latitude && pickup?.longitude
+    ? { latitude: pickup.latitude, longitude: pickup.longitude }
+    : { latitude: 28.7161663, longitude: 77.1240672 };
+
+  const destination = dropoff?.latitude && dropoff?.longitude
+    ? { latitude: dropoff.latitude, longitude: dropoff.longitude }
+    : { latitude: 28.704060, longitude: 77.102493 };
+
+  const navigation = useNavigation();
+
   useEffect(() => {
-    setTimeout(() => {
-      const nearbyDrivers = [
-        {
-          id: 1,
-          name: 'Premium Sedan',
-          type: 'car-estate',
-          price: 350,
-          time: '4 min',
-          seats: 4,
-          distance: '1.2 km',
-          latitude: 28.7171663,  // example latitude
-          longitude: 77.1260672  // example longitude
-        },
-        {
-          id: 2,
-          name: 'Comfort Ride',
-          type: 'car',
-          price: 250,
-          time: '3 min',
-          seats: 4,
-          distance: '0.8 km',
-          latitude: 28.7151663,  // example latitude
-          longitude: 77.1250672  // example longitude
-        },
-        {
-          id: 3,
-          name: 'Bike Express',
-          type: 'motorbike',
-          price: 120,
-          time: '2 min',
-          seats: 1,
-          distance: '0.5 km',
-          latitude: 28.7181663,  // example latitude
-          longitude: 77.1270672  // example longitude
-        },
-      ];
-      setDrivers(nearbyDrivers);
-      setLoading(false);
-    }, 2000);
+    setTimeout(() => setLoading(false), 2000); // Simulate a delay for loading state
   }, []);
 
+  const rides = [
+    {
+      id: 1,
+      name: 'SUV',
+      type: 'car',
+      description: 'Prime and Luxey Car',
+      time: '5 min',
+      priceRange: 'Rs 25 /km',
+      coins: 1
+    },
+    {
+      id: 2,
+      name: 'SEDAN',
+      type: 'car',
+      description: 'Comfy, economical cars',
+      time: '1 min',
+      priceRange: 'Rs 14 /km',
+    },
+    {
+      id: 3,
+      name: 'PRIME',
+      type: 'car',
+      description: 'Comfy, economical cars',
+      time: '1 min',
+      priceRange: 'Rs 19 /km',
+    },
+    {
+      id: 4,
+      name: 'MINI',
+      type: 'car',
+      description: 'Comfy, economical cars',
+      time: '1 min',
+      priceRange: 'Rs 19 /km',
+    },
+  ];
 
-  const handleBookRide = (driver) => {
-    alert(`Booking confirmed!\n${driver.name} for ₹${driver.price}`);
-  };
+  const Header = () => (
+    <View style={styles.header}>
+      <TouchableOpacity onPress={() => navigation.goBack()}>
+        <Text style={styles.backButton}>←</Text>
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>OLYOX RIDES</Text>
+      <TouchableOpacity>
+        <Text style={styles.expandButton}>🔔</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
-  const LocationCard = ({ icon, title, address, isPickup }) => (
-    <View style={styles.locationCard}>
-      <Icon name={icon} size={24} color={isPickup ? '#FF6666' : '#F44336'} />
-      <View style={styles.locationText}>
-        <Text style={styles.locationTitle}>{title}</Text>
-        <Text style={styles.locationAddress}>{address}</Text>
+  const RewardBanner = () => (
+    <View style={styles.rewardBanner}>
+      <Text style={styles.rewardText}>
+        🪙 Get up to 8 OlaCoins with this booking
+      </Text>
+    </View>
+  );
+
+  const LocationSection = () => (
+    <View style={styles.locationContainer}>
+      <View style={styles.locationItem}>
+        <View style={styles.greenDot} />
+        <Text style={styles.locationText}>{pickup?.description.substring(0, 29) + '....' || 'no'}</Text>
+        <View style={styles.timeBox}>
+          <Text style={styles.timeText}>Now</Text>
+        </View>
+      </View>
+      <View style={styles.locationItem}>
+        <View style={styles.redDot} />
+        <Text style={styles.locationText}>{dropoff?.description || 'no'}</Text>
       </View>
     </View>
   );
 
-  const RideOption = ({ driver }) => (
+  const RideOption = ({ ride }) => (
     <TouchableOpacity
-      style={[
-        styles.rideCard,
-        selectedDriver?.id === driver.id && styles.selectedRideCard
-      ]}
-      onPress={() => setSelectedDriver(driver)}
+      style={[styles.rideOption, selectedRide?.id === ride.id && styles.selectedRide]}
+      onPress={() => setSelectedRide(ride)}
     >
-      <View style={styles.rideInfo}>
-        <Icon name={driver.type} size={32} color="#333" />
-        <View style={styles.rideDetails}>
-          <Text style={styles.rideName}>{driver.name}</Text>
-          <View style={styles.rideMetrics}>
-            <Icon name="clock-outline" size={16} color="#666" />
-            <Text style={styles.rideMetricText}>{driver.time}</Text>
-            <Icon name="map-marker-distance" size={16} color="#666" />
-            <Text style={styles.rideMetricText}>{driver.distance}</Text>
-            <Icon name="account" size={16} color="#666" />
-            <Text style={styles.rideMetricText}>{driver.seats} seats</Text>
-          </View>
+      <View style={styles.rideLeft}>
+        <Text style={styles.rideTime}>{ride.time}</Text>
+        <Text style={styles.rideIcon}>
+          {ride.type === 'car' ? '🚗' : '🏍️'}
+        </Text>
+        <View style={styles.rideInfo}>
+          <Text style={styles.rideName}>{ride.name}</Text>
+          <Text style={styles.rideDescription}>{ride.description}</Text>
+          {ride.coins && (
+            <Text style={styles.coinText}>Redeem {ride.coins} 🪙</Text>
+          )}
         </View>
-        <Text style={styles.ridePrice}>₹{driver.price}</Text>
       </View>
+      <Text style={styles.ridePrice}>
+        ₹{ride.priceRange || ride.price}
+      </Text>
     </TouchableOpacity>
   );
 
+  const DonationBanner = () => (
+    <TouchableOpacity style={styles.donationBanner}>
+      <Text style={styles.donationText}>
+        💚 Donate Rs 1 towards Saheli program
+      </Text>
+      <Text style={styles.arrowRight}>→</Text>
+    </TouchableOpacity>
+  );
+
+  const PaymentOptions = () => (
+    <View style={styles.paymentOptions}>
+      <TouchableOpacity style={styles.paymentOption}>
+        <Text>💵 Cash</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.paymentOption}>
+        <Text>🏷️ Coupon</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.paymentOption}>
+        <Text>👤 Myself</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const handleBookNow = () => {
+    navigation.navigate('confirm_screen', {
+      origin,
+      destination,
+      selectedRide,
+      dropoff,
+       pickup
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Icon name="arrow-left" size={28} color="#333" />
-        <Text style={styles.headerTitle}>Book a Ride</Text>
-        <Icon name="dots-vertical" size={28} color="#333" />
-      </View>
-
-      <MapView
-        provider={PROVIDER_DEFAULT}
-        style={styles.map}
-
-        initialRegion={{
-          latitude: origin.latitude || 28.7161663,
-          longitude: origin.longitude || 77.1240672,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
-        }}
-        showsUserLocation={true}
-        zoomEnabled={true}
-        scrollEnabled={true}
-        rotateEnabled={true}
-        pitchEnabled={true}
-        toolbarEnabled={true}
-      >
-        <Marker coordinate={origin} title="Pickup">
-          <Icon name="nature-people" size={40} color="#23527C" />
-        </Marker>
-        <Marker coordinate={destination} title="Dropoff">
-          <Icon name="map-marker" size={40} color="#F44336" />
-        </Marker>
-        <MapViewDirections
-          origin={origin}
-          destination={destination}
-          apikey={GOOGLE_MAPS_APIKEY}
-          strokeWidth={4}
-          strokeColor="#FF6666"
-        />
-        {drivers.map((driver, index) => (
-          <Marker
-            key={driver.id}
-            coordinate={{
-              latitude: driver.latitude,
-              longitude: driver.longitude
-            }}
-            title={driver.name}
-            description={`₹${driver.price} | ${driver.time}`}
-          >
-            <Icon name={driver.type} size={32} color="#333" />
-          </Marker>
+      <Header />
+      <Map origin={origin} destination={destination} />
+      <ScrollView style={styles.contentContainer}>
+        <RewardBanner />
+        <LocationSection />
+        <Text style={styles.sectionTitle}>Recommended for you</Text>
+        {rides.map((ride) => (
+          <View key={ride.id}>
+            <RideOption ride={ride} />
+          </View>
         ))}
-      </MapView>
-
-
-
-      <View style={styles.rideContainer}>
-        <Text style={styles.sectionTitle}>Available Rides</Text>
-        {loading ? (
-          <ActivityIndicator size="large" color="#FF6666" style={styles.loader} />
-        ) : (
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {drivers.map(driver => (
-              <RideOption key={driver.id} driver={driver} />
-            ))}
-          </ScrollView>
-        )}
-
-        <TouchableOpacity
-          style={[
-            styles.bookButton,
-            !selectedDriver && styles.bookButtonDisabled
-          ]}
-          disabled={!selectedDriver}
-          onPress={() => selectedDriver && handleBookRide(selectedDriver)}
-        >
-          <Text style={styles.bookButtonText}>
-            {selectedDriver ? `Book ${selectedDriver.name}` : 'Select a ride'}
-          </Text>
-          {selectedDriver && (
-            <Text style={styles.bookButtonPrice}>₹{selectedDriver.price}</Text>
-          )}
+        <PaymentOptions />
+        <TouchableOpacity onPress={handleBookNow} style={styles.bookButton}>
+          <Text style={styles.bookButtonText}>Book Any</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-
-    backgroundColor: '#f5f5f5',
+    flex: 1,
+    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    alignItems: 'center',
+    padding: 16,
     backgroundColor: '#fff',
-    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+  },
+  backButton: {
+    fontSize: 24,
+  },
+  expandButton: {
+    fontSize: 24,
+  },
+  mapContainer: {
+    height: 400,
+    backgroundColor: '#f0f0f0',
   },
   map: {
-    height: 300,
+    width: '100%',
+    height: '100%',
+  },
+  contentContainer: {
+    flex: 1,
+  },
+  rewardBanner: {
+    backgroundColor: '#FFF9E6',
+    padding: 12,
+    alignItems: 'center',
+  },
+  rewardText: {
+    color: '#8B4513',
   },
   locationContainer: {
-    backgroundColor: '#fff',
     padding: 16,
-    borderRadius: 12,
-    margin: 16,
-    elevation: 2,
+    backgroundColor: '#fff',
   },
-  locationCard: {
+  locationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginVertical: 8,
+  },
+  greenDot: {
+    width: 10,
+    height: 10,
+    backgroundColor: '#4CAF50',
+    borderRadius: 5,
+    marginRight: 12,
+  },
+  redDot: {
+    width: 10,
+    height: 10,
+    backgroundColor: '#F44336',
+    borderRadius: 5,
+    marginRight: 12,
   },
   locationText: {
-    marginLeft: 12,
-  },
-  locationTitle: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
   },
-  locationAddress: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
+  timeBox: {
+    backgroundColor: '#f0f0f0',
+    padding: 6,
+    borderRadius: 4,
+    marginLeft: 8,
   },
-  rideContainer: {
-
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 16,
-    elevation: 8,
+  timeText: {
+    fontSize: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
-  },
-  rideCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#eee',
   },
-  selectedRideCard: {
-    borderColor: '#FF6666',
-    backgroundColor: '#E3F2FD',
+  rideOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  rideInfo: {
+  selectedRide: {
+    backgroundColor: '#E0F7FA',
+    borderWidth: 2,
+    borderColor: '#00BCD4',
+  },
+  rideLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  rideDetails: {
-    flex: 1,
-    marginLeft: 12,
+  rideTime: {
+    marginRight: 12,
+    color: '#666',
+  },
+  rideIcon: {
+    marginRight: 12,
+    fontSize: 24,
+  },
+  rideInfo: {
+    // flex: 1,
   },
   rideName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: 'bold',
   },
-  rideMetrics: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  rideDescription: {
+    color: '#666',
+    fontSize: 14,
+  },
+  coinText: {
+    color: '#8B4513',
     marginTop: 4,
   },
-  rideMetricText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-    marginRight: 12,
-  },
   ridePrice: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+  },
+  donationBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#E8F5E9',
+  },
+  donationText: {
+    color: '#2E7D32',
+  },
+  arrowRight: {
+    color: '#2E7D32',
+  },
+  paymentOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  paymentOption: {
+    padding: 8,
   },
   bookButton: {
-    backgroundColor: '#FF6666',
-    borderRadius: 12,
+    backgroundColor: '#000',
+    margin: 16,
     padding: 16,
-    flexDirection: 'row',
+    borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 16,
-  },
-  bookButtonDisabled: {
-    backgroundColor: '#ccc',
   },
   bookButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  bookButtonPrice: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  loader: {
-    marginTop: 20,
   },
 });

@@ -6,17 +6,17 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { ScrollView } from 'react-native'
 
 export default function Show_Cabs() {
-    const route = useRoute()
-    const { data } = route.params || {}
-    console.log(data)
-    return (
-       <SafeAreaView>
-        <ScrollView>
+  const route = useRoute()
+  const { data } = route.params || {}
+  console.log(data)
+  return (
+    <SafeAreaView>
+      <ScrollView>
         <View>
-          
+
           <ShowMap data={data} />
-      </View>
-        </ScrollView>
-       </SafeAreaView>
-    )
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  )
 }

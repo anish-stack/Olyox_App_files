@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riders</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <!-- Use the CDN for Socket.IO -->
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="my-4">Nearby Riders</h1>
+
+        <!-- Ride request alert message -->
+        <div id="rideMessage" class="alert alert-info" style="display: none;">
+            <strong>New Ride Alert!</strong> A new ride request is nearby!
+        </div>
+
+        <!-- Display pickup and drop details -->
+        <div id="rideDetails" style="display: none;">
+            <p><strong>Pickup Location:</strong> <span id="pickupLocation"></span></p>
+            <p><strong>Drop Location:</strong> <span id="dropLocation"></span></p>
+        </div>
+
+        <!-- Display riders list -->
+        <div class="row" id="ridersList">
+            <!-- Rider cards will be populated dynamically here -->
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+
+        // Listen for the 'ride_come' event from the server
+        socket.on('ride_come', (data) => {
+            // Display the message and locations
+            const messageElement = document.getElementById('rideMessage');
+            const pickupElement = document.getElementById('pickupLocation');
+            const dropElement = document.getElementById('dropLocation');
+            const ridersList = document.getElementById('ridersList');
+            const rideDetails = document.getElementById('rideDetails');
+
+            // Display pickup and drop location
+            pickupElement.innerText = data.pickup_desc || 'Not provided';
+            dropElement.innerText = data.drop_desc || 'Not provided';
+            rideDetails.style.display = 'block';
+
+            // Show new ride request message
+            messageElement.innerText = data.message;
+            messageElement.style.display = 'block';
+
+            // Clear any previous riders before rendering new ones
+            ridersList.innerHTML = '';
+
+            // Loop through each rider and display them with buttons
+            data.riders.forEach((rider) => {
+                const riderCard = document.createElement('div');
+                riderCard.classList.add('col-md-4', 'mb-4');
+
+                riderCard.innerHTML = `
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">${rider.name}</h5>
+                            <p class="card-text">Vehicle Info: ${rider.rideVehicleInfo}</p>
+                            <p class="card-text">Distance: ${rider.distance} meters</p>
+                            <p class="card-text"><strong>Pickup:</strong> ${data.pickup_desc}</p>
+                            <p class="card-text"><strong>Drop:</strong> ${data.drop_desc}</p>
+                            <button class="btn btn-success" onclick="handleRideAction('${rider._id}', 'accept')">Accept</button>
+                            <button class="btn btn-danger" onclick="handleRideAction('${rider._id}', 'reject')">Reject</button>
+                        </div>
+                    </div>
+                `;
+
+                ridersList.appendChild(riderCard);
+            });
+        });
+
+        // Handle ride action (accept or reject)
+        function handleRideAction(riderId, action) {
+            // You can send an API request here to update the rider's status on the server
+            console.log(`Rider ${riderId} has been ${action}ed`);
+
+            // For example, you could make an Axios or Fetch request to your server
+            // axios.post('/update-ride-status', { riderId, action })
+            //     .then(response => {
+            //         console.log('Ride action updated successfully:', response.data);
+            //     })
+            //     .catch(error => {
+            //         console.error('Error updating ride action:', error);
+            //     });
+        }
+    </script>
+
+</body>
+</html>
