@@ -1,11 +1,6 @@
 const AWS = require('aws-sdk');
 const fs = require('fs');
 
-AWS.config.update({
-    accessKeyId: 'AKIA4HWJUIM6ZB4D2SVX',
-    secretAccessKey: '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',
-    region: 'ap-south-1'
-});
 
 const s3 = new AWS.S3();
 const isValidFile = (filePath) => {
