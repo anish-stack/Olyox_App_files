@@ -1,51 +1,209 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Map from '../Map/Map';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import * as Location from 'expo-location';
 import axios from 'axios';
+import { useSocket } from '../../context/SocketContext';
+import { styles } from './Styles';
+
 export function BookingConfirmation() {
     const route = useRoute();
+    const [fareDetails, setFareDetails] = useState(null)
     const [status, requestPermission] = Location.useBackgroundPermissions();
-
-    const [loading, setLoading] = useState(false)
+    const socket = useSocket();
+    const [loading, setLoading] = useState(false);
+    const [bookingStep, setBookingStep] = useState(0);
+    const [error, setError] = useState(null);
+    const [currentLocation, setCurrentLocation] = useState(null);
     const { origin, destination, selectedRide, dropoff, pickup } = route.params || {};
+
     const navigation = useNavigation();
+
+    const bookingSteps = [
+        {
+            icon: "car-clock",
+            title: "Getting Ready! 🚀",
+            message: "Hang tight! We're preparing your perfect ride experience..."
+        },
+        {
+            icon: "map-search",
+            title: "Finding Your Driver 🔍",
+            message: "Connecting you with our top-rated drivers nearby..."
+        },
+        {
+            icon: "timer-sand",
+            title: "Almost There! ⌛",
+            message: "Our drivers are quite busy, but we're doing our best to find you the perfect match..."
+        },
+        {
+            icon: "check-circle",
+            title: "Great News! 🎉",
+            message: "We've found you an amazing driver! Getting everything ready for your journey..."
+        }
+    ];
+
+    useEffect(() => {
+        (async () => {
+            const location = await Location.getCurrentPositionAsync({});
+            setCurrentLocation(location.coords);
+        })();
+    }, []);
 
     const handleSubmit = async () => {
         if (!origin || !destination) {
             setError('Please select both pickup and drop-off locations');
             return;
         }
-        setLoading(true)
-        let location = await Location.getCurrentPositionAsync({});
+
+        if (!currentLocation) {
+            setError('Unable to fetch current location. Please try again.');
+            return;
+        }
+
+        setError(null);
+        setLoading(true);
+        setBookingStep(0);
 
         try {
             const response = await axios.post('http://192.168.1.8:9630/api/v1/rides/create-ride', {
-                currentLocation: location.coords,
+                currentLocation,
                 pickupLocation: origin,
                 dropLocation: destination,
                 pick_desc: pickup?.description,
                 drop_desc: dropoff?.description,
                 vehicleType: selectedRide?.name,
+            });
+
+            const request = response?.data?.rideRequest;
+
+            if (request) {
+                setBookingStep(1);
+                setTimeout(() => {
+                    socket.emit('send_message', {
+                        message: 'ride-save-find-riders',
+                        data: request,
+                    });
+                    setBookingStep(2);
+                }, 2000);
+            }
+        } catch (error) {
+            console.error('Error:', error.message || error);
+            setLoading(false);
+            setError('Failed to create ride request');
+        }
+    };
+
+    const getFareInfo = async () => {
+        try {
+            const { data } = await axios.post('http://192.168.1.8:9630/api/v1/rider/get-fare-info', {
+                origin,
+                destination,
+                waitingTimeInMinutes: 0,
+                ratePerKm: selectedRide?.priceRange
             })
-            console.log(response.data)
-            setTimeout(() => {
-                setLoading(false)
-                navigation.navigate('driver_match', { ride: response.data,origin, destination });
-            }, 520)
+            console.log(data)
+            if (data) {
+                setFareDetails(data)
+            }
 
         } catch (error) {
-            setLoading(false)
             console.log(error)
+
         }
+    }
 
+    useEffect(() => {
+        getFareInfo()
+    }, [])
+    useEffect(() => {
+        if (socket) {
+            const handleRideConfirm = (data) => {
+                console.log('Ride confirmation received:', data);
+                setBookingStep(3);
 
-        // console.log('Ride requested:', { complete_ride });
+                if (data && data.dataAR) {
+                    setTimeout(() => {
+                        setLoading(false);
+                        navigation.navigate('driver_match', {
+                            ride: data.dataAR,
+                            origin,
+                            destination
+                        });
+                    }, 1000);
+                } else {
+                    console.error('Ride data is invalid:', data.dataAR);
+                    setLoading(false);
+                    setError('Invalid ride data received');
+                }
+            };
 
+            socket.on('ride_update', handleRideConfirm);
+
+            return () => {
+                socket.off('ride_update', handleRideConfirm);
+            };
+        }
+    }, [socket, navigation, origin, destination]);
+
+    const LoaderComponent = () => {
+        const pulseAnim = useRef(new Animated.Value(1)).current;
+
+        useEffect(() => {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.2,
+                        duration: 1000,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 1000,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+        }, []);
+
+        return (
+            <View style={styles.loaderContainer}>
+                <Animated.View style={[
+                    styles.iconContainer,
+                    { transform: [{ scale: pulseAnim }] }
+                ]}>
+                    <Icon
+                        name={bookingSteps[bookingStep].icon}
+                        size={40}
+                        color="#1976D2"
+                    />
+                </Animated.View>
+
+                <Text style={styles.loaderTitle}>
+                    {bookingSteps[bookingStep].title}
+                </Text>
+
+                <Text style={styles.loaderMessage}>
+                    {bookingSteps[bookingStep].message}
+                </Text>
+
+                <View style={styles.stepIndicatorContainer}>
+                    {bookingSteps.map((_, index) => (
+                        <View
+                            key={index}
+                            style={[
+                                styles.stepDot,
+                                index === bookingStep && styles.stepDotActive
+                            ]}
+                        />
+                    ))}
+                </View>
+            </View>
+        );
     };
+
     const Header = () => (
         <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -74,34 +232,49 @@ export function BookingConfirmation() {
     const RideDetails = () => (
         <View style={styles.rideDetailsCard}>
             <View style={styles.cardHeader}>
-                <Text style={styles.rideDetailsTitle}>Ride Details</Text>
+                <Text style={styles.cardTitle}>Ride Details</Text>
                 <View style={styles.estimatedTime}>
-                    <Icon name="clock-outline" size={16} color="#4CAF50" />
-                    <Text style={styles.estimatedTimeText}>Est. 25 mins</Text>
+                    <Icon name="clock-outline" size={16} color="#059669" />
+                    <Text style={styles.estimatedTimeText}>
+                        {fareDetails?.durationInMinutes?.toFixed(0)} min
+                    </Text>
+                </View>
+            </View>
+
+            <View style={styles.rideInfo}>
+                <View style={styles.rideInfoItem}>
+                    <Icon name="map-marker" size={24} color="#2563EB" />
+                    <View style={styles.rideInfoText}>
+                        <Text style={styles.rideInfoLabel}>Pickup</Text>
+                        <Text style={styles.rideInfoValue}>{pickup?.description}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.rideInfoItem}>
+                    <Icon name="map-marker-radius" size={24} color="#D62C27" />
+                    <View style={styles.rideInfoText}>
+                        <Text style={styles.rideInfoLabel}>Dropoff</Text>
+                        <Text style={styles.rideInfoValue}>{dropoff?.description}</Text>
+                    </View>
                 </View>
             </View>
 
             <View style={styles.divider} />
 
-            <View style={styles.rideDetailItem}>
-                <View style={styles.iconContainer}>
-                    <Icon name="car" size={22} color="#1976D2" />
+            <View style={styles.fareDetails}>
+                <Text style={styles.fareTitle}>Fare Breakdown</Text>
+                <View style={styles.fareItem}>
+                    <Text>Base Fare</Text>
+                    <Text>₹{selectedRide?.priceRange}</Text>
                 </View>
-                <Text style={styles.rideText}>Car Type: {selectedRide?.name}</Text>
-            </View>
-
-            <View style={styles.rideDetailItem}>
-                <View style={styles.iconContainer}>
-                    <Icon name="map-marker-distance" size={22} color="#1976D2" />
+                <View style={styles.fareItem}>
+                    <Text>Distance ({fareDetails?.distanceInKm.toFixed(2)} km)</Text>
+                    <Text>₹{fareDetails?.totalPrice.toFixed(0)}</Text>
                 </View>
-                <Text style={styles.rideText}>Distance: {selectedRide?.distance} km</Text>
-            </View>
-
-            <View style={styles.rideDetailItem}>
-                <View style={styles.iconContainer}>
-                    <Icon name="currency-inr" size={22} color="#1976D2" />
+                <View style={[styles.fareItem, styles.fareTotal]}>
+                    <Text style={styles.totalText}>Total</Text>
+                    <Text style={styles.totalAmount}>₹ {fareDetails?.totalPrice.toFixed(0)}</Text>
                 </View>
-                <Text style={styles.rideText}>Price: ₹{selectedRide?.priceRange}</Text>
             </View>
         </View>
     );
@@ -112,175 +285,44 @@ export function BookingConfirmation() {
             <Header />
             <ScrollView style={styles.content}>
                 <Map origin={origin} destination={destination} />
-
-                <RideDetails />
-                <PaymentSection />
+                {loading ? (
+                    <LoaderComponent />
+                ) : (
+                    <>
+                        <RideDetails />
+                        {/* <PaymentSection /> */}
+                    </>
+                )}
             </ScrollView>
 
-            <TouchableOpacity
-                onPress={() => handleSubmit()}
-                style={styles.confirmButton}
-            >
-                <Text style={styles.confirmButtonText}>
-                    {loading ? 'Searching for a rider, please wait...' : `Confirm ${selectedRide?.name}`}
-                </Text>
-                {!loading && selectedRide?.priceRange && (
-                    <Text style={styles.confirmButtonPrice}>₹{selectedRide?.priceRange}</Text>
-                )}
-            </TouchableOpacity>
+            {!loading && (
+                <View style={styles.bottomContainer}>
+                    <View style={styles.paymentMethod}>
+                        <Icon name="cash" size={24} color="#059669" />
+                        <Text style={styles.paymentText}>Cash Payment</Text>
+                        <TouchableOpacity>
+                            <Text style={styles.changeText}>Change</Text>
+                        </TouchableOpacity>
+                    </View>
 
+                    <TouchableOpacity
+                        style={styles.confirmButton}
+                        onPress={handleSubmit}
 
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.confirmButtonText}>Confirm Ride</Text>
+                        <Text style={styles.confirmButtonPrice}>₹ {fareDetails?.totalPrice.toFixed(0)}</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {error && (
+                <View style={styles.errorContainer}>
+                    <Icon name="alert-circle" size={24} color="#DC2626" />
+                    <Text style={styles.errorText}>{error}</Text>
+                </View>
+            )}
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    backButton: {
-        fontSize: 24,
-    },
-    placeholder: {
-        width: 24,
-    },
-    content: {
-        flex: 1,
-    },
-    mapPreview: {
-        height: 200,
-        backgroundColor: '#f0f0f0',
-    },
-    rideDetailsCard: {
-        backgroundColor: '#fff',
-        // borderRadius: 12,
-        padding: 14,
-        marginHorizontal: 5,
-        marginTop: 16,
-        marginBottom: 8,
-        // shadowColor: '#000',
-        // shadowOffset: { width: 0, height: 4 },
-        // shadowOpacity: 0.1,
-        // shadowRadius: 8,
-        // elevation: 5,
-        borderWidth: 1,
-        borderColor: '#f0f0f0',
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    rideDetailsTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#1A237E',
-        letterSpacing: 0.3,
-    },
-    estimatedTime: {
-        // flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#E8F5E9',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 16,
-    },
-    estimatedTimeText: {
-        marginLeft: 4,
-        color: '#4CAF50',
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#E0E0E0',
-        marginVertical: 12,
-    },
-    rideDetailItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    iconContainer: {
-        width: 36,
-        height: 36,
-        backgroundColor: '#E3F2FD',
-        borderRadius: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    rideText: {
-        fontSize: 16,
-        color: '#424242',
-        fontWeight: '500',
-        flex: 1,
-    },
-    paymentSection: {
-        padding: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#eee',
-    },
-    paymentHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    paymentTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    changeButton: {
-        padding: 8,
-    },
-    changeButtonText: {
-        color: '#2E7D32',
-        fontWeight: '500',
-    },
-    paymentMethod: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    paymentIcon: {
-        fontSize: 20,
-        marginRight: 8,
-    },
-    paymentText: {
-        fontSize: 16,
-    },
-    confirmButton: {
-        backgroundColor: '#000',
-        margin: 16,
-        padding: 16,
-        borderRadius: 8,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    confirmButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    confirmButtonPrice: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-});

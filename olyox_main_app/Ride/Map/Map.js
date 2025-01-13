@@ -59,11 +59,11 @@ export default function Map({ origin, destination }) {
                         }}
                         onReady={(result) => {
                             setLoading(false);
-                            console.log("Directions ready:", result);
+                            // console.log("Directions ready:", result);
                         }}
                         onError={(error) => {
                             setLoading(false);
-                            console.error("Error fetching directions:", error);
+                            // console.error("Error fetching directions:", error);
                         }}
                     />
                     {loading && <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />}

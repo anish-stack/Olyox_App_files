@@ -1,50 +1,47 @@
-import { useRoute } from '@react-navigation/native';
 import React, { useState, useEffect } from 'react';
 import {
     StyleSheet,
     View,
     Text,
     TouchableOpacity,
-    ActivityIndicator
+    ActivityIndicator,
+    Platform,
+    Dimensions,
+    Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Map from '../Map/Map';
+import { useRoute } from '@react-navigation/native';
+
+const { width } = Dimensions.get('window');
 
 export function DriverMatching({ navigation }) {
-    const [matchingState, setMatchingState] = useState('searching'); // searching, found, success, declined
+    const [matchingState, setMatchingState] = useState('found');
     const [timeLeft, setTimeLeft] = useState(30);
-    const route = useRoute()
-    const { origin, destination , ride } = route.params || {}
-    const [selectedDriver, setSelectedDriver] = useState({
-        name: "Rahul Kumar",
-        rating: "4.8",
-        trips: "2,543",
-        carNumber: "DL 5C AB 1234",
-        carModel: "Swift Dzire",
-        arrivalTime: "2 mins"
+    const route = useRoute();
+    const { origin, destination, ride } = route.params || {};
+// console.log(ride)
+    const [selectedDriver] = useState({
+        name: ride?.rider?.name || 'Driver',
+        rating: ride?.rider?.Ratings || 4.8,
+        trips: ride?.rider?.TotalRides || 0,
+        carNumber: ride?.rider?.rideVehicleInfo?.VehicleNumber,
+        carModel: ride?.rider?.rideVehicleInfo?.vehicleName,
+        vehicleType: ride?.vehicleType,
+        eta: ride?.EtaOfRide,
+        otp:ride?.RideOtp,
+        pickup_desc:ride?.pickup_desc,
+        drop_desc:ride?.drop_desc,
+        price: ride?.priceOfRide
     });
 
     useEffect(() => {
-        // Simulate finding a driver after 3 seconds
-        const findDriverTimer = setTimeout(() => {
-            setMatchingState('found');
-        }, 3000);
-
-        // Show accept/decline buttons after 30 seconds
-        const decisionTimer = setTimeout(() => {
-            setTimeLeft(0);
-        }, 30000);
-
-        // Update countdown timer
         const countdownInterval = setInterval(() => {
             setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
         }, 1000);
 
-        return () => {
-            clearTimeout(findDriverTimer);
-            clearTimeout(decisionTimer);
-            clearInterval(countdownInterval);
-        };
+        return () => clearInterval(countdownInterval);
     }, []);
 
     const handleRideAccept = () => {
@@ -54,106 +51,120 @@ export function DriverMatching({ navigation }) {
         }, 1500);
     };
 
-    const handleRideDecline = () => {
-        setMatchingState('declined');
-        // Restart the search after 2 seconds
-        setTimeout(() => {
-            setMatchingState('searching');
-            setTimeLeft(10);
-        }, 2000);
-    };
-
-    const LoadingStates = () => {
-        if (matchingState === 'searching') {
-            return (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#000" />
-                    <Text style={styles.loadingText}>Looking for nearby drivers...</Text>
+    const RideInfo = () => (
+        <View style={styles.rideInfoContainer}>
+            <View style={styles.locationInfo}>
+                <View style={styles.locationItem}>
+                    <Icon name="map-marker" size={24} color="#2563EB" />
+                    <View style={styles.locationText}>
+                        <Text style={styles.locationLabel}>Pickup</Text>
+                        <Text numberOfLines={1} style={styles.locationValue}>
+                            {ride?.pickup_desc}
+                        </Text>
+                    </View>
                 </View>
-            );
-        }
+                <View style={styles.locationDivider} />
+                <View style={styles.locationItem}>
+                    <Icon name="map-marker-radius" size={24} color="#2563EB" />
+                    <View style={styles.locationText}>
+                        <Text style={styles.locationLabel}>Drop-off</Text>
+                        <Text numberOfLines={1} style={styles.locationValue}>
+                            {ride?.drop_desc}
+                        </Text>
+                    </View>
+                </View>
+            </View>
+        </View>
+    );
 
-        if (matchingState === 'found') {
-            return (
-                <View style={styles.driverFound}>
-                    <View style={styles.driverInfo}>
-                        <View style={styles.driverHeader}>
-                            <Text style={styles.driverName}>{selectedDriver.name}</Text>
-                            <View style={styles.ratingContainer}>
-                                <Text style={styles.ratingText}>⭐ {selectedDriver.rating}</Text>
-                                <Text style={styles.tripsText}>{selectedDriver.trips} trips</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.carInfo}>
-                            <Text style={styles.carNumber}>{selectedDriver.carNumber}</Text>
-                            <Text style={styles.carModel}>{selectedDriver.carModel}</Text>
-                        </View>
-
-                        <View style={styles.arrivalInfo}>
-                            <Text style={styles.arrivalText}>
-                                Arriving in {selectedDriver.arrivalTime}
-                            </Text>
-                            {timeLeft > 0 && (
-                                <Text style={styles.timeLeft}>
-                                    Driver will confirm in {timeLeft}s
-                                </Text>
-                            )}
+    const DriverCard = () => (
+        <View style={styles.driverCard}>
+            <View style={styles.driverHeader}>
+                <View style={styles.driverInfo}>
+                    <View style={styles.driverAvatar}>
+                        <Icon name="account" size={32} color="#fff" />
+                    </View>
+                    <View>
+                        <Text style={styles.driverName}>{selectedDriver.name}</Text>
+                        <View style={styles.ratingContainer}>
+                            <Icon name="star" size={16} color="#FCD34D" />
+                            <Text style={styles.ratingText}>{selectedDriver.rating}</Text>
+                            <Text style={styles.tripCount}>• {selectedDriver.trips} trips</Text>
                         </View>
                     </View>
-
-                    {timeLeft === 0 && (
-                        <View style={styles.actionButtons}>
-                            <TouchableOpacity
-                                style={[styles.actionButton, styles.acceptButton]}
-                                onPress={handleRideAccept}
-                            >
-                                <Text style={styles.buttonText}>Accept</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.actionButton, styles.declineButton]}
-                                onPress={handleRideDecline}
-                            >
-                                <Text style={[styles.buttonText, styles.declineText]}>Cancel</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
                 </View>
-            );
-        }
+                <TouchableOpacity style={styles.callButton}>
+                    <Icon name="phone" size={20} color="#2563EB" />
+                </TouchableOpacity>
+            </View>
 
-        if (matchingState === 'success') {
-            return (
-                <View style={styles.successContainer}>
-                    <Text style={styles.successText}>Ride Confirmed! 🎉</Text>
-                    <Text style={styles.successSubText}>Redirecting to ride screen...</Text>
-                </View>
-            );
-        }
+            <View style={styles.divider} />
 
-        if (matchingState === 'declined') {
-            return (
-                <View style={styles.declinedContainer}>
-                    <Text style={styles.declinedText}>Looking for another driver...</Text>
+            <View style={styles.vehicleInfo}>
+                <View style={styles.vehicleDetails}>
+                    <Icon name="car" size={24} color="#2563EB" />
+                    <View style={styles.vehicleText}>
+                        <Text style={styles.vehicleModel}>{selectedDriver.carModel}</Text>
+                        <Text style={styles.vehicleNumber}>{selectedDriver.carNumber}</Text>
+                    </View>
                 </View>
-            );
-        }
-    };
+                <View style={styles.etaContainer}>
+                    <Icon name="clock-outline" size={20} color="#059669" />
+                    <Text style={styles.etaText}>{selectedDriver.eta}</Text>
+                </View>
+            </View>
+
+            <View style={styles.rideStats}>
+                <View style={styles.statItem}>
+                    <Icon name="map-marker-distance" size={20} color="#6B7280" />
+                    <Text style={styles.statText}>{ride?.distanceInKm.toFixed(1)} km</Text>
+                </View>
+                <View style={styles.statItem}>
+                    <Icon name="clock-outline" size={20} color="#6B7280" />
+                    <Text style={styles.statText}>{ride?.durationInMinutes.toFixed(0)} mins</Text>
+                </View>
+                <View style={styles.statItem}>
+                    <Icon name="currency-inr" size={20} color="#6B7280" />
+                    <Text style={styles.statText}>₹{selectedDriver.price}</Text>
+                </View>
+            </View>
+
+            {timeLeft === 0 && (
+                <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                        style={styles.acceptButton}
+                        onPress={handleRideAccept}
+                    >
+                        <Text style={styles.acceptButtonText}>Start Ride</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cancelButton}>
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+        </View>
+    );
 
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <Text style={styles.backButton}>←</Text>
+                <TouchableOpacity 
+                    onPress={() => navigation.goBack()}
+                    style={styles.backButton}
+                >
+                    <Icon name="arrow-left" size={24} color="#000" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Finding your ride</Text>
+                <Text style={styles.headerTitle}>Your Ride</Text>
                 <View style={styles.placeholder} />
             </View>
 
-            <Map origin={origin} destination={destination} />
-            <View style={styles.content}>
+            <View style={styles.mapContainer}>
+                <Map origin={origin} destination={destination} />
+            </View>
 
-                <LoadingStates />
+            <View style={styles.bottomSheet}>
+                <RideInfo />
+                <DriverCard />
             </View>
         </SafeAreaView>
     );
@@ -166,137 +177,232 @@ const styles = StyleSheet.create({
     },
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#fff',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
     },
     headerTitle: {
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: '600',
+        color: '#111827',
     },
     backButton: {
-        fontSize: 24,
+        padding: 8,
     },
     placeholder: {
-        width: 24,
+        width: 40,
     },
-    content: {
+    mapContainer: {
         flex: 1,
-        justifyContent: 'center',
     },
-    loadingContainer: {
-        alignItems: 'center',
-        padding: 20,
+    bottomSheet: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingTop: 8,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: -4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 12,
+            },
+            android: {
+                elevation: 8,
+            },
+        }),
     },
-    loadingText: {
-        marginTop: 16,
-        fontSize: 16,
-        color: '#666',
+    rideInfoContainer: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
     },
-    driverFound: {
-        padding: 20,
-    },
-    driverInfo: {
-        backgroundColor: '#f8f8f8',
+    locationInfo: {
+        backgroundColor: '#F3F4F6',
         borderRadius: 12,
+        padding: 12,
+    },
+    locationItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+    },
+    locationText: {
+        marginLeft: 12,
+        flex: 1,
+    },
+    locationLabel: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginBottom: 2,
+    },
+    locationValue: {
+        fontSize: 14,
+        color: '#111827',
+        fontWeight: '500',
+    },
+    locationDivider: {
+        height: 1,
+        backgroundColor: '#E5E7EB',
+        marginVertical: 8,
+    },
+    driverCard: {
         padding: 16,
+        backgroundColor: '#fff',
     },
     driverHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 16,
+    },
+    driverInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    driverAvatar: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#2563EB',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
     },
     driverName: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 4,
     },
     ratingContainer: {
-        alignItems: 'flex-end',
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     ratingText: {
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    tripsText: {
         fontSize: 14,
-        color: '#666',
-        marginTop: 4,
-    },
-    carInfo: {
-        marginBottom: 12,
-    },
-    carNumber: {
-        fontSize: 16,
         fontWeight: '500',
+        color: '#4B5563',
+        marginLeft: 4,
     },
-    carModel: {
+    tripCount: {
         fontSize: 14,
-        color: '#666',
-        marginTop: 4,
+        color: '#6B7280',
+        marginLeft: 8,
     },
-    arrivalInfo: {
+    callButton: {
+        padding: 12,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 12,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#E5E7EB',
+        marginVertical: 16,
+    },
+    vehicleInfo: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        marginTop: 16,
+        marginBottom: 16,
     },
-    arrivalText: {
-        fontSize: 18,
+    vehicleDetails: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    vehicleText: {
+        marginLeft: 12,
+    },
+    vehicleModel: {
+        fontSize: 16,
         fontWeight: '500',
+        color: '#111827',
     },
-    timeLeft: {
+    vehicleNumber: {
         fontSize: 14,
-        color: '#666',
-        marginTop: 8,
+        color: '#6B7280',
+        marginTop: 2,
+    },
+    etaContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ECFDF5',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    etaText: {
+        marginLeft: 4,
+        color: '#059669',
+        fontWeight: '600',
+    },
+    rideStats: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        backgroundColor: '#F3F4F6',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 16,
+    },
+    statItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    statText: {
+        marginLeft: 6,
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#4B5563',
     },
     actionButtons: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 20,
         gap: 12,
     },
-    actionButton: {
-        flex: 1,
-        padding: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-    },
     acceptButton: {
-        backgroundColor: '#000',
+        flex: 1,
+        backgroundColor: '#2563EB',
+        paddingVertical: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#2563EB',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 8,
+            },
+        }),
     },
-    declineButton: {
-        backgroundColor: '#fff',
-        borderWidth: 1,
-        borderColor: '#000',
-    },
-    buttonText: {
+    acceptButtonText: {
         color: '#fff',
         fontSize: 16,
-        fontWeight: 'bold',
+        fontWeight: '600',
     },
-    declineText: {
-        color: '#000',
-    },
-    successContainer: {
+    cancelButton: {
+        flex: 1,
+        backgroundColor: '#FEE2E2',
+        paddingVertical: 16,
+        borderRadius: 12,
         alignItems: 'center',
-        padding: 20,
     },
-    successText: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 8,
-    },
-    successSubText: {
+    cancelButtonText: {
+        color: '#DC2626',
         fontSize: 16,
-        color: '#666',
-    },
-    declinedContainer: {
-        alignItems: 'center',
-        padding: 20,
-    },
-    declinedText: {
-        fontSize: 16,
-        color: '#666',
+        fontWeight: '600',
     },
 });

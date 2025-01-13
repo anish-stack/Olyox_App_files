@@ -36,6 +36,33 @@ const RideRequestSchema = new Schema({
             required: true
         }
     },
+    priceOfRide:{
+        type: Number,
+    },
+    waitTingTime:{
+        type: Number,
+    },
+    rideStart:{
+        type: Date,
+    },
+    RideOtp:{
+        type: String,
+    },
+    RideEnd:{
+        type: Date,
+    },
+    isPaymentDone:{
+        type:Boolean,
+    },
+    kmOfRide:{
+        type:String,
+    },
+    EtaOfRide:{
+        type:String,
+    },
+    RatingOfRide:{
+        type:Number,
+    },
     vehicleType:{
         type:String,
     },
@@ -53,6 +80,10 @@ const RideRequestSchema = new Schema({
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    rider:{
+        type: Schema.Types.ObjectId,
+        ref: 'Rider',
     },
     updatedAt: {
         type: Date,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider } from 'react-redux';
@@ -13,17 +13,17 @@ import Show_Cabs from './Ride/Show_near_by_cab/Show_Cabs';
 import { BookingConfirmation } from './Ride/Show_near_by_cab/confirm_booking';
 import { DriverMatching } from './Ride/Show_near_by_cab/Driver_matching';
 import { RideConfirmed } from './Ride/Show_near_by_cab/Ride_Confirmed';
-
+import { SocketProvider } from './context/SocketContext';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+ 
 
   useEffect(() => {
     async function getCurrentLocation() {
-
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setErrorMsg('Permission to access location was denied');
@@ -42,32 +42,28 @@ export default function App() {
   } else if (location) {
     text = JSON.stringify(location);
   }
+
   return (
     <Provider store={store}>
       <PaperProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
+        <SocketProvider>
           <SafeAreaProvider>
             <NavigationContainer>
               <Stack.Navigator>
                 <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
-
-
                 {/* Booking Ride Start Here */}
                 <Stack.Screen name="Start_Booking_Ride" options={{ headerShown: false }} component={Collect_Data} />
                 <Stack.Screen name="second_step_of_booking" options={{ headerShown: false }} component={Show_Cabs} />
                 <Stack.Screen name="confirm_screen" options={{ headerShown: false }} component={BookingConfirmation} />
                 <Stack.Screen name="driver_match" options={{ headerShown: false }} component={DriverMatching} />
                 <Stack.Screen name="RideStarted" options={{ headerShown: false }} component={RideConfirmed} />
-
-
-
-
               </Stack.Navigator>
             </NavigationContainer>
           </SafeAreaProvider>
+          </SocketProvider>
         </GestureHandlerRootView>
       </PaperProvider>
     </Provider>
   );
 }
-
