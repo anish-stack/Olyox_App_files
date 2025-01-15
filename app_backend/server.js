@@ -7,6 +7,7 @@ const router = require('./routes/routes');
 const rides = require('./routes/rides.routes');
 const RiderModel = require('./models/Rider.model');
 const { ChangeRideRequestByRider, findRider } = require('./controllers/ride.request');
+const hotel_router = require('./routes/Hotel.routes');
 
 require('dotenv').config();
 
@@ -107,6 +108,8 @@ app.use((err, req, res, next) => {
 
 app.use('/api/v1/rider', router)
 app.use('/api/v1/rides', rides)
+app.use('/api/v1/hotels', hotel_router)
+
 
 
 server.listen(PORT, () => {

@@ -99,19 +99,19 @@ export default function Collect_Data() {
         // setLoading(true)
         // let location = await Location.getCurrentPositionAsync({});
 
-        // try {
-        //     const response = await axios.post('http://192.168.1.8:9630/api/v1/rides/create-ride', {
-        //         currentLocation: location.coords,
-        //         pickupLocation: complete_ride.pickup,
-        //         dropLocation: complete_ride.dropoff,
-        //     })
-        //     console.log(response.data)
-        //     setLoading(false)
+        try {
+            const response = await axios.post('http://192.168.1.8:9630/api/v1/rides/create-ride', {
+                currentLocation: location.coords,
+                pickupLocation: complete_ride.pickup,
+                dropLocation: complete_ride.dropoff,
+            })
+            console.log(response.data)
+            setLoading(false)
             
-        // } catch (error) {
-        //     setLoading(false)
-        //     console.log(error)
-        // }
+        } catch (error) {
+            setLoading(false)
+            console.log(error)
+        }
         
         navigation.navigate('second_step_of_booking',{data:complete_ride})
 
