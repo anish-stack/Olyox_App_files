@@ -18,7 +18,7 @@ export default function HotelCard({ hotel, onPress }) {
                 />
                 <View style={styles.ratingBadge}>
                     <Icon name="star" size={12} color="#FFFFFF" />
-                    <Text style={styles.ratingText}>4.0</Text> {/* Assuming a 4-star rating */}
+                    <Text style={styles.ratingText}>4.0</Text>
                 </View>
             </View>
 
@@ -30,7 +30,7 @@ export default function HotelCard({ hotel, onPress }) {
                 </View>
 
                 <View style={styles.amenitiesContainer}>
-                    {/* Display first two amenities from the list */}
+                    
                     {amenities.slice(0, 2).map((amenity, index) => (
                         <View key={index} style={styles.amenityBadge}>
                             <Text style={styles.amenityText}>{amenity}</Text>

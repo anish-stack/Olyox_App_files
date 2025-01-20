@@ -8,6 +8,7 @@ import * as Location from 'expo-location';
 import axios from 'axios';
 import { useSocket } from '../../context/SocketContext';
 import { styles } from './Styles';
+import { tokenCache } from '../../Auth/cache';
 
 export function BookingConfirmation() {
     const route = useRoute();
@@ -53,21 +54,26 @@ export function BookingConfirmation() {
     }, []);
 
     const handleSubmit = async () => {
-        if (!origin || !destination) {
-            setError('Please select both pickup and drop-off locations');
-            return;
-        }
+        console.log("i am hit",origin,destination,currentLocation)
+        // if (!origin || !destination) {
+        //     setError('Please select both pickup and drop-off locations');
+        //     return;
+        // }
 
-        if (!currentLocation) {
-            setError('Unable to fetch current location. Please try again.');
-            return;
-        }
+        // if (!currentLocation) {
+        //     setError('Unable to fetch current location. Please try again.');
+        //     return;
+        // }
 
         setError(null);
         setLoading(true);
         setBookingStep(0);
-
+        const gmail_token = await tokenCache.getToken('auth_token')
+        const db_token = await tokenCache.getToken('auth_token_db')
+        const token  = db_token || gmail_token
+        console.log(token)
         try {
+            console.log("tttttt")
             const response = await axios.post('http://192.168.1.8:9630/api/v1/rides/create-ride', {
                 currentLocation,
                 pickupLocation: origin,
@@ -75,9 +81,15 @@ export function BookingConfirmation() {
                 pick_desc: pickup?.description,
                 drop_desc: dropoff?.description,
                 vehicleType: selectedRide?.name,
+            },{
+                headers: {
+             
+                   'Authorization': `Bearer ${token}`,
+                }
             });
-
+            
             const request = response?.data?.rideRequest;
+            console.log(response.data)
 
             if (request) {
                 setBookingStep(1);
@@ -120,6 +132,7 @@ export function BookingConfirmation() {
     }, [])
     useEffect(() => {
         if (socket) {
+            console.log("socket",socket)
             const handleRideConfirm = (data) => {
                 console.log('Ride confirmation received:', data);
                 setBookingStep(3);

@@ -13,13 +13,14 @@ import Map from '../Map/Map';
 
 const GOOGLE_MAPS_APIKEY = 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34';
 
-export default function ShowMap() {
+export default function ShowMap({data}) {
   const [loading, setLoading] = useState(true);
   const [selectedRide, setSelectedRide] = useState(null);
 
   const route = useRoute();
-  const { data } = route.params || {};
+  // const { data } = route.params || {};
   const { dropoff, pickup } = data || {};
+  console.log("data hu mai",data)
 
   const origin = pickup?.latitude && pickup?.longitude
     ? { latitude: pickup.latitude, longitude: pickup.longitude }

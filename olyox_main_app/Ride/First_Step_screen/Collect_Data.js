@@ -8,6 +8,7 @@ import { COLORS } from '../../constants/colors';
 import styles from './Styles';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
+import { tokenCache } from '../../Auth/cache';
 
 export default function Collect_Data() {
     const [status, requestPermission] = Location.useBackgroundPermissions();
@@ -86,7 +87,7 @@ export default function Collect_Data() {
                 }
                 setIsGeoCodeReady(true); // Set to ready once geocoding is complete
             } catch (error) {
-                console.log(error.response.data);
+                console.log("Error From 1",error.response.data);
             }
         }
     };
@@ -96,22 +97,30 @@ export default function Collect_Data() {
             setError('Please select both pickup and drop-off locations');
             return;
         }
-        // setLoading(true)
+        // const gmail_token = await tokenCache.getToken('auth_token')
+        // const db_token = await tokenCache.getToken('auth_token_db')
+        // const token = db_token  || gmail_token
+        // // setLoading(true)
         // let location = await Location.getCurrentPositionAsync({});
-
-        try {
-            const response = await axios.post('http://192.168.1.8:9630/api/v1/rides/create-ride', {
-                currentLocation: location.coords,
-                pickupLocation: complete_ride.pickup,
-                dropLocation: complete_ride.dropoff,
-            })
-            console.log(response.data)
-            setLoading(false)
+        // console.log("location",location)
+        // try {
+        //     const response = await axios.post('http://192.168.1.8:9630/api/v1/rides/create-ride', {
+        //         currentLocation: location.coords,
+        //         pickupLocation: complete_ride.pickup,
+        //         dropLocation: complete_ride.dropoff,
+        //     },{
+        //         headers: {
+        //              
+        //         }
+        //     })
+        //     console.log("response from create ride",response.data)
+        //     setLoading(false)
             
-        } catch (error) {
-            setLoading(false)
-            console.log(error)
-        }
+            
+        // } catch (error) {
+        //     setLoading(false)
+        //     console.log("error from create",error)
+        // }
         
         navigation.navigate('second_step_of_booking',{data:complete_ride})
 
@@ -143,7 +152,7 @@ export default function Collect_Data() {
             const currentLocation = data?.data?.address?.completeAddress;
             setPickup(currentLocation);
         } catch (error) {
-            console.log(error.response.data);
+            console.log("error fetching current",error.response.data);
         } finally {
             setIsFetchingLocation(false);
         }

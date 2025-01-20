@@ -4,8 +4,10 @@ const axios = require('axios');
 const Crypto = require('crypto')
 exports.createRequest = async (req, res) => {
     try {
-        console.log(req.body);
+        console.log("i am hiting",req.body)
 
+       const user = req.user
+        console.log("user",user)
         const { vehicleType, pickupLocation, dropLocation, currentLocation, pick_desc, drop_desc } = req.body;
 
         // Check if all required fields are provided
@@ -45,7 +47,7 @@ exports.createRequest = async (req, res) => {
 
 
         await newRideRequest.save();
-
+        console.log(newRideRequest);
         // Send a success response with the created ride request
         res.status(201).json({
             message: 'Ride request created successfully',
@@ -151,6 +153,7 @@ exports.createRequest = async (req, res) => {
 exports.findRider = async (id, io) => {
     try {
         const rideRequestId = id;
+        console.log("jjjj",rideRequestId)
         // console.log(rideRequestId);
         // // Find the ride request by ID
         const rideRequest = await RideRequest.findById(rideRequestId);
@@ -331,8 +334,8 @@ exports.ChangeRideRequestByRider = async (io, data) => {
             throw new Error('Socket.io instance is not available');
         }
 
-        populatedRide.priceOfRide =ridePricing.totalPrice.toFixed(2)
-        populatedRide.RideOtp = Crypto.randomInt(1000,9999)
+        populatedRide.priceOfRide = ridePricing.totalPrice.toFixed(2)
+        populatedRide.RideOtp = Crypto.randomInt(1000, 9999)
         populatedRide.kmOfRide = ridePricing.distanceInKm
         populatedRide.EtaOfRide = eta
 

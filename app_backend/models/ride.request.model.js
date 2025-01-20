@@ -81,6 +81,10 @@ const RideRequestSchema = new Schema({
         type: Date,
         default: Date.now
     },
+    user:{
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+    },
     rider:{
         type: Schema.Types.ObjectId,
         ref: 'Rider',

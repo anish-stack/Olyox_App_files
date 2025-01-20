@@ -8,6 +8,8 @@ const rides = require('./routes/rides.routes');
 const RiderModel = require('./models/Rider.model');
 const { ChangeRideRequestByRider, findRider } = require('./controllers/ride.request');
 const hotel_router = require('./routes/Hotel.routes');
+const users = require('./routes/user_routes/user_routes');
+const cookies_parser = require('cookie-parser');
 
 require('dotenv').config();
 
@@ -26,6 +28,7 @@ app.use(express.static('public'));
 
 app.use(cors());
 app.use(express.json());
+app.use(cookies_parser())
 
 app.locals.io = io;
 const userSocketMap = new Map();
@@ -37,8 +40,8 @@ io.on('connection', (socket) => {
     socket.on('ride_accept', async (data) => {
         // console.log("riders",data)
         const dataR = await ChangeRideRequestByRider(io, data)
-        // console.log("data of accespted ",dataR)
-        const userSocketId = userSocketMap.get(1);
+        console.log("data of accespted ",dataR)
+        const userSocketId = userSocketMap.get('678cbeec1248934b1c8f7410');
       
         if (userSocketId) {
             // Emit a message to the user's socket, passing the ride data
@@ -54,18 +57,18 @@ io.on('connection', (socket) => {
 
     socket.on("user_connect", (data) => {
         // console.log("data",data)
-        if (!data.userid || !data.userType) {
+        if (!data.userId || !data.userType) {
             console.error("Invalid user connect data:", data);
             return;
         }
         // Store the user's socket ID in the map
-        userSocketMap.set(data.userid, socket.id);
-        console.log(`User ${data.userid} connected with socket ID: ${socket.id}`);
+        userSocketMap.set(data.userId, socket.id);
+        console.log(`User ${data.userId} connected with socket ID: ${socket.id}`);
     });
 
     socket.on('send_message', async (data) => {
         try {
-            console.log(data)
+            console.log("data rides",data)
             // Assuming findRider is a function that needs an ID
             const rider = await findRider(data.data?._id,io);
             console.log('Rider data:', rider);
@@ -83,9 +86,10 @@ io.on('connection', (socket) => {
             });
         }
     });
-    socket.on('disconnect', () => {
-        console.log('Client disconnected');
+    socket.on('disconnect', (reason) => {
+        console.log(`Client disconnected. Reason: ${reason}`);
     });
+    
 });
 
 const PORT = process.env.PORT || 3000;
@@ -109,6 +113,7 @@ app.use((err, req, res, next) => {
 app.use('/api/v1/rider', router)
 app.use('/api/v1/rides', rides)
 app.use('/api/v1/hotels', hotel_router)
+app.use('/api/v1/user', users)
 
 
 
