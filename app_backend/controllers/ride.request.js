@@ -4,10 +4,10 @@ const axios = require('axios');
 const Crypto = require('crypto')
 exports.createRequest = async (req, res) => {
     try {
-        console.log("i am hiting",req.body)
 
-       const user = req.user
-        console.log("user",user)
+
+        const user = req.user
+
         const { vehicleType, pickupLocation, dropLocation, currentLocation, pick_desc, drop_desc } = req.body;
 
         // Check if all required fields are provided
@@ -47,8 +47,7 @@ exports.createRequest = async (req, res) => {
 
 
         await newRideRequest.save();
-        console.log(newRideRequest);
-        // Send a success response with the created ride request
+
         res.status(201).json({
             message: 'Ride request created successfully',
             rideRequest: newRideRequest
@@ -62,200 +61,122 @@ exports.createRequest = async (req, res) => {
 };
 
 
-// exports.findRider = async (req, res,id) => {
-//     try {
-//         const rideRequestId = req.query._id || id;
-
-//         // Find the ride request by ID
-//         const rideRequest = await RideRequest.findById(rideRequestId);
-//         if (!rideRequest) {
-//             return res.status(404).json({ error: 'Ride request not found' });
-//         }
-
-//         const { pickupLocation, pickup_desc, drop_desc, vehicleType } = rideRequest;
-
-//         // Ensure the pickupLocation has coordinates
-//         if (!pickupLocation || !pickupLocation.coordinates || pickupLocation.coordinates.length !== 2) {
-//             return res.status(400).json({ error: 'Invalid pickup location' });
-//         }
-
-//         const [longitude, latitude] = pickupLocation.coordinates;
-
-//         // Find nearby riders using geo-spatial queries
-//         const riders = await Riders.aggregate([
-//             {
-//                 $geoNear: {
-//                     near: { type: 'Point', coordinates: [longitude, latitude] },
-//                     distanceField: 'distance',
-//                     maxDistance: 2500,
-//                     spherical: true,
-//                 }
-//             },
-//             {
-//                 $match: {
-//                     isAvailable: true, // Ensure the rider is available
-//                     "rideVehicleInfo.vehicleType": vehicleType // Match the vehicle type inside the rideVehicleInfo object
-//                 }
-//             },
-//             {
-//                 $project: {
-//                     name: 1,
-//                     "rideVehicleInfo.vehicleName": 1, // Include the vehicle name
-//                     "rideVehicleInfo.VehicleNumber": 1, // Include the vehicle number
-//                     "rideVehicleInfo.PricePerKm": 1, // Include the price per km
-//                     "rideVehicleInfo.vehicleType": 1, // Include the vehicle type
-//                     distance: 1, // Include the distance field calculated by $geoNear
-//                 }
-//             }
-//         ]);
-
-//         if (riders.length > 0) {
-//             req.app.locals.io.emit('ride_come', {
-//                 message: 'A new ride request is nearby!',
-//                 riders: riders.map(rider => ({
-//                     name: rider.name,
-//                     id: rider?._id,
-//                     rideRequestId,
-//                     vehicleName: rider.rideVehicleInfo.vehicleName,
-//                     vehicleNumber: rider.rideVehicleInfo.VehicleNumber,
-//                     pricePerKm: rider.rideVehicleInfo.PricePerKm,
-//                     vehicleType: rider.rideVehicleInfo.vehicleType,
-//                     distance: rider.distance,
-//                 })),
-//                 pickup_desc,
-//                 drop_desc
-//             });
-//         }
-
-//         // Send the found riders as a response
-//         res.status(200).json({
-//             message: 'Nearby riders found successfully',
-//             riders: riders.map(rider => ({
-//                 name: rider.name,
-//                 rideRequestId,
-//                 id: rider?._id,
-//                 vehicleName: rider.rideVehicleInfo.vehicleName,
-//                 vehicleNumber: rider.rideVehicleInfo.VehicleNumber,
-//                 pricePerKm: rider.rideVehicleInfo.PricePerKm,
-//                 vehicleType: rider.rideVehicleInfo.vehicleType,
-//                 distance: rider.distance,
-//             })),
-//             pickup_desc,
-//             drop_desc
-//         });
-
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ error: 'Server error, please try again' });
-//     }
-// };
 
 exports.findRider = async (id, io) => {
     try {
-        const rideRequestId = id;
-        console.log("jjjj",rideRequestId)
-        // console.log(rideRequestId);
-        // // Find the ride request by ID
-        const rideRequest = await RideRequest.findById(rideRequestId);
-        if (!rideRequest) {
-            throw new Error('Ride request not found');
+      const rideRequestId = id
+  
+      const rideRequest = await RideRequest.findById(rideRequestId)
+      if (!rideRequest) {
+        throw new Error("Ride request not found")
+      }
+  
+      const { pickupLocation, pickup_desc, drop_desc, vehicleType, dropLocation } = rideRequest
+  
+      if (!pickupLocation || !pickupLocation.coordinates || pickupLocation.coordinates.length !== 2) {
+        throw new Error("Invalid pickup location")
+      }
+  
+      const [longitude, latitude] = pickupLocation.coordinates
+  
+      const riders = await Riders.aggregate([
+        {
+          $geoNear: {
+            near: { type: "Point", coordinates: [longitude, latitude] },
+            distanceField: "distance",
+            maxDistance: 2500,
+            spherical: true,
+          },
+        },
+        {
+          $match: {
+            isAvailable: true,
+            "rideVehicleInfo.vehicleType": vehicleType,
+          },
+        },
+        {
+          $project: {
+            name: 1,
+            "rideVehicleInfo.vehicleName": 1,
+            "rideVehicleInfo.VehicleNumber": 1,
+            "rideVehicleInfo.PricePerKm": 1,
+            "rideVehicleInfo.vehicleType": 1,
+            distance: 1,
+          },
+        },
+      ])
+  
+      const origin = `${pickupLocation.coordinates[1]},${pickupLocation.coordinates[0]}`
+      const destination = `${dropLocation.coordinates[1]},${dropLocation.coordinates[0]}`
+      const response = await axios.get("https://maps.googleapis.com/maps/api/directions/json", {
+        params: {
+          origin: origin,
+          destination: destination,
+          key: "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34",
+          traffic_model: "best_guess",
+          departure_time: "now",
+        },
+      })
+  
+      const route = response.data.routes[0]
+      const distance = route.legs[0].distance.value / 1000 // Convert meters to kilometers
+      const duration = route.legs[0].duration.value / 60 // Convert seconds to minutes
+      const trafficDuration = route.legs[0].duration_in_traffic.value / 60 // Convert seconds to minutes
+  
+      // Calculate pricing
+      let totalPrice = 70 // Basic fare for up to 2 km
+      if (distance > 2) {
+        totalPrice += (distance - 2) * 15 // 15 rs per km after 2 km
+      }
+      totalPrice += trafficDuration * 2 // 2 rs per minute in traffic
+  
+      // Calculate tolls
+      let tollPrice = 0
+      for (const step of route.legs[0].steps) {
+        if (step.html_instructions.toLowerCase().includes("toll road")) {
+          tollPrice += 2 * distance // 2 rs per km for toll roads
         }
-
-        const { pickupLocation, pickup_desc, drop_desc, vehicleType, dropLocation } = rideRequest;
-        console.log(dropLocation)
-        console.log(pickupLocation)
-
-        // Ensure the pickupLocation has coordinates
-        if (!pickupLocation || !pickupLocation.coordinates || pickupLocation.coordinates.length !== 2) {
-            throw new Error('Invalid pickup location');
-        }
-
-        const [longitude, latitude] = pickupLocation.coordinates;
-
-        // Find nearby riders using geo-spatial queries
-        const riders = await Riders.aggregate([
-            {
-                $geoNear: {
-                    near: { type: 'Point', coordinates: [longitude, latitude] },
-                    distanceField: 'distance',
-                    maxDistance: 2500,
-                    spherical: true,
-                }
-            },
-            {
-                $match: {
-                    isAvailable: true, // Ensure the rider is available
-                    "rideVehicleInfo.vehicleType": vehicleType // Match the vehicle type inside the rideVehicleInfo object
-                }
-            },
-            {
-                $project: {
-                    name: 1,
-                    "rideVehicleInfo.vehicleName": 1, // Include the vehicle name
-                    "rideVehicleInfo.VehicleNumber": 1, // Include the vehicle number
-                    "rideVehicleInfo.PricePerKm": 1, // Include the price per km
-                    "rideVehicleInfo.vehicleType": 1, // Include the vehicle type
-                    distance: 1, // Include the distance field calculated by $geoNear
-                }
-            }
-        ]);
-
-        // Calculate pricing and ETA
-        const origin = `${[pickupLocation.coordinates[1], pickupLocation.coordinates[0]]}`
-        const destination = `${[dropLocation.coordinates[1], dropLocation.coordinates[0]]}`
-        console.log(destination)
-        const ridePricing = await calculateRidePrice(origin, destination, 5);
-        let eta = ridePricing.eta;
-
-        // Emit to clients if riders are found
-        io.emit('ride_come', {
-            message: 'A new ride request is nearby!',
-            riders: riders.map(rider => ({
-                name: rider.name,
-                id: rider._id,
-                rideRequestId,
-                vehicleName: rider.rideVehicleInfo.vehicleName,
-                vehicleNumber: rider.rideVehicleInfo.VehicleNumber,
-                pricePerKm: rider.rideVehicleInfo.PricePerKm,
-                vehicleType: rider.rideVehicleInfo.vehicleType,
-                distance: rider.distance,
-                price: ridePricing.totalPrice.toFixed(2), // Include the total price
-                eta: eta, // Include ETA
-            })),
-            pickup_desc,
-            drop_desc
-        });
-
-        // console.log(object)
-        // Return the found riders
-        return {
-            message: 'Nearby riders found successfully',
-            riders: riders.map(rider => ({
-                name: rider.name,
-                id: rider._id,
-                rideRequestId,
-                vehicleName: rider.rideVehicleInfo.vehicleName,
-                vehicleNumber: rider.rideVehicleInfo.VehicleNumber,
-                pricePerKm: rider.rideVehicleInfo.PricePerKm,
-                vehicleType: rider.rideVehicleInfo.vehicleType,
-                distance: rider.distance,
-                price: ridePricing.totalPrice.toFixed(2), // Include the total price
-                eta: eta, // Include ETA
-            })),
-            pickup_desc,
-            drop_desc
-        };
-
+      }
+      totalPrice += tollPrice
+  
+      const eta = Math.round(trafficDuration)
+  
+      const rideInfo = {
+        message: "Nearby riders found successfully",
+        riders: riders.map((rider) => ({
+          name: rider.name,
+          id: rider._id,
+          rideRequestId,
+          vehicleName: rider.rideVehicleInfo.vehicleName,
+          vehicleNumber: rider.rideVehicleInfo.VehicleNumber,
+          pricePerKm: rider.rideVehicleInfo.PricePerKm,
+          vehicleType: rider.rideVehicleInfo.vehicleType,
+          distance: rider.distance,
+          price: totalPrice.toFixed(2),
+          eta: eta,
+        })),
+        pickup_desc,
+        drop_desc,
+        distance: distance.toFixed(2),
+        duration: Math.round(duration),
+        trafficDuration: Math.round(trafficDuration),
+        tollPrice: tollPrice.toFixed(2),
+      }
+  
+      console.log("Emitting ride_come event to clients", rideInfo)
+      io.emit("ride_come", {
+        message: "A new ride request is nearby!",
+        ...rideInfo,
+      })
+  
+      return rideInfo
     } catch (error) {
-        console.error(error);
-
-        // Emit error to client
-        io.emit('error', { message: error.message });
-
-        // Return the error as response
-        return { error: error.message };
+      console.error(error)
+      io.emit("error", { message: error.message })
+      return { error: error.message }
     }
-};
+  }
+  
 
 
 exports.ChangeRideRequestByRider = async (io, data) => {
@@ -281,7 +202,7 @@ exports.ChangeRideRequestByRider = async (io, data) => {
 
         const originD = `${[pickupLocation.coordinates[1], pickupLocation.coordinates[0]]}`
         const destinationD = `${[dropLocation.coordinates[1], dropLocation.coordinates[0]]}`
-        const ridePricing = await calculateRidePrice(originD, destinationD, 0, findDriver?.rideVehicleInfo?.PricePerKm);
+        const ridePricing = await calculateRidePrice(originD, destinationD, 0, 19);
 
 
         if (!ride) {
@@ -309,7 +230,9 @@ exports.ChangeRideRequestByRider = async (io, data) => {
                 params: {
                     origin: origin,
                     destination: destination,
-                    key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34', // Replace with your actual API key
+                    key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34',
+                    traffic_model: 'best_guess',
+                    departure_time: 'now',
                 },
 
             });
@@ -360,8 +283,13 @@ exports.ChangeRideRequestByRider = async (io, data) => {
 
 
 const calculateRidePrice = async (origin, destination, waitingTimeInMinutes, ratePerKm) => {
-    console.log("ratePerKm", ratePerKm)
+    console.log("ratePerKm", ratePerKm);
     try {
+        // Validate ratePerKm
+        if (isNaN(ratePerKm) || ratePerKm <= 0) {
+            throw new Error('Invalid rate per km');
+        }
+
         // Fetching directions from Google Maps API to get distance and duration with traffic consideration
         const response = await axios.get('https://maps.googleapis.com/maps/api/directions/json', {
             params: {
@@ -381,11 +309,17 @@ const calculateRidePrice = async (origin, destination, waitingTimeInMinutes, rat
         const distanceInKm = route.legs[0].distance.value / 1000;
         const durationInMinutes = route.legs[0].duration_in_traffic.value / 60;
 
+        console.log("distanceInKm", distanceInKm);
+        console.log("durationInMinutes", durationInMinutes);
+
         const priceBasedOnDistance = distanceInKm * ratePerKm;
+        console.log("priceBasedOnDistance", priceBasedOnDistance);
 
         const waitingTimeCost = waitingTimeInMinutes * 5; // Assuming 5 Rupees per minute of waiting
+        console.log("waitingTimeCost", waitingTimeCost);
 
         const totalPrice = priceBasedOnDistance + waitingTimeCost;
+        console.log("totalPrice", totalPrice);
 
         return {
             totalPrice: totalPrice,
@@ -399,11 +333,12 @@ const calculateRidePrice = async (origin, destination, waitingTimeInMinutes, rat
     }
 };
 
+
 exports.calculateRidePriceForUser = async (req, res) => {
     const { origin, destination, waitingTimeInMinutes = 0, ratePerKm } = req.body
     const numericalRate = ratePerKm.match(/\d+/)?.[0]; // Matches digits
-    console.log(numericalRate); // Output: "19"
-    console.log(Number(numericalRate));
+    // console.log(numericalRate); // Output: "19"
+    // console.log(Number(numericalRate));
     try {
         // Fetching directions from Google Maps API to get distance and duration with traffic consideration
         const response = await axios.get('https://maps.googleapis.com/maps/api/directions/json', {
@@ -425,9 +360,9 @@ exports.calculateRidePriceForUser = async (req, res) => {
         const durationInMinutes = route.legs[0].duration_in_traffic.value / 60;
 
         const priceBasedOnDistance = distanceInKm * Number(numericalRate);
-        console.log(priceBasedOnDistance)
+        // console.log(priceBasedOnDistance)
         const waitingTimeCost = waitingTimeInMinutes * 5; // Assuming 5 Rupees per minute of waiting
-        console.log(waitingTimeCost)
+        // console.log(waitingTimeCost)
         const totalPrice = priceBasedOnDistance + waitingTimeCost;
         res.status(200).json({
             success: true,

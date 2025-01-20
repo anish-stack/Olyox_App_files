@@ -54,16 +54,7 @@ export function BookingConfirmation() {
     }, []);
 
     const handleSubmit = async () => {
-        console.log("i am hit",origin,destination,currentLocation)
-        // if (!origin || !destination) {
-        //     setError('Please select both pickup and drop-off locations');
-        //     return;
-        // }
-
-        // if (!currentLocation) {
-        //     setError('Unable to fetch current location. Please try again.');
-        //     return;
-        // }
+     
 
         setError(null);
         setLoading(true);
@@ -71,7 +62,7 @@ export function BookingConfirmation() {
         const gmail_token = await tokenCache.getToken('auth_token')
         const db_token = await tokenCache.getToken('auth_token_db')
         const token  = db_token || gmail_token
-        console.log(token)
+        // console.log(token)
         try {
             console.log("tttttt")
             const response = await axios.post('http://192.168.1.8:9630/api/v1/rides/create-ride', {
@@ -91,7 +82,7 @@ export function BookingConfirmation() {
             const request = response?.data?.rideRequest;
             console.log(response.data)
 
-            if (request) {
+            if (request && socket) {
                 setBookingStep(1);
                 setTimeout(() => {
                     socket.emit('send_message', {

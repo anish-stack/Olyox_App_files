@@ -10,6 +10,7 @@ export const SocketProvider = ({ children }) => {
 
   const firstFound = async () => {
     const data = await find_me();
+    console.log("data", data.user?._id);
     if (data.user) {
       setUser(data.user?._id);
     } else {
@@ -22,6 +23,7 @@ export const SocketProvider = ({ children }) => {
     firstFound();
   }, []);
 
+  // Use `user` as a dependency to initialize the socket after user is set
   useEffect(() => {
     if (user !== null) {
       if (!socketRef.current) {
@@ -38,7 +40,7 @@ export const SocketProvider = ({ children }) => {
         cleanupSocket(socketRef.current);
       }
     };
-  }, [user]); // This will run when the user changes
+  }, [user]); // Dependency array now watches `user`
 
   return (
     <SocketContext.Provider value={socketRef.current}>
