@@ -9,6 +9,7 @@ import axios from 'axios';
 import { useSocket } from '../../context/SocketContext';
 import { styles } from './Styles';
 import { tokenCache } from '../../Auth/cache';
+import { ActivityIndicator } from 'react-native';
 
 export function BookingConfirmation() {
     const route = useRoute();
@@ -16,11 +17,12 @@ export function BookingConfirmation() {
     const [status, requestPermission] = Location.useBackgroundPermissions();
     const socket = useSocket();
     const [loading, setLoading] = useState(false);
+    const [Loloading, setLoLoading] = useState(false);
     const [bookingStep, setBookingStep] = useState(0);
     const [error, setError] = useState(null);
     const [currentLocation, setCurrentLocation] = useState(null);
     const { origin, destination, selectedRide, dropoff, pickup } = route.params || {};
-
+    console.log(socket)
     const navigation = useNavigation();
 
     const bookingSteps = [
@@ -48,66 +50,28 @@ export function BookingConfirmation() {
 
     useEffect(() => {
         (async () => {
+            setLoLoading(true);
+          
             const location = await Location.getCurrentPositionAsync({});
+                
             setCurrentLocation(location.coords);
+            setLoLoading(false);
+
         })();
     }, []);
 
-    const handleSubmit = async () => {
-     
+    // console.log("ssss",socket)
 
-        setError(null);
-        setLoading(true);
-        setBookingStep(0);
-        const gmail_token = await tokenCache.getToken('auth_token')
-        const db_token = await tokenCache.getToken('auth_token_db')
-        const token  = db_token || gmail_token
-        // console.log(token)
-        try {
-            console.log("tttttt")
-            const response = await axios.post('http://192.168.1.8:9630/api/v1/rides/create-ride', {
-                currentLocation,
-                pickupLocation: origin,
-                dropLocation: destination,
-                pick_desc: pickup?.description,
-                drop_desc: dropoff?.description,
-                vehicleType: selectedRide?.name,
-            },{
-                headers: {
-             
-                   'Authorization': `Bearer ${token}`,
-                }
-            });
-            
-            const request = response?.data?.rideRequest;
-            console.log(response.data)
-
-            if (request && socket) {
-                setBookingStep(1);
-                setTimeout(() => {
-                    socket.emit('send_message', {
-                        message: 'ride-save-find-riders',
-                        data: request,
-                    });
-                    setBookingStep(2);
-                }, 2000);
-            }
-        } catch (error) {
-            console.error('Error:', error.message || error);
-            setLoading(false);
-            setError('Failed to create ride request');
-        }
-    };
 
     const getFareInfo = async () => {
         try {
-            const { data } = await axios.post('http://192.168.1.8:9630/api/v1/rider/get-fare-info', {
+            const { data } = await axios.post('http://192.168.1.9:9630/api/v1/rider/get-fare-info', {
                 origin,
                 destination,
                 waitingTimeInMinutes: 0,
                 ratePerKm: selectedRide?.priceRange
             })
-            console.log(data)
+            // console.log(data)
             if (data) {
                 setFareDetails(data)
             }
@@ -121,36 +85,91 @@ export function BookingConfirmation() {
     useEffect(() => {
         getFareInfo()
     }, [])
+    const handleSubmit = async () => {
+
+
+        setError(null);
+        setLoading(true);
+        setBookingStep(0);
+        const gmail_token = await tokenCache.getToken('auth_token')
+        const db_token = await tokenCache.getToken('auth_token_db')
+        const token = db_token || gmail_token
+        // console.log(token)
+        try {
+
+            const response = await axios.post('http://192.168.1.9:9630/api/v1/rides/create-ride', {
+                currentLocation,
+                pickupLocation: origin,
+                dropLocation: destination,
+                pick_desc: pickup?.description,
+                drop_desc: dropoff?.description,
+                vehicleType: selectedRide?.name,
+            }, {
+                headers: {
+
+                    'Authorization': `Bearer ${token}`,
+                }
+            });
+
+            const request = response?.data?.rideRequest;
+
+            if (request && socket) {
+                setBookingStep(1);
+                console.log("object")
+                setTimeout(() => {
+                    socket.emit('send_message', {
+                        message: 'ride-save-find-riders',
+                        data: request,
+                    });
+                    setBookingStep(2);
+                }, 2000);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            setLoading(false);
+            setError('Failed to create ride request');
+        }
+    };
     useEffect(() => {
         if (socket) {
-            console.log("socket",socket)
+           
             const handleRideConfirm = (data) => {
                 console.log('Ride confirmation received:', data);
                 setBookingStep(3);
 
-                if (data && data.dataAR) {
+                if (data && data.rideDetails) {
                     setTimeout(() => {
                         setLoading(false);
                         navigation.navigate('driver_match', {
-                            ride: data.dataAR,
+                            ride: data.rideDetails,
                             origin,
                             destination
                         });
                     }, 1000);
                 } else {
-                    console.error('Ride data is invalid:', data.dataAR);
+                    console.error('Ride data is invalid:', data.rideDetails);
                     setLoading(false);
                     setError('Invalid ride data received');
                 }
             };
 
-            socket.on('ride_update', handleRideConfirm);
+            socket.on('ride_accepted_message', handleRideConfirm);
 
             return () => {
-                socket.off('ride_update', handleRideConfirm);
+                socket.off('ride_accepted_message', handleRideConfirm);
             };
         }
     }, [socket, navigation, origin, destination]);
+
+
+    if (Loloading) {
+        return (
+            <View style={styles.currentLoader}>
+                <ActivityIndicator size="large" color="#00aaa9" />
+                <Text style={styles.textLoader}>Loading...</Text>
+            </View>
+        )
+    }
 
     const LoaderComponent = () => {
         const pulseAnim = useRef(new Animated.Value(1)).current;

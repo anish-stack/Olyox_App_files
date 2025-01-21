@@ -6,6 +6,7 @@ const SocketContext = createContext(null);
 export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
   const [isSocketReady, setSocketReady] = useState(false);
+  const [isReconnecting, setReconnecting] = useState(false);
 
   useEffect(() => {
     if (!socketRef.current) {
@@ -13,22 +14,69 @@ export const SocketProvider = ({ children }) => {
       socketRef.current = initializeSocket({ userId: 2 });
     }
 
-    // Set socket ready flag when socket is connected
-    socketRef.current.on("connect", () => {
+    const socket = socketRef.current;
+
+    // Handle successful connection
+    const handleConnect = () => {
+      console.log("Socket connected");
       setSocketReady(true);
-    });
+      setReconnecting(false);
+    };
+
+    // Handle disconnection and attempt reconnection
+    const handleDisconnect = (reason) => {
+      console.warn("Socket disconnected:", reason);
+      setSocketReady(false);
+      setReconnecting(true);
+
+      // Optionally, add a delay before attempting reconnection
+      setTimeout(() => {
+        if (socket && !socket.connected) {
+          socket.connect();
+        }
+      }, 2000); // Attempt reconnection after 2 seconds
+    };
+
+    // Handle reconnection attempts
+    const handleReconnect = (attemptNumber) => {
+      console.log(`Reconnected after ${attemptNumber} attempts`);
+      setSocketReady(true);
+      setReconnecting(false);
+    };
+
+    // Handle reconnection errors
+    const handleReconnectError = (error) => {
+      console.error("Reconnection error:", error);
+      setReconnecting(true);
+    };
+
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+    socket.on("reconnect", handleReconnect);
+    socket.on("reconnect_error", handleReconnectError);
 
     // Cleanup the socket connection on component unmount
     return () => {
-      if (socketRef.current) {
-        cleanupSocket(socketRef.current);
-        setSocketReady(false);
+      if (socket) {
+        socket.off("connect", handleConnect);
+        socket.off("disconnect", handleDisconnect);
+        socket.off("reconnect", handleReconnect);
+        socket.off("reconnect_error", handleReconnectError);
+        cleanupSocket(socket);
       }
+      setSocketReady(false);
+      setReconnecting(false);
     };
   }, []);
 
   return (
-    <SocketContext.Provider value={{ socket: socketRef.current, isSocketReady }}>
+    <SocketContext.Provider
+      value={{
+        socket: socketRef.current,
+        isSocketReady,
+        isReconnecting,
+      }}
+    >
       {children}
     </SocketContext.Provider>
   );

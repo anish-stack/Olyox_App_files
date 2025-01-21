@@ -66,31 +66,79 @@ io.on('connection', (socket) => {
     });
 
     const emitRideToDrivers = (rideData) => {
-        console.log('Driver Socket Map:', driverSocketMap);  // Check the map's contents
-    
+        // console.log('Driver Socket Map:', driverSocketMap);  // Check the map's contents
+
         // Loop through the driverSocketMap and emit the event to each connected driver
         driverSocketMap.forEach((driverSocketId) => {
             console.log('Emitting ride data to driver with socket ID:', driverSocketId);
             io.to(driverSocketId).emit('ride_come', rideData);
         });
-    
+
         console.log('Emitting ride data to drivers:', rideData);
     };
-    
+
+
+    socket.on('ride_accepted', async (data) => {
+        try {
+            // Process the data and change ride request
+            const dataof = await ChangeRideRequestByRider(io, data.data);
+
+            if (dataof.rideStatus === 'accepted') {
+                // Get the socket ID of the user who made the ride request
+                console.log(String(dataof.user));
+
+                const userSocketId = userSocketMap.get(String(dataof.user));
+                console.log("userSocketId", userSocketMap);
+                if (userSocketId) {
+                    // Emit a message only to the specific user's socket ID
+                    io.to(userSocketId).emit('ride_accepted_message', {
+                        message: 'Your ride request has been accepted!',
+                        rideDetails: dataof,
+                    });
+                    console.log(`Message sent to user: ${dataof.user}, socket ID: ${userSocketId}`);
+                } else {
+                    console.log(`No active socket found for user: ${dataof.user}`);
+                }
+            }
+        } catch (error) {
+            console.error('Error handling ride_accepted event:', error);
+        }
+    });
+
+
+    socket.on('rideAccepted_by_user', (data) => {
+        const { driver, ride } = data;
+
+
+        const driverSocketId = driverSocketMap.get(2);
+        console.log("driverSocketId", driverSocketId);
+
+        if (driverSocketId) {
+
+            socket.to(driverSocketId).emit('ride_accepted_message', {
+                message: 'You can start this ride',
+                rideDetails: ride,
+                driver: driver,
+            });
+            console.log(`Message sent to Driver: ${driverSocketId}`);
+        } else {
+            console.log(`No active socket found for driver: ${driver._id}`);
+        }
+    });;
 
     // ride save message
     socket.on('send_message', async (data) => {
         try {
             console.log("ride data via user", data);
-    
+
             const passRideToFindFunction = async () => {
                 if (!data || !data.data || !data.data._id) {
                     throw new Error("Invalid data: Missing ride _id.");
                 }
-    
+
                 const riderData = await findRider(data.data._id, io);
                 console.log("data", riderData);
-    
+
                 // Handle the retrieved rider data here
                 if (riderData) {
                     // Emit the ride details to the drivers
@@ -101,7 +149,7 @@ io.on('connection', (socket) => {
                     socket.emit('message_response', { success: false, error: "Rider not found." });
                 }
             };
-    
+
             await passRideToFindFunction();
         } catch (error) {
             console.error("Error in send_message handler:", error);
@@ -111,6 +159,36 @@ io.on('connection', (socket) => {
             });
         }
     });
+
+    socket.on('ride_started', (data) => {
+        console.log("ride started", data?.user);
+        const userSocketId = userSocketMap.get(String(data.user));
+        console.log("userSocketId", userSocketMap);
+        if (userSocketId) {
+            // Emit a message only to the specific user's socket ID
+            io.to(userSocketId).emit('ride_user_start', {
+                message: 'Your ride request has been started!',
+                rideDetails: data,
+            });
+            console.log(`Message sent to user: ${data.user}, socket ID: ${userSocketId}`);
+        } else {
+            console.log(`No active socket found for user: ${data.user}`);
+        }
+        // const userSocketId = userSocketMap.get(data.driverId);
+    })
+
+    socket.on('endRide', (data) => {
+        console.log("ride end", data);
+        const driverSocketId = driverSocketMap.get(2);
+        console.log("driverSocketId", driverSocketId);
+        io.to(driverSocketId).emit('ride_end', {
+            message: 'Your ride  has been complete please collect money.',
+            rideDetails: data,
+
+        })
+    })
+
+
 
     socket.on('disconnect', (reason) => {
         console.log(`Client disconnected. Reason: ${reason}`);

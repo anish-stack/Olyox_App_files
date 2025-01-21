@@ -187,6 +187,7 @@ export default function Onboarding() {
                     const data = await setActive({ session: createdSessionId });
                     await tokenCache.saveToken('auth_token', createdSessionId);
                     await tokenCache.saveToken('auth_token_db', createdSessionId);
+                    navigation.navigate('Home')
                     console.log('Session has been set as active');
 
                 } else {
@@ -329,12 +330,12 @@ export default function Onboarding() {
                 >
                     <Text style={styles.buttonText}>Get Started</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
+                {/* <TouchableOpacity
                     style={styles.button}
                     onPress={() => handleLogout()}
                 >
                     <Text style={styles.buttonText}>Logout</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
             </View>
 
 

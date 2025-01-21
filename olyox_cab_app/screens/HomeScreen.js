@@ -8,12 +8,15 @@ import { useSocket } from '../context/SocketContext';
 import RideCome from './Ride.come';
 
 const HomeScreen = () => {
-  const socket  = useSocket()
+  const { isSocketReady, socket } = useSocket()
+  console.log(isSocketReady)
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.container}>
+        <Text>{isSocketReady ? 'Driver is Connected In Real Time':'Driver is Not Connected to the'}</Text>
         <Text style={styles.text}>Welcome to the Home Screen!</Text>
-        <RideCome/>
+        <RideCome />
       </View>
     </SafeAreaView>
   );

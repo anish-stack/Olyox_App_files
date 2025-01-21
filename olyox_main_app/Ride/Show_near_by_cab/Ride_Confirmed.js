@@ -13,12 +13,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSocket } from '../../context/SocketContext';
+import { useEffect } from 'react';
+import { useState } from 'react';
 
 const { width } = Dimensions.get('window');
 
 export function RideConfirmed() {
     const route = useRoute();
+    const socket = useSocket()
     const { driver } = route.params;
+    const [rideStart, setRideStart] = useState(false)
 
     const rideDetails = {
         otp: driver?.otp || '1234',
@@ -30,10 +35,32 @@ export function RideConfirmed() {
         dropoff: driver?.drop_desc || 'Drop Location'
     };
 
+
+    const handleEndRide = ()=>{
+        console.log("End Ride")
+        socket.emit('endRide', {rideDetails})
+    }
+
+    useEffect(() => {
+        if (socket) {
+            socket.on('ride_user_start', (data) => {
+                console.log("ride_user_start", data);
+                setRideStart(true);
+            });
+
+            return () => {
+                socket.off('ride_user_start'); // Clean up the socket listener when the component unmounts
+            };
+        }
+    }, [socket]);
+
     const OtpCard = () => (
         <View style={styles.otpCard}>
             <View style={styles.otpContent}>
                 <View>
+                <Text style={styles.rideStatus}>
+                        {rideStart ? 'Ride Started' : 'Ride Confirmed'}
+                    </Text>
                     <Text style={styles.otpLabel}>Share OTP with driver</Text>
                     <Text style={styles.otpNumber}>{rideDetails.otp}</Text>
                 </View>
@@ -159,12 +186,27 @@ export function RideConfirmed() {
                 <PriceCard />
             </ScrollView>
 
-            <View style={styles.footer}>
+            {/* <View style={styles.footer}>
                 <TouchableOpacity style={styles.supportButton}>
                     <Icon name="headphones" size={20} color="#fff" />
                     <Text style={styles.supportButtonText}>Need Support?</Text>
                 </TouchableOpacity>
-            </View>
+            </View> */}
+          {rideStart ? (
+                    <View style={styles.footer}>
+                        <TouchableOpacity onPress={()=>handleEndRide()} style={styles.supportButton}>
+                            <Icon name="headphones" size={20} color="#fff" />
+                            <Text style={styles.supportButtonText}>End Ride</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={styles.footer}>
+                        <TouchableOpacity style={styles.supportButton}>
+                            <Icon name="headphones" size={20} color="#fff" />
+                            <Text style={styles.supportButtonText}>Need Support?</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
         </SafeAreaView>
     );
 }

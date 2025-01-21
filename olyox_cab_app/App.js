@@ -8,6 +8,8 @@ import { Provider as PaperProvider } from 'react-native-paper';
 import HomeScreen from './screens/HomeScreen';  // Make sure HomeScreen is correct
 import { store } from './redux/store';
 import { SocketProvider } from './context/SocketContext';
+import start from './screens/start';
+import MoneyPage from './screens/MoneyPage';
 
 const Stack = createNativeStackNavigator();
 
@@ -21,6 +23,8 @@ export default function App() {
               <NavigationContainer>
                 <Stack.Navigator>
                   <Stack.Screen name="Home" component={HomeScreen} />
+                  <Stack.Screen name="start" component={start} />
+                  <Stack.Screen name="collect_money" component={MoneyPage} />
                 </Stack.Navigator>
               </NavigationContainer>
             </SafeAreaProvider>

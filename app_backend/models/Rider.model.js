@@ -21,7 +21,7 @@ const RiderSchema = new Schema({
         VehicleNumber: {
             type: String,
             required: true,
-            index: true
+            
         }
     },
     TotalRides: {

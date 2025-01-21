@@ -13,27 +13,30 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Map from '../Map/Map';
 import { useRoute } from '@react-navigation/native';
+import { useSocket } from '../../context/SocketContext';
 
 const { width } = Dimensions.get('window');
 
 export function DriverMatching({ navigation }) {
+    const socket = useSocket();
     const [matchingState, setMatchingState] = useState('found');
     const [timeLeft, setTimeLeft] = useState(30);
     const route = useRoute();
     const { origin, destination, ride } = route.params || {};
-// console.log(ride)
     const [selectedDriver] = useState({
-        name: ride?.rider?.name || 'Driver',
-        rating: ride?.rider?.Ratings || 4.8,
-        trips: ride?.rider?.TotalRides || 0,
-        carNumber: ride?.rider?.rideVehicleInfo?.VehicleNumber,
-        carModel: ride?.rider?.rideVehicleInfo?.vehicleName,
-        vehicleType: ride?.vehicleType,
-        eta: ride?.EtaOfRide,
-        otp:ride?.RideOtp,
-        pickup_desc:ride?.pickup_desc,
-        drop_desc:ride?.drop_desc,
-        price: ride?.priceOfRide
+        name: ride?.rider?.name || 'Driver', // Rider's name
+        rating: ride?.rider?.Ratings || 4.8, // Rider's ratings
+        trips: ride?.rider?.TotalRides || 0, // Total rides completed by the rider
+        carNumber: ride?.rider?.rideVehicleInfo?.VehicleNumber || 'N/A', // Vehicle number
+        carModel: ride?.rider?.rideVehicleInfo?.vehicleName || 'N/A', // Vehicle model
+        vehicleType: ride?.vehicleType || 'N/A', // Vehicle type (e.g., SEDAN)
+        eta: ride?.eta || 'N/A', // Estimated time of arrival
+        otp: ride?.RideOtp || 'N/A', // OTP for the ride
+        pickup_desc: ride?.pickup_desc || 'N/A', // Pickup description
+        drop_desc: ride?.drop_desc || 'N/A', // Drop-off description
+        price: ride?.kmOfRide || 'N/A', // Price of the ride
+        distance: ride?.kmOfRide || 'N/A', // Distance of the ride
+        rideStatus: ride?.rideStatus || 'N/A', // Current ride status
     });
 
     useEffect(() => {
@@ -46,9 +49,18 @@ export function DriverMatching({ navigation }) {
 
     const handleRideAccept = () => {
         setMatchingState('success');
+        if (socket) {
+            socket.emit('rideAccepted_by_user', {
+                ride: ride,
+                driver: selectedDriver
+            });
+        }
         setTimeout(() => {
             navigation.navigate('RideStarted', { driver: selectedDriver });
         }, 1500);
+
+
+
     };
 
     const RideInfo = () => (
@@ -117,11 +129,10 @@ export function DriverMatching({ navigation }) {
             <View style={styles.rideStats}>
                 <View style={styles.statItem}>
                     <Icon name="map-marker-distance" size={20} color="#6B7280" />
-                    <Text style={styles.statText}>{ride?.distanceInKm.toFixed(1)} km</Text>
                 </View>
                 <View style={styles.statItem}>
                     <Icon name="clock-outline" size={20} color="#6B7280" />
-                    <Text style={styles.statText}>{ride?.durationInMinutes.toFixed(0)} mins</Text>
+                    <Text style={styles.statText}>{ride?.EtaOfRide || "no"}</Text>
                 </View>
                 <View style={styles.statItem}>
                     <Icon name="currency-inr" size={20} color="#6B7280" />
@@ -148,7 +159,7 @@ export function DriverMatching({ navigation }) {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     onPress={() => navigation.goBack()}
                     style={styles.backButton}
                 >
