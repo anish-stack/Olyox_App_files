@@ -1,12 +1,19 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal, Animated } from "react-native";
 import { Menu, Search, MapPin, X, Home, User, ShoppingBag, MapPinned, Settings, HelpCircle } from "lucide-react-native";
 import { COLORS } from "../../../constants/colors";
-
+import { tokenCache } from "../../../Auth/cache";
+import { useClerk } from "@clerk/clerk-expo";
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useLocation } from "../../../context/LocationContext";
+import axios from 'axios'
 const Header = () => {
     const [sidebarVisible, setSidebarVisible] = useState(false);
+    const [address, setAddreess] = useState({});
+    const { location, errorMsg } = useLocation();
+    const navigation = useNavigation()
     const slideAnim = useRef(new Animated.Value(-300)).current;
-
+    const { signOut, setActive } = useClerk();
     const showSidebar = () => {
         setSidebarVisible(true);
         Animated.timing(slideAnim, {
@@ -23,7 +30,36 @@ const Header = () => {
             useNativeDriver: true,
         }).start(() => setSidebarVisible(false));
     };
+    // console.log(location)
 
+    const findCurrent = async()=>{
+        try {
+            const data = await axios.post(`http://192.168.1.9:9630/Fetch-Current-Location`,{
+                lat:location?.coords?.latitude,
+                lng:location?.coords?.longitude
+            })
+            setAddreess(data.data.data.address)
+            console.log(data.data.data.address)
+        } catch (error) {
+            console.log(error)
+
+        }
+    }
+     const handleLogout = async () => {
+            try {
+                // Clear the Clerk session
+                await signOut();
+                await tokenCache.deleteToken('auth_token_db')
+                console.log('User logged out');
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Onboarding' }],
+                })
+                // Optionally redirect or update UI after logout
+            } catch (error) {
+                console.error('Error during logout:', error);
+            }
+        };
     const menuItems = [
         { title: 'Home', icon: Home },
         { title: 'Profile', icon: User },
@@ -32,6 +68,9 @@ const Header = () => {
         { title: 'Settings', icon: Settings },
         { title: 'Help', icon: HelpCircle },
     ];
+    useEffect(()=>{
+        findCurrent()
+    },[location])
 
     return (
         <View>
@@ -41,7 +80,8 @@ const Header = () => {
                     <MapPin size={20} color={COLORS.white} />
                     <View style={styles.locationTextContainer}>
                         <Text style={styles.locationLabel}>Location</Text>
-                        <Text style={styles.locationDetails}>Delhi Rohini Sector 7</Text>
+                        <Text numberOfLines={1} style={styles.locationDetails}>{address?.completeAddress}</Text>
+                        <Text style={styles.locationDetails}>{address?.district}</Text>
                     </View>
                 </View>
 
@@ -94,8 +134,8 @@ const Header = () => {
                             <TouchableOpacity style={styles.loginButton}>
                                 <Text style={styles.loginButtonText}>Login</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.registerButton}>
-                                <Text style={styles.registerButtonText}>Register</Text>
+                            <TouchableOpacity onPress={()=>handleLogout()} style={styles.registerButton}>
+                                <Text style={styles.registerButtonText}>Logout</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -140,8 +180,9 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
     },
     locationDetails: {
+        width:200,
         color: COLORS.white,
-        fontSize: 14,
+        fontSize: 12,
     },
     searchContainer: {
         backgroundColor:COLORS.white,

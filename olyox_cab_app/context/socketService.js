@@ -1,14 +1,14 @@
 import io from "socket.io-client";
 
-const SOCKET_URL = "http://192.168.1.2:9630";
+const SOCKET_URL = "http://192.168.1.9:9630";
 let socket;
 
 export const initializeSocket = ({ userType = "driver", userId = 2 }) => {
   if (!socket) {
     socket = io(SOCKET_URL, {
-      transports: ["websocket"], // Use WebSocket transport
+      transports: ["websocket"], 
       jsonp: false,
-      reconnection: true, // Enable reconnection
+      reconnection: true, 
       reconnectionAttempts: Infinity, // Unlimited attempts
       reconnectionDelay: 1000, // 1-second delay
       timeout: 20000, // 20-second timeout

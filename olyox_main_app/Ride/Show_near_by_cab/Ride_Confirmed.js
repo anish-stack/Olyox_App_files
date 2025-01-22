@@ -1,5 +1,5 @@
-import { useRoute } from '@react-navigation/native';
-import React from 'react';
+import { useRoute,useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
 import {
     StyleSheet,
     View,
@@ -9,112 +9,114 @@ import {
     Image,
     Platform,
     Dimensions,
-    StatusBar
+    StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useSocket } from '../../context/SocketContext';
-import { useEffect } from 'react';
-import { useState } from 'react';
-
-const { width } = Dimensions.get('window');
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ActivityIndicator } from 'react-native-paper';
+import axios from 'axios';
+import { useSocket } from '../../context/SocketContext';
+
+const { width } = Dimensions.get('window');
+
 export function RideConfirmed() {
     const route = useRoute();
     const socket = useSocket();
-    const { driver } = route.params || {};
-    const [rideStart, setRideStart] = useState(true);
-    const [isLoading, setIsLoading] = useState(false);
+    const navigation = useNavigation()
+    const { driver, ride } = route.params || {};
+    const [rideStart, setRideStart] = useState(false);
     const [driverData, setDriverData] = useState(driver);
+    const [isLoading, setIsLoading] = useState(false);
+    const [rideData, SetRideData] = useState({});
     const [rideDetails, setRideDetails] = useState({
         otp: driver?.otp || '1234',
         eta: driver?.eta || '5 mins',
         price: driver?.price || '₹225',
         rating: driver?.rating || '4.8',
+        is_done:false,
         pickup: driver?.pickup_desc || 'Pickup Location',
         trips: driver?.trips || '150',
         dropoff: driver?.drop_desc || 'Drop Location',
     });
 
-    const storeRideDetails = async () => {
-        if (socket === null) {
-            return;
-        }
-        try {
-            setIsLoading(true);
-            await AsyncStorage.setItem('rideDetails', JSON.stringify(rideDetails));
-            await AsyncStorage.setItem('driver', JSON.stringify(driver));
-            await AsyncStorage.setItem('rideStart', JSON.stringify(rideStart));
-            console.log('Ride details stored successfully');
-            setIsLoading(false);
-        } catch (error) {
-            console.error('Error storing ride details:', error);
-            setIsLoading(false);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    // Save ride ID in AsyncStorage
+    useEffect(() => {
+        const storeRideId = async () => {
+            try {
+                if (ride?._id) {
+                    await AsyncStorage.setItem('rideId', ride._id);
+                }
+            } catch (error) {
+                console.error('Error saving ride ID:', error);
+            }
+        };
+        storeRideId();
+    }, [ride]);
 
-    const fetchStoredRideDetails = async () => {
+    const fetchRideDetailsFromDb = async () => {
         try {
-            setIsLoading(true);
-            const storedDetails = await AsyncStorage.getItem('rideDetails');
-            const storedDriver = await AsyncStorage.getItem('driver');
-            const storedRideStart = await AsyncStorage.getItem('rideStart');
+            const rideId = ride?._id || (await AsyncStorage.getItem('rideId'));
+            if (!rideId) {
+                console.warn('No ride ID available for fetching details');
+                return;
+            }
 
-            if (storedDetails) setRideDetails(JSON.parse(storedDetails));
-            if (storedDriver) setDriverData(JSON.parse(storedDriver));
-            // if (storedRideStart) setRideStart(JSON.parse(storedRideStart));
-            setIsLoading(false);
-            console.log('Using stored data');
+            const { data } = await axios.get(`http://192.168.1.9:9630/api/v1/rides/find-ride_details?id=${rideId}`);
+            if (data.data) {
+                SetRideData(data.data)
+                setRideDetails((prev) => ({
+                    ...prev,
+                    otp: data.data.RideOtp || prev.otp,
+                    eta: data.data.EtaOfRide || prev.eta,
+                    price: data.data.kmOfRide || prev.price,
+                    rating: data.data.rating || prev.rating,
+                    is_done:data?.data?.is_ride_paid || prev?.is_done,
+                    pickup: data.data.pickup_desc || prev.pickup,
+                    trips: data.data.RatingOfRide || prev.trips,
+                    dropoff: data.data.drop_desc || prev.dropoff,
+                }));
+                setDriverData(data.data.rider)
+                setRideStart(data.data.ride_is_started);
+            }
         } catch (error) {
-            console.error('Error fetching stored ride details:', error);
-            setIsLoading(false);
+            console.error('Error fetching ride details:', error);
         }
     };
-    console.log('Using stored data', rideStart);
-    const clearAllData = async () => {
-        try {
-            await AsyncStorage.removeItem('rideDetails');
-            await AsyncStorage.removeItem('driver');
-            await AsyncStorage.removeItem('rideStart');
-      
-            setRideDetails({});
-            setRideStart(false);
-        } catch (error) {
-            console.error('Error clearing ride data:', error);
-        }
-    };
+    // console.log("check",socket)
 
     const handleEndRide = async () => {
-        setIsLoading(true); // Start loading
+        setIsLoading(true);
         try {
-            socket.emit('endRide', { rideDetails });
-            await clearAllData()
+        
+            socket.emit('endRide', { rideDetails, ride:rideData });
+       
             console.log('Ride ended and data cleared');
         } catch (error) {
             console.error('Error ending the ride:', error);
         } finally {
-            setIsLoading(false); // End loading
+            setIsLoading(false);
         }
     };
 
     useEffect(() => {
         if (!driver) {
-            // Fetch stored data if no driver data is available
-            fetchStoredRideDetails();
+            fetchRideDetailsFromDb();
         }
     }, [driver]);
 
     useEffect(() => {
+        fetchRideDetailsFromDb();
         if (socket) {
             socket.on('ride_user_start', async (data) => {
                 console.log('ride_user_start', data);
                 setRideStart(true);
 
-                // Store ride details when the ride starts
-                await storeRideDetails();
+                try {
+                    await AsyncStorage.setItem('rideStart', JSON.stringify(data));
+                } catch (error) {
+                    console.error('Error storing ride start details:', error);
+                }
             });
 
             return () => {
@@ -122,6 +124,22 @@ export function RideConfirmed() {
             };
         }
     }, [socket]);
+
+    useEffect(()=>{
+        if(socket){
+            socket.on('give-rate',(data)=>{
+                console.log('isPay data come ')
+                navigation.navigate('Rate_Your_ride',{data})
+            })
+        }
+    },[])
+
+
+    if(rideDetails?.is_done === true){
+        // go to home screeenc
+        navigation.navigate('Home');
+    }
+
     const LoadingOverlay = () => (
         isLoading ? (
             <View style={styles.loadingOverlay}>
@@ -162,8 +180,8 @@ export function RideConfirmed() {
                     <Text style={styles.driverName}>{driverData?.name}</Text>
                     <View style={styles.ratingContainer}>
                         <Icon name="star" size={16} color="#F59E0B" />
-                        <Text style={styles.rating}>{driverData?.rating}</Text>
-                        <Text style={styles.trips}>• {driverData?.trips} trips</Text>
+                        <Text style={styles.rating}>{driverData?.Ratings}</Text>
+                        <Text style={styles.trips}>• {driverData?.TotalRides} trips</Text>
                     </View>
                 </View>
                 <TouchableOpacity style={styles.callButton}>
@@ -175,7 +193,7 @@ export function RideConfirmed() {
                 <View style={styles.carInfo}>
                     <Icon name="car" size={20} color="#6B7280" />
                     <Text style={styles.carText}>
-                        {driverData?.carModel} • {driverData?.carNumber}
+                        {driverData?.rideVehicleInfo?.vehicleName} • {driverData?.rideVehicleInfo?.VehicleNumber}
                     </Text>
                 </View>
                 <View style={styles.etaContainer}>

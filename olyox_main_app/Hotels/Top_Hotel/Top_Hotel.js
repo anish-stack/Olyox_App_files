@@ -6,8 +6,8 @@ import * as Location from 'expo-location';
 import HotelCard from './Top_Hotel_cards';
 import SkeletonLoader from '../../components/common/SkeletonLoader';
 
-export default function Top_Hotel() {
-    const [showAll, setShowAll] = useState(false);
+export default function Top_Hotel({ show = false }) {
+    const [showAll, setShowAll] = useState(show);
     const [hotelData, setHotelData] = useState([]);
     const [loading, setLoading] = useState(true); // Loading state for API call
     const [error, setError] = useState(''); // Error message state

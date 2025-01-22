@@ -4,8 +4,8 @@ import FoodData from '../utils/Food.data';
 import TopFoodCard from './TopFoodCard';
 import { styles } from './FoodStyles';
 
-export default function TopFood() {
-    const [showAll, setShowAll] = useState(false);
+export default function TopFood({show=false}) {
+    const [showAll, setShowAll] = useState(show);
     const displayedRestaurants = showAll ? FoodData : FoodData.slice(0, 4);
 
     return (

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import axios from 'axios';
 import { COLORS } from '../../constants/colors';
-
+import { useNavigation, useRoute } from '@react-navigation/native';
 const { width } = Dimensions.get('screen');
 const ITEM_WIDTH = (width - 75) / 4;
 
@@ -11,7 +11,7 @@ const ITEM_WIDTH = (width - 75) / 4;
 export default function Categories() {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
-
+    const navigation = useNavigation()
     useEffect(() => {
         fetchCategories();
     }, []);
@@ -29,6 +29,17 @@ export default function Categories() {
         }
     };
 
+
+    const redirect = (screen) => {
+
+        if (screen === 'Cab Service') {
+            navigation.navigate('Start_Booking_Ride')
+        } else {
+            navigation.navigate(screen)
+        }
+
+    }
+
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -45,7 +56,7 @@ export default function Categories() {
                         activeOpacity={0.7}
                         key={category._id}
                         style={styles.categoryButton}
-                        onPress={() => console.log(`Selected category: ${category.title}`)}
+                        onPress={() => redirect(category.title)}
                     >
                         <View style={styles.imageContainer}>
                             <Image
@@ -64,7 +75,7 @@ export default function Categories() {
 const styles = StyleSheet.create({
     container: {
         padding: 16,
-        marginBottom:12,
+        marginBottom: 12,
     },
     loadingContainer: {
         flex: 1,

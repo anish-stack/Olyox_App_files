@@ -6,16 +6,33 @@ const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
+  const [socket, setSocket] = useState(null); // Track socket state
   const [user, setUser] = useState(null);
 
   const firstFound = async () => {
     const data = await find_me();
-    console.log("data", data.user?._id);
+    console.log("datas", data.user?._id);
     if (data.user) {
       setUser(data.user?._id);
     } else {
-      console.log("no user found");
+      console.log("No user found");
       setUser(null);
+    }
+  };
+
+  const initializeAndSetSocket = () => {
+    const newSocket = initializeSocket({ userId: user });
+    socketRef.current = newSocket;
+    setSocket(newSocket); // Update socket state
+  };
+
+  const checkAndReconnectSocket = () => {
+    if (socketRef.current && socketRef.current.connected) {
+      console.log("Socket is already connected");
+    } else {
+      console.warn("Socket is disconnected. Reinitializing...");
+      cleanupSocket(socketRef.current);
+      initializeAndSetSocket();
     }
   };
 
@@ -23,15 +40,14 @@ export const SocketProvider = ({ children }) => {
     firstFound();
   }, []);
 
-  // Use `user` as a dependency to initialize the socket after user is set
   useEffect(() => {
     if (user !== null) {
       if (!socketRef.current) {
         // Initialize socket once user is set
-        socketRef.current = initializeSocket({ userId: user });
+        initializeAndSetSocket();
       }
     } else {
-      console.log("no user found");
+      console.log("No user found");
     }
 
     return () => {
@@ -40,23 +56,27 @@ export const SocketProvider = ({ children }) => {
         cleanupSocket(socketRef.current);
       }
     };
-  }, [user]); // Dependency array now watches `user`
-  const reinitializeSocket = () => {
-    console.log("Reinitializing socket...");
-    cleanupSocketConnection();
-    socketRef.current = initializeSocket({ userId: user });
-  };
+  }, [user]);
+
+  // Periodically check socket connection every 20 seconds
+  useEffect(() => {
+    if (user) {
+      console.log("Starting periodic socket check");
+      const interval = setInterval(() => {
+        checkAndReconnectSocket();
+      }, 5000); // 20 seconds
+
+      return () => clearInterval(interval); // Cleanup interval on unmount
+    }
+  }, [user]);
 
   return (
-    <SocketContext.Provider value={socketRef.current}>
+    <SocketContext.Provider value={socket}>
       {children}
     </SocketContext.Provider>
   );
 };
 
-export const reinitializeSocket = () => {
-  return useContext(reinitializeSocket)
-}
 export const useSocket = () => {
   return useContext(SocketContext);
 };

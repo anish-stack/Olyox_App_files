@@ -6,7 +6,8 @@ exports.createRequest = async (req, res) => {
     try {
 
 
-        const user = req.user.user[0]._id
+        const user = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
+        console.log("shshsh", user)
 
         const { vehicleType, pickupLocation, dropLocation, currentLocation, pick_desc, drop_desc } = req.body;
 
@@ -183,12 +184,12 @@ exports.findRider = async (id, io) => {
 
 exports.ChangeRideRequestByRider = async (io, data) => {
     try {
-       
+
         if (!data || !data.ride_request_id || !data.rider_id) {
             throw new Error('Invalid data: rideRequestId and driverId are required');
         }
 
-        const { ride_request_id, rider_id,user_id } = data;
+        const { ride_request_id, rider_id, user_id } = data;
 
         const findDriver = await Riders.findById(rider_id)
         if (!findDriver) {
@@ -204,7 +205,7 @@ exports.ChangeRideRequestByRider = async (io, data) => {
 
         const originD = `${[pickupLocation.coordinates[1], pickupLocation.coordinates[0]]}`
         const destinationD = `${[dropLocation.coordinates[1], dropLocation.coordinates[0]]}`
-      
+
         if (!ride) {
             throw new Error('Ride request not found');
         }
@@ -225,7 +226,7 @@ exports.ChangeRideRequestByRider = async (io, data) => {
 
         try {
 
-            
+
             const response = await axios.get(`https://maps.googleapis.com/maps/api/directions/json`, {
                 params: {
                     origin: origin,
@@ -247,7 +248,7 @@ exports.ChangeRideRequestByRider = async (io, data) => {
             if (!io) {
                 throw new Error('Socket.io instance is not available');
             }
-    
+
             populatedRide.RideOtp = Crypto.randomInt(1000, 9999)
             populatedRide.kmOfRide = data?.price
             populatedRide.EtaOfRide = eta
@@ -259,20 +260,177 @@ exports.ChangeRideRequestByRider = async (io, data) => {
             };
 
             // console.log("return data",returnData)
-    
+
             return returnData;
-    
+
         } catch (error) {
-                console.log(error)
+            console.log(error)
         }
 
 
-       
+
     } catch (error) {
         // Log and handle the error
         console.error('Error in ChangeRideRequestByRider:', error.message);
     }
 };
+
+
+exports.rideStart = async (data) => {
+    try {
+        const ride_id = await RideRequest.findById(data?._id)
+        if (!ride_id) {
+            return {
+                success: false,
+                message: 'Ride not found'
+            }
+        }
+        ride_id.ride_is_started = true
+        ride_id.ride_start_time = new Date()
+        await ride_id.save()
+        return {
+            success: true,
+            message: 'Ride started successfully'
+        }
+
+    } catch (error) {
+        // Log and handle the error
+        console.error('Error in rideStart:', error.message);
+        return error.message
+    }
+}
+
+exports.rideEnd = async (data) => {
+    try {
+        const ride_id = await RideRequest.findById(data?._id)
+        if (!ride_id) {
+            return {
+                success: false,
+                message: 'Ride not found'
+            }
+        }
+        ride_id.ride_is_started = true
+
+        ride_id.ride_end_time = new Date()
+        await ride_id.save()
+
+        const findRider = await Riders.findById(ride_id?.rider)
+        if (!findRider) {
+            return {
+                success: false,
+                message: 'Rider not found'
+            }
+        }
+        findRider.TotalRides += 1
+        findRider.rides.push(ride_id._id)
+        await findRider.save()
+
+        return {
+            success: true,
+            message: 'Ride End successfully'
+        }
+
+    } catch (error) {
+        // Log and handle the error
+        console.error('Error in rideStart:', error.message);
+        return error.message
+    }
+}
+exports.collectCash = async (data) => {
+    try {
+        const ride_id = await RideRequest.findById(data?._id)
+        if (!ride_id) {
+            return {
+                success: false,
+                message: 'Ride not found'
+            }
+        }
+
+        ride_id.is_ride_paid = true
+        await ride_id.save()
+
+        const findRider = await Riders.findById(ride_id?.rider)
+        if (!findRider) {
+            return {
+                success: false,
+                message: 'Rider not found'
+            }
+        }
+
+        await findRider.save()
+
+        return {
+            success: true,
+            message: 'Ride End and Payment Success successfully'
+        }
+
+    } catch (error) {
+        // Log and handle the error
+        console.error('Error in rideStart:', error.message);
+        return error.message
+    }
+}
+
+exports.AddRating = async (data, rate) => {
+    try {
+        const ride_id = await RideRequest.findById(data?._id)
+
+        if (!ride_id) {
+            return {
+                success: false,
+                message: 'Ride not found'
+            }
+        }
+
+        ride_id.RatingOfRide = rate
+        await ride_id.save()
+
+
+
+        return {
+            success: true,
+            message: 'Ride End and Payment Success successfully'
+        }
+
+    } catch (error) {
+        // Log and handle the error
+        console.error('Error in rideStart:', error.message);
+        return error.message
+    }
+}
+
+exports.complete_Details_ofRide = async (req, res) => {
+    try {
+        const { id } = req.query;
+
+        // Find the ride by ID and populate related rider details
+        const ride = await RideRequest.findById(id).populate('rider');
+
+        // If the ride is not found, return an error response
+        if (!ride) {
+            return res.status(404).json({
+                success: false,
+                message: 'Ride not found',
+            });
+        }
+
+
+
+        return res.status(200).json({
+            success: true,
+            message: 'Ride ended successfully',
+            data: ride
+        });
+
+    } catch (error) {
+        // Log the error and return a server error response
+        console.error('Error in complete_Details_ofRide:', error.message);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while completing'
+        })
+    }
+}
 
 
 const calculateRidePrice = async (origin, destination, waitingTimeInMinutes, ratePerKm) => {

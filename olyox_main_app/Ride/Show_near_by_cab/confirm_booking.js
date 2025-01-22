@@ -10,10 +10,12 @@ import { reinitializeSocket, useSocket } from '../../context/SocketContext';
 import { styles } from './Styles';
 import { tokenCache } from '../../Auth/cache';
 import { ActivityIndicator } from 'react-native';
+import { useLocation } from '../../context/LocationContext';
 
 export function BookingConfirmation() {
     const route = useRoute();
-   const re =  reinitializeSocket();
+    const { location, errorMsg } = useLocation();
+
     const [fareDetails, setFareDetails] = useState(null)
     const [status, requestPermission] = Location.useBackgroundPermissions();
     const socket = useSocket();
@@ -23,7 +25,7 @@ export function BookingConfirmation() {
     const [error, setError] = useState(null);
     const [currentLocation, setCurrentLocation] = useState(null);
     const { origin, destination, selectedRide, dropoff, pickup } = route.params || {};
-    console.log(socket)
+
     const navigation = useNavigation();
     const bookingSteps = [
         {
@@ -49,15 +51,20 @@ export function BookingConfirmation() {
     ];
 
     useEffect(() => {
-        (async () => {
-            setLoLoading(true);
-          
-            const location = await Location.getCurrentPositionAsync({});
-                
+        if (location) {
             setCurrentLocation(location.coords);
-            setLoLoading(false);
+        } else {
 
-        })();
+            (async () => {
+                setLoLoading(true);
+
+                const location = await Location.getCurrentPositionAsync({});
+
+                setCurrentLocation(location.coords);
+                setLoLoading(false);
+
+            })();
+        }
     }, []);
 
     // console.log("ssss",socket)
@@ -65,7 +72,7 @@ export function BookingConfirmation() {
 
     const getFareInfo = async () => {
         try {
-            const { data } = await axios.post('http://192.168.1.2:9630/api/v1/rider/get-fare-info', {
+            const { data } = await axios.post('http://192.168.1.9:9630/api/v1/rider/get-fare-info', {
                 origin,
                 destination,
                 waitingTimeInMinutes: 0,
@@ -85,6 +92,7 @@ export function BookingConfirmation() {
     useEffect(() => {
         getFareInfo()
     }, [])
+    console.log(socket)
     const handleSubmit = async () => {
 
 
@@ -94,10 +102,10 @@ export function BookingConfirmation() {
         const gmail_token = await tokenCache.getToken('auth_token')
         const db_token = await tokenCache.getToken('auth_token_db')
         const token = db_token || gmail_token
-        // console.log(token)
+        console.log(token)
         try {
 
-            const response = await axios.post('http://192.168.1.2:9630/api/v1/rides/create-ride', {
+            const response = await axios.post('http://192.168.1.9:9630/api/v1/rides/create-ride', {
                 currentLocation,
                 pickupLocation: origin,
                 dropLocation: destination,
@@ -110,7 +118,7 @@ export function BookingConfirmation() {
                     'Authorization': `Bearer ${token}`,
                 }
             });
-
+            console.log(response)
             const request = response?.data?.rideRequest;
 
             if (request && socket) {
@@ -132,7 +140,7 @@ export function BookingConfirmation() {
     };
     useEffect(() => {
         if (socket) {
-           
+
             const handleRideConfirm = (data) => {
                 console.log('Ride confirmation received:', data);
                 setBookingStep(3);

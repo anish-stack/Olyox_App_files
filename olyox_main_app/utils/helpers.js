@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { tokenCache } from '../Auth/cache';
-const BACKEND_URL = 'http://192.168.1.2:9630/api/v1/user'
+const BACKEND_URL = 'http://192.168.1.9:9630/api/v1/user'
 export const formatDate = (date) => {
   // Example helper function
   return new Date(date).toLocaleDateString();
@@ -10,9 +10,11 @@ export const formatDate = (date) => {
 export const createUserRegister = async (formdata) => {
   try {
     const data = await axios.post(`${BACKEND_URL}/register`, formdata)
+    console.log(data.data)
     return data.data
 
   } catch (error) {
+    console.log(error.response.data)
     return error.response
   }
 }
@@ -44,16 +46,17 @@ export const find_me = async () => {
   try {
     const token  = await tokenCache.getToken('auth_token_db')
     // console.log(token)
-    const data = await axios.get(`http://192.168.1.2:9630/api/v1/user/find_me`,{
+    const data = await axios.get(`http://192.168.1.9:9630/api/v1/user/find_me`,{
       headers: {
         'Authorization': `Bearer ${token}`
       }
     })
+    console.log(data)
 
     return data.data
 
   } catch (error) {
-    console.log(error)
+    console.log(error.response.data)
     return error.response
   }
 }

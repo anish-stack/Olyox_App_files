@@ -241,8 +241,20 @@ exports.resendOtp = async (req, res) => {
 
 exports.fine_me = async (req, res) => {
     try {
-        const userData = req.user.user[0]
-        // console.log("user found in ", userData)
+        // Check if userData is an array or an object
+        const userData = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
+
+        console.log("User found in:", userData);
+
+        // Validate that userData exists before proceeding
+        if (!userData || !userData._id) {
+            return res.status(400).json({
+                message: "Invalid user data.",
+                status: 400,
+            });
+        }
+
+        // Fetch user from the database
         const user = await User.findById({ _id: userData._id });
         if (!user) {
             return res.status(404).json({
@@ -250,23 +262,23 @@ exports.fine_me = async (req, res) => {
                 status: 404,
             });
         }
+
         res.status(200).json({
             message: "User found successfully.",
             status: 200,
-            user: user
-
-        })
-
+            user: user,
+        });
 
     } catch (error) {
+        console.error("Error finding user:", error.message);
+
         res.status(501).json({
             status: 501,
-            error: error.message
-
-        })
-
+            error: error.message,
+        });
     }
-}
+};
+
 
 
 exports.login = async (req, res) => {

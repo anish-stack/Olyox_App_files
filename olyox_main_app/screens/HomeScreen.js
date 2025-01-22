@@ -53,7 +53,7 @@ const HomeScreen = () => {
                 <BookARide />
                 <Top_Hotel />
                 <TopFood />
-                <Floatingride/>
+               
             </ScrollView>
         </Layout>
     );

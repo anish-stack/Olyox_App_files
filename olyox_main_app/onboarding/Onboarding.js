@@ -215,8 +215,10 @@ export default function Onboarding() {
                         email: emailAddress,
                         isGoogle: true
                     }
+                    console.log(formDataOfUser)
                     const data = await createUserRegister(formDataOfUser)
-                    // console.log('Session has been set as active', data);
+                    
+                    console.log('Session has been set as active', data);
                     navigation.navigate('Home')
                     await tokenCache.saveToken('auth_token', createdSessionId);
                     await tokenCache.saveToken('auth_token_db', data.token);
@@ -225,6 +227,9 @@ export default function Onboarding() {
                 }
             }
         } catch (err) {
+            if(err.status === 400){
+                navigation.navigate('Home')
+            }
             console.error('Error during Google sign-up or login:', JSON.stringify(err, null, 2));
         }
     }, [startOAuthFlow]);

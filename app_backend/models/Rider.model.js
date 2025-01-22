@@ -27,6 +27,10 @@ const RiderSchema = new Schema({
     TotalRides: {
         type: Number,
     },
+    rides:[{
+        type: Schema.Types.ObjectId,
+        ref: 'RideRequest'
+    }],
     Ratings: {
         type: Number,
     },

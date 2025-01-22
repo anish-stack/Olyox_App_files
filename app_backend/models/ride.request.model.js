@@ -85,6 +85,21 @@ const RideRequestSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'User',
     },
+    ride_is_started:{
+        type:Boolean,
+        default:false
+    },
+    ride_start_time:{
+        type:Date,
+    },
+    is_ride_paid:{
+        type:Boolean,
+        default:false
+    },
+    ride_end_time:{
+        type:Date,
+
+    },
     rider:{
         type: Schema.Types.ObjectId,
         ref: 'Rider',

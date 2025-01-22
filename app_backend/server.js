@@ -6,11 +6,11 @@ const connectDb = require('./database/db');
 const router = require('./routes/routes');
 const rides = require('./routes/rides.routes');
 const RiderModel = require('./models/Rider.model');
-const { ChangeRideRequestByRider, findRider } = require('./controllers/ride.request');
+const { ChangeRideRequestByRider, findRider, rideStart, rideEnd, collectCash, AddRating } = require('./controllers/ride.request');
 const hotel_router = require('./routes/Hotel.routes');
 const users = require('./routes/user_routes/user_routes');
 const cookies_parser = require('cookie-parser');
-
+const axios = require('axios')
 require('dotenv').config();
 
 const app = express();
@@ -137,7 +137,7 @@ io.on('connection', (socket) => {
                 }
 
                 const riderData = await findRider(data.data._id, io);
-                console.log("data", riderData);
+
 
                 // Handle the retrieved rider data here
                 if (riderData) {
@@ -160,32 +160,73 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('ride_started', (data) => {
-        console.log("ride started", data?.user);
+    socket.on('ride_started', async (data) => {
+     
         const userSocketId = userSocketMap.get(String(data.user));
-        console.log("userSocketId", userSocketMap);
-        if (userSocketId) {
-            // Emit a message only to the specific user's socket ID
-            io.to(userSocketId).emit('ride_user_start', {
-                message: 'Your ride request has been started!',
-                rideDetails: data,
-            });
-            console.log(`Message sent to user: ${data.user}, socket ID: ${userSocketId}`);
+        const ride_data_save = await rideStart(data)
+        if (ride_data_save.success) {
+
+            if (userSocketId) {
+                // Emit a message only to the specific user's socket ID
+                io.to(userSocketId).emit('ride_user_start', {
+                    message: 'Your ride request has been started!',
+                    rideDetails: data,
+                });
+                console.log(`Message sent to user: ${data.user}, socket ID: ${userSocketId}`);
+            } else {
+                console.log(`No active socket found for user: ${data.user}`);
+            }
+
         } else {
-            console.log(`No active socket found for user: ${data.user}`);
+            console.log("Error in ride start")
         }
         // const userSocketId = userSocketMap.get(data.driverId);
     })
 
-    socket.on('endRide', (data) => {
+    socket.on('endRide', async (data) => {
         console.log("ride end", data);
-        const driverSocketId = driverSocketMap.get(2);
-        console.log("driverSocketId", driverSocketId);
-        io.to(driverSocketId).emit('ride_end', {
-            message: 'Your ride  has been complete please collect money.',
-            rideDetails: data,
+        const ride_end = await rideEnd(data?.ride)
+        if (ride_end.success) {
+            const driverSocketId = driverSocketMap.get(2);
+            console.log("driverSocketId", driverSocketId);
+            io.to(driverSocketId).emit('ride_end', {
+                message: 'Your ride  has been complete please collect money.',
+                rideDetails: data,
+            })
+        } else {
+            console.log("Error in ride end")
+        }
+    })
 
-        })
+
+    socket.on('isPay', async (data) => {
+        // console.log("isPay", data);
+        const collect = await collectCash(data?.ride)
+        console.log(collect)
+        if (collect.success) {
+            const userSocketId = userSocketMap.get(String(data?.ride?.user));
+            console.log(userSocketId)
+            io.to(userSocketId).emit('give-rate', {
+                message: 'Your ride has been paid.',
+                rideDetails: data,
+            })
+        } else {
+            console.log("Error in collect")
+        }
+    })
+
+    socket.on('rating', async (data) => {
+        const { rating, ride } = data
+        const ratingAdd = await AddRating(ride, rating)
+        if (ratingAdd.success) {
+            console.log("rating added")
+            const driverSocketId = driverSocketMap.get(2);
+            console.log("driverSocketId", driverSocketId);
+            io.to(driverSocketId).emit('rating', {
+                message: 'Your ride has been rated.',
+                rating: rating,
+            })
+        }
     })
 
 
@@ -231,6 +272,95 @@ app.use('/api/v1/rider', router);
 app.use('/api/v1/rides', rides);
 app.use('/api/v1/hotels', hotel_router);
 app.use('/api/v1/user', users);
+
+
+app.post('/Fetch-Current-Location', async (req, res) => {
+    const { lat, lng } = req.body;
+
+    // Check if latitude and longitude are provided
+    if (!lat || !lng) {
+        return res.status(400).json({
+            success: false,
+            message: "Latitude and longitude are required",
+        });
+    }
+
+    try {
+        // Check if the Google Maps API key is present
+        // if (!process.env.GOOGLE_MAP_KEY) {
+        //     return res.status(403).json({
+        //         success: false,
+        //         message: "API Key is not found"
+        //     });
+        // }
+
+        // Fetch address details using the provided latitude and longitude
+        const addressResponse = await axios.get(
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU`
+        );
+
+        // Check if any results are returned
+        if (addressResponse.data.results.length > 0) {
+            const addressComponents = addressResponse.data.results[0].address_components;
+            // console.log(addressComponents)
+
+            let city = null;
+            let area = null;
+            let postalCode = null;
+            let district = null;
+
+            // Extract necessary address components
+            addressComponents.forEach(component => {
+                if (component.types.includes('locality')) {
+                    city = component.long_name;
+                } else if (component.types.includes('sublocality_level_1')) {
+                    area = component.long_name;
+                } else if (component.types.includes('postal_code')) {
+                    postalCode = component.long_name;
+                } else if (component.types.includes('administrative_area_level_3')) {
+                    district = component.long_name; // Get district
+                }
+            });
+
+            // Prepare the address details object
+            const addressDetails = {
+                completeAddress: addressResponse.data.results[0].formatted_address,
+                city: city,
+                area: area,
+                district: district,
+                postalCode: postalCode,
+                landmark: null, // Placeholder for landmark if needed
+                lat: addressResponse.data.results[0].geometry.location.lat,
+                lng: addressResponse.data.results[0].geometry.location.lng,
+            };
+
+            console.log("Address Details:", addressDetails);
+
+            // Respond with the location and address details
+            return res.status(200).json({
+                success: true,
+                data: {
+                    location: { lat, lng },
+                    address: addressDetails,
+                },
+                message: "Location fetch successful"
+            });
+        } else {
+            return res.status(404).json({
+                success: false,
+                message: "No address found for the given location",
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching address:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch address",
+        });
+    }
+});
+
+
 
 // Start the server
 const PORT = process.env.PORT || 3000;
