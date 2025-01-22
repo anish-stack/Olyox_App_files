@@ -12,6 +12,7 @@ import TopFood from '../Foods/Top_Foods/TopFood';
 import BookARide from '../components/Book_A_Ride/BookARide';
 import ShowMap from '../Ride/Show_near_by_cab/ShowMap';
 import { useUser } from '@clerk/clerk-expo';
+import Floatingride from '../Ride/Floating_ride/Floating.ride';
 
 const HomeScreen = () => {
     const { user, isLoaded, isSignedIn } = useUser();
@@ -52,6 +53,7 @@ const HomeScreen = () => {
                 <BookARide />
                 <Top_Hotel />
                 <TopFood />
+                <Floatingride/>
             </ScrollView>
         </Layout>
     );

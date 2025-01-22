@@ -6,13 +6,14 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useEffect, useState, useRef } from 'react';
 import * as Location from 'expo-location';
 import axios from 'axios';
-import { useSocket } from '../../context/SocketContext';
+import { reinitializeSocket, useSocket } from '../../context/SocketContext';
 import { styles } from './Styles';
 import { tokenCache } from '../../Auth/cache';
 import { ActivityIndicator } from 'react-native';
 
 export function BookingConfirmation() {
     const route = useRoute();
+   const re =  reinitializeSocket();
     const [fareDetails, setFareDetails] = useState(null)
     const [status, requestPermission] = Location.useBackgroundPermissions();
     const socket = useSocket();
@@ -24,7 +25,6 @@ export function BookingConfirmation() {
     const { origin, destination, selectedRide, dropoff, pickup } = route.params || {};
     console.log(socket)
     const navigation = useNavigation();
-
     const bookingSteps = [
         {
             icon: "car-clock",
@@ -65,7 +65,7 @@ export function BookingConfirmation() {
 
     const getFareInfo = async () => {
         try {
-            const { data } = await axios.post('http://192.168.1.9:9630/api/v1/rider/get-fare-info', {
+            const { data } = await axios.post('http://192.168.1.2:9630/api/v1/rider/get-fare-info', {
                 origin,
                 destination,
                 waitingTimeInMinutes: 0,
@@ -97,7 +97,7 @@ export function BookingConfirmation() {
         // console.log(token)
         try {
 
-            const response = await axios.post('http://192.168.1.9:9630/api/v1/rides/create-ride', {
+            const response = await axios.post('http://192.168.1.2:9630/api/v1/rides/create-ride', {
                 currentLocation,
                 pickupLocation: origin,
                 dropLocation: destination,

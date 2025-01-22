@@ -18,47 +18,123 @@ import { useEffect } from 'react';
 import { useState } from 'react';
 
 const { width } = Dimensions.get('window');
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ActivityIndicator } from 'react-native-paper';
 export function RideConfirmed() {
     const route = useRoute();
-    const socket = useSocket()
-    const { driver } = route.params;
-    const [rideStart, setRideStart] = useState(false)
-
-    const rideDetails = {
+    const socket = useSocket();
+    const { driver } = route.params || {};
+    const [rideStart, setRideStart] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
+    const [driverData, setDriverData] = useState(driver);
+    const [rideDetails, setRideDetails] = useState({
         otp: driver?.otp || '1234',
         eta: driver?.eta || '5 mins',
         price: driver?.price || '₹225',
         rating: driver?.rating || '4.8',
         pickup: driver?.pickup_desc || 'Pickup Location',
         trips: driver?.trips || '150',
-        dropoff: driver?.drop_desc || 'Drop Location'
+        dropoff: driver?.drop_desc || 'Drop Location',
+    });
+
+    const storeRideDetails = async () => {
+        if (socket === null) {
+            return;
+        }
+        try {
+            setIsLoading(true);
+            await AsyncStorage.setItem('rideDetails', JSON.stringify(rideDetails));
+            await AsyncStorage.setItem('driver', JSON.stringify(driver));
+            await AsyncStorage.setItem('rideStart', JSON.stringify(rideStart));
+            console.log('Ride details stored successfully');
+            setIsLoading(false);
+        } catch (error) {
+            console.error('Error storing ride details:', error);
+            setIsLoading(false);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
+    const fetchStoredRideDetails = async () => {
+        try {
+            setIsLoading(true);
+            const storedDetails = await AsyncStorage.getItem('rideDetails');
+            const storedDriver = await AsyncStorage.getItem('driver');
+            const storedRideStart = await AsyncStorage.getItem('rideStart');
 
-    const handleEndRide = ()=>{
-        console.log("End Ride")
-        socket.emit('endRide', {rideDetails})
-    }
+            if (storedDetails) setRideDetails(JSON.parse(storedDetails));
+            if (storedDriver) setDriverData(JSON.parse(storedDriver));
+            // if (storedRideStart) setRideStart(JSON.parse(storedRideStart));
+            setIsLoading(false);
+            console.log('Using stored data');
+        } catch (error) {
+            console.error('Error fetching stored ride details:', error);
+            setIsLoading(false);
+        }
+    };
+    console.log('Using stored data', rideStart);
+    const clearAllData = async () => {
+        try {
+            await AsyncStorage.removeItem('rideDetails');
+            await AsyncStorage.removeItem('driver');
+            await AsyncStorage.removeItem('rideStart');
+      
+            setRideDetails({});
+            setRideStart(false);
+        } catch (error) {
+            console.error('Error clearing ride data:', error);
+        }
+    };
+
+    const handleEndRide = async () => {
+        setIsLoading(true); // Start loading
+        try {
+            socket.emit('endRide', { rideDetails });
+            await clearAllData()
+            console.log('Ride ended and data cleared');
+        } catch (error) {
+            console.error('Error ending the ride:', error);
+        } finally {
+            setIsLoading(false); // End loading
+        }
+    };
+
+    useEffect(() => {
+        if (!driver) {
+            // Fetch stored data if no driver data is available
+            fetchStoredRideDetails();
+        }
+    }, [driver]);
 
     useEffect(() => {
         if (socket) {
-            socket.on('ride_user_start', (data) => {
-                console.log("ride_user_start", data);
+            socket.on('ride_user_start', async (data) => {
+                console.log('ride_user_start', data);
                 setRideStart(true);
+
+                // Store ride details when the ride starts
+                await storeRideDetails();
             });
 
             return () => {
-                socket.off('ride_user_start'); // Clean up the socket listener when the component unmounts
+                socket.off('ride_user_start');
             };
         }
     }, [socket]);
-
+    const LoadingOverlay = () => (
+        isLoading ? (
+            <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color="#C82333" />
+                <Text style={styles.loadingText}>Please wait...</Text>
+            </View>
+        ) : null
+    );
     const OtpCard = () => (
         <View style={styles.otpCard}>
             <View style={styles.otpContent}>
                 <View>
-                <Text style={styles.rideStatus}>
+                    <Text style={styles.rideStatus}>
                         {rideStart ? 'Ride Started' : 'Ride Confirmed'}
                     </Text>
                     <Text style={styles.otpLabel}>Share OTP with driver</Text>
@@ -83,11 +159,11 @@ export function RideConfirmed() {
                     <View style={styles.onlineIndicator} />
                 </View>
                 <View style={styles.driverInfo}>
-                    <Text style={styles.driverName}>{driver.name}</Text>
+                    <Text style={styles.driverName}>{driverData?.name}</Text>
                     <View style={styles.ratingContainer}>
                         <Icon name="star" size={16} color="#F59E0B" />
-                        <Text style={styles.rating}>{driver.rating}</Text>
-                        <Text style={styles.trips}>• {driver.trips} trips</Text>
+                        <Text style={styles.rating}>{driverData?.rating}</Text>
+                        <Text style={styles.trips}>• {driverData?.trips} trips</Text>
                     </View>
                 </View>
                 <TouchableOpacity style={styles.callButton}>
@@ -99,7 +175,7 @@ export function RideConfirmed() {
                 <View style={styles.carInfo}>
                     <Icon name="car" size={20} color="#6B7280" />
                     <Text style={styles.carText}>
-                        {driver.carModel} • {driver.carNumber}
+                        {driverData?.carModel} • {driverData?.carNumber}
                     </Text>
                 </View>
                 <View style={styles.etaContainer}>
@@ -180,33 +256,29 @@ export function RideConfirmed() {
             </View>
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                <OtpCard />
+                {rideStart ? null : <OtpCard />}
                 <DriverCard />
                 <LocationCard />
                 <PriceCard />
             </ScrollView>
 
-            {/* <View style={styles.footer}>
-                <TouchableOpacity style={styles.supportButton}>
-                    <Icon name="headphones" size={20} color="#fff" />
-                    <Text style={styles.supportButtonText}>Need Support?</Text>
-                </TouchableOpacity>
-            </View> */}
-          {rideStart ? (
-                    <View style={styles.footer}>
-                        <TouchableOpacity onPress={()=>handleEndRide()} style={styles.supportButton}>
-                            <Icon name="headphones" size={20} color="#fff" />
-                            <Text style={styles.supportButtonText}>End Ride</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : (
-                    <View style={styles.footer}>
-                        <TouchableOpacity style={styles.supportButton}>
-                            <Icon name="headphones" size={20} color="#fff" />
-                            <Text style={styles.supportButtonText}>Need Support?</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
+
+            {rideStart ? (
+                <View style={styles.footer}>
+                    <TouchableOpacity onPress={() => handleEndRide()} style={styles.supportButton}>
+                        <Icon name="headphones" size={20} color="#fff" />
+                        <Text style={styles.supportButtonText}>End Ride</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <View style={styles.footer}>
+                    <TouchableOpacity style={styles.supportButton}>
+                        <Icon name="headphones" size={20} color="#fff" />
+                        <Text style={styles.supportButtonText}>Need Support?</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+            <LoadingOverlay />
         </SafeAreaView>
     );
 }

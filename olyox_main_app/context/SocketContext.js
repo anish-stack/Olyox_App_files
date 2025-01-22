@@ -41,6 +41,11 @@ export const SocketProvider = ({ children }) => {
       }
     };
   }, [user]); // Dependency array now watches `user`
+  const reinitializeSocket = () => {
+    console.log("Reinitializing socket...");
+    cleanupSocketConnection();
+    socketRef.current = initializeSocket({ userId: user });
+  };
 
   return (
     <SocketContext.Provider value={socketRef.current}>
@@ -49,6 +54,9 @@ export const SocketProvider = ({ children }) => {
   );
 };
 
+export const reinitializeSocket = () => {
+  return useContext(reinitializeSocket)
+}
 export const useSocket = () => {
   return useContext(SocketContext);
 };
