@@ -104,7 +104,7 @@ export default function Collect_Data() {
         // let location = await Location.getCurrentPositionAsync({});
         // console.log("location",location)
         // try {
-        //     const response = await axios.post('http://192.168.1.9:9630/api/v1/rides/create-ride', {
+        //     const response = await axios.post('https://appb.digital4now.in/api/v1/rides/create-ride', {
         //         currentLocation: location.coords,
         //         pickupLocation: complete_ride.pickup,
         //         dropLocation: complete_ride.dropoff,
@@ -123,6 +123,7 @@ export default function Collect_Data() {
         // }
         
         navigation.navigate('second_step_of_booking',{data:complete_ride})
+        
 
         // console.log('Ride requested:', { complete_ride });
 

@@ -1,31 +1,72 @@
 {
   "expo": {
-    "name": "Olyox",
-    "slug": "Olyox",
+    "name": "Olyox Ride",
+    "slug": "olyox-ride",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/playstore-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash_screen.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#da2e2a"
+      "image": "./assets/playstore-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app requires your location to provide better services.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": ["com.happy_coding.olyoxride"]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/ic_launcher-web.png",
-        "backgroundColor": "#da2e2a"
-      }
+        "backgroundColor": "#ffffff"
+      },
+      "googleMaps": {
+          "apiKey": "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34"
+        },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+
+      ],
+      "package": "com.happy_coding.olyoxride",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "com.happy_coding.olyoxride",
+              "host": "auth/callback"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
-      "favicon": "./assets/ic_launcher-web.png"
+      "favicon": "./assets/favicon.png",
+      "build": {
+        "publicPath": "/"
+      }
     },
-    "plugins": [
-      "expo-font"
-    ]
+    "extra": {
+      "eas": {
+        "projectId": "1223dac1-38d3-48f6-9ca1-7d82110ccdd9"
+      },
+      "clerkFrontendApi": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk",
+      "clerkApiKey": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk"
+    },
+    "scheme": "com.happy_coding.olyoxride"
   }
 }
