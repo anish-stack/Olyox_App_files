@@ -30,6 +30,9 @@ import FloatingRide from './Ride/Floating_ride/Floating.ride';
 import AllHotel from './Hotels/Hotel_Details/AllHotel';
 import AllFoods from './Foods/Top_Foods/AllFoods';
 import { LocationProvider } from './context/LocationContext';
+import Food_Dispay_Page from './Foods/Food_Page/Food_Dispay_Page';
+import { FoodProvider } from './context/Food_Context/Food_context';
+import Restaurant from './Foods/Restaurant/Restaurant';
 
 const Stack = createNativeStackNavigator();
 Sentry.init({
@@ -88,7 +91,7 @@ const App = () => {
       });
 
       setLocation(location);
-      setErrorMsg(null); 
+      setErrorMsg(null);
     } catch (error) {
       console.error('Error fetching location:', error);
       setErrorMsg('Failed to fetch location. Please try again.');
@@ -152,6 +155,8 @@ const App = () => {
                         <Stack.Screen name="Booking_hotel_success" options={{ headerShown: false }} component={BookingSuccess} />
                         {/* User Profile and Auth */}
                         <Stack.Screen name="Tiffin" options={{ headerShown: false }} component={AllFoods} />
+                        <Stack.Screen name="food_Page_By_Cats" options={{ headerShown: false }} component={Food_Dispay_Page} />
+                        <Stack.Screen name="restaurants_page" options={{ headerShown: false }} component={Restaurant} />
                         {/* User Profile and Auth */}
                         <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={Onboarding} />
                       </Stack.Navigator>
@@ -180,7 +185,10 @@ const styles = StyleSheet.create({
 
 const WrappedApp = Sentry.wrap(App);
 const RootApp = () => (
-  <WrappedApp />
+  <FoodProvider>
+
+    <WrappedApp />
+  </FoodProvider>
 );
 
 AppRegistry.registerComponent(appName, () => RootApp);

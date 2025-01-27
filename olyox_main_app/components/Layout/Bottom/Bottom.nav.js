@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { COLORS } from '../../../constants/colors';
+import { useFood } from '../../../context/Food_Context/Food_context';
 
 const { width } = Dimensions.get('window');
 const tabWidth = width / 5;
@@ -19,12 +20,12 @@ const BottomNav = () => {
     const route = useRoute();
     const [selectedTab, setSelectedTab] = React.useState(0);
     const animatedValue = React.useRef(new Animated.Value(0)).current;
-
+    const { cart } = useFood()
     const tabs = [
         { name: 'Home', icon: '🏠', route: 'Home' },
         { name: 'Hotels', icon: '🏩', route: 'Hotels' },
         { name: 'Active Rides', icon: '🚘', route: 'Active Rides' },
-        { name: 'Orders', icon: '🏷️', route: 'Orders' },
+        { name: 'Cart', icon: '🛒', route: 'Orders', numValue: cart.length || '' },
         { name: 'Profile', icon: '👤', route: 'Profile' },
     ];
 
@@ -82,6 +83,10 @@ const BottomNav = () => {
                     >
                         {tab.name}
                     </Text>
+                    {tab.numValue && (
+                        <Text style={styles.tabNumValue}>{tab.numValue}</Text>
+                    )}
+
                     {isActive && <View style={styles.activeIndicator} />}
                 </Animated.View>
             </TouchableOpacity>
@@ -177,6 +182,19 @@ const styles = StyleSheet.create({
         height: 4,
         borderRadius: 2,
         backgroundColor: COLORS.error,
+    },
+    tabNumValue: {
+        fontSize: 10,
+        position: 'absolute',
+        top: 0,
+        textAlign: 'center',
+        width: 15,
+        color: '#fff',
+        borderRadius: 50,
+        height: 15,
+        right: -2,
+        backgroundColor: '#d54d57'
+
     },
     slider: {
         position: 'absolute',

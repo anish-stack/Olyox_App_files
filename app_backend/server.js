@@ -10,7 +10,8 @@ const { ChangeRideRequestByRider, findRider, rideStart, rideEnd, collectCash, Ad
 const hotel_router = require('./routes/Hotel.routes');
 const users = require('./routes/user_routes/user_routes');
 const cookies_parser = require('cookie-parser');
-const axios = require('axios')
+const axios = require('axios');
+const tiffin = require('./routes/Tiffin/Tiffin.routes');
 require('dotenv').config();
 
 const app = express();
@@ -261,6 +262,10 @@ app.get('/rider', async (req, res) => {
     }
 });
 
+app.get('/resturant',(req,res)=>{
+    res.render('resturant')
+})
+
 // Global error handler
 app.use((err, req, res, next) => {
     console.error(err.stack);
@@ -272,6 +277,7 @@ app.use('/api/v1/rider', router);
 app.use('/api/v1/rides', rides);
 app.use('/api/v1/hotels', hotel_router);
 app.use('/api/v1/user', users);
+app.use('/api/v1/tiffin', tiffin);
 
 
 app.post('/Fetch-Current-Location', async (req, res) => {
@@ -334,7 +340,7 @@ app.post('/Fetch-Current-Location', async (req, res) => {
                 lng: addressResponse.data.results[0].geometry.location.lng,
             };
 
-            console.log("Address Details:", addressDetails);
+            // console.log("Address Details:", addressDetails);
 
             // Respond with the location and address details
             return res.status(200).json({

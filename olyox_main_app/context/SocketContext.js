@@ -64,7 +64,7 @@ export const SocketProvider = ({ children }) => {
       console.log("Starting periodic socket check");
       const interval = setInterval(() => {
         checkAndReconnectSocket();
-      }, 5000); // 20 seconds
+      }, 60000); // 20 seconds
 
       return () => clearInterval(interval); // Cleanup interval on unmount
     }

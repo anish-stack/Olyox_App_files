@@ -1,0 +1,153 @@
+import React, { useCallback, useState, useEffect } from "react"
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Image } from "react-native"
+import { useRoute } from "@react-navigation/native"
+import axios from "axios"
+import Food_Card from "../Food_Card/Food_Card"
+import FoodsHeader from "../FoodsHeader"
+import { useFood } from "../../context/Food_Context/Food_context"
+import SuperFicial from "../../SuperFicial/SuperFicial"
+
+export default function Food_Display_Page() {
+    const route = useRoute()
+    const [error, setError] = useState("")
+    const [foodData, setFoodData] = useState([])
+    const [loading, setLoading] = useState(false)
+    const [searchQuery, setSearchQuery] = useState("")
+    const { title } = route.params || {}
+    const { cart, addFood, updateQuantity } = useFood()
+
+    const fetchFoods = useCallback(async () => {
+        setLoading(true)
+        try {
+            const { data } = await axios.get(
+                `http://192.168.1.9:9630/api/v1/tiffin/find_Restaurant_foods?food_category=${title}`,
+            )
+            if (data.data) {
+                setFoodData(data.data)
+            } else {
+                setFoodData([])
+            }
+        } catch (error) {
+            setError("Unable to fetch food data. Please try again.")
+        } finally {
+            setLoading(false)
+        }
+    }, [title])
+
+    useEffect(() => {
+        fetchFoods()
+    }, [fetchFoods])
+
+    const handleSearch = (query) => {
+        setSearchQuery(query)
+    }
+
+    const filteredFoodData = foodData.filter(
+        (item) =>
+            item.food_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.description.toLowerCase().includes(searchQuery.toLowerCase()),
+    )
+
+    const renderFood = ({ item }) => (
+        <Food_Card
+            item={item}
+            cart={cart}
+            addFood={addFood}
+            updateQuantity={updateQuantity}
+        />
+    )
+
+    const ListEmptyComponent = () => (
+        <View style={styles.emptyContainer}>
+            {/* <Image source={require("./assets/empty-plate.png")} style={styles.emptyImage} /> */}
+            <Text style={styles.emptyText}>No food items found</Text>
+        </View>
+    )
+
+    return (
+        <View style={styles.container}>
+            <FoodsHeader onSearch={handleSearch} />
+
+            {loading ? (
+                <ActivityIndicator size="large" color="#E23744" style={styles.loader} />
+            ) : error ? (
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity style={styles.retryButton} onPress={fetchFoods}>
+                        <Text style={styles.retryButtonText}>Retry</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredFoodData}
+                    renderItem={renderFood}
+                    keyExtractor={(item) => item._id}
+                    contentContainerStyle={styles.listContent}
+                    ListEmptyComponent={ListEmptyComponent}
+                />
+            )}
+
+        </View>
+    )
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: "#F8F8F8",
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: "bold",
+        color: "#333",
+        padding: 16,
+    },
+    loader: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    listContent: {
+        padding: 16,
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 16,
+    },
+    errorText: {
+        fontSize: 16,
+        color: "#E23744",
+        textAlign: "center",
+        marginBottom: 16,
+    },
+    retryButton: {
+        backgroundColor: "#E23744",
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 8,
+    },
+    retryButtonText: {
+        color: "#FFFFFF",
+        fontSize: 16,
+        fontWeight: "bold",
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 16,
+    },
+    emptyImage: {
+        width: 150,
+        height: 150,
+        marginBottom: 16,
+    },
+    emptyText: {
+        fontSize: 18,
+        color: "#666",
+        textAlign: "center",
+    },
+})
+

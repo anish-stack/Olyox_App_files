@@ -72,7 +72,7 @@ export function BookingConfirmation() {
 
     const getFareInfo = async () => {
         try {
-            const { data } = await axios.post('https://appb.digital4now.in/api/v1/rider/get-fare-info', {
+            const { data } = await axios.post('http://192.168.1.9:9630/api/v1/rider/get-fare-info', {
                 origin,
                 destination,
                 waitingTimeInMinutes: 0,
@@ -105,7 +105,7 @@ export function BookingConfirmation() {
         console.log(token)
         try {
 
-            const response = await axios.post('https://appb.digital4now.in/api/v1/rides/create-ride', {
+            const response = await axios.post('http://192.168.1.9:9630/api/v1/rides/create-ride', {
                 currentLocation,
                 pickupLocation: origin,
                 dropLocation: destination,

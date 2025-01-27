@@ -13,6 +13,7 @@ import BookARide from '../components/Book_A_Ride/BookARide';
 import ShowMap from '../Ride/Show_near_by_cab/ShowMap';
 import { useUser } from '@clerk/clerk-expo';
 import Floatingride from '../Ride/Floating_ride/Floating.ride';
+import Food_Cats from '../Foods/Food_Cats/Food_Cats';
 
 const HomeScreen = () => {
     const { user, isLoaded, isSignedIn } = useUser();
@@ -52,6 +53,7 @@ const HomeScreen = () => {
                 <Categories />
                 <BookARide />
                 <Top_Hotel />
+                <Food_Cats/>
                 <TopFood />
                
             </ScrollView>
