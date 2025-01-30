@@ -7,7 +7,7 @@ import { useFood } from "../context/Food_Context/Food_context"
 
 const { width, height } = Dimensions.get("window")
 
-export default function SuperFicial() {
+export default function SuperFicial({ restaurant_id }) {
     const navigation = useNavigation()
     const translateY = useRef(new Animated.Value(height)).current
     const lastGestureDy = useRef(0)
@@ -57,7 +57,12 @@ export default function SuperFicial() {
     }
 
     const handleCheckout = () => {
-        navigation.navigate("Checkout")
+        const check_out_data_prepare = {
+            items: cart,
+            total_amount: totalAmount,
+            restaurant: restaurant_id,
+        }
+        navigation.navigate("Checkout", { data: check_out_data_prepare })
     }
 
     const handleRemoveItem = (itemId) => {

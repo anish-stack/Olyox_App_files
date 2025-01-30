@@ -33,6 +33,7 @@ import { LocationProvider } from './context/LocationContext';
 import Food_Dispay_Page from './Foods/Food_Page/Food_Dispay_Page';
 import { FoodProvider } from './context/Food_Context/Food_context';
 import Restaurant from './Foods/Restaurant/Restaurant';
+import Checkout from './Foods/Checkout/Checkout';
 
 const Stack = createNativeStackNavigator();
 Sentry.init({
@@ -157,6 +158,7 @@ const App = () => {
                         <Stack.Screen name="Tiffin" options={{ headerShown: false }} component={AllFoods} />
                         <Stack.Screen name="food_Page_By_Cats" options={{ headerShown: false }} component={Food_Dispay_Page} />
                         <Stack.Screen name="restaurants_page" options={{ headerShown: false }} component={Restaurant} />
+                        <Stack.Screen name="Checkout" options={{ headerShown: false }} component={Checkout} />
                         {/* User Profile and Auth */}
                         <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={Onboarding} />
                       </Stack.Navigator>

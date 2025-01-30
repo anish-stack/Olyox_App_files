@@ -209,7 +209,7 @@ export default function Restaurant() {
       {/* <TouchableOpacity style={styles.callButton} onPress={handleCall}>
         <Icon name="phone" size={24} color="#FFFFFF" />
       </TouchableOpacity> */}
-      <SuperFicial cart={cart} totalAmount={400} />
+      <SuperFicial cart={cart} restaurant_id={details} totalAmount={400} />
     </View>
   )
 }

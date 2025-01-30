@@ -25,9 +25,22 @@ const BottomNav = () => {
         { name: 'Home', icon: '🏠', route: 'Home' },
         { name: 'Hotels', icon: '🏩', route: 'Hotels' },
         { name: 'Active Rides', icon: '🚘', route: 'Active Rides' },
-        { name: 'Cart', icon: '🛒', route: 'Orders', numValue: cart.length || '' },
+        { name: 'Cart', icon: '🛒', route: 'Checkout', numValue: cart.length || '' },
         { name: 'Profile', icon: '👤', route: 'Profile' },
     ];
+
+    const handleCheckout = () => {
+        const newTotal = cart.reduce((sum, item) => sum + item.food_price * item.quantity, 0)
+        const restaurant_id = cart[0]?.restaurant_id?._id
+
+        const check_out_data_prepare = {
+            items: cart,
+            total_amount: newTotal,
+            restaurant: restaurant_id,
+        }
+        // console.log("check_out_data_prepare", check_out_data_prepare)
+        navigation.navigate("Checkout", { data: check_out_data_prepare || null })
+    }
 
     const handleTabPress = (index, tabRoute) => {
         Animated.sequence([
@@ -44,7 +57,13 @@ const BottomNav = () => {
         ]).start();
 
         setSelectedTab(index);
-        navigation.navigate(tabRoute);
+        if (tabRoute === 'Checkout') {
+            handleCheckout()
+            // navigation.navigate(tabRoute);
+        } else {
+            navigation.navigate(tabRoute);
+        }
+
     };
 
     const renderTab = (tab, index) => {

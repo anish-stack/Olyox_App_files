@@ -1,6 +1,6 @@
 import { useNavigation } from "@react-navigation/native"
 import React, { useState, useCallback } from "react"
-import { View, Text, Image, StyleSheet, TouchableOpacity, Animated } from "react-native"
+import { View, Text, Image, StyleSheet, TouchableOpacity, Animated,Vibration } from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import { useFood } from "../../context/Food_Context/Food_context"
 
@@ -18,6 +18,7 @@ const Food_Card = ({ item, isAddAble = false }) => {
             toValue: 0.95,
             useNativeDriver: true,
         }).start()
+        Vibration.vibrate(210)
     }
 
     const handlePressOut = () => {
@@ -25,11 +26,13 @@ const Food_Card = ({ item, isAddAble = false }) => {
             toValue: 1,
             useNativeDriver: true,
         }).start()
+
     }
 
     const handleAddOrUpdate = useCallback(() => {
         if (quantity === 0) {
             addFood(item)
+            
         } else {
             updateQuantity(item._id, quantity + 1)
         }

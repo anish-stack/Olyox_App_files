@@ -1,6 +1,6 @@
 const Restaurant = require("../models/Tiifins/Resturant_register.model");
 const Restaurant_Listing = require("../models/Tiifins/Restaurant.listing.model");
-
+const mongoose = require('mongoose')
 exports.find_Restaurant = async (req, res) => {
     try {
         const { restaurant_category, status, restaurant_in_top_list } = req.query;
@@ -79,8 +79,9 @@ exports.find_Restaurant_foods = async (req, res) => {
 
 exports.find_Restaurant_And_Her_foods = async (req, res) => {
     try {
-        const { restaurant_id } = req.query;
-
+        const { restaurant_id } = req.query;    
+        const id = new mongoose.Types.ObjectId(restaurant_id);
+        console.log(id)
         // Validate the restaurant_id
         if (!restaurant_id) {
             return res.status(400).json({
@@ -90,7 +91,7 @@ exports.find_Restaurant_And_Her_foods = async (req, res) => {
         }
 
         // Fetch restaurant details
-        const find_Restaurant = await Restaurant.findById(restaurant_id);
+        const find_Restaurant = await Restaurant.findById(id);
         if (!find_Restaurant) {
             return res.status(404).json({
                 success: false,

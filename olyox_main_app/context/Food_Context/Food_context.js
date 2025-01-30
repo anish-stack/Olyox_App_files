@@ -51,6 +51,7 @@ export const FoodProvider = ({ children }) => {
 
   // Remove food item from cart
   const removeFood = (id) => {
+    console.log(id)
     setCart((prevCart) => prevCart.filter((item) => item._id !== id));
   };
 
