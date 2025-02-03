@@ -35,6 +35,9 @@ const restaurantSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    restaurant_contact:{
+        type: Number,
+    },
     logo: {
         url: {
             type: String

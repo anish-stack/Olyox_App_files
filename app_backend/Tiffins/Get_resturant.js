@@ -79,16 +79,17 @@ exports.find_Restaurant_foods = async (req, res) => {
 
 exports.find_Restaurant_And_Her_foods = async (req, res) => {
     try {
-        const { restaurant_id } = req.query;    
-        const id = new mongoose.Types.ObjectId(restaurant_id);
-        console.log(id)
+        const { restaurant_id } = req.query;
+        console.log(restaurant_id)
         // Validate the restaurant_id
-        if (!restaurant_id) {
+        if (!restaurant_id || !mongoose.Types.ObjectId.isValid(restaurant_id)) {
             return res.status(400).json({
                 success: false,
-                message: "Restaurant ID is required.",
+                message: "Invalid or missing restaurant ID.",
             });
         }
+
+        const id = new mongoose.Types.ObjectId(restaurant_id);
 
         // Fetch restaurant details
         const find_Restaurant = await Restaurant.findById(id);
@@ -101,29 +102,16 @@ exports.find_Restaurant_And_Her_foods = async (req, res) => {
 
         // Fetch restaurant foods
         const restaurants_foods = await Restaurant_Listing.find({ restaurant_id }).populate('restaurant_id');
-        if (!restaurants_foods || restaurants_foods.length === 0) {
-            // Fallback for no food items found
-            return res.status(404).json({
-                success: true,
-                count: 0,
-                message: "No foods found for the given restaurant.",
-                details: find_Restaurant,
-                food: [],
-            });
-        }
 
-        // Respond with the fetched data
         return res.status(200).json({
             success: true,
             count: restaurants_foods.length,
-            message: "Restaurant foods fetched successfully.",
+            message: restaurants_foods.length ? "Restaurant foods fetched successfully." : "No foods found for the given restaurant.",
             details: find_Restaurant,
             food: restaurants_foods,
         });
     } catch (error) {
         console.error("Error fetching restaurants and foods:", error.message);
-
-        // Generic fallback for server errors
         return res.status(500).json({
             success: false,
             message: "An error occurred while fetching the restaurant's foods. Please try again later.",

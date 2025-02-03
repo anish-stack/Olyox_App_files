@@ -37,7 +37,6 @@ const OrderSchema = new Schema({
     },
     Order_Id: {
         type: String,
-        unique: true
     },
     order_date: {
         type: Date,
@@ -56,7 +55,7 @@ const OrderSchema = new Schema({
     items: [{
         foodItem_id: {
             type: Schema.Types.ObjectId,
-            ref: 'FoodItem',
+            ref: 'FoodListing',
             required: true
         },
         quantity: {
@@ -81,15 +80,16 @@ const OrderSchema = new Schema({
         type: String,
         // enum: ['Cash on Delivery', 'Credit Card', 'Debit Card', 'UPI'],
         required: true
+    },
+    isAdminMessageSendForCancel:{
+        type:Boolean,
+        default:false
+    },
+    adminWhyCancel:{
+        type:String
     }
+
 });
 
-OrderSchema.pre('save', async function (next) {
-    if (!this.Order_Id) {
-        const count = await mongoose.model('Order').countDocuments();
-        this.Order_Id = `ORDF${(count + 1).toString().padStart(6, '0')}`;
-    }
-    next();
-});
 
 module.exports = mongoose.model('Order', OrderSchema);

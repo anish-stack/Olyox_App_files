@@ -9,9 +9,9 @@ export const initializeSocket = ({ userType = "driver", userId = 2 }) => {
       transports: ["websocket"], 
       jsonp: false,
       reconnection: true, 
-      reconnectionAttempts: Infinity, // Unlimited attempts
-      reconnectionDelay: 1000, // 1-second delay
-      timeout: 20000, // 20-second timeout
+      reconnectionAttempts: Infinity, 
+      reconnectionDelay: 1000,
+      timeout: 20000, 
     });
 
     socket.userType = userType;

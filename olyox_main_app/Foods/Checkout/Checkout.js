@@ -8,6 +8,7 @@ import { useLocation } from "../../context/LocationContext"
 import axios from "axios"
 import AddOn from "./AddOn"
 import { tokenCache } from "../../Auth/cache"
+import * as SecureStore from 'expo-secure-store';
 
 const Checkout = () => {
     const route = useRoute()
@@ -62,7 +63,7 @@ const Checkout = () => {
             options: [],
         },
     ]
-    console.log(restaurant)
+
 
     const coupons = [
         {
@@ -291,54 +292,72 @@ const Checkout = () => {
         if (!token) {
             const gmail_token = await tokenCache.getToken('auth_token');
             const db_token = await tokenCache.getToken('auth_token_db');
-            const _token = db_token || gmail_token
-            setToken(_token)
+            const _token = db_token || gmail_token;
+            setToken(_token);
         }
+    
         if (!deliveryAddress) {
             setShowAddressModal(true);
             return;
         }
-
+    
         setIsLoading(true);
-
+    
         try {
-            const response = await axios.post(`http://192.168.1.9:9630/api/v1/tiffin/create_order_of_food`, {
-                order_items: items,
-                orderId: "ORD" + Math.floor(Math.random() * 1000000),
-                deliveryAddress,
-                paymentMethod,
-                total_payable: totalAmount,
-                coupon_applied: selectedCoupon,
-                user_lat: location?.coords?.latitude,
-                user_lng: location?.coords?.longitude
-            }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+            const response = await axios.post(
+                `http://192.168.1.9:9630/api/v1/tiffin/create_order_of_food`,
+                {
+                    order_items: items,
+                    orderId: "ORD" + Math.floor(Math.random() * 1000000),
+                    deliveryAddress,
+                    paymentMethod,
+                    total_payable: totalAmount,
+                    coupon_applied: selectedCoupon,
+                    user_lat: location?.coords?.latitude,
+                    user_lng: location?.coords?.longitude,
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
                 }
-            });
-
-            console.log(response.data);
-
-            Alert.alert(
-                "Order Placed Successfully!",
-                "Your order has been placed successfully. You will receive updates soon.",
-                [{ text: "OK", onPress: () => console.log("Order confirmed") }]
             );
-
+    
+            // Check if the response is valid and contains the expected data
+            if (response && response.data && response.data.orderDetails) {
+                console.log(response.data.orderDetails);
+    
+                await SecureStore.setItemAsync('ongoing_order', JSON.stringify([response.data.orderDetails]));
+                navigation.navigate('Order_Process', {
+                    order_id: response.data.orderDetails,
+                });
+    
+                Alert.alert(
+                    "Order Placed Successfully!",
+                    "Your order has been placed successfully. You will receive updates soon.",
+                    [{ text: "OK", onPress: () => console.log("Order confirmed") }]
+                );
+            } else {
+                throw new Error('Order details are missing in the response.');
+            }
+    
         } catch (error) {
             console.error("Order placement error:", error);
-
+    
+            // Ensure error response is available
+            const errorMessage = error.response?.data?.message || error.message || "An unexpected error occurred.";
+    
             Alert.alert(
                 "Order Failed!",
-                "Something went wrong while placing your order. Please try again.",
+                errorMessage,
                 [{ text: "OK", onPress: () => console.log("Order failed") }]
             );
-
         } finally {
             setIsLoading(false);
         }
     };
+    
 
     return (
         <View style={styles.container}>
