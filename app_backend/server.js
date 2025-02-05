@@ -12,6 +12,7 @@ const users = require('./routes/user_routes/user_routes');
 const cookies_parser = require('cookie-parser');
 const axios = require('axios');
 const tiffin = require('./routes/Tiffin/Tiffin.routes');
+const parcel = require('./routes/Parcel/Parcel.routes');
 require('dotenv').config();
 
 const app = express();
@@ -32,7 +33,12 @@ connectDb();
 // Set up Express
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
-app.use(cors());
+app.use(cors({
+    origin: '*', 
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],  
+    credentials: true, 
+  }));
 app.use(express.json());
 app.use(cookies_parser());
 
@@ -278,6 +284,7 @@ app.use('/api/v1/rides', rides);
 app.use('/api/v1/hotels', hotel_router);
 app.use('/api/v1/user', users);
 app.use('/api/v1/tiffin', tiffin);
+app.use('/api/v1/parcel', parcel);
 
 
 app.post('/Fetch-Current-Location', async (req, res) => {

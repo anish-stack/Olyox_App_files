@@ -35,6 +35,7 @@ import { FoodProvider } from './context/Food_Context/Food_context';
 import Restaurant from './Foods/Restaurant/Restaurant';
 import Checkout from './Foods/Checkout/Checkout';
 import OrderTracking from './Foods/Order_Process/Order_Process';
+import MainTransport from './Transport/Main.Transport';
 
 const Stack = createNativeStackNavigator();
 Sentry.init({
@@ -162,6 +163,13 @@ const App = () => {
                         <Stack.Screen name="Checkout" options={{ headerShown: false }} component={Checkout} />
                         <Stack.Screen name="Order_Process" options={{ headerShown: false }} component={OrderTracking} />
                         {/* User Profile and Auth */}
+
+
+                        {/* Transport */}
+                        <Stack.Screen name="Transport" options={{ headerShown: false }} component={MainTransport} />
+
+
+
                         <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={Onboarding} />
                       </Stack.Navigator>
                       <FloatingRide />
