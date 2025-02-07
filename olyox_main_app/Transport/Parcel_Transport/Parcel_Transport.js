@@ -1,8 +1,10 @@
 import { View, Text, Image, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native'
 import React from 'react'
 import { LinearGradient } from 'expo-linear-gradient'
+import { useNavigation } from '@react-navigation/native'
 
 export default function Parcel_Transport() {
+    const navigation = useNavigation()
     return (
         <SafeAreaView style={styles.container}>
             <LinearGradient
@@ -28,9 +30,14 @@ export default function Parcel_Transport() {
                             <Text style={styles.highlight}>✓ Insured shipments</Text>
                         </View>
                         <Text style={styles.pricing}>Starting at just ₹70/km</Text>
-                        {/* <TouchableOpacity style={styles.button}>
-                            <Text style={styles.buttonText}>Send Parcel Now</Text>
-                        </TouchableOpacity> */}
+                        <View style={{ alignItems: 'center', justifyContent: 'center', alignContent: 'center', width: '100%' }}>
+                            <TouchableOpacity onPress={() => navigation.navigate('Book-Parcel')} style={styles.button}>
+                                <Text style={styles.buttonText}>
+                                    Send Parcel Now
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
                     </View>
 
                 </View>
@@ -96,6 +103,7 @@ const styles = StyleSheet.create({
         },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
+        alignItems: 'center',
         elevation: 5,
     },
     buttonText: {

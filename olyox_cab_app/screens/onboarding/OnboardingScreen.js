@@ -13,21 +13,22 @@ const OnboardingScreen = () => {
   const [loginNumber,setLoginNumber] =useState('')
   const [registrationStep, setRegistrationStep] = useState(1)
   const [formData, setFormData] = useState({
-    name: "a",
-    email: "a",
-    phone: "99",
-    address: "a",
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
     bikeDetails: {
-      make: "a",
-      model: "a",
-      year: "a",
-      licensePlate: "s",
+      make: "",
+      model: "",
+      year: "",
+      licensePlate: "",
     },
     documents: {
       license: null,
       insurance: null,
       registration: null,
     },
+    type:'',
     additionalInfo: "",
     assets: []
   })

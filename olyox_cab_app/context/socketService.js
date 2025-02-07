@@ -1,75 +1,97 @@
 import io from "socket.io-client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
 
 const SOCKET_URL = "http://192.168.1.9:9630";
-let socket;
+let socket = null;
 
-export const initializeSocket = ({ userType = "driver", userId = 2 }) => {
-  if (!socket) {
-    socket = io(SOCKET_URL, {
-      transports: ["websocket"], 
-      jsonp: false,
-      reconnection: true, 
-      reconnectionAttempts: Infinity, 
-      reconnectionDelay: 1000,
-      timeout: 20000, 
-    });
+export const fetchUserData = async () => {
+    try {
+        const token = await AsyncStorage.getItem("auth_token_partner");
+        console.log("token",token)
+        if (!token) {
+            throw new Error("No auth token found");
+        }
 
-    socket.userType = userType;
-    socket.userId = userId;
+        const response = await axios.get(
+            "http://192.168.1.9:9630/api/v1/parcel/user-details",
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
 
-    // On successful connection
-    socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
-      socket.emit("driver_connect", { userType: socket.userType, userId: socket.userId });
-    });
+        return response.data.partner;
+    } catch (error) {
+        console.error("Error fetching user details:", error);
+        throw error;
+    }
+};
 
-    // On disconnection
-    socket.on("disconnect", (reason) => {
-      console.log("Socket disconnected:", reason);
-      if (reason === "io server disconnect") {
-        socket.connect(); // Attempt to reconnect manually
-      }
-    });
+export const initializeSocket = async ({ userType = "driver", userId }) => {
+    if (!userId) {
+        console.error("User ID is required to initialize socket");
+        return null;
+    }
 
-    // On reconnection attempt
-    socket.on("reconnect_attempt", (attempt) => {
-      console.log(`Reconnection attempt #${attempt}`);
-    });
+    if (!socket) {
+        socket = io(SOCKET_URL, {
+            transports: ["websocket"],
+            reconnection: true,
+            reconnectionAttempts: Infinity,
+            reconnectionDelay: 1000,
+            timeout: 20000,
+        });
 
-    // On successful reconnection
-    socket.on("reconnect", () => {
-      console.log("Socket reconnected:", socket.id);
-      socket.emit("driver_connect", { userType: socket.userType, userId: socket.userId });
-    });
+        socket.userType = userType;
+        socket.userId = userId;
 
-    // On reconnection failure
-    socket.on("reconnect_failed", () => {
-      console.error("Reconnection failed. Check your server or network.");
-    });
+        socket.on("connect", () => {
+            console.log("Socket connected:", socket.id);
+            socket.emit("driver_connect", { userType: socket.userType, userId: socket.userId });
+        });
 
-    // Debug connection errors
-    socket.on("connect_error", (error) => {
-      console.error("Connection error:", error.message);
-    });
+        socket.on("disconnect", (reason) => {
+            console.log("Socket disconnected:", reason);
+            if (reason === "io server disconnect") {
+                socket.connect(); // Reconnect manually if disconnected by the server
+            }
+        });
 
-    socket.on("connect_timeout", () => {
-      console.warn("Connection timed out. Retrying...");
-    });
-  }
+        socket.on("reconnect_attempt", (attempt) => {
+            console.log(`Reconnection attempt #${attempt}`);
+        });
 
-  return socket;
+        socket.on("reconnect", () => {
+            console.log("Socket reconnected:", socket.id);
+            socket.emit("driver_connect", { userType: socket.userType, userId: socket.userId });
+        });
+
+        socket.on("reconnect_failed", () => {
+            console.error("Reconnection failed. Check your server or network.");
+        });
+
+        socket.on("connect_error", (error) => {
+            console.error("Connection error:", error.message);
+        });
+
+        socket.on("connect_timeout", () => {
+            console.warn("Connection timed out. Retrying...");
+        });
+    }
+
+    return socket;
 };
 
 export const getSocket = () => {
-  if (!socket) {
-    throw new Error("Socket is not initialized. Call initializeSocket() first.");
-  }
-  return socket;
+    if (!socket) {
+        throw new Error("Socket is not initialized. Call initializeSocket() first.");
+    }
+    return socket;
 };
 
-export const cleanupSocket = (socketInstance) => {
-  if (socketInstance) {
-    socketInstance.disconnect();
-    socket = null;
-  }
+export const cleanupSocket = () => {
+    if (socket) {
+        socket.disconnect();
+        socket = null;
+    }
 };

@@ -1,4 +1,5 @@
 const Parcel_Bike_Register = require("../models/Parcel_Models/Parcel_Bike_Register");
+const Parcel_User_Login_Status = require("../models/Parcel_Models/Parcel_User_Login_Status");
 const { uploadBufferImage } = require("../utils/aws.uploader");
 const generateOtp = require("../utils/Otp.Genreator");
 const send_token = require("../utils/send_token");
@@ -254,7 +255,7 @@ exports.verifyOtp = async (req, res) => {
 
         await partner.save();
 
-        await send_token(partner, {type:partner?.type}, res, req)
+        await send_token(partner, { type: partner?.type }, res, req)
 
     } catch (error) {
         res.status(501).json({
@@ -267,23 +268,130 @@ exports.verifyOtp = async (req, res) => {
 
 exports.details = async (req, res) => {
     try {
-      // Retrieve userId from the request object, assuming it's populated by middleware (like authentication middleware)
-      const userId = req.user.userId || {};
-        console.log(userId)
-      // Find the partner based on the userId
-      const partner = await Parcel_Bike_Register.findOne({ _id: userId });
-  
-      // If the partner is not found, send a 404 response
-      if (!partner) {
-        return res.status(404).json({ message: 'Partner not found' });
-      }
-  
-      // Return the partner details
-      return res.status(200).json({ success: true, partner });
+        // Retrieve userId from the request object, assuming it's populated by middleware (like authentication middleware)
+        const userId = req.user.userId || {};
+
+        const partner = await Parcel_Bike_Register.findOne({ _id: userId });
+
+        // If the partner is not found, send a 404 response
+        if (!partner) {
+            return res.status(404).json({ message: 'Partner not found' });
+        }
+
+        // Return the partner details
+        return res.status(200).json({ success: true, partner });
     } catch (error) {
-      console.error('Error fetching partner details:', error);
-      
-      // Send a 500 internal server error if something goes wrong
-      return res.status(500).json({ message: 'Server error', error: error.message });
+        console.error('Error fetching partner details:', error);
+
+        // Send a 500 internal server error if something goes wrong
+        return res.status(500).json({ message: 'Server error', error: error.message });
     }
-  };
+};
+
+exports.manage_offline_online = async (req, res) => {
+    try {
+        const userId = req.user.userId;  // ✅ Get userId from request
+
+        // ✅ Check if the user exists
+        const partner = await Parcel_Bike_Register.findOne({ _id: userId });
+
+        if (!partner) {
+            return res.status(404).json({ message: 'Partner not found' });
+        }
+        if (!partner.isActive) {
+            return res.status(400).json({ message: 'Your Account is terminated due to suspicious work' });
+        }
+        if (!partner.DocumentVerify) {
+            return res.status(400).json({ message: 'Your Document verification is still pending' });
+        }
+
+        const { status } = req.body;
+        console.log(status)
+        const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+
+        if (!["online", "offline"].includes(status)) {
+            return res.status(400).json({ error: "Invalid status" });
+        }
+
+
+
+        // ✅ Fetch or Create RiderStatus for today
+        let riderStatus = await Parcel_User_Login_Status.findOne({ riderId: userId, date: today });
+
+        if (!riderStatus) {
+            riderStatus = new Parcel_User_Login_Status({
+                riderId: userId,
+                status,
+                date: today,
+                sessions: [],
+            });
+        }
+
+        if (status === "online") {
+            // ✅ Going online: Start a new session
+            riderStatus.sessions.push({ onlineTime: new Date() });
+        } else if (status === "offline") {
+            // ✅ Going offline: Update last session
+            const lastSession = riderStatus.sessions[riderStatus.sessions.length - 1];
+            if (lastSession && !lastSession.offlineTime) {
+                lastSession.offlineTime = new Date();
+                lastSession.duration = Math.round(
+                    (new Date(lastSession.offlineTime) - new Date(lastSession.onlineTime)) / 60000
+                );
+            }
+        }
+        riderStatus.status = status
+        await riderStatus.save();
+        return res.json({ message: "Status updated successfully", riderStatus });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+exports.partner_work_status = async (req, res) => {
+    try {
+        const userId = req.user.userId;  // ✅ Get userId from request (from the token)
+        const partner = await Parcel_Bike_Register.findOne({ _id: userId });
+        const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+
+        if (!partner) {
+            return res.status(404).json({ message: 'Partner not found' });
+        }
+
+        // Fetch the status of the partner for today from the 'Parcel_User_Login_Status' collection
+        const checkStatus = await Parcel_User_Login_Status.findOne({
+            riderId: userId,
+            date: today
+        });
+
+        if (!checkStatus) {
+            return res.status(404).json({ message: 'No status found for today' });
+        }
+
+        // Get the last session from the status (Online/Offline sessions)
+        const lastSession = checkStatus.sessions[checkStatus.sessions.length - 1];
+
+        if (!lastSession) {
+            return res.status(404).json({ message: 'No session data found' });
+        }
+
+        // Calculate the duration of online time if the partner is currently online
+        const currentStatus = lastSession.offlineTime ? 'offline' : 'online';
+        const onlineDuration = lastSession.offlineTime
+            ? Math.round((new Date(lastSession.offlineTime) - new Date(lastSession.onlineTime)) / 60000) // In minutes
+            : null;
+
+        res.json({
+            message: "Partner status fetched successfully",
+            status: currentStatus,
+            onlineDuration: onlineDuration, // If online, duration is null
+            date: today,
+            lastSession: lastSession
+        });
+    } catch (error) {
+        console.error("Error in fetching partner status: ", error);
+        res.status(500).json({ message: 'An error occurred while fetching partner status' });
+    }
+};

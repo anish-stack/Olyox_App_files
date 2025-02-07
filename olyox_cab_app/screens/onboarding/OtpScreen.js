@@ -32,7 +32,7 @@ const OtpScreen = ({ onVerify, number }) => {
       if (response.data.success) {
         const token = response.data.token;
         const type = response.data.redirect?.type;
-                await AsyncStorage.setItem('auth_token_partner', token); // Save the token in AsyncStorage
+        await AsyncStorage.setItem('auth_token_partner', token); 
         console.log("OTP verified:", response.data);
         if (type === 'parcel') {
           navigation.navigate('parcelHome')

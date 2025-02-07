@@ -59,7 +59,7 @@ const ParcelRequestSchema = new Schema({
         },
         description: {
             type: String,
-            required: true
+           
         }
     },
     status: {
@@ -79,6 +79,9 @@ const ParcelRequestSchema = new Schema({
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    totalKm:{
+        type:Number,
     },
     updatedAt: {
         type: Date,

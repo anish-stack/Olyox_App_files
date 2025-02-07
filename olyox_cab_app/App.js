@@ -11,10 +11,10 @@ import { SocketProvider } from './context/SocketContext';
 import start from './screens/start';
 import MoneyPage from './screens/MoneyPage';
 import OnboardingScreen from './screens/onboarding/OnboardingScreen';
-import Home_Parcel from './Parcel_Partner_Screens/Home_Parcel/Home_Parcel';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { ActivityIndicator, View } from 'react-native';  // Import ActivityIndicator
+import Home_Parcel from './Parcel_Partner_Screens/Home_Parcel/Home_Parcel';
 
 const Stack = createNativeStackNavigator();
 
@@ -25,7 +25,7 @@ export default function App() {
   useEffect(() => {
     const checkAuthToken = async () => {
       const token = await AsyncStorage.getItem('auth_token_partner');
-      console.log("token", token);
+      // console.log("token", token);
       if (token) {
         try {
           const response = await axios.get(

@@ -6,8 +6,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 const { width } = Dimensions.get('screen');
 const ITEM_WIDTH = (width - 75) / 4;
 
-
-
 export default function Categories() {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);

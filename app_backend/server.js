@@ -13,6 +13,8 @@ const cookies_parser = require('cookie-parser');
 const axios = require('axios');
 const tiffin = require('./routes/Tiffin/Tiffin.routes');
 const parcel = require('./routes/Parcel/Parcel.routes');
+const Parcel_boy_Location = require('./models/Parcel_Models/Parcel_Boys_Location');
+const Protect = require('./middleware/Auth');
 require('dotenv').config();
 
 const app = express();
@@ -29,16 +31,17 @@ const io = socketIo(server, {
 
 // Connect to the database
 connectDb();
+app.set("socketio", io);
 
 // Set up Express
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(cors({
-    origin: '*', 
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],  
-    credentials: true, 
-  }));
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    credentials: true,
+}));
 app.use(express.json());
 app.use(cookies_parser());
 
@@ -46,6 +49,8 @@ app.use(cookies_parser());
 const userSocketMap = new Map();
 const driverSocketMap = new Map();
 
+
+app.set('driverSocketMap', driverSocketMap)
 // Socket.IO connection log
 io.on('connection', (socket) => {
     console.log('New client connected');
@@ -168,7 +173,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('ride_started', async (data) => {
-     
+
         const userSocketId = userSocketMap.get(String(data.user));
         const ride_data_save = await rideStart(data)
         if (ride_data_save.success) {
@@ -258,6 +263,40 @@ io.on('connection', (socket) => {
     });
 });
 
+//Globally access io 
+
+
+app.post('/webhook/receive-location', Protect, async (req, res) => {
+    const riderId = req.user.userId || {};
+    const { latitude, longitude } = req.body;
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+        return res.status(400).json({ error: 'Invalid latitude or longitude' });
+    } try {
+        // Find or create rider document
+        const rider = await Parcel_boy_Location.findOneAndUpdate(
+            { riderId: riderId },
+            {
+                location: {
+                    type: 'Point',
+                    coordinates: [longitude, latitude]  // Store [longitude, latitude]
+                },
+
+            },
+            { upsert: true, new: true }
+        );
+
+        // console.log(rider);
+
+        // Emit the rider's location to the frontend via WebSocket (io.emit)
+        io.emit('rider-location', rider);
+
+        return res.status(200).json({ message: 'Location received successfully' });
+    } catch (error) {
+        console.error('Error updating location:', error);
+        return res.status(500).json({ error: 'Failed to update location' });
+    }
+});
+
 // Define routes
 app.get('/rider', async (req, res) => {
     try {
@@ -268,7 +307,7 @@ app.get('/rider', async (req, res) => {
     }
 });
 
-app.get('/resturant',(req,res)=>{
+app.get('/resturant', (req, res) => {
     res.render('resturant')
 })
 
@@ -309,7 +348,7 @@ app.post('/Fetch-Current-Location', async (req, res) => {
 
         // Fetch address details using the provided latitude and longitude
         const addressResponse = await axios.get(
-            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU`
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34`
         );
 
         // Check if any results are returned
@@ -373,6 +412,68 @@ app.post('/Fetch-Current-Location', async (req, res) => {
     }
 });
 
+app.post("/geo-code-distance", async (req, res) => {
+    try {
+        const { pickup, dropOff } = req.body;
+
+        if (!pickup || !dropOff) {
+            return res.status(400).json({ message: "Pickup and DropOff addresses are required" });
+        }
+
+        // Geocode Pickup Location
+        const pickupResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
+            params: { address: pickup, key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34' },
+        });
+
+        if (pickupResponse.data.status !== "OK") {
+            return res.status(400).json({ message: "Invalid Pickup location" });
+        }
+        const pickupData = pickupResponse.data.results[0].geometry.location;
+
+        // Geocode Dropoff Location
+        const dropOffResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
+            params: { address: dropOff, key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34' },
+        });
+
+        if (dropOffResponse.data.status !== "OK") {
+            return res.status(400).json({ message: "Invalid Dropoff location" });
+        }
+        const dropOffData = dropOffResponse.data.results[0].geometry.location;
+
+        // Calculate Distance using Google Distance Matrix API
+        const distanceResponse = await axios.get("https://maps.googleapis.com/maps/api/distancematrix/json", {
+            params: {
+                origins: `${pickupData.lat},${pickupData.lng}`,
+                destinations: `${dropOffData.lat},${dropOffData.lng}`,
+                key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34',
+            },
+        });
+
+        if (distanceResponse.data.status !== "OK") {
+            return res.status(400).json({ message: "Failed to calculate distance" });
+        }
+
+        const distanceInfo = distanceResponse.data.rows[0].elements[0];
+
+        if (distanceInfo.status !== "OK") {
+            return res.status(400).json({ message: "Invalid distance calculation" });
+        }
+
+        const distanceInKm = distanceInfo.distance.value / 1000; // Convert meters to kilometers
+        const price = distanceInKm * 70; // ₹70 per km
+
+        return res.status(200).json({
+            pickupLocation: pickupData,
+            dropOffLocation: dropOffData,
+            distance: distanceInfo.distance.text,
+            duration: distanceInfo.duration.text,
+            price: `₹${price.toFixed(2)}`, // Show price with 2 decimal places
+        });
+    } catch (error) {
+        console.error("Error in geo-code-distance:", error);
+        return res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+});
 
 
 // Start the server

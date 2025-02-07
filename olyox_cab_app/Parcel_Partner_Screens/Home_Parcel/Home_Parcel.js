@@ -4,21 +4,31 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import OnlineStatusToggle from './OnlineStatusToggle';
+import UserProfileCard from './UserProfileCard';
+import WorkStatusCard from './WorkStatusCard';
+import * as Location from 'expo-location';
+import { useSocket } from '../../context/SocketContext';
+import { TouchableOpacity } from 'react-native';
+import NewOrder from '../Other_Parcel_Screens/New_Order/NewOrder';
 
 const { width } = Dimensions.get('window');
 const cardWidth = width < 768 ? (width - 48) / 2 : (width - 64) / 4;
 
 export default function Home_Parcel() {
+    const { socket, isSocketReady, isReconnecting, loading, error } = useSocket();
     const [userData, setUserData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [workStatus, setWorkStatus] = useState(null);
+    const [order, setOrder] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState(null);
-
+    const [location, setLocation] = useState(null);
+    const [errorMsg, setErrorMsg] = useState(null);
+    // console.log("isReconnecting",isReconnecting)
     const fetchUserData = async () => {
         try {
             const token = await AsyncStorage.getItem('auth_token_partner');
             if (!token) {
-                setError('No auth token found');
+                setErrorMsg('No auth token found');
                 return;
             }
 
@@ -29,24 +39,136 @@ export default function Home_Parcel() {
                 }
             );
             setUserData(response.data.partner);
-            setError(null);
+            setErrorMsg(null);
         } catch (error) {
-            setError(error.message);
+            setErrorMsg(error.message);
             console.error('Error fetching user details:', error);
+        }
+    };
+    // console.log(location)
+
+    useEffect(() => {
+        const getLocation = async () => {
+            if (!isSocketReady) {
+                console.log('Socket not connected, waiting...');
+                return;
+            }
+            console.log(workStatus?.status)
+            if (workStatus?.status !== 'online') {
+                console.log('Work status is not online, skipping location update');
+                return;
+            }
+
+            // Request permission for location
+
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                setErrorMsg('Permission to access location was denied');
+                return;
+            }
+
+            // Start tracking location every second
+            const interval = setInterval(async () => {
+                const { coords } = await Location.getCurrentPositionAsync({});
+                setLocation(coords);
+                sendLocationToServer(coords.latitude, coords.longitude);
+            }, 2510);
+
+            return () => clearInterval(interval);
+        };
+
+        if (isSocketReady) {
+            getLocation(); // Only run this function if socket is connected
+        }
+
+        // return () => {
+        //     if (isSocketReady) {
+        //         socket.off('rider-location');
+        //     }
+        // };
+    }, [workStatus]);
+
+    const sendLocationToServer = async (latitude, longitude) => {
+        const token = await AsyncStorage.getItem('auth_token_partner');
+        if (!token) return;
+
+        try {
+            const response = await fetch('http://192.168.1.9:9630/webhook/receive-location', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ latitude, longitude }),
+            });
+
+            const data = await response.json();
+            // console.log('Location data sent to server:', data);
+        } catch (error) {
+            console.error('Error sending location:', error);
         }
     };
 
     useEffect(() => {
+        // if (socket) {
+        //     socket.on('rider-location', (data) => {
+        //         console.log('Real-time location update:', data);
+        //         setLocation(data.location);
+        //     });
+        // }
+
+        // return () => {
+        //     socket.off('rider-location');
+        // };
+    }, [socket]);
+
+    const fetchWorkStatus = async () => {
+        try {
+            const token = await AsyncStorage.getItem('auth_token_partner');
+            if (!token) return;
+
+            const response = await axios.get(
+                'http://192.168.1.9:9630/api/v1/parcel/partner_work_status_details',
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+            setWorkStatus(response.data);
+        } catch (error) {
+            console.error('Error fetching work status:', error);
+        }
+    };
+
+
+    useEffect(() => {
         const loadData = async () => {
-            await fetchUserData();
-            setLoading(false);
+            await Promise.all([fetchUserData(), fetchWorkStatus()]);
         };
         loadData();
+
+        // Refresh work status every minute
+        const statusInterval = setInterval(fetchWorkStatus, 60000);
+        return () => clearInterval(statusInterval);
     }, []);
 
+
+    useEffect(() => {
+        console.log("socket", socket)
+        if (socket) {
+            socket.on('new_parcel_request', (data) => {
+                setOrder(data)
+                console.log('Real-time location update done:', data);
+            })
+        }
+    }, [socket])
+
+    const logout = async () => {
+        await AsyncStorage.removeItem('auth_token_partner')
+
+    }
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        await fetchUserData();
+        await Promise.all([fetchUserData(), fetchWorkStatus()]);
         setRefreshing(false);
     }, []);
 
@@ -54,60 +176,27 @@ export default function Home_Parcel() {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#2196F3" />
+                    <ActivityIndicator size="large" color="#ff0000" />
                     <Text style={styles.loadingText}>Loading your dashboard...</Text>
                 </View>
             </SafeAreaView>
         );
     }
 
-    if (error || !userData) {
+    if (errorMsg || !userData) {
         return (
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.errorContainer}>
-                    <Icon name="alert-circle-outline" size={80} color="#FF5252" />
+                    <Icon name="alert-circle-outline" size={80} color="#ff0000" />
                     <Text style={styles.errorTitle}>Oops!</Text>
                     <Text style={styles.errorText}>
-                        {error || 'Please login to continue'}
+                        {errorMsg || 'Please login to continue'}
                     </Text>
                 </View>
             </SafeAreaView>
         );
     }
 
-    if (!userData.isActive) {
-        return (
-            <SafeAreaView style={styles.safeArea}>
-                <ScrollView refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                }>
-
-                    <View style={styles.blockedContainer}>
-                        <Icon name="account-off" size={80} color="#FF5252" />
-                        <Text style={styles.blockedTitle}>Account Blocked</Text>
-                        <Text style={styles.blockedMessage}>
-                            Your account has been blocked by admin. Please contact support to reactivate your account.
-                        </Text>
-                    </View>
-                </ScrollView>
-            </SafeAreaView>
-        );
-    }
-
-    if (!userData.DocumentVerify) {
-        return (
-            <SafeAreaView style={styles.safeArea}>
-                <View style={styles.verificationContainer}>
-                    <Icon name="file-document-edit" size={80} color="#FFA000" />
-                    <Text style={styles.verificationTitle}>Documents Under Review</Text>
-                    <Text style={styles.verificationMessage}>
-                        Your documents are being verified. This process may take 24-48 hours.
-                        Thank you for your patience.
-                    </Text>
-                </View>
-            </SafeAreaView>
-        );
-    }
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -119,73 +208,61 @@ export default function Home_Parcel() {
             >
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.welcomeText}>Welcome Back!</Text>
-                    <Text style={styles.dateText}>{new Date().toLocaleDateString()}</Text>
-                </View>
-
-                {/* Vehicle Details Card */}
-                <View style={styles.card}>
-                    <View style={styles.cardHeader}>
-                        <Icon name="car" size={28} color="#2196F3" />
-                        <Text style={styles.cardTitle}>Vehicle Details</Text>
-                    </View>
-                    <View style={styles.vehicleDetails}>
-                        <View style={styles.detailRow}>
-                            <Icon name="car-side" size={24} color="#2196F3" />
-                            <View style={styles.detailTextContainer}>
-                                <Text style={styles.detailLabel}>Make & Model</Text>
-                                <Text style={styles.detailText}>{userData.bikeDetails.make} {userData.bikeDetails.model}</Text>
-                            </View>
-                        </View>
-                        <View style={styles.detailRow}>
-                            <Icon name="card-text" size={24} color="#2196F3" />
-                            <View style={styles.detailTextContainer}>
-                                <Text style={styles.detailLabel}>License Plate</Text>
-                                <Text style={styles.detailText}>{userData.bikeDetails.licensePlate}</Text>
-                            </View>
-                        </View>
-                        <View style={styles.detailRow}>
-                            <Icon name="calendar" size={24} color="#2196F3" />
-                            <View style={styles.detailTextContainer}>
-                                <Text style={styles.detailLabel}>Year</Text>
-                                <Text style={styles.detailText}>{userData.bikeDetails.year}</Text>
-                            </View>
-                        </View>
+                    <View style={styles.headerContent}>
+                        <Text style={styles.welcomeText}>Welcome Back!</Text>
+                        <Text style={styles.nameText}>{userData.name}</Text>
+                        <Text style={styles.dateText}>{new Date().toLocaleDateString()}</Text>
                     </View>
                 </View>
 
+                {/* Online Status Toggle */}
+                <OnlineStatusToggle workStatus={workStatus} onStatusChange={fetchWorkStatus} />
+
+                {/* User Profile Card */}
+                <WorkStatusCard workStatus={workStatus} />
                 {/* Stats Grid */}
                 <View style={styles.statsGrid}>
                     <View style={[styles.statsCard, { width: cardWidth }]}>
-                        <View style={[styles.iconContainer, { backgroundColor: '#E8F5E9' }]}>
-                            <Icon name="package-variant" size={32} color="#4CAF50" />
+                        <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
+                            <Icon name="package-variant" size={32} color="#ff0000" />
                         </View>
-                        <Text style={styles.statsNumber}>0</Text>
-                        <Text style={styles.statsLabel}>New Orders</Text>
+                        <Text style={styles.statsNumber}>{workStatus?.todayOrders || 0}</Text>
+                        <Text style={styles.statsLabel}>Today's Orders</Text>
                     </View>
                     <View style={[styles.statsCard, { width: cardWidth }]}>
-                        <View style={[styles.iconContainer, { backgroundColor: '#E3F2FD' }]}>
-                            <Icon name="check-circle" size={32} color="#2196F3" />
+                        <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
+                            <Icon name="check-circle" size={32} color="#ff0000" />
                         </View>
-                        <Text style={styles.statsNumber}>0</Text>
-                        <Text style={styles.statsLabel}>Completed</Text>
+                        <Text style={styles.statsNumber}>{workStatus?.completedOrders || 0}</Text>
+                        <Text style={styles.statsLabel}>Total Completed</Text>
                     </View>
                     <View style={[styles.statsCard, { width: cardWidth }]}>
-                        <View style={[styles.iconContainer, { backgroundColor: '#FFF3E0' }]}>
-                            <Icon name="wallet" size={32} color="#FFA000" />
+                        <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
+                            <Icon name="wallet" size={32} color="#ff0000" />
                         </View>
-                        <Text style={styles.statsNumber}>₹{userData.amountPaid}</Text>
-                        <Text style={styles.statsLabel}>Earnings</Text>
+                        <Text style={styles.statsNumber}>₹{userData.amountPaid || 0}</Text>
+                        <Text style={styles.statsLabel}>Total Earnings</Text>
                     </View>
                     <View style={[styles.statsCard, { width: cardWidth }]}>
-                        <View style={[styles.iconContainer, { backgroundColor: '#F3E5F5' }]}>
-                            <Icon name="account-group" size={32} color="#9C27B0" />
+                        <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
+                            <Icon name="star" size={32} color="#ff0000" />
                         </View>
-                        <Text style={styles.statsNumber}>{userData.her_referenced.length}</Text>
-                        <Text style={styles.statsLabel}>Referrals</Text>
+                        <Text style={styles.statsNumber}>{workStatus?.rating || '4.5'}</Text>
+                        <Text style={styles.statsLabel}>Rating</Text>
                     </View>
                 </View>
+                <UserProfileCard userData={userData} />
+                <TouchableOpacity onPress={logout}>
+                    <Text>Logout</Text>
+                </TouchableOpacity>
+
+                {/* Work Status Card */}
+
+
             </ScrollView>
+            {order && (
+                <NewOrder order={order} onClose={()=>setOrder(null)} open={true} />
+            )}
         </SafeAreaView>
     );
 }
@@ -193,26 +270,35 @@ export default function Home_Parcel() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#f8f9fa',
     },
     container: {
         flex: 1,
     },
     header: {
-        padding: 16,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
+        backgroundColor: '#ff0000',
+        paddingTop: 20,
+        paddingBottom: 30,
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+    },
+    headerContent: {
+        padding: 20,
     },
     welcomeText: {
+        fontSize: 16,
+        color: '#ffe6e6',
+        marginBottom: 4,
+    },
+    nameText: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#333',
+        color: '#ffffff',
+        marginBottom: 8,
     },
     dateText: {
         fontSize: 14,
-        color: '#666',
-        marginTop: 4,
+        color: '#ffe6e6',
     },
     loadingContainer: {
         flex: 1,
@@ -235,96 +321,14 @@ const styles = StyleSheet.create({
     errorTitle: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#FF5252',
+        color: '#ff0000',
         marginTop: 16,
     },
-    blockedContainer: {
-        flex: 1,
-        backgroundColor: '#ffebee',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    blockedTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#FF5252',
-        marginTop: 20,
-    },
-    blockedMessage: {
+    errorText: {
         fontSize: 16,
-        color: '#d32f2f',
-        textAlign: 'center',
-        marginTop: 10,
-    },
-    verificationContainer: {
-        flex: 1,
-        backgroundColor: '#fff8e1',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    verificationTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#FFA000',
-        marginTop: 20,
-    },
-    verificationMessage: {
-        fontSize: 16,
-        color: '#ff6f00',
-        textAlign: 'center',
-        marginTop: 10,
-        lineHeight: 24,
-    },
-    card: {
-        backgroundColor: 'white',
-        margin: 16,
-        padding: 16,
-        borderRadius: 16,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 4,
-            },
-        }),
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    cardTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#333',
-        marginLeft: 12,
-    },
-    vehicleDetails: {
-        gap: 16,
-    },
-    detailRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    detailTextContainer: {
-        marginLeft: 12,
-        flex: 1,
-    },
-    detailLabel: {
-        fontSize: 12,
         color: '#666',
-        marginBottom: 2,
-    },
-    detailText: {
-        fontSize: 16,
-        color: '#333',
-        fontWeight: '500',
+        textAlign: 'center',
+        marginTop: 8,
     },
     statsGrid: {
         flexDirection: 'row',
@@ -334,7 +338,7 @@ const styles = StyleSheet.create({
     },
     statsCard: {
         backgroundColor: 'white',
-        padding: 16,
+        padding: 8,
         margin: 8,
         borderRadius: 16,
         alignItems: 'center',
@@ -351,8 +355,8 @@ const styles = StyleSheet.create({
         }),
     },
     iconContainer: {
-        width: 56,
-        height: 56,
+        width: 30,
+        height: 30,
         borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
@@ -367,11 +371,5 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#666',
         marginTop: 4,
-    },
-    errorText: {
-        fontSize: 16,
-        color: '#666',
-        textAlign: 'center',
-        marginTop: 8,
     },
 });
