@@ -15,6 +15,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { ActivityIndicator, View } from 'react-native';  // Import ActivityIndicator
 import Home_Parcel from './Parcel_Partner_Screens/Home_Parcel/Home_Parcel';
+import OngoingOrderScreen from './Parcel_Partner_Screens/Other_Parcel_Screens/Ongoing/OngoingOrderScreen';
+import { LocationProvider } from './Parcel_Partner_Screens/Other_Parcel_Screens/Ongoing/LocationContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -62,6 +64,8 @@ export default function App() {
     <Provider store={store}>
       <PaperProvider>
         <SocketProvider>
+          <LocationProvider>
+            
           <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaProvider>
               <NavigationContainer>
@@ -70,16 +74,20 @@ export default function App() {
                   {userType === null ? (
                     <Stack.Screen name="Home" options={{ headerShown: false }} component={OnboardingScreen} />
                   ) : userType === 'parcel' ? (
-                    <Stack.Screen name="parcelHome" options={{ headerShown: false }} component={Home_Parcel} />
+                    <Stack.Screen name="parcelHome" options={{ headerShown: false }} component={OngoingOrderScreen} />
                   ) : userType === 'CAB' ? (
                     <Stack.Screen name="cabHome" options={{ headerShown: false }} component={start} />
                   ) : null}
+
+
+                  <Stack.Screen name="Ongoing_Order" options={{ headerShown: false }} component={OngoingOrderScreen} />
                   <Stack.Screen name="start" options={{ headerShown: false }} component={start} />
                   <Stack.Screen name="collect_money" component={MoneyPage} />
                 </Stack.Navigator>
               </NavigationContainer>
             </SafeAreaProvider>
           </GestureHandlerRootView>
+          </LocationProvider>
         </SocketProvider>
       </PaperProvider>
     </Provider>

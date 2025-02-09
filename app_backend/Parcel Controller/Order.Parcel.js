@@ -116,17 +116,27 @@ exports.request_of_parcel = async (req, res) => {
 
         // Check delivery boys' online status
         const availableBoys = [];
+        const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
 
         for (const boy of findBoysNearPickup) {
             const checkStatus = await Parcel_User_Login_Status.findOne({
                 riderId: boy.riderId._id,
+                date: today,
                 status: "online",
             });
-
-            if (checkStatus) {
+        
+            if (!checkStatus) continue; // Skip if checkStatus is null
+        
+            const findRiderIsAvailableOrNot = await Parcel_Bike_Register.findOne({
+                _id: checkStatus.riderId,
+                is_on_order: false
+            });
+        console.log(findRiderIsAvailableOrNot)
+            if (findRiderIsAvailableOrNot) {
                 availableBoys.push(boy);
             }
         }
+        
 
         const availableRidersData = [];
         for (const item of availableBoys) {
@@ -159,6 +169,7 @@ exports.request_of_parcel = async (req, res) => {
                     customerId: userData._id,
                     customerName,
                     customerPhone,
+                    id:newParcelRequest?._id
                 });
             } else {
                 console.log(`No active socket found for rider ${rider.riderId}`);

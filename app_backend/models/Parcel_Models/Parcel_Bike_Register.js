@@ -99,6 +99,10 @@ const ParcelBikeRegisterSchema = new Schema({
     },
     type:{
         type:String
+    },
+    is_on_order:{
+        type:Boolean,
+        default:false
     }
 
 

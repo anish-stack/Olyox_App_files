@@ -15,6 +15,7 @@ const tiffin = require('./routes/Tiffin/Tiffin.routes');
 const parcel = require('./routes/Parcel/Parcel.routes');
 const Parcel_boy_Location = require('./models/Parcel_Models/Parcel_Boys_Location');
 const Protect = require('./middleware/Auth');
+const { update_parcel_request } = require('./driver');
 require('dotenv').config();
 
 const app = express();
@@ -240,6 +241,44 @@ io.on('connection', (socket) => {
             })
         }
     })
+
+
+// Parcel Io Connection
+socket.on("driver_parcel_accept", async (data) => {
+    try {
+        if (!data || !data.order_id || !data.driver_id) {
+            return console.log("Invalid data received:", data);
+        }
+
+        const response = await update_parcel_request(io, data, driverSocketMap);
+
+        if (response.status === true) {
+            console.log(response.message);
+            // Send success response back to driver
+            const driverSocketId = driverSocketMap[data.driver_id];
+            if (driverSocketId) {
+                io.to(driverSocketId).emit("order_update_success", {
+                    status: true,
+                    message: "Order successfully accepted",
+                    order_id: data.order_id,
+                });
+            }
+        } else {
+            console.log(response.error);
+            // Send failure response back to driver
+            const driverSocketId = driverSocketMap[data.driver_id];
+            if (driverSocketId) {
+                io.to(driverSocketId).emit("order_update_failed", {
+                    status: false,
+                    message: response.message || "Failed to accept order",
+                });
+            }
+        }
+    } catch (error) {
+        console.error("Error processing driver_parcel_accept:", error.message);
+    }
+});
+
 
 
 

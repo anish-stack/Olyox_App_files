@@ -1,4 +1,5 @@
 const Parcel_Bike_Register = require("../models/Parcel_Models/Parcel_Bike_Register");
+const Parcel_Request = require("../models/Parcel_Models/Parcel_Request");
 const Parcel_User_Login_Status = require("../models/Parcel_Models/Parcel_User_Login_Status");
 const { uploadBufferImage } = require("../utils/aws.uploader");
 const generateOtp = require("../utils/Otp.Genreator");
@@ -265,28 +266,40 @@ exports.verifyOtp = async (req, res) => {
     }
 };
 
-
 exports.details = async (req, res) => {
     try {
-        // Retrieve userId from the request object, assuming it's populated by middleware (like authentication middleware)
-        const userId = req.user.userId || {};
+        // Retrieve userId from the request object, assuming it's populated by middleware
+        const userId = req.user?.userId;
 
-        const partner = await Parcel_Bike_Register.findOne({ _id: userId });
-
-        // If the partner is not found, send a 404 response
-        if (!partner) {
-            return res.status(404).json({ message: 'Partner not found' });
+        // Check if userId exists
+        if (!userId) {
+            return res.status(400).json({ message: "User ID is required" });
         }
 
-        // Return the partner details
-        return res.status(200).json({ success: true, partner });
-    } catch (error) {
-        console.error('Error fetching partner details:', error);
+        // Find the partner
+        const partner = await Parcel_Bike_Register.findOne({ _id: userId });
 
-        // Send a 500 internal server error if something goes wrong
-        return res.status(500).json({ message: 'Server error', error: error.message });
+        // If partner not found, return error
+        if (!partner) {
+            return res.status(404).json({ message: "Partner not found" });
+        }
+
+        // Fetch the latest order for this partner
+        const latestOrder = await Parcel_Request.findOne({
+            driverId: partner._id
+        })
+        .sort({ createdAt: -1 })  // Sort by latest order first
+        .limit(1);  // Only fetch one latest order
+
+        // Return response
+        return res.status(200).json({ success: true, partner, latestOrder });
+
+    } catch (error) {
+        console.error("Error fetching partner details:", error);
+        return res.status(500).json({ message: "Server error", error: error.message });
     }
 };
+
 
 exports.manage_offline_online = async (req, res) => {
     try {

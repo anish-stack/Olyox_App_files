@@ -127,14 +127,12 @@ const ParcelBooking = () => {
           Authorization: `Bearer ${token}`,
         },
       })
-      console.log(data)
-      Alert.alert("Success", "Booking confirmed!")
+      setLoading(true)
+      console.log('data',data)
     } catch (error) {
       console.log(error?.response?.data || "Error booking parcel")
       setError("Failed to book parcel. Please try again.")
-    } finally {
-      setLoading(false)
-    }
+    } 
   }
 
   if (loading) {

@@ -59,7 +59,7 @@ const ParcelRequestSchema = new Schema({
         },
         description: {
             type: String,
-           
+
         }
     },
     status: {
@@ -80,8 +80,34 @@ const ParcelRequestSchema = new Schema({
         type: Date,
         default: Date.now
     },
-    totalKm:{
-        type:Number,
+    totalKm: {
+        type: Number,
+    },
+    driver_accept: {
+        type: Boolean,
+        default: false
+    },
+    driver_accept_time: {
+        type: Date,
+    },
+    driver_deliver_time: {
+        type: Date
+    },
+    driver_rating: {
+        type: Date
+    },
+    customerName: {
+        type: String
+    },
+    customerPhone: {
+        type: String
+    },
+    money_collected: {
+        type: Number
+    },
+    money_collected_mode: {
+        type: String,
+
     },
     updatedAt: {
         type: Date,

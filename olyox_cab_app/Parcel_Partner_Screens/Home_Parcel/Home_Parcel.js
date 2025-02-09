@@ -135,7 +135,7 @@ export default function Home_Parcel() {
             );
             setWorkStatus(response.data);
         } catch (error) {
-            console.error('Error fetching work status:', error);
+            console.error('Error fetching work status:', error.response.data);
         }
     };
 
@@ -261,7 +261,7 @@ export default function Home_Parcel() {
 
             </ScrollView>
             {order && (
-                <NewOrder order={order} onClose={()=>setOrder(null)} open={true} />
+                <NewOrder location={location} order={order} onClose={()=>setOrder(null)} driverId={userData?._id} open={true} />
             )}
         </SafeAreaView>
     );
