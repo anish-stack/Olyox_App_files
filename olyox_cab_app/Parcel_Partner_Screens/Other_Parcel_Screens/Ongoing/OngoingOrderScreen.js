@@ -11,6 +11,7 @@ import styles from "./Styles"
 import MapComponent from "./MapComponent"
 import OrderDetails from "./OrderDetails"
 import ActionButtons from "./ActionButtons"
+import { useSocket } from "../../../context/SocketContext"
 
 const LOCATION_TASK_NAME = "background-location-task"
 
@@ -22,6 +23,8 @@ const OngoingOrderScreen = () => {
   const [isNearCustomer, setIsNearCustomer] = useState(false)
   const [hasReached, setHasReached] = useState(false)
   const route = useRoute()
+    const { socket, isSocketReady } = useSocket();
+  
   const navigation = useNavigation()
   const { order, location } = route.params || {}
 
@@ -37,7 +40,7 @@ const OngoingOrderScreen = () => {
             const token = await AsyncStorage.getItem("auth_token_partner")
             if (!token) throw new Error("No auth token found")
 
-            const response = await axios.get("http://192.168.1.9:9630/api/v1/parcel/user-details", {
+            const response = await axios.get("http://192.168.1.8:9630/api/v1/parcel/user-details", {
               headers: { Authorization: `Bearer ${token}` },
             })
             if (response.data.latestOrder) {
@@ -121,7 +124,10 @@ const OngoingOrderScreen = () => {
   }
 
   const handleMarkReached = () => {
-    setHasReached(true)
+    if(socket){
+      socket.emit('driver_reached', orderData)
+      setHasReached(true)
+    }
     // Here you would typically update the server about the status change
   }
 

@@ -109,6 +109,26 @@ const ParcelRequestSchema = new Schema({
         type: String,
 
     },
+    is_parcel_delivered:{
+        type:Boolean,
+        default:false
+    },
+    is_driver_reached:{
+        type:Boolean,
+    },
+    is_driver_reached_time:{
+        type:Date,
+    },
+    is_driver_reached_at_deliver_place:{
+        type:Boolean,
+    },
+    is_driver_reached_at_deliver_place_time:{
+        type:Date,
+    },
+    is_parcel_picked:{
+        type:Boolean,
+        default:false
+    },
     updatedAt: {
         type: Date,
         default: Date.now

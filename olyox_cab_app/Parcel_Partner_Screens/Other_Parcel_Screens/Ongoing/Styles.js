@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#B5100C",
+    // backgroundColor: "#B5100C",
   },
   loadingText: {
     marginTop: 10,
@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#B5100C",
+    // backgroundColor: "#B5100C",
     padding: 20,
   },
   errorText: {
@@ -158,6 +158,21 @@ const styles = StyleSheet.create({
     color: "#333",
     fontWeight: "bold",
   },
+  deliveredMessageContainer: {
+    backgroundColor: "#d4edda", // Light green background
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: "#155724", // Dark green border
+  },
+  deliveredMessage: {
+    color: "#155724", // Dark green text
+    fontSize: 16,
+    fontWeight: "bold",
+  },
   actionButton: {
     backgroundColor: "#B5100C",
     padding: 16,
@@ -184,6 +199,61 @@ const styles = StyleSheet.create({
   },
   deliveredButton: {
     backgroundColor: "#B5100C",
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)", // Transparent black background
+  },
+  modalContent: {
+    width: "90%",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 20,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5, // Android shadow
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#333",
+  },
+  input: {
+    width: "100%",
+    height: 40,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    marginBottom: 15,
+    fontSize: 16,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 15,
+  },
+  paymentButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 5,
+    backgroundColor: "#e0e0e0",
+    alignItems: "center",
+    marginHorizontal: 5,
+  },
+  selectedPayment: {
+    backgroundColor: "#0d6efd", // Blue color for selected payment mode
+  },
+  buttonText: {
+    color: "#333",
+    fontWeight: "bold",
   },
 })
 

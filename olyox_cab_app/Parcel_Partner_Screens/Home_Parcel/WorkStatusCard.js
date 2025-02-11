@@ -5,6 +5,8 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 const WorkStatusCard = ({ workStatus }) => {
     if (!workStatus) return null;
 
+    
+
     return (
         <View style={styles.container}>
             <View style={styles.card}>

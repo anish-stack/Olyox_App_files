@@ -1,9 +1,10 @@
 import io from "socket.io-client";
 
-const SOCKET_URL = "http://192.168.1.9:9630";
+const SOCKET_URL = "http://192.168.1.8:9630";
 let socket; // Singleton socket instance
 
 export const initializeSocket = ({ userType = "user", userId = 1 }) => {
+  console.log("userId",userId)
   if (!socket) {
     socket = io(SOCKET_URL, {
       transports: ["websocket"],

@@ -130,7 +130,7 @@ const OnboardingScreen = () => {
   
     try {
       const response = await axios.post(
-        'http://192.168.1.9:9630/api/v1/parcel/register_parcel_partner',
+        'http://192.168.1.8:9630/api/v1/parcel/register_parcel_partner',
         dataToSend,
         {
           headers: {

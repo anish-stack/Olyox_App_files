@@ -1,6 +1,4 @@
-
-
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,100 +10,106 @@ import {
   FlatList,
   Alert,
   ActivityIndicator,
-} from "react-native"
-import axios from "axios"
-import Icon from "react-native-vector-icons/FontAwesome5"
-import { tokenCache } from "../../Auth/cache"
+} from "react-native";
+import axios from "axios";
+import Icon from "react-native-vector-icons/FontAwesome5";
+import { tokenCache } from "../../Auth/cache";
+import { useSocket } from "../../context/SocketContext";
+import { initializeSocket } from "../../services/socketService";
+import { find_me } from "../../utils/helpers";
 
 const ParcelBooking = () => {
-  const [pickup, setPickup] = useState("")
-  const [dropoff, setDropoff] = useState("")
-  const [weight, setWeight] = useState("")
-  const [length, setLength] = useState("")
-  const [width, setWidth] = useState("")
-  const [height, setHeight] = useState("")
-  const [etaData, setEtaData] = useState(null)
-  const [suggestions, setSuggestions] = useState([])
-  const [customerName, setCustomerName] = useState("")
-  const [customerPhone, setCustomerPhone] = useState("")
-  const [activeInput, setActiveInput] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [pickup, setPickup] = useState("");
+  const [dropoff, setDropoff] = useState("");
+  const [weight, setWeight] = useState("");
+  const [length, setLength] = useState("5");
+  const [width, setWidth] = useState("4");
+  const [height, setHeight] = useState("5");
+  const [etaData, setEtaData] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [customerName, setCustomerName] = useState("aa");
+  const [customerPhone, setCustomerPhone] = useState("789654130");
+  const [activeInput, setActiveInput] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [riderFound, setRiderFound] = useState(false);
+  const socket = useSocket();
 
   const fetchSuggestions = useCallback(async (input) => {
     if (!input) {
-      setSuggestions([])
-      return
+      setSuggestions([]);
+      return;
     }
     try {
       const { data } = await axios.get("https://api.srtutorsbureau.com/autocomplete", {
         params: { input },
-      })
-      setSuggestions(data)
+      });
+      setSuggestions(data);
     } catch (err) {
-      console.error(err)
-      setError("Failed to fetch location suggestions. Please try again.")
+      console.error(err);
+      setError("Failed to fetch location suggestions. Please try again.");
     }
-  }, [])
+  }, []);
 
   const handleLocationSelect = (location) => {
     if (activeInput === "pickup") {
-      setPickup(location)
+      setPickup(location);
     } else {
-      setDropoff(location)
+      setDropoff(location);
     }
-    setSuggestions([])
-    setActiveInput(null)
-  }
+    setSuggestions([]);
+    setActiveInput(null);
+  };
 
   const findDistanceAndEtaOFPriceAndTime = async () => {
-    // setLoading(true)
-    setError("")
+    setError("");
+    setLoading(true);
     try {
-      const { data } = await axios.post("http://192.168.1.9:9630/geo-code-distance", {
-        pickup: pickup,
+      const { data } = await axios.post("http://192.168.1.8:9630/geo-code-distance", {
+        pickup,
         dropOff: dropoff,
-      })
-      setEtaData(data)
+      });
+      setEtaData(data);
     } catch (error) {
-      console.log(error?.response?.data || "Error fetching distance & ETA")
-      setError("Failed to calculate distance and ETA. Please try again.")
+      console.log(error?.response?.data || "Error fetching distance & ETA");
+      setError("Failed to calculate distance and ETA. Please try again.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     if (pickup && dropoff) {
       const delayDebounceFn = setTimeout(() => {
-        findDistanceAndEtaOFPriceAndTime()
-      }, 3000)
+        findDistanceAndEtaOFPriceAndTime();
+      }, 3000);
 
-      return () => clearTimeout(delayDebounceFn)
+      return () => clearTimeout(delayDebounceFn);
     }
-  }, [pickup, dropoff, findDistanceAndEtaOFPriceAndTime]) // Added findDistanceAndEtaOFPriceAndTime to dependencies
+  }, [pickup, dropoff]);
 
   const validateInputs = () => {
     if (!pickup || !dropoff || !weight || !length || !width || !height || !customerName || !customerPhone) {
-      setError("Please fill in all fields")
-      return false
+      setError("Please fill in all fields");
+      return false;
     }
     if (!/^[a-zA-Z\s]+$/.test(customerName)) {
-      setError("Please enter a valid name")
-      return false
+      setError("Please enter a valid name");
+      return false;
     }
     if (!/^\d{10}$/.test(customerPhone)) {
-      setError("Please enter a valid 10-digit phone number")
-      return false
+      setError("Please enter a valid 10-digit phone number");
+      return false;
     }
-    return true
-  }
+    return true;
+  };
 
   const handleBookNow = async () => {
-    if (!validateInputs()) return
+    if (!validateInputs()) return;
 
-    setLoading(true)
-    setError("")
+    setLoading(true);
+    setError("");
+
     const payload = {
       pickup,
       dropoff,
@@ -115,25 +119,71 @@ const ParcelBooking = () => {
       height,
       customerName,
       customerPhone,
-    }
-    const gmail_token = await tokenCache.getToken("auth_token")
-    const db_token = await tokenCache.getToken("auth_token_db")
-    const token = db_token || gmail_token
+    };
+
+    const gmail_token = await tokenCache.getToken("auth_token");
+    const db_token = await tokenCache.getToken("auth_token_db");
+    const token = db_token || gmail_token;
 
     try {
-      const { data } = await axios.post("http://192.168.1.9:9630/api/v1/parcel/request_of_parcel", payload, {
+      const { data } = await axios.post("http://192.168.1.8:9630/api/v1/parcel/request_of_parcel", payload, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-      })
-      setLoading(true)
-      console.log('data',data)
+      });
+      console.log("Booking successful:", data);
+      if (data.availableRiders.length === 0) {
+        setError("No available riders");
+        setLoading(false)
+      }
     } catch (error) {
-      console.log(error?.response?.data || "Error booking parcel")
-      setError("Failed to book parcel. Please try again.")
-    } 
-  }
+      console.log(error?.response?.data || "Error booking parcel");
+      setError("Failed to book parcel. Please try again.");
+    } finally {
+      // setLoading(false);
+    }
+  };
+
+  const redirectIfPartnerAccept = () => {
+    console.log("redirectIfPartnerAccept")
+    if (socket) {
+      const orderAcceptedHandler = (data) => {
+        console.log("Rider accepted order:", data);
+        setLoading(false);
+        setRiderFound(true);
+      };
+      socket.on("order_accepted_by_rider", orderAcceptedHandler);
+
+      return () => {
+        socket.off("order_accepted_by_rider", orderAcceptedHandler); // Cleanup
+      };
+    }
+  };
+
+  useEffect(() => {
+    const initialize = async () => {
+      const data = await find_me();
+      console.log(data.user._id)
+      initializeSocket({ userId: data.user._id });
+      const cleanup = redirectIfPartnerAccept();
+      return cleanup; // Proper cleanup of socket listeners
+    };
+    initialize();
+  }, [socket]);
+  useEffect(() => {
+    // Listening for the event
+    socket.on("order_accepted_by_rider", (data) => {
+      console.log("Order accepted by rider:", data);
+      alert(`Order accepted by rider: ${JSON.stringify(data)}`);
+    });
+
+    return () => {
+      socket.off("order_accepted_by_rider"); // Cleanup listener on unmount
+    };
+  }, []);
+  console.log("socket", socket.id)
+
 
   if (loading) {
     return (

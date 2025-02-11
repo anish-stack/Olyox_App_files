@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const Protect = require('../../middleware/Auth');
 const { register_parcel_partner, login, verifyOtp, resendOtp, details, partner_work_status, manage_offline_online } = require('../../Parcel Controller/Register_Partner');
-const { request_of_parcel } = require('../../Parcel Controller/Order.Parcel');
+const { request_of_parcel, my_parcel, single_my_parcel, my_parcel_driver, single_my_parcels } = require('../../Parcel Controller/Order.Parcel');
 
 const parcel = express.Router();
 
@@ -16,6 +16,10 @@ parcel.post('/login_parcel_partner', login)
 parcel.post('/login_parcel_otp_verify', verifyOtp)
 parcel.post('/login_parcel_otp_resend', resendOtp)
 parcel.get('/user-details', Protect,details)
+parcel.get('/my_parcel_user-details', Protect,my_parcel)
+parcel.get('/single_my_parcel',single_my_parcels)
+parcel.get('/single_my_parcel_user-details', Protect,single_my_parcel)
+parcel.get('/my_parcel_driver-details', Protect,my_parcel_driver)
 parcel.post('/manage_offline_online', Protect,manage_offline_online)
 parcel.get('/partner_work_status_details', Protect,partner_work_status)
 

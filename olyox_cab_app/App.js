@@ -17,6 +17,8 @@ import { ActivityIndicator, View } from 'react-native';  // Import ActivityIndic
 import Home_Parcel from './Parcel_Partner_Screens/Home_Parcel/Home_Parcel';
 import OngoingOrderScreen from './Parcel_Partner_Screens/Other_Parcel_Screens/Ongoing/OngoingOrderScreen';
 import { LocationProvider } from './Parcel_Partner_Screens/Other_Parcel_Screens/Ongoing/LocationContext';
+import All_Orders from './Parcel_Partner_Screens/All_Orders/All_Orders';
+import OrderDetails from './Parcel_Partner_Screens/All_Orders/OrderDetails';
 
 const Stack = createNativeStackNavigator();
 
@@ -31,7 +33,7 @@ export default function App() {
       if (token) {
         try {
           const response = await axios.get(
-            'http://192.168.1.9:9630/api/v1/parcel/user-details',  // Replace with your API endpoint
+            'http://192.168.1.8:9630/api/v1/parcel/user-details',  // Replace with your API endpoint
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -74,13 +76,15 @@ export default function App() {
                   {userType === null ? (
                     <Stack.Screen name="Home" options={{ headerShown: false }} component={OnboardingScreen} />
                   ) : userType === 'parcel' ? (
-                    <Stack.Screen name="parcelHome" options={{ headerShown: false }} component={OngoingOrderScreen} />
+                    <Stack.Screen name="parcelHome" options={{ headerShown: false }} component={Home_Parcel} />
                   ) : userType === 'CAB' ? (
                     <Stack.Screen name="cabHome" options={{ headerShown: false }} component={start} />
                   ) : null}
 
 
                   <Stack.Screen name="Ongoing_Order" options={{ headerShown: false }} component={OngoingOrderScreen} />
+                  <Stack.Screen name="All_Orders_parcel" options={{ headerShown: true,title:"All Orders" }} component={All_Orders} />
+                  <Stack.Screen name="Order_View" options={{ headerShown: false,title:"Order" }} component={OrderDetails} />
                   <Stack.Screen name="start" options={{ headerShown: false }} component={start} />
                   <Stack.Screen name="collect_money" component={MoneyPage} />
                 </Stack.Navigator>

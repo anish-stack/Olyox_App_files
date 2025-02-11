@@ -15,7 +15,7 @@ const tiffin = require('./routes/Tiffin/Tiffin.routes');
 const parcel = require('./routes/Parcel/Parcel.routes');
 const Parcel_boy_Location = require('./models/Parcel_Models/Parcel_Boys_Location');
 const Protect = require('./middleware/Auth');
-const { update_parcel_request } = require('./driver');
+const { update_parcel_request, mark_reached, mark_pick, mark_deliver, mark_cancel } = require('./driver');
 require('dotenv').config();
 
 const app = express();
@@ -50,6 +50,7 @@ app.use(cookies_parser());
 const userSocketMap = new Map();
 const driverSocketMap = new Map();
 
+console.log("userSocketMap", userSocketMap)
 
 app.set('driverSocketMap', driverSocketMap)
 // Socket.IO connection log
@@ -243,41 +244,184 @@ io.on('connection', (socket) => {
     })
 
 
-// Parcel Io Connection
-socket.on("driver_parcel_accept", async (data) => {
-    try {
-        if (!data || !data.order_id || !data.driver_id) {
-            return console.log("Invalid data received:", data);
-        }
-
-        const response = await update_parcel_request(io, data, driverSocketMap);
-
-        if (response.status === true) {
-            console.log(response.message);
-            // Send success response back to driver
-            const driverSocketId = driverSocketMap[data.driver_id];
-            if (driverSocketId) {
-                io.to(driverSocketId).emit("order_update_success", {
-                    status: true,
-                    message: "Order successfully accepted",
-                    order_id: data.order_id,
-                });
+    // Parcel Io Connection
+    socket.on("driver_parcel_accept", async (data) => {
+        try {
+            if (!data || !data.order_id || !data.driver_id) {
+                return console.log("Invalid data received:", data);
             }
-        } else {
-            console.log(response.error);
-            // Send failure response back to driver
-            const driverSocketId = driverSocketMap[data.driver_id];
-            if (driverSocketId) {
-                io.to(driverSocketId).emit("order_update_failed", {
-                    status: false,
-                    message: response.message || "Failed to accept order",
-                });
+
+            const response = await update_parcel_request(io, data, driverSocketMap, userSocketMap);
+
+            if (response.status === true) {
+                console.log(response.message);
+                // Send success response back to driver
+                const driverSocketId = driverSocketMap[data.driver_id];
+                if (driverSocketId) {
+                    io.to(driverSocketId).emit("order_update_success", {
+                        status: true,
+                        message: "Order successfully accepted",
+                        order_id: data.order_id,
+                    });
+                }
+            } else {
+                console.log(response.error);
+                // Send failure response back to driver
+                const driverSocketId = driverSocketMap[data.driver_id];
+                if (driverSocketId) {
+                    io.to(driverSocketId).emit("order_update_failed", {
+                        status: false,
+                        message: response.message || "Failed to accept order",
+                    });
+                }
             }
+        } catch (error) {
+            console.error("Error processing driver_parcel_accept:", error.message);
         }
-    } catch (error) {
-        console.error("Error processing driver_parcel_accept:", error.message);
-    }
-});
+    });
+
+    socket.on('driver_reached', async (data) => {
+        console.log("driver_reached",data)
+        try {
+            if (!data || !data._id || !data.driverId) {
+                return console.log("Invalid data received:", data);
+            }
+
+            const response = await mark_reached(io, data, driverSocketMap, userSocketMap);
+
+            if (response.status === true) {
+                console.log(response.message);
+                // Send success response back to driver
+                const driverSocketId = driverSocketMap[data.driver_id];
+                if (driverSocketId) {
+                    io.to(driverSocketId).emit("order_mark_success", {
+                        status: true,
+                        message: "Order successfully accepted",
+                        order_id: data.order_id,
+                    });
+                }
+            } else {
+                console.log(response.error);
+                // Send failure response back to driver
+                const driverSocketId = driverSocketMap[data.driver_id];
+                if (driverSocketId) {
+                    io.to(driverSocketId).emit("order_update_failed", {
+                        status: false,
+                        message: response.message || "Failed to accept order",
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error processing driver_parcel_accept:", error.message);
+        }
+    })
+    socket.on('mark_pick', async (data) => {
+        console.log("mark_pick",data)
+        try {
+            if (!data || !data._id || !data.driverId) {
+                return console.log("Invalid data received:", data);
+            }
+
+            const response = await mark_pick(io, data, driverSocketMap, userSocketMap);
+
+            if (response.status === true) {
+                console.log(response.message);
+                // Send success response back to driver
+                const driverSocketId = driverSocketMap[data.driver_id];
+                if (driverSocketId) {
+                    io.to(driverSocketId).emit("mark_pick_driver", {
+                        status: true,
+                        message: "Order successfully accepted",
+                        order_id: data.order_id,
+                    });
+                }
+            } else {
+                console.log(response.error);
+                // Send failure response back to driver
+                const driverSocketId = driverSocketMap[data.driver_id];
+                if (driverSocketId) {
+                    io.to(driverSocketId).emit("order_update_failed", {
+                        status: false,
+                        message: response.message || "Failed to accept order",
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error processing driver_parcel_accept:", error.message);
+        }
+    })
+    socket.on('mark_deliver', async (data,moneyWriteAble,mode) => {
+        console.log("mark_deliver",data)
+        try {
+            if (!data || !data._id || !data.driverId) {
+                return console.log("Invalid data received:", data);
+            }
+
+            const response = await mark_deliver(io, data, driverSocketMap, userSocketMap,moneyWriteAble,mode);
+
+            if (response.status === true) {
+                console.log(response.message);
+                // Send success response back to driver
+                const driverSocketId = driverSocketMap[data.driver_id];
+                if (driverSocketId) {
+                    io.to(driverSocketId).emit("mark_pick_driver", {
+                        status: true,
+                        message: "Order successfully accepted",
+                        order_id: data.order_id,
+                    });
+                }
+            } else {
+                console.log(response.error);
+                // Send failure response back to driver
+                const driverSocketId = driverSocketMap[data.driver_id];
+                if (driverSocketId) {
+                    io.to(driverSocketId).emit("order_update_failed", {
+                        status: false,
+                        message: response.message || "Failed to accept order",
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error processing driver_parcel_accept:", error.message);
+        }
+    })
+
+
+    socket.on('mark_cancel', async (data) => {
+       
+        try {
+            if (!data || !data._id || !data.driverId) {
+                return console.log("Invalid data received:", data);
+            }
+
+            const response = await mark_cancel(io, data, driverSocketMap, userSocketMap);
+
+            if (response.status === true) {
+                console.log(response.message);
+                // Send success response back to driver
+                const driverSocketId = driverSocketMap[data.driver_id];
+                if (driverSocketId) {
+                    io.to(driverSocketId).emit("mark_pick_driver", {
+                        status: true,
+                        message: "Order successfully accepted",
+                        order_id: data.order_id,
+                    });
+                }
+            } else {
+                console.log(response.error);
+                // Send failure response back to driver
+                const driverSocketId = driverSocketMap[data.driver_id];
+                if (driverSocketId) {
+                    io.to(driverSocketId).emit("order_update_failed", {
+                        status: false,
+                        message: response.message || "Failed to accept order",
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error processing driver_parcel_accept:", error.message);
+        }
+    })
 
 
 

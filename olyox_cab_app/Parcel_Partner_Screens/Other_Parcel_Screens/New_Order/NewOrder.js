@@ -75,8 +75,8 @@ export default function NewOrder({ location, order, onClose, open, driverId }) {
 
     const handleNewOrderAccept = async (data) => {
       await AsyncStorage.setItem("accepted_order", JSON.stringify(data));
-      console.log("New order accepted", data);
-      console.log("Driver  location", location);
+      // console.log("New order accepted", data);
+      // console.log("Driver  location", location);
       navigation.navigate("Ongoing_Order", {
         order: data.data,
         location: location
@@ -86,6 +86,7 @@ export default function NewOrder({ location, order, onClose, open, driverId }) {
     socket.on("new_order_accept", (data) => {
       handleNewOrderAccept(data)
     });
+    
 
     return () => {
       socket.off("new_order_accept", handleNewOrderAccept);

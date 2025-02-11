@@ -26,7 +26,7 @@ const OtpScreen = ({ onVerify, number }) => {
   const handleOtpVerify = async () => {
     try {
       const response = await axios.post(
-        'http://192.168.1.9:9630/api/v1/parcel/login_parcel_otp_verify',
+        'http://192.168.1.8:9630/api/v1/parcel/login_parcel_otp_verify',
         { otp, number }
       );
       if (response.data.success) {
@@ -56,7 +56,7 @@ const OtpScreen = ({ onVerify, number }) => {
   const handleResendOtp = async () => {
     try {
       const response = await axios.post(
-        'http://192.168.1.9:9630/api/v1/parcel/login_parcel_otp_resend',
+        'http://192.168.1.8:9630/api/v1/parcel/login_parcel_otp_resend',
         { number }
       );
       if (response.data.success) {

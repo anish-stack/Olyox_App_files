@@ -38,6 +38,8 @@ import OrderTracking from './Foods/Order_Process/Order_Process';
 import MainTransport from './Transport/Main.Transport';
 import Parcel_Transport from './Transport/Parcel_Transport/Parcel_Transport';
 import BookParcel from './Transport/Parcel_Transport/Book-Parcel';
+import Parcel_Orders from './Transport/Parcel_Transport/Parcel_orders/Parcel_Orders';
+import OrderDetails from './Transport/Parcel_Transport/Parcel_orders/OrderDetails';
 
 const Stack = createNativeStackNavigator();
 Sentry.init({
@@ -171,6 +173,8 @@ const App = () => {
                         <Stack.Screen name="Transport" options={{ headerShown: false }} component={MainTransport} />
                         <Stack.Screen name="delivery_parcel" options={{ headerShown: false }} component={Parcel_Transport} />
                         <Stack.Screen name="Book-Parcel" options={{ headerShown: false }} component={BookParcel} />
+                        <Stack.Screen name="Parcel" options={{ headerShown: false }} component={Parcel_Orders} />
+                        <Stack.Screen name="OrderDetails" options={{ headerShown: false }} component={OrderDetails} />
 
 
 

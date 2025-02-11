@@ -11,18 +11,44 @@ import * as Location from 'expo-location';
 import { useSocket } from '../../context/SocketContext';
 import { TouchableOpacity } from 'react-native';
 import NewOrder from '../Other_Parcel_Screens/New_Order/NewOrder';
-
+import { useNavigation } from '@react-navigation/native';
+import { Alert } from 'react-native';
 const { width } = Dimensions.get('window');
+import { Audio } from "expo-av";
+
 const cardWidth = width < 768 ? (width - 48) / 2 : (width - 64) / 4;
 
 export default function Home_Parcel() {
     const { socket, isSocketReady, isReconnecting, loading, error } = useSocket();
     const [userData, setUserData] = useState(null);
+    const navigation = useNavigation()
     const [workStatus, setWorkStatus] = useState(null);
     const [order, setOrder] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
     const [location, setLocation] = useState(null);
     const [errorMsg, setErrorMsg] = useState(null);
+    const [sound, setSound] = useState(null);
+
+
+    const playSound = async () => {
+        try {
+            const { sound } = await Audio.Sound.createAsync(require("./Box.mp3"));
+            setSound(sound);
+            await sound.playAsync();
+        } catch (error) {
+            console.error("Error playing sound:", error);
+        }
+    };
+
+    // Stop the sound when user rejects or accepts
+    const stopSound = async () => {
+        if (sound) {
+            await sound.stopAsync();
+            await sound.unloadAsync();
+            setSound(null);
+        }
+    };
+
     // console.log("isReconnecting",isReconnecting)
     const fetchUserData = async () => {
         try {
@@ -33,7 +59,7 @@ export default function Home_Parcel() {
             }
 
             const response = await axios.get(
-                'http://192.168.1.9:9630/api/v1/parcel/user-details',
+                'http://192.168.1.8:9630/api/v1/parcel/user-details',
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 }
@@ -93,7 +119,7 @@ export default function Home_Parcel() {
         if (!token) return;
 
         try {
-            const response = await fetch('http://192.168.1.9:9630/webhook/receive-location', {
+            const response = await fetch('http://192.168.1.8:9630/webhook/receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -125,15 +151,17 @@ export default function Home_Parcel() {
     const fetchWorkStatus = async () => {
         try {
             const token = await AsyncStorage.getItem('auth_token_partner');
+            console.log(token)
             if (!token) return;
 
             const response = await axios.get(
-                'http://192.168.1.9:9630/api/v1/parcel/partner_work_status_details',
+                'http://192.168.1.8:9630/api/v1/parcel/my_parcel_driver-details',
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 }
             );
-            setWorkStatus(response.data);
+            console.log("i am ", response.data.summary)
+            setWorkStatus(response.data.summary);
         } catch (error) {
             console.error('Error fetching work status:', error.response.data);
         }
@@ -158,6 +186,18 @@ export default function Home_Parcel() {
             socket.on('new_parcel_request', (data) => {
                 setOrder(data)
                 console.log('Real-time location update done:', data);
+            })
+
+
+
+            socket.on('ride_cancel', (data) => {
+                console.log('ride cancelled', data)
+                Alert.alert(
+                    "Ride Canceled",
+                    "Your ride has been  canceled.",
+                    [{ text: "OK", onPress: () => console.log("OK Pressed") }]
+                );
+                playSound()
             })
         }
     }, [socket])
@@ -189,9 +229,11 @@ export default function Home_Parcel() {
                 <View style={styles.errorContainer}>
                     <Icon name="alert-circle-outline" size={80} color="#ff0000" />
                     <Text style={styles.errorTitle}>Oops!</Text>
-                    <Text style={styles.errorText}>
-                        {errorMsg || 'Please login to continue'}
-                    </Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('Homes')}>
+                        <Text style={styles.errorText}>
+                            {errorMsg || 'Please login to continue'}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </SafeAreaView>
         );
@@ -226,22 +268,22 @@ export default function Home_Parcel() {
                         <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
                             <Icon name="package-variant" size={32} color="#ff0000" />
                         </View>
-                        <Text style={styles.statsNumber}>{workStatus?.todayOrders || 0}</Text>
+                        <Text style={styles.statsNumber}>{workStatus.todayOrders || 0}</Text>
                         <Text style={styles.statsLabel}>Today's Orders</Text>
                     </View>
-                    <View style={[styles.statsCard, { width: cardWidth }]}>
+                    <TouchableOpacity onPress={() => navigation.navigate('All_Orders_parcel')} style={[styles.statsCard, { width: cardWidth }]}>
                         <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
                             <Icon name="check-circle" size={32} color="#ff0000" />
                         </View>
-                        <Text style={styles.statsNumber}>{workStatus?.completedOrders || 0}</Text>
-                        <Text style={styles.statsLabel}>Total Completed</Text>
-                    </View>
+                        <Text style={styles.statsNumber}>{workStatus?.totalOrders || 0}</Text>
+                        <Text style={styles.statsLabel}>All Orders</Text>
+                    </TouchableOpacity>
                     <View style={[styles.statsCard, { width: cardWidth }]}>
                         <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
                             <Icon name="wallet" size={32} color="#ff0000" />
                         </View>
-                        <Text style={styles.statsNumber}>₹{userData.amountPaid || 0}</Text>
-                        <Text style={styles.statsLabel}>Total Earnings</Text>
+                        <Text style={styles.statsNumber}>₹{workStatus.totalDeliveredEarnings || 0}</Text>
+                        <Text style={styles.statsLabel}>Complete Order Earnings</Text>
                     </View>
                     <View style={[styles.statsCard, { width: cardWidth }]}>
                         <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
@@ -261,7 +303,7 @@ export default function Home_Parcel() {
 
             </ScrollView>
             {order && (
-                <NewOrder location={location} order={order} onClose={()=>setOrder(null)} driverId={userData?._id} open={true} />
+                <NewOrder location={location} order={order} onClose={() => setOrder(null)} driverId={userData?._id} open={true} />
             )}
         </SafeAreaView>
     );

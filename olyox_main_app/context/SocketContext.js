@@ -11,7 +11,7 @@ export const SocketProvider = ({ children }) => {
 
   const firstFound = async () => {
     const data = await find_me();
-    console.log("datas", data.user?._id);
+   
     if (data.user) {
       setUser(data.user?._id);
     } else {

@@ -117,6 +117,7 @@ exports.request_of_parcel = async (req, res) => {
         // Check delivery boys' online status
         const availableBoys = [];
         const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+        console.log("tofay date")
 
         for (const boy of findBoysNearPickup) {
             const checkStatus = await Parcel_User_Login_Status.findOne({
@@ -124,19 +125,19 @@ exports.request_of_parcel = async (req, res) => {
                 date: today,
                 status: "online",
             });
-        
+
             if (!checkStatus) continue; // Skip if checkStatus is null
-        
+
             const findRiderIsAvailableOrNot = await Parcel_Bike_Register.findOne({
                 _id: checkStatus.riderId,
                 is_on_order: false
             });
-        console.log(findRiderIsAvailableOrNot)
+            console.log(findRiderIsAvailableOrNot)
             if (findRiderIsAvailableOrNot) {
                 availableBoys.push(boy);
             }
         }
-        
+
 
         const availableRidersData = [];
         for (const item of availableBoys) {
@@ -169,7 +170,7 @@ exports.request_of_parcel = async (req, res) => {
                     customerId: userData._id,
                     customerName,
                     customerPhone,
-                    id:newParcelRequest?._id
+                    id: newParcelRequest?._id
                 });
             } else {
                 console.log(`No active socket found for rider ${rider.riderId}`);
@@ -185,5 +186,166 @@ exports.request_of_parcel = async (req, res) => {
     } catch (error) {
         console.error("Error in request_of_parcel:", error);
         return res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+};
+
+
+
+exports.my_parcel = async (req, res) => {
+    try {
+        const userData = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
+        console.log("sss", userData)
+        if (!userData) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        // Find parcels related to the user
+        const find = await Parcel_Request.find({
+            customerId: userData
+        })
+            .populate({
+                path: 'driverId',
+                select: 'name phone bikeDetails' // Adjust fields based on what you need
+            })
+            .sort({ createdAt: -1 });
+
+        // Return the response
+        return res.status(200).json({
+            status: true,
+            message: "Parcels fetched successfully",
+            data: find
+        });
+
+    } catch (error) {
+        console.error("Error fetching parcels:", error);
+        return res.status(500).json({
+            status: false,
+            message: "An error occurred while fetching parcels",
+            error: error.message
+        });
+    }
+};
+
+
+exports.my_parcel_driver = async (req, res) => {
+    try {
+        const userData = req.user?.userId;
+
+        if (!userData) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        // Find parcels related to the driver
+        const parcels = await Parcel_Request.find({ driverId: userData })
+            .populate({
+                path: 'customerId',
+                select: 'email name number' // Adjust fields based on requirements
+            })
+            .sort({ createdAt: -1 });
+
+        // Calculate today's orders
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const todayOrders = parcels.filter(parcel => 
+            new Date(parcel.createdAt).setHours(0, 0, 0, 0) === today.getTime()
+        ).length;
+
+        // Total Orders
+        const totalOrders = parcels.length;
+
+        // Total Delivered Earnings (Assuming each delivered parcel has a `price` field)
+        const totalDeliveredEarnings = parcels.reduce((total, parcel) => {
+            return parcel.status === "delivered" ? total + (parcel.price || 0) : total;
+        }, 0);
+
+        return res.status(200).json({
+            status: true,
+            message: "Parcels fetched successfully",
+            data: parcels,
+            summary: {
+                todayOrders,
+                totalOrders,
+                rating:4.3,
+                totalDeliveredEarnings
+            }
+        });
+
+    } catch (error) {
+        console.error("Error fetching parcels:", error);
+        return res.status(500).json({
+            status: false,
+            message: "An error occurred while fetching parcels",
+            error: error.message
+        });
+    }
+};
+
+
+exports.single_my_parcel = async (req, res) => {
+    try {
+        const userData = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
+        const { id } = req.query
+        console.log("ssssssss", userData)
+        console.log("sss", id)
+        if (!userData) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        // Find parcels related to the user
+        const find = await Parcel_Request.find({
+            customerId: userData,
+            _id: id
+        })
+            .populate({
+                path: 'driverId',
+                select: 'name phone bikeDetails' // Adjust fields based on what you need
+            })
+            .sort({ createdAt: -1 });
+
+        // Return the response
+        return res.status(200).json({
+            status: true,
+            message: "Parcels fetched successfully",
+            data: find
+        });
+
+    } catch (error) {
+        console.error("Error fetching parcels:", error);
+        return res.status(500).json({
+            status: false,
+            message: "An error occurred while fetching parcels",
+            error: error.message
+        });
+    }
+};
+exports.single_my_parcels = async (req, res) => {
+    try {
+        const { id } = req.query
+        console.log("sss", id)
+   
+
+        // Find parcels related to the user
+        const find = await Parcel_Request.findOne({
+         
+            _id: id
+        })
+            .populate('driverId')
+            .sort({ createdAt: -1 });
+
+        // Return the response
+        return res.status(200).json({
+            status: true,
+            message: "Parcels fetched successfully",
+            data: find
+        });
+
+    } catch (error) {
+        console.error("Error fetching parcels:", error);
+        return res.status(500).json({
+            status: false,
+            message: "An error occurred while fetching parcels",
+            error: error.message
+        });
     }
 };
