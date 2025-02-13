@@ -19,39 +19,46 @@ import OngoingOrderScreen from './Parcel_Partner_Screens/Other_Parcel_Screens/On
 import { LocationProvider } from './Parcel_Partner_Screens/Other_Parcel_Screens/Ongoing/LocationContext';
 import All_Orders from './Parcel_Partner_Screens/All_Orders/All_Orders';
 import OrderDetails from './Parcel_Partner_Screens/All_Orders/OrderDetails';
+import RegistrationForm from './screens/onboarding/registration/RegistrationForm';
+import Document from './screens/onboarding/registration/Document';
+import * as SecureStore from 'expo-secure-store';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [userType, setUserType] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [imageUplaod, setImageUplaod] = useState(true);
 
   useEffect(() => {
     const checkAuthToken = async () => {
-      const token = await AsyncStorage.getItem('auth_token_partner');
-      // console.log("token", token);
-      if (token) {
+      const token = await AsyncStorage.getItem('auth_token_partners');
+     
+      const authToken = token 
+  
+      if (authToken) {
         try {
           const response = await axios.get(
-            'http://192.168.1.8:9630/api/v1/parcel/user-details',  // Replace with your API endpoint
+            'http://192.168.1.9:3000/api/v1/parcel/user-details',  // Replace with your API endpoint
             {
-              headers: { Authorization: `Bearer ${token}` },
+              headers: { Authorization: `Bearer ${authToken}` },
             }
           );
-          console.log(response.data.partner);
-          // Assuming the API responds with user data and a userType
+          console.log(response.data);
+          setImageUplaod(response?.data?.partner?.isDocumentUpload)
           setUserType(response?.data?.partner?.type || '');  // Set the user type from the API response
         } catch (error) {
-          console.error('Error fetching user details:', error);
+          console.error('Error fetching user details:', error.response.data.message);
         }
       } else {
-        setUserType(null);  // If no token, set userType as null
+        setUserType(null);  // If no token is found, set userType as null
       }
       setLoading(false);  // Done loading
     };
-
+  
     checkAuthToken();
   }, []);
+  
 
   if (loading) {
     // Show loading screen while waiting for API response
@@ -62,35 +69,42 @@ export default function App() {
     );
   }
 
+  if(!imageUplaod){
+    return <Document/>
+    
+  }
+
   return (
     <Provider store={store}>
       <PaperProvider>
         <SocketProvider>
           <LocationProvider>
-            
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <SafeAreaProvider>
-              <NavigationContainer>
-                <Stack.Navigator>
-                  {/* <Stack.Screen name="Home" component={HomeScreen} /> */}
-                  {userType === null ? (
-                    <Stack.Screen name="Home" options={{ headerShown: false }} component={OnboardingScreen} />
-                  ) : userType === 'parcel' ? (
-                    <Stack.Screen name="parcelHome" options={{ headerShown: false }} component={Home_Parcel} />
-                  ) : userType === 'CAB' ? (
-                    <Stack.Screen name="cabHome" options={{ headerShown: false }} component={start} />
-                  ) : null}
+
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <SafeAreaProvider>
+                <NavigationContainer>
+                  <Stack.Navigator>
+                    {/* <Stack.Screen name="Home" component={HomeScreen} /> */}
+                    {userType === null ? (
+                      <Stack.Screen name="Home" options={{ headerShown: false }} component={OnboardingScreen} />
+                    ) : userType === 'parcel' ? (
+                      <Stack.Screen name="parcelHome" options={{ headerShown: false }} component={Home_Parcel} />
+                    ) : userType === 'CAB' ? (
+                      <Stack.Screen name="cabHome" options={{ headerShown: false }} component={start} />
+                    ) : null}
 
 
-                  <Stack.Screen name="Ongoing_Order" options={{ headerShown: false }} component={OngoingOrderScreen} />
-                  <Stack.Screen name="All_Orders_parcel" options={{ headerShown: true,title:"All Orders" }} component={All_Orders} />
-                  <Stack.Screen name="Order_View" options={{ headerShown: false,title:"Order" }} component={OrderDetails} />
-                  <Stack.Screen name="start" options={{ headerShown: false }} component={start} />
-                  <Stack.Screen name="collect_money" component={MoneyPage} />
-                </Stack.Navigator>
-              </NavigationContainer>
-            </SafeAreaProvider>
-          </GestureHandlerRootView>
+                    <Stack.Screen name="Ongoing_Order" options={{ headerShown: false }} component={OngoingOrderScreen} />
+                    <Stack.Screen name="All_Orders_parcel" options={{ headerShown: true, title: "All Orders" }} component={All_Orders} />
+                    <Stack.Screen name="Order_View" options={{ headerShown: false, title: "Order" }} component={OrderDetails} />
+                    <Stack.Screen name="start" options={{ headerShown: false }} component={start} />
+                    <Stack.Screen name="collect_money" component={MoneyPage} />
+                    <Stack.Screen name="register"  options={{ headerShown: true,title:"Register" }}  component={RegistrationForm} />
+                    <Stack.Screen name="upload_images"  options={{ headerShown: true,title:"Upload Required Documents" }}  component={Document} />
+                  </Stack.Navigator>
+                </NavigationContainer>
+              </SafeAreaProvider>
+            </GestureHandlerRootView>
           </LocationProvider>
         </SocketProvider>
       </PaperProvider>

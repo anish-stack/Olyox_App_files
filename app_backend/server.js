@@ -17,7 +17,10 @@ const Parcel_boy_Location = require('./models/Parcel_Models/Parcel_Boys_Location
 const Protect = require('./middleware/Auth');
 const { update_parcel_request, mark_reached, mark_pick, mark_deliver, mark_cancel } = require('./driver');
 require('dotenv').config();
+const multer = require('multer');
+const storage = multer.memoryStorage()
 
+const upload = multer({ storage: storage });
 const app = express();
 const server = http.createServer(app);
 
@@ -34,26 +37,18 @@ const io = socketIo(server, {
 connectDb();
 app.set("socketio", io);
 
-// Set up Express
-app.set('view engine', 'ejs');
-app.use(express.static('public'));
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    credentials: true,
-}));
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({
+    extended: true
+}));
 app.use(cookies_parser());
 
-// Store socket connections for both users and drivers
 const userSocketMap = new Map();
 const driverSocketMap = new Map();
 
-console.log("userSocketMap", userSocketMap)
 
 app.set('driverSocketMap', driverSocketMap)
-// Socket.IO connection log
 io.on('connection', (socket) => {
     console.log('New client connected');
 
@@ -446,8 +441,21 @@ io.on('connection', (socket) => {
     });
 });
 
-//Globally access io 
-
+app.post('/image-upload',upload.any(),async(req,res)=>{
+    try {
+        console.log(req.files)
+        return res.status(201).json({
+            message: "Image uploaded successfully",
+            data: req.files
+        })
+    } catch (error) {
+        console.error(error.message);
+        return res.status(501).json({
+            message: "Image uploaded failed",
+            data: req.files
+        })
+    }
+})
 
 app.post('/webhook/receive-location', Protect, async (req, res) => {
     const riderId = req.user.userId || {};
@@ -490,9 +498,7 @@ app.get('/rider', async (req, res) => {
     }
 });
 
-app.get('/resturant', (req, res) => {
-    res.render('resturant')
-})
+
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -521,13 +527,7 @@ app.post('/Fetch-Current-Location', async (req, res) => {
     }
 
     try {
-        // Check if the Google Maps API key is present
-        // if (!process.env.GOOGLE_MAP_KEY) {
-        //     return res.status(403).json({
-        //         success: false,
-        //         message: "API Key is not found"
-        //     });
-        // }
+ 
 
         // Fetch address details using the provided latitude and longitude
         const addressResponse = await axios.get(
@@ -660,7 +660,7 @@ app.post("/geo-code-distance", async (req, res) => {
 
 
 // Start the server
-const PORT = process.env.PORT || 3000;
+const PORT =  3000;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

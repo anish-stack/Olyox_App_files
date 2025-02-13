@@ -5,80 +5,73 @@ const { uploadBufferImage } = require("../utils/aws.uploader");
 const generateOtp = require("../utils/Otp.Genreator");
 const send_token = require("../utils/send_token");
 const SendWhatsAppMessage = require("../utils/whatsapp_send");
-
+const cloudinary = require('cloudinary').v2
+const sharp = require('sharp');
+const fs = require('fs');
+cloudinary.config({
+    cloud_name: 'dsd8nepa5',
+    api_key: '634914486911329',
+    api_secret: 'dOXqEsWHQMjHNJH_FU6_iHlUHBE'
+})
 //still pending due to error of cors in uploading images
 exports.register_parcel_partner = async (req, res) => {
     try {
-        const files = req.files || [];
-        const { name, email, phone, address, bikeDetails } = req.body;
-        console.log(files)
-        if (!name || !email || !phone || !address || !bikeDetails) {
-            return res.status(400).json({
-                success: false,
-                message: "All fields are required."
-            });
+        const { name, phone, address, bikeDetails } = req.body;
+
+        // 1. Validate required fields
+        if (!name.trim() || !phone.trim() || !address.trim() || !bikeDetails) {
+            return res.status(400).json({ success: false, message: "All fields are required." });
         }
 
-        const parsedDetails = JSON.parse(bikeDetails);
-        if (!parsedDetails.make || !parsedDetails.model || !parsedDetails.year || !parsedDetails.licensePlate) {
-            return res.status(400).json({
-                success: false,
-                message: "Bike details are incomplete."
-            });
+        // 2. Validate bike details
+        const { make, model, year, licensePlate } = bikeDetails;
+        if (!make || !model || !year || !licensePlate) {
+            return res.status(400).json({ success: false, message: "Bike details are incomplete." });
         }
 
-        if (!/\S+@\S+\.\S+/.test(email)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid email format."
-            });
-        }
 
-        if (!/^\d{10}$/.test(phone)) {
-            return res.status(400).json({
-                success: false,
-                message: "Phone number must be 10 digits."
-            });
-        }
 
-        const existingPartner = await Parcel_Bike_Register.findOne({ email });
+        // 4. Check for existing partner by phone
+        const existingPartner = await Parcel_Bike_Register.findOne({ phone });
         if (existingPartner) {
-            return res.status(400).json({
-                success: false,
-                message: "Email already registered."
-            });
+            if (!existingPartner.isOtpVerify) {
+                const otp = generateOtp();
+                if (existingPartner.howManyTimesHitResend >= 5) {
+                    existingPartner.isOtpBlock = true;
+                    existingPartner.otpUnblockAfterThisTime = new Date(Date.now() + 30 * 60000); // 30 minutes later
+                    await existingPartner.save();
+                    await SendWhatsAppMessage(`Your account is blocked for 30 minutes.`, phone);
+                    return res.status(400).json({ success: false, message: "Your account is blocked for 30 minutes." });
+                }
+                existingPartner.otp = otp;
+                existingPartner.howManyTimesHitResend += 1;
+                await existingPartner.save();
+                await SendWhatsAppMessage(`Your OTP for parcel registration is: ${otp}`, phone);
+                return res.status(201).json({ success: true, message: "Partner exists. Please verify OTP." });
+            }
+            return res.status(400).json({ success: false, message: "Phone number already registered." });
         }
 
-        const newPartner = new Parcel_Bike_Register({
-            name,
-            email,
-            phone,
-            address,
-            bikeDetails: parsedDetails,
-        });
+        // 5. Check for existing partner by license plate
+        const existingPartnerWithVehicle = await Parcel_Bike_Register.findOne({ 'bikeDetails.licensePlate': licensePlate });
+        if (existingPartnerWithVehicle) {
+            return res.status(400).json({ success: false, message: "License plate already registered." });
+        }
 
+        // 6. Create new partner
+        const newPartner = new Parcel_Bike_Register({ name, phone, address, bikeDetails });
         const otp = generateOtp();
         newPartner.otp = otp;
-        // await newPartner.save();
+        await newPartner.save();
 
-        const otpMessage = `Your OTP for parcel registration is: ${otp}`;
-        // await SendWhatsAppMessage(phone, otpMessage);
+        await SendWhatsAppMessage(`Your OTP for parcel registration is: ${otp}`, phone);
+        res.status(201).json({ success: true, message: "Please verify OTP sent to your phone.", otp });
 
-        res.status(201).json({
-            success: true,
-            message: "Please verify OTP sent to your phone.",
-            otp: otp,
-        });
     } catch (error) {
         console.error(error);
-        res.status(500).json({
-            success: false,
-            message: "An error occurred while processing your request. Please try again later.",
-            error: error.message,
-        });
+        res.status(500).json({ success: false, message: "An error occurred.", error: error.message });
     }
 };
-
 exports.login = async (req, res) => {
     try {
         const { number } = req.body;
@@ -147,7 +140,6 @@ exports.login = async (req, res) => {
 exports.resendOtp = async (req, res) => {
     try {
         const { number } = req.body;
-        console.log(number)
 
         if (!number) {
             return res.status(400).json({
@@ -185,7 +177,7 @@ exports.resendOtp = async (req, res) => {
         }
 
         // If resend limit is reached, block the OTP and set the unblock time
-        if (partner.howManyTimesHitResend >= 3) {
+        if (partner.howManyTimesHitResend >= 5) {
             // Block the OTP and set the time for when it will be unblocked (e.g., 30 minutes)
             partner.isOtpBlock = true;
             partner.otpUnblockAfterThisTime = new Date(Date.now() + 30 * 60 * 1000); // Block for 30 minutes
@@ -197,10 +189,10 @@ exports.resendOtp = async (req, res) => {
             });
         }
 
-        // Generate new OTP and resend it
+
         const otp = await generateOtp();
         partner.otp = otp;
-        partner.howManyTimesHitResend += 1;  // Increment resend count
+        partner.howManyTimesHitResend += 1;
         await partner.save();
 
         const otpMessage = `Your OTP for parcel registration is: ${otp}`;
@@ -266,8 +258,48 @@ exports.verifyOtp = async (req, res) => {
     }
 };
 
+exports.uploadDocuments = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const findRider = await Parcel_Bike_Register.findById(userId);
+
+        if (!findRider) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        if (findRider.isDocumentUpload && findRider.DocumentVerify === true) {
+            return res.status(400).json({ success: false, message: "Documents already uploaded and verified, please login." });
+        }
+
+        const uploadedDocs = {};
+
+        for (const file of req.files) {
+            const uploadResponse = await cloudinary.uploader.upload(file.path, { folder: "parcel_documents" });
+
+            if (file.originalname.includes('dl')) uploadedDocs.license = uploadResponse.secure_url;
+            if (file.originalname.includes('rc')) uploadedDocs.rc = uploadResponse.secure_url;
+            if (file.originalname.includes('pan')) uploadedDocs.pan = uploadResponse.secure_url;
+            if (file.originalname.includes('aadhar')) uploadedDocs.aadhar = uploadResponse.secure_url;
+
+            // Delete local file after upload
+            fs.unlinkSync(file.path);
+        }
+        console.log(uploadedDocs)
+
+        findRider.documents = uploadedDocs;
+        findRider.isDocumentUpload = true;
+        await findRider.save();
+
+        res.status(201).json({ success: true, message: "Documents uploaded successfully", data: uploadedDocs });
+    } catch (error) {
+        console.error("Error uploading documents:", error);
+        res.status(500).json({ success: false, message: "Documents upload failed", error: error.message });
+    }
+};
+
 exports.details = async (req, res) => {
     try {
+        console.log("i am hits")
         // Retrieve userId from the request object, assuming it's populated by middleware
         const userId = req.user?.userId;
 
@@ -288,8 +320,8 @@ exports.details = async (req, res) => {
         const latestOrder = await Parcel_Request.findOne({
             driverId: partner._id
         })
-        .sort({ createdAt: -1 })  // Sort by latest order first
-        .limit(1);  // Only fetch one latest order
+            .sort({ createdAt: -1 })  // Sort by latest order first
+            .limit(1);  // Only fetch one latest order
 
         // Return response
         return res.status(200).json({ success: true, partner, latestOrder });

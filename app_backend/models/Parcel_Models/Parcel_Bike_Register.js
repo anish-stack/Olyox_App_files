@@ -7,11 +7,11 @@ const ParcelBikeRegisterSchema = new Schema({
         type: String,
         required: true
     },
-    email: {
-        type: String,
-        required: true,
-        unique: true
+    isDocumentUpload:{
+        type:Boolean,
+        default:false
     },
+
     otp:{
         type:String
     },
@@ -38,21 +38,21 @@ const ParcelBikeRegisterSchema = new Schema({
         },
         licensePlate: {
             type: String,
-            required: true
         }
     },
     documents: {
         license: {
             type: String,
-            required: true
+
         },
-        insurance: {
+        rc: {
             type: String,
-            required: true
         },
-        registration: {
+        pan: {
             type: String,
-            required: true
+        },
+        aadhar:{
+            type:String
         }
     },
     Bh: {
@@ -96,6 +96,10 @@ const ParcelBikeRegisterSchema = new Schema({
     otpUnblockAfterThisTime:{
         type:Date,
 
+    },
+    isOtpVerify:{
+        type:Boolean,
+        default:false
     },
     type:{
         type:String

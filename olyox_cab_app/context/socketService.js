@@ -2,19 +2,19 @@ import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-const SOCKET_URL = "http://192.168.1.8:9630";
+const SOCKET_URL = "http://192.168.1.9:3000";
 let socket = null;
 
 export const fetchUserData = async () => {
     try {
         const token = await AsyncStorage.getItem("auth_token_partner");
-        console.log("token",token)
+        console.log("token", token)
         if (!token) {
             throw new Error("No auth token found");
         }
 
         const response = await axios.get(
-            "http://192.168.1.8:9630/api/v1/parcel/user-details",
+            "http://192.168.1.9:3000/api/v1/parcel/user-details",
             {
                 headers: { Authorization: `Bearer ${token}` },
             }
@@ -22,7 +22,7 @@ export const fetchUserData = async () => {
 
         return response.data.partner;
     } catch (error) {
-        console.error("Error fetching user details:", error);
+        console.error("Error fetching user details conetxt:", error);
         throw error;
     }
 };

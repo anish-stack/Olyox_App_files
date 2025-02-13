@@ -38,7 +38,9 @@
     "react-native-snap-carousel": "^3.9.1",
     "react-native-svg": "15.8.0",
     "react-redux": "^8.1.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "expo-file-system": "~18.0.10",
+    "expo-secure-store": "~14.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
