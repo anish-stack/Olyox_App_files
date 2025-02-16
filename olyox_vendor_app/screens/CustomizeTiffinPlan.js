@@ -12,14 +12,16 @@ import {
   Alert,
   Image
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import ImagePicker from 'react-native-image-picker';
+// import ImagePicker from 'react-native-image-picker';
 
 export function CustomizeTiffinPlan() {
   const [loading, setLoading] = useState(false);
   const [restaurant_id, setRestaurant_id] = useState(null);
   const navigation = useNavigation();
+  const [selectImage, setSelectedImages] = useState([])
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -31,7 +33,7 @@ export function CustomizeTiffinPlan() {
         }
 
         const { data } = await axios.get(
-          'http://192.168.11.28:3000/api/v1/tiffin/get_single_tiffin_profile',
+          'http://192.168.11.251:3000/api/v1/tiffin/get_single_tiffin_profile',
           {
             headers: {
               'Authorization': `Bearer ${storedToken}`
@@ -89,30 +91,56 @@ export function CustomizeTiffinPlan() {
 
   const [activeMeal, setActiveMeal] = useState(null);
 
-  const selectImage = async () => {
-    const options = {
-      mediaType: 'photo',
-      quality: 1,
-    };
+  // const selectImage = async () => {
+  //   const options = {
+  //     mediaType: 'photo',
+  //     quality: 1,
+  //   };
 
-    // ImagePicker.launchImageLibrary(options,(res)=>{
-    //   console.log("res",res)
-    // })
+  //   // ImagePicker.launchImageLibrary(options,(res)=>{
+  //   //   console.log("res",res)
+  //   // })
 
+  //   try {
+  //     // console.log("object")
+  //     const result = await launchImageLibrary(options);
+  //     // console.log("result",result)
+  //     if (result.assets && result.assets[0]) {
+  //       setPlan(prev => ({
+  //         ...prev,
+  //         images: result.assets[0].uri || 'https://placehold.co/600x400'
+  //       }));
+  //     }
+  //   } catch (error) {
+  //     Alert.alert('Error', 'Failed to pick image');
+  //   }
+  // };
+
+  const pickImage = async () => {
     try {
-      // console.log("object")
-      const result = await launchImageLibrary(options);
-      // console.log("result",result)
-      if (result.assets && result.assets[0]) {
-        setPlan(prev => ({
-          ...prev,
-          images: result.assets[0].uri || 'https://placehold.co/600x400'
-        }));
+      if (selectImage.length >= 1) {
+        Alert.alert("Limit Exceeded", "You can only upload up to 1 image");
+        return;
+      }
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert("Permission Denied", "You need to allow access to upload images.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        setSelectedImages([result.assets[0]]); // Store only the latest selected image
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick image');
+      console.error("Error picking image:", error);
     }
-  };
+  }
 
   const calculateMealTotal = (mealItems) => {
     return mealItems.reduce((sum, item) => sum + Number(item.price), 0);
@@ -174,90 +202,86 @@ export function CustomizeTiffinPlan() {
     }));
   };
 
-  const handleSubmit = async () => {
-    setLoading(true);
-    const totalPrice = calculateTotalPrice();
-    const formData = new FormData();
+  // Update the handleSubmit function to properly handle image upload
 
-    // Convert meals object to match the schema
-    const mealsData = {
-      breakfast: {
-        enabled: plan.meals.breakfast.enabled,
-        items: plan.meals.breakfast.items.map(item => ({
-          name: item.name,
-          price: Number(item.price)
-        }))
-      },
-      lunch: {
-        enabled: plan.meals.lunch.enabled,
-        items: plan.meals.lunch.items.map(item => ({
-          name: item.name,
-          price: Number(item.price)
-        }))
-      },
-      dinner: {
-        enabled: plan.meals.dinner.enabled,
-        items: plan.meals.dinner.items.map(item => ({
-          name: item.name,
-          price: Number(item.price)
-        }))
-      }
-    };
+const handleSubmit = async () => {
+  setLoading(true);
+  const totalPrice = calculateTotalPrice();
+  const formData = new FormData();
 
-    // Properly structure the data
-    const requestData = {
-      duration: plan.duration,
-      meals: mealsData,
-      preferences: plan.preferences,
-      totalPrice: totalPrice,
-      restaurant_id: restaurant_id
-    };
-
-    // Append the stringified data
-    formData.append('duration', plan.duration);
-    formData.append('meals', JSON.stringify(mealsData));
-    formData.append('preferences', JSON.stringify(plan.preferences));
-    formData.append('totalPrice', totalPrice);
-    formData.append('restaurant_id', restaurant_id)
-
-    // if (plan.images) {
-    //   formData.append('images', {
-    //     uri: plan.images,
-    //     type: 'image/jpeg',
-    //     name: 'images.jpg',
-    //   });
-    // }
-
-    try {
-      // const response = await fetch('YOUR_API_ENDPOINT/create_custom_tiffin', {
-      //   method: 'POST',
-      //   body: formData,
-      //   headers: {
-      //     'Content-Type': 'multipart/form-data',
-      //   },
-      // });
-
-      // const data = await response.json();
-      // console.log("data",formData)
-
-      const response = await axios.post('http://192.168.11.28:3000/api/v1/tiffin/create_custom_tiffin', requestData)
-
-      const data = response.data;
-
-      if (data.success) {
-        Alert.alert('Success', 'Tiffin plan created successfully!');
-        setLoading(false);
-      } else {
-        Alert.alert('Error', data.message);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to create tiffin plan');
-      // console.error('Submit error:', error);
-      console.log("error", error);
-    } finally {
-      setLoading(false);
+  // Convert meals object to match the schema
+  const mealsData = {
+    breakfast: {
+      enabled: plan.meals.breakfast.enabled,
+      items: plan.meals.breakfast.items.map(item => ({
+        name: item.name,
+        price: Number(item.price)
+      }))
+    },
+    lunch: {
+      enabled: plan.meals.lunch.enabled,
+      items: plan.meals.lunch.items.map(item => ({
+        name: item.name,
+        price: Number(item.price)
+      }))
+    },
+    dinner: {
+      enabled: plan.meals.dinner.enabled,
+      items: plan.meals.dinner.items.map(item => ({
+        name: item.name,
+        price: Number(item.price)
+      }))
     }
   };
+
+  // Append form data
+  formData.append('duration', plan.duration.toString());
+  formData.append('meals', JSON.stringify(mealsData));
+  formData.append('preferences', JSON.stringify(plan.preferences));
+  formData.append('totalPrice', totalPrice.toString());
+  formData.append('restaurant_id', restaurant_id);
+
+  // Handle image upload
+  if (selectImage.length > 0) {
+    const image = selectImage[0];
+    const imageUri = image.uri;
+    const filename = imageUri.split('/').pop();
+    
+    // Infer the type from the extension
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+    
+    formData.append('images', {
+      uri: imageUri,
+      name: filename,
+      type
+    });
+  }
+
+  try {
+    const response = await axios.post(
+      'http://192.168.11.251:3000/api/v1/tiffin/create_custom_tiffin', 
+      formData, 
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    if (response.data.success) {
+      Alert.alert('Success', 'Tiffin plan created successfully!');
+      navigation.goBack();
+    } else {
+      Alert.alert('Error', response.data.message || 'Failed to create tiffin plan');
+    }
+  } catch (error) {
+    console.error('Submit error:', error);
+    Alert.alert('Error', 'Failed to create tiffin plan');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const renderMealCard = (mealType, icon) => {
     const mealData = plan.meals[mealType];
@@ -368,7 +392,7 @@ export function CustomizeTiffinPlan() {
 
       {/* Image Upload Section */}
       <View style={styles.imageSection}>
-        <TouchableOpacity style={styles.imageUploadButton} onPress={selectImage}>
+        <TouchableOpacity style={styles.imageUploadButton} onPress={pickImage}>
           {plan.images ? (
             <Image source={{ uri: plan.images }} style={styles.selectedImage} />
           ) : (

@@ -43,7 +43,7 @@ const restaurantSchema = new mongoose.Schema({
         url: {
             type: String
         },
-        secret_id: {
+        public_id: {
             type: String
         }
     },

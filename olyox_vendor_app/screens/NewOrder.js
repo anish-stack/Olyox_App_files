@@ -1,15 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity, ScrollView, Linking, Platform, Alert } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, Text, View, Image, TouchableOpacity, ScrollView, Linking, Platform, Alert, RefreshControl } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
+// import { RefreshControl } from 'react-native-gesture-handler';
 
 export function NewOrder() {
     const navigation = useNavigation();
     const [order, setOrder] = useState([]);
     const [restaurantId, setRestaurantId] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -21,7 +23,7 @@ export function NewOrder() {
                 }
 
                 const { data } = await axios.get(
-                    'http://192.168.11.28:3000/api/v1/tiffin/get_single_tiffin_profile',
+                    'http://192.168.11.251:3000/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -46,7 +48,7 @@ export function NewOrder() {
     const handleFetchOrderDetails = async () => {
         setLoading(true);
         try {
-            const { data } = await axios.get(`http://192.168.11.28:3000/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
+            const { data } = await axios.get(`http://192.168.11.251:3000/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
             if (data.success) {
                 const orders = data.data;
                 const filterData = orders.filter((order) => order.status === 'Pending');
@@ -60,6 +62,12 @@ export function NewOrder() {
         }
     };
 
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        handleFetchOrderDetails().finally(() => setRefreshing(false));
+      }, []);
+
+
     useEffect(() => {
         if (restaurantId !== null) {
             handleFetchOrderDetails();
@@ -69,7 +77,7 @@ export function NewOrder() {
     const handleChangeOrderStatus = async (orderId, status) => {
         try {
             console.log("object", orderId, status);
-            const { data } = await axios.put(`http://192.168.11.28:3000/api/v1/tiffin/update_order_status/${orderId}`, { status: status });
+            const { data } = await axios.put(`http://192.168.11.251:3000/api/v1/tiffin/update_order_status/${orderId}`, { status: status });
             if (data.success) {
                 alert('Order status updated successfully');
                 handleFetchOrderDetails();
@@ -80,23 +88,23 @@ export function NewOrder() {
     };
 
     const handleMakeCall = (phone) => {
-            let phoneNumber = phone;
-            if (Platform.OS !== 'android') {
-                phoneNumber = `telprompt:${phone}`;
-            }
-            else {
-                phoneNumber = `tel:${phone}`;
-            }
-            Linking.canOpenURL(phoneNumber)
-                .then(supported => {
-                    if (!supported) {
-                        Alert.alert('Phone number is not available');
-                    } else {
-                        return Linking.openURL(phoneNumber);
-                    }
-                })
-            // Linking.openURL(`tel:${phone}`);
+        let phoneNumber = phone;
+        if (Platform.OS !== 'android') {
+            phoneNumber = `telprompt:${phone}`;
         }
+        else {
+            phoneNumber = `tel:${phone}`;
+        }
+        Linking.canOpenURL(phoneNumber)
+            .then(supported => {
+                if (!supported) {
+                    Alert.alert('Phone number is not available');
+                } else {
+                    return Linking.openURL(phoneNumber);
+                }
+            })
+        // Linking.openURL(`tel:${phone}`);
+    }
 
     const formatDate = (dateString) => {
         const date = new Date(dateString);
@@ -128,7 +136,11 @@ export function NewOrder() {
     }
 
     return (
-        <ScrollView>
+        <ScrollView
+            refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+        >
             {order.map((item, index) => (
                 <View key={index} style={styles.container}>
                     <View style={styles.header}>
@@ -136,7 +148,7 @@ export function NewOrder() {
                             <Text style={styles.orderId}>{item.Order_Id}</Text>
                             <View style={styles.timeContainer}>
                                 <Icon name="clock-outline" size={16} color="#666" />
-                                <Text style={styles.timeText}>{formatDate(item.order_date)}</Text>
+                                <Text style={styles.timeText}>{formatDate(item?.order_date)}</Text>
                             </View>
                         </View>
                         <View style={styles.statusBadge}>
@@ -150,14 +162,14 @@ export function NewOrder() {
                             <View style={styles.customerDetails}>
                                 <Text style={styles.customerName}>Delivery Details</Text>
                                 <Text style={styles.address} numberOfLines={2}>
-                                    {item.address_details.flatNo}, {item.address_details.street}
-                                    {item.address_details.landmark && `, Near ${item.address_details.landmark}`}
+                                    {item?.address_details?.flatNo}, {item?.address_details?.street}
+                                    {item?.address_details?.landmark && `, Near ${item?.address_details?.landmark}`}
                                 </Text>
                             </View>
                         </View>
                         <TouchableOpacity
                             style={styles.callButton}
-                            onPress={() => {handleMakeCall(item?.user?.number)}}
+                            onPress={() => { handleMakeCall(item?.user?.number) }}
                         >
                             <Icon name="phone" size={20} color="#4CAF50" />
                         </TouchableOpacity>
@@ -171,21 +183,21 @@ export function NewOrder() {
                                     <View style={styles.foodIconContainer}>
                                         <Icon name="food" size={16} color="#4CAF50" />
                                     </View>
-                                    <Text style={styles.itemName}>{orderItem.foodItem_id.food_name}</Text>
-                                    <Text style={styles.itemQuantity}>x{orderItem.quantity}</Text>
+                                    <Text style={styles.itemName}>{orderItem?.foodItem_id?.food_name}</Text>
+                                    <Text style={styles.itemQuantity}>x{orderItem?.quantity}</Text>
                                 </View>
-                                <Text style={styles.itemPrice}>₹{orderItem.price}</Text>
+                                <Text style={styles.itemPrice}>₹{orderItem?.price}</Text>
                             </View>
                         ))}
                         <View style={styles.totalRow}>
                             <Text style={styles.totalText}>Total ({item.items.length} items)</Text>
-                            <Text style={styles.totalAmount}>₹{item.totalPrice}</Text>
+                            <Text style={styles.totalAmount}>₹{item?.totalPrice}</Text>
                         </View>
                     </View>
 
                     <View style={styles.paymentStatus}>
                         <Icon name="cash-multiple" size={20} color="#FF9800" />
-                        <Text style={styles.paymentText}>Payment via {item.paymentMethod}</Text>
+                        <Text style={styles.paymentText}>Payment via {item?.paymentMethod}</Text>
                     </View>
 
                     <View style={styles.actionButtons}>

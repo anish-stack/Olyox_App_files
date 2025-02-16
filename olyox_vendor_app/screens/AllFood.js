@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
@@ -22,8 +23,17 @@ const AllFood = () => {
 
   const handleFetchFood = async () => {
     try {
+      const storedToken = await AsyncStorage.getItem('userToken');
+      if (!storedToken) {
+        navigation.replace('Login');
+        return;
+      }
       const { data } = await axios.get(
-        'http://192.168.11.28:3000/api/v1/tiffin/get_all_tiffin_listing'
+        'http://192.168.11.251:3000/api/v1/tiffin/get_food_by_resutrant_id', {
+        headers: {
+          'Authorization': `Bearer ${storedToken}`
+        }
+      }
       );
       const allData = data.data;
       const reverse = allData.reverse();
@@ -33,6 +43,10 @@ const AllFood = () => {
       Alert.alert('Error', 'Failed to fetch food items');
     }
   };
+
+  useEffect(() => {
+    handleFetchFood();
+  }, []);
 
   const handleDelete = async (id) => {
     Alert.alert(
@@ -49,7 +63,7 @@ const AllFood = () => {
           onPress: async () => {
             try {
               // Replace with your actual delete API endpoint
-              await axios.delete(`http://192.168.11.28:3000/api/v1/tiffin/delete_tiffin_listing/${id}`);
+              await axios.delete(`http://192.168.11.251:3000/api/v1/tiffin/delete_tiffin_listing/${id}`);
               handleFetchFood(); // Refresh the list
               Alert.alert('Success', 'Food item deleted successfully');
             } catch (error) {
@@ -70,7 +84,7 @@ const AllFood = () => {
   const handleUpdateFoodAvailableStatus = async (id, food_availability) => {
     try {
       const updatedStatus = !food_availability;
-      const res = await axios.put(`http://192.168.11.28:3000/api/v1/tiffin/update_available_food_status/${id}`, { food_availability: updatedStatus });
+      const res = await axios.put(`http://192.168.11.251:3000/api/v1/tiffin/update_available_food_status/${id}`, { food_availability: updatedStatus });
       if (res.data.success) {
         Alert.alert('Success', 'Food item availability updated successfully');
         handleFetchFood();
@@ -85,16 +99,11 @@ const AllFood = () => {
     handleFetchFood().finally(() => setRefreshing(false));
   }, []);
 
-  useEffect(() => {
-    handleFetchFood();
-  }, []);
-
   const renderFoodItem = ({ item }) => (
     <View style={styles.card}>
       <Image
-        source={{ uri: item.images.url }}
+        source={{ uri: item?.images?.url }}
         style={styles.image}
-      // defaultSource={require('../assets/placeholder.png')}
       />
       <View style={styles.cardContent}>
         <View style={styles.headerRow}>

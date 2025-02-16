@@ -1,9 +1,11 @@
 // const TiffinPlan = require("../models/TiffinPlan");
-const TiffinPlan = require("../models/Tiifins/Restaurant.package.model")
+const TiffinPlan = require("../models/Tiifins/Restaurant.package.model");
+const { uploadSingleImage } = require("../utils/cloudinary");
 
 // Create a new Custom Tiffin Plan
 exports.createCustomTiffin = async (req, res) => {
     try {
+        // console.log("i am hit", req.body)
         const { duration, meals, preferences, totalPrice, restaurant_id } = req.body;
 
         // Check for missing fields
@@ -13,29 +15,40 @@ exports.createCustomTiffin = async (req, res) => {
         if (!preferences) emptyFields.push("preferences");
 
         if (emptyFields.length > 0) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 message: `Please fill in the following fields: ${emptyFields.join(", ")}`
             });
         }
-
-        // const imagesUrl = {
-        //     url: 'https://placehold.co/600x400',
-        // };
-        // const parseMeal = JSON.parse(meals)
-        // const parsePerferences = JSON.parse(preferences)
-        // console.log("parseMeal",parseMeal)
-        // console.log("parsePerferences",parsePerferences)
-        const newTiffinPlan = new TiffinPlan({ 
-            duration, 
-            meals, 
-            preferences, 
-            totalPrice,
+        const newTiffinPlan = {
+            duration: Number(duration),
+            meals: JSON.parse(meals),
+            preferences: JSON.parse(preferences),
+            totalPrice: Number(totalPrice),
             restaurant_id
-         });
-        await newTiffinPlan.save();
+        }
 
-        res.status(201).json({ success: true, message: "Tiffin Plan created successfully", data: newTiffinPlan });
+        if (req.file) {
+            // console.log("file upload", req.file);
+            try {
+                const imgUrl = await uploadSingleImage(req.file.buffer);
+                // console.log("imgurl", imgUrl);
+                const { image, public_id } = imgUrl;
+                newTiffinPlan.images = { url: image, public_id };
+            } catch (error) {
+                console.error("Image upload failed:", error.message);
+            }
+        }
+        // console.log("newTiffinPlan", newTiffinPlan)
+        const tiffin = new TiffinPlan(newTiffinPlan);
+        await tiffin.save();
+        // console.log("i am done")
+        res.status(200).json({
+            success: true,
+            message: "Tiffin Plan created successfully",
+            data: tiffin
+        });
+
     } catch (error) {
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
@@ -80,8 +93,8 @@ exports.updateTiffinPlan = async (req, res) => {
         totalPrice *= days;
 
         const updatedPlan = await TiffinPlan.findByIdAndUpdate(
-            req.params.id, 
-            { duration, meals, preferences, totalPrice }, 
+            req.params.id,
+            { duration, meals, preferences, totalPrice },
             { new: true, runValidators: true }
         );
 
@@ -107,12 +120,12 @@ exports.deleteTiffinPlan = async (req, res) => {
 
 exports.updateAvailableTiffinPlans = async (req, res) => {
     try {
-        const {id} = req.params;
-        const {food_availability} = req.body;
+        const { id } = req.params;
+        const { food_availability } = req.body;
         const plan = await TiffinPlan.findById(id);
-        if (!plan) return res.status(404).json({ 
-            success: false, 
-            message: "Tiffin Plan not found" 
+        if (!plan) return res.status(404).json({
+            success: false,
+            message: "Tiffin Plan not found"
         });
         plan.food_availability = food_availability;
         await plan.save();
@@ -121,9 +134,9 @@ exports.updateAvailableTiffinPlans = async (req, res) => {
             message: "Tiffin Plan updated successfully",
             data: plan
         })
-        
+
     } catch (error) {
-        console.log("Internal server error",error);
+        console.log("Internal server error", error);
         res.status(500).json({
             success: false,
             message: "Internal server error",

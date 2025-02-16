@@ -318,18 +318,59 @@ exports.change_order_status = async (req, res) => {
         const order = await RestuarntOrderModel.findById(orderId);
         if (!order) {
             return res.status(404).json({
-                success: false, 
+                success: false,
                 message: "Order not found"
             });
         }
+        const userId = order?.user;
+        const user = await User.findById(userId);
+        const userNumber = user?.number;
         order.status = status;
+
         await order.save();
-        if(status === "Out for Delivery"){
+
+        if (status === "Confirmed") {
+            const message = `🍽️ Order Confirmation 🍽️
+
+Your food order has been confirmed! 🎉
+
+Order ID: ${order?.Order_Id}
+Status: Confirmed ✅
+
+Our team is preparing your delicious meal, and it will be on its way soon! 🚀
+
+Thank you for choosing our service. Enjoy your meal! 😋`
+            SendWhatsAppMessage(message, userNumber)
+        }
+
+        if (status === "Out for Delivery") {
             const resturant_id = order?.restaurant;
-            const resturant = await Restaurant.findById(resturant_id); 
+            const resturant = await Restaurant.findById(resturant_id);
             resturant.wallet = resturant.wallet + order.totalPrice
             await resturant.save();
+            const message = `🚚 Order Out for Delivery 🚚
+
+Your food order is out for delivery! 🚀
+
+Order ID: ${order?.Order_Id}
+Status: Out for Delivery
+
+Thank you for choosing our service. Enjoy your meal! 😋`
+            SendWhatsAppMessage(message, userNumber)
         }
+
+        if (status === "Cancelled") {
+            const message = `🚫 Order Cancelled 🚫
+
+Your food order has been cancelled. 😔
+
+Order ID: ${order?.Order_Id}
+Status: Cancelled
+
+Thank you for choosing our service. Please place another order. 😊`
+            SendWhatsAppMessage(message, userNumber)
+        }
+
         return res.status(200).json({
             success: true,
             message: "Order status updated successfully"

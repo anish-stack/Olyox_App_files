@@ -12,11 +12,11 @@ const BottomNav = () => {
         { name: 'Profile', icon: 'account', route: 'Profile' },
         { name: 'All Food', icon: 'utensils', route: 'AllFood' }, // ✅ Fixed route name
         { name: 'Custom Food', icon: 'concierge-bell', route: 'CustomFood' }, // ✅ Fixed typo
-        { name: 'Get A Call', icon: 'phone', route: 'GetACall' }, // ✅ Fixed format
+        // { name: 'Get A Call', icon: 'phone', route: 'GetACall' }, // ✅ Fixed format
     ];
 
     const redirect = (screen) => {
-        console.log(`Navigating to: ${screen}`);
+        // console.log(`Navigating to: ${screen}`);
         navigation.navigate(screen);
     };
 

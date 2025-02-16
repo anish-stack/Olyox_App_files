@@ -5,11 +5,13 @@ import { launchImageLibrary } from "react-native-image-picker"
 import axios from 'axios'
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useNavigation } from "@react-navigation/native"
+import * as ImagePicker from 'expo-image-picker';
 
 export function AddListing() {
   const [loading, setLoading] = useState(false)
   const [restaurant_id, setRestaurant_id] = useState(null);
-    const navigation = useNavigation();
+  const navigation = useNavigation();
+  const [error, setError] = useState({});
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -21,7 +23,7 @@ export function AddListing() {
         }
 
         const { data } = await axios.get(
-          'http://192.168.11.28:3000/api/v1/tiffin/get_single_tiffin_profile',
+          'http://192.168.11.251:3000/api/v1/tiffin/get_single_tiffin_profile',
           {
             headers: {
               'Authorization': `Bearer ${storedToken}`
@@ -44,7 +46,7 @@ export function AddListing() {
 
     fetchProfile();
   }, []);
-  
+
   const [formData, setFormData] = useState({
     food_name: "",
     description: "",
@@ -52,7 +54,7 @@ export function AddListing() {
     food_category: "Veg",
     food_availability: true,
     what_includes: [],
-    restaurant_id:'',
+    restaurant_id: '',
   })
 
 
@@ -68,22 +70,30 @@ export function AddListing() {
   const pickImage = async () => {
     try {
       if (selectedImages.length >= 1) {
-        Alert.alert("Limit Exceeded", "You can only upload up to 1 images")
-        return
+        Alert.alert("Limit Exceeded", "You can only upload up to 1 image");
+        return;
       }
-
-      const result = await launchImageLibrary({
-        mediaType: "photo",
+  
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  
+      if (status !== "granted") {
+        Alert.alert("Permission Denied", "You need to allow access to upload images.");
+        return;
+      }
+  
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 1,
-      })
-
-      if (result.assets && result.assets.length > 0) {
-        setSelectedImages((prev) => [...prev, result.assets[0]])
+      });
+  
+      if (!result.canceled && result.assets.length > 0) {
+        setSelectedImages([result.assets[0]]); // Store only the latest selected image
       }
     } catch (error) {
-      console.error("Error picking image:", error)
+      console.error("Error picking image:", error);
     }
-  }
+  };
+  
 
   const removeImage = (index) => {
     setSelectedImages((prev) => prev.filter((_, i) => i !== index))
@@ -119,7 +129,7 @@ export function AddListing() {
       Alert.alert("Error", "Please enter a valid price")
       return false
     }
-   
+
     if (formData.what_includes.length === 0) {
       Alert.alert("Error", "Please add at least one item in What Includes")
       return false
@@ -128,52 +138,72 @@ export function AddListing() {
   }
 
   const handleSubmit = async () => {
+  if (!validateForm()) return;
 
-    if (!validateForm()) return
+  setLoading(true);
+  try {
+    const formD = new FormData();
 
-    setLoading(true)
-    try {
-           const formD = {
-        food_name: formData.food_name,
-        description: formData.description,
-        food_price: formData.food_price,
-        food_category: formData.food_category,
-        food_availability: formData.food_availability.toString(),
-        restaurant_id: restaurant_id,
-        what_includes: formData.what_includes,
-      }
+    formD.append("food_name", formData.food_name);
+    formD.append("description", formData.description);
+    formD.append("food_price", formData.food_price);
+    formD.append("food_category", formData.food_category);
+    formD.append("food_availability", formData.food_availability.toString());
+    formD.append("restaurant_id", restaurant_id);
 
-      const response = await axios.post('http://192.168.11.28:3000/api/v1/tiffin/register_listing',formD)
+    // Append 'what_includes' as JSON string
+    formD.append("what_includes", formData.what_includes);
 
-      const result = response.data
-
-      if (result.success) {
-        Alert.alert("Success", "Food listing created successfully")
-        // Reset form
-        setFormData({
-          food_name: "",
-          description: "",
-          food_price: "",
-          food_category: "Veg",
-          food_availability: true,
-          what_includes: [],
-          restaurant_id: "",
-        })
-        setSelectedImages([])
-        setCurrentInclude("")
-        setLoading(false)
-      } else {
-        Alert.alert("Error", result.error || "Something went wrong")
-        setLoading(false)
-      }
-    } catch (error) {
-      Alert.alert("Error", error?.response?.data?.message)
-      console.log("Error submitting form:", error)
-      setLoading(false)
-    } finally {
-      setLoading(false)
+    // Append the selected image (assuming only one image is allowed)
+    if (selectedImages.length > 0) {
+      const image = selectedImages[0];
+      formD.append("images", {
+        uri: image.uri,
+        name: `photo_${Date.now()}.jpg`,
+        type: "image/jpeg",
+      });
     }
+
+    const response = await axios.post(
+      "http://192.168.11.251:3000/api/v1/tiffin/register_listing",
+      formD,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    const result = response.data;
+
+    if (result.success) {
+      Alert.alert("Success", "Food listing created successfully");
+      // Reset form
+      setFormData({
+        food_name: "",
+        description: "",
+        food_price: "",
+        food_category: "Veg",
+        food_availability: true,
+        what_includes: [],
+        restaurant_id: "",
+      });
+      setSelectedImages([]);
+      setCurrentInclude("");
+      setLoading(false);
+    } else {
+      Alert.alert("Error", result.error || "Something went wrong");
+      setLoading(false);
+    }
+  } catch (error) {
+    Alert.alert("Error", error?.response?.data?.message || "Image upload failed");
+    console.log("Error submitting form:", error);
+    setLoading(false);
+  } finally {
+    setLoading(false);
   }
+};
+
 
   return (
     <ScrollView style={styles.container}>

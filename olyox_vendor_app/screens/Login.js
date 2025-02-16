@@ -9,6 +9,7 @@ export function Login({ navigation }) {
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1); // Step 1: Enter BHID, Step 2: Enter OTP
+    const [resendDisabled, setResendDisabled] = useState(false);
 
     // Handle sending OTP
     const sendOTP = async () => {
@@ -19,7 +20,7 @@ export function Login({ navigation }) {
 
         setLoading(true);
         try {
-            const response = await fetch('http://192.168.11.28:3000/api/v1/tiffin/tiffin_login', {
+            const response = await fetch('http://192.168.11.251:3000/api/v1/tiffin/tiffin_login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID }),
@@ -40,6 +41,35 @@ export function Login({ navigation }) {
         }
     };
 
+    // Handle Resend OTP
+    const resendOTP = async () => {
+        if (!restaurant_BHID) {
+            Alert.alert('Error', 'Please enter your Restaurant BHID');
+            return;
+        }
+
+        setResendDisabled(true); // Disable button for 30 seconds
+        setTimeout(() => setResendDisabled(false), 30000); // Re-enable after 30s
+
+        try {
+            const response = await fetch('http://192.168.11.251:3000/api/v1/tiffin/resend-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ restaurant_BHID }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                Alert.alert('Success', 'OTP resent successfully');
+            } else {
+                Alert.alert('Error', data.message || 'Failed to resend OTP');
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Network error. Please try again.');
+        }
+    };
+
     // Handle OTP verification
     const verifyOTP = async () => {
         if (!otp) {
@@ -49,7 +79,7 @@ export function Login({ navigation }) {
 
         setLoading(true);
         try {
-            const response = await fetch('http://192.168.11.28:3000/api/v1/tiffin/verify_otp', {
+            const response = await fetch('http://192.168.11.251:3000/api/v1/tiffin/verify_otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID, otp }),
@@ -93,17 +123,36 @@ export function Login({ navigation }) {
                 )}
 
                 {step === 2 && (
-                    <View style={styles.inputWrapper}>
-                        <Icon name="lock" size={24} color="#666" style={styles.inputIcon} />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter OTP"
-                            value={otp}
-                            onChangeText={setOtp}
-                            keyboardType="numeric"
-                            maxLength={4}
-                        />
-                    </View>
+                    <>
+                        <View style={styles.inputWrapper}>
+                            <Icon name="lock" size={24} color="#666" style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter OTP"
+                                value={otp}
+                                onChangeText={setOtp}
+                                keyboardType="numeric"
+                                maxLength={4}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.resendButton, resendDisabled && styles.resendButtonDisabled]}
+                            onPress={resendOTP}
+                            disabled={resendDisabled}
+                        >
+                            <Text style={styles.resendButtonText}>
+                                {resendDisabled ? 'Wait 30s to Resend' : 'Resend OTP'}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.backButton}
+                            onPress={() => setStep(1)}
+                        >
+                            <Text style={styles.backButtonText}>Go Back</Text>
+                        </TouchableOpacity>
+                    </>
                 )}
 
                 <TouchableOpacity
@@ -178,6 +227,35 @@ const styles = StyleSheet.create({
     },
     loginIcon: {
         marginLeft: 10,
+    },
+    resendButton: {
+        backgroundColor: '#f5f5f5',
+        borderRadius: 10,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 10,
+    },
+    resendButtonText: {
+        color: COLORS.error,
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    resendButtonDisabled: {
+        opacity: 0.5,
+    },
+    backButton: {
+        backgroundColor: '#f5f5f5',
+        borderRadius: 10,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 10,
+    },
+    backButtonText: {
+        color: COLORS.error,
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });
 

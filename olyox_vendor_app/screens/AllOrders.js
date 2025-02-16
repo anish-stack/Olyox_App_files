@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 export default function AllOrders() {
@@ -11,6 +11,7 @@ export default function AllOrders() {
     const [allOrders, setAllOrders] = useState([]);
     const [restaurantId, setRestaurantId] = useState('null');
     const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -22,7 +23,7 @@ export default function AllOrders() {
                 }
 
                 const { data } = await axios.get(
-                    'http://192.168.11.28:3000/api/v1/tiffin/get_single_tiffin_profile',
+                    'http://192.168.11.251:3000/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -47,7 +48,7 @@ export default function AllOrders() {
     const handleFetchOrderDetails = async () => {
         setLoading(true);
         try {
-            const { data } = await axios.get(`http://192.168.11.28:3000/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
+            const { data } = await axios.get(`http://192.168.11.251:3000/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
             if (data.success) {
                 const reverse = data.data.reverse();
                 setAllOrders(reverse || []);
@@ -58,6 +59,11 @@ export default function AllOrders() {
             setLoading(false);
         }
     };
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        handleFetchOrderDetails().finally(() => setRefreshing(false));
+    }, []);
 
     useEffect(() => {
         if (restaurantId !== 'null') {
@@ -96,7 +102,12 @@ export default function AllOrders() {
     // console.log("allOrders",allOrders)
 
     return (
-        <ScrollView style={styles.container}>
+        <ScrollView
+            refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            style={styles.container}
+        >
             <View style={styles.header}>
                 <Icon name="clipboard-list" size={32} color="#FF6B6B" />
                 <Text style={styles.title}>All Orders</Text>
@@ -151,7 +162,7 @@ export default function AllOrders() {
                                 <Text style={styles.totalLabel}>Total Amount</Text>
                                 <Text style={styles.totalAmount}>₹{order.totalPrice}</Text>
                             </View>
-                            
+
                             <View style={styles.paymentInfo}>
                                 <Icon name="credit-card" size={16} color="#6b7280" />
                                 <Text style={styles.paymentText}>

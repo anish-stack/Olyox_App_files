@@ -7,6 +7,8 @@ const { v4: uuidv4 } = require('uuid');
 const sendToken = require('../utils/SendToken');
 const SendWhatsAppMessage = require('../utils/whatsapp_send');
 const bcrypt = require('bcrypt');
+const RestaurantPackageModel = require('../models/Tiifins/Restaurant.package.model');
+const { uploadSingleImage, deleteImage } = require('../utils/cloudinary');
 exports.register_restaurant = async (req, res) => {
     try {
 
@@ -140,8 +142,9 @@ exports.register_restaurant = async (req, res) => {
 
 exports.updateResturant = async (req, res) => {
     try {
+        // console.log("updateResturant",req.body)
         const { id } = req.params;
-        const { restaurant_name, restaurant_address, geo_location, restaurant_phone, openingHours, restaurant_contact, restaurant_category, restaurant_fssai, } = req.body;
+        const { restaurant_name, restaurant_phone, openingHours, restaurant_contact, restaurant_category, restaurant_fssai, } = req.body;
         const resturant = await Restaurant.findById(id);
         if (!resturant) {
             return res.status(404).json({
@@ -151,13 +154,50 @@ exports.updateResturant = async (req, res) => {
         }
         // Update restaurant document
         resturant.restaurant_name = restaurant_name;
-        resturant.restaurant_address = restaurant_address;
-        resturant.geo_location = geo_location;
         resturant.restaurant_phone = restaurant_phone;
         resturant.openingHours = openingHours;
         resturant.restaurant_contact = restaurant_contact;
         resturant.restaurant_category = restaurant_category;
         resturant.restaurant_fssai = restaurant_fssai;
+
+        if (req.files) {
+            const { restaurant_fssai_image, restaurant_pan_image, restaurant_adhar_front_image, restaurant_adhar_back_image } = req.files;
+            if (restaurant_fssai_image) {
+                if (resturant?.restaurant_fssai_image?.public_id) {
+                    await deleteImage(resturant?.restaurant_fssai_image?.public_id);
+                }
+                const imgUrl = await uploadSingleImage(restaurant_fssai_image[0].buffer);
+                const { image, public_id } = imgUrl;
+                resturant.restaurant_fssai_image = { url: image, public_id };
+            }
+            if (restaurant_pan_image) {
+                if (resturant?.restaurant_pan_image?.public_id) {
+                    await deleteImage(resturant?.restaurant_pan_image?.public_id);
+                }
+                const imgUrl = await uploadSingleImage(restaurant_pan_image[0].buffer);
+                const { image, public_id } = imgUrl;
+                resturant.restaurant_pan_image = { url: image, public_id };
+            }
+            if (restaurant_adhar_front_image) {
+                if (resturant?.restaurant_adhar_front_image?.public_id) {
+                    await deleteImage(resturant?.restaurant_adhar_front_image?.public_id);
+                }
+                const imgUrl = await uploadSingleImage(restaurant_adhar_front_image[0].buffer);
+                const { image, public_id } = imgUrl;
+                resturant.restaurant_adhar_front_image = { url: image, public_id };
+            }
+            if (restaurant_adhar_back_image) {
+                if (resturant?.restaurant_adhar_back_image?.public_id) {
+                    await deleteImage(resturant?.restaurant_adhar_back_image?.public_id);
+                }
+                const imgUrl = await uploadSingleImage(restaurant_adhar_back_image[0].buffer);
+                const { image, public_id } = imgUrl;
+                resturant.restaurant_adhar_back_image = { url: image, public_id };
+            }
+        }
+
+        console.log('resturant',resturant)
+
         await resturant.save();
         return res.status(200).json({
             success: true,
@@ -172,6 +212,53 @@ exports.updateResturant = async (req, res) => {
         })
     }
 }
+
+exports.updateLogo = async (req, res) => {
+    try {
+        console.log("i am hit");
+        const { id } = req.params;
+        const restaurant = await Restaurant.findById(id);
+
+        if (!restaurant) {
+            return res.status(404).json({
+                success: false,
+                message: "Restaurant not found"
+            });
+        }
+
+        if (req.file) {
+            // Handle file upload and update the logo
+            try {
+                if (restaurant?.logo && restaurant?.logo?.public_id) {
+                    // Delete old logo image if it exists
+                    await deleteImage(restaurant.logo.public_id);
+                }
+                // Assuming you have a function to handle image upload
+                const imgUrl = await uploadSingleImage(req.file.buffer);
+                const { image, public_id } = imgUrl;
+
+                restaurant.logo = { url: image, public_id };
+            } catch (error) {
+                console.error("Image upload failed:", error.message);
+            }
+        }
+
+        await restaurant.save();
+        return res.status(200).json({
+            success: true,
+            message: "Logo updated successfully",
+            logo: restaurant.logo // Return the updated logo
+        });
+
+    } catch (error) {
+        console.log("Internal server error", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+};
 
 exports.updateIsWorking = async (req, res) => {
     try {
@@ -351,7 +438,7 @@ exports.register_restaurant_fake = async (req, res) => {
 exports.add_food_listing = async (req, res) => {
     try {
         // const restaurant_id = req.user.id
-        console.log("req", req.body)
+        // console.log("req", req.body)
 
         const { food_name, description, food_price, food_category, food_availability, what_includes, imageUrl, restaurant_id } = req.body;
         const emptyField = [];
@@ -369,11 +456,6 @@ exports.add_food_listing = async (req, res) => {
             });
         }
 
-        // Handle images object
-        const images = {
-            url: req.body.imageUrl || 'https://placehold.co/600x400',
-        };
-
         // Construct the food listing object
         const newFoodListing = {
             restaurant_id,
@@ -383,8 +465,21 @@ exports.add_food_listing = async (req, res) => {
             food_category: food_category,
             food_availability: food_availability,
             what_includes: what_includes,
-            images,
         };
+
+        if (req.file) {
+            console.log("file upload", req.file);
+            try {
+                const imgUrl = await uploadSingleImage(req.file.buffer);
+                console.log("imgurl", imgUrl);
+                const { image, public_id } = imgUrl;
+                newFoodListing.images = { url: image, public_id };
+            } catch (error) {
+                console.error("Image upload failed:", error.message);
+            }
+        }
+
+
 
         console.log("Food Listing to be Saved:", newFoodListing);
         await Restaurant_Listing.create(newFoodListing)
@@ -530,6 +625,56 @@ exports.login = async (req, res) => {
     }
 };
 
+exports.resend_otp = async (req, res) => {
+    try {
+        const { restaurant_BHID } = req.body;
+
+        if (!restaurant_BHID) {
+            return res.status(400).json({
+                success: false,
+                message: "Restaurant BHID is required to resend OTP",
+                error: "Restaurant BHID is required"
+            });
+        }
+
+        const restaurant = await Restaurant.findOne({ restaurant_BHID });
+
+        if (!restaurant) {
+            return res.status(404).json({
+                success: false,
+                message: "Restaurant not found",
+                error: "Restaurant not found"
+            });
+        }
+
+        // Generate a new 4-digit OTP
+        const otp = Math.floor(1000 + Math.random() * 9000);
+        const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes expiry
+
+        restaurant.otp = otp;
+        restaurant.otpExpiry = otpExpiry;
+        await restaurant.save();
+
+        // Send the new OTP via WhatsApp
+        const message = `Your new OTP for login is: ${otp}. It is valid for 2 minutes. Please do not share it.`;
+        await SendWhatsAppMessage(message, restaurant.restaurant_phone);
+
+        return res.status(200).json({
+            success: true,
+            message: "New OTP sent successfully to registered phone number",
+        });
+
+    } catch (error) {
+        console.error("Error resending OTP:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "An error occurred while resending the OTP.",
+            error: error.message
+        });
+    }
+};
+
+
 // Verify OTP
 exports.verify_otp = async (req, res) => {
     try {
@@ -616,7 +761,7 @@ exports.passwordChange = async (req, res) => {
         }
 
         restaurant.Password = newPassword;
-        
+
         await restaurant.save();
 
         return res.status(200).json({
@@ -703,5 +848,57 @@ exports.updateTiffinProfile = async (req, res) => {
         }
     } catch (error) {
         console.log("Error updating tiffin profile:", error.message);
+    }
+}
+
+exports.getFoodListingById = async (req, res) => {
+    try {
+        const user_id = req.user.id._id;
+        const allFood = await Restaurant_Listing.find({ restaurant_id: user_id });
+        if (!allFood) {
+            return res.status(404).json({
+                success: false,
+                message: "Food listing not found",
+                error: "Food listing not found"
+            })
+        }
+        res.status(200).json({
+            success: true,
+            message: "Food listing retrieved successfully.",
+            data: allFood
+        });
+    } catch (error) {
+        console.log("Internal server error", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
+
+exports.getCustomTiffinListingById = async (req, res) => {
+    try {
+        const user_id = req.user.id._id;
+        const allFood = await RestaurantPackageModel.find({ restaurant_id: user_id });
+        if (!allFood) {
+            return res.status(404).json({
+                success: false,
+                message: "Food listing not found",
+                error: "Food listing not found"
+            })
+        }
+        res.status(200).json({
+            success: true,
+            message: "Food listing retrieved successfully.",
+            data: allFood
+        });
+    } catch (error) {
+        console.log("Internal server error", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
     }
 }

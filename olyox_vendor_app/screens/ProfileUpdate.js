@@ -4,67 +4,75 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
+import { Picker } from '@react-native-picker/picker';
 
 export function ProfileUpdate() {
     const [vendorId, setVendorId] = useState(null)
-    const [photo, setPhoto] = React.useState(null);
     const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        category: '',
-        address: {
-            area: '',
-            street_address: '',
-            landmark: '',
-            pincode: '',
-            location: {
-                type: 'Point',
-                coordinates: [0, 0]
-            }
-        }
+        restaurant_name: '',
+        restaurant_phone: '',
+        restaurant_contact: '',
+        openingHours: '',
+        restaurant_category: '',
+        restaurant_fssai: ''
     });
+
+
+    const [images, setImages] = useState({
+        restaurant_fssai_image: null,
+        restaurant_adhar_front_image: null,
+        restaurant_adhar_back_image: null,
+        restaurant_pan_image: null
+    });
+ 
 
     const fetchUserDetails = async () => {
         try {
             // Retrieve the token from AsyncStorage
-            const token = await AsyncStorage.getItem('userToken');
-
-            if (!token) {
-                console.log('No token found');
-                alert('You need to log in to access this feature.');
+            const storedToken = await AsyncStorage.getItem('userToken');
+            if (!storedToken) {
+                navigation.replace('Login');
                 return;
             }
 
             // Make the API request
-            const response = await axios.get('http://192.168.1.8:8111/api/tiffin/find_vendor', {
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
-            // const data = await response.json();
-            const data = response.data;
-            const vendor = data?.data
-            setVendorId(vendor?._id)
-            setFormData({
-                name: vendor.name,
-                email: vendor.email,
-                category: vendor.category.title,
-                address: {
-                    area: vendor.address.area,
-                    street_address: vendor.address.street_address,
-                    landmark: vendor.address.landmark,
-                    pincode: vendor.address.pincode,
-                    location: {
-                        type: 'Point',
-                        coordinates: [vendor.address.location.coordinates[0], vendor.address.location.coordinates[1]]
+            const { data } = await axios.get(
+                'http://192.168.11.251:3000/api/v1/tiffin/get_single_tiffin_profile',
+                {
+                    headers: {
+                        'Authorization': `Bearer ${storedToken}`
                     }
                 }
+            );
+            const vendor = data?.data
+            console.log("response", vendor?.restaurant_phone)
+            setVendorId(vendor?._id)
+            setFormData({
+                restaurant_name: vendor.restaurant_name,
+                restaurant_phone: vendor.restaurant_phone,
+                restaurant_contact: vendor.restaurant_contact,
+                openingHours: vendor.openingHours,
+                restaurant_category: vendor.restaurant_category,
+                restaurant_fssai: vendor.restaurant_fssai,
             });
+            setImages({
+                restaurant_fssai_image: vendor.restaurant_fssai_image 
+                    ? { uri: vendor.restaurant_fssai_image.url } 
+                    : null,
+                restaurant_adhar_front_image: vendor.restaurant_adhar_front_image 
+                    ? { uri: vendor.restaurant_adhar_front_image.url } 
+                    : null,
+                restaurant_adhar_back_image: vendor.restaurant_adhar_back_image 
+                    ? { uri: vendor.restaurant_adhar_back_image.url } 
+                    : null,
+                restaurant_pan_image: vendor.restaurant_pan_image 
+                    ? { uri: vendor.restaurant_pan_image.url } 
+                    : null
+            });
+            
 
         } catch (error) {
-            console.error('Error:', error);
+            console.log('Error:', error);
             alert('An error occurred while fetching user details. Please try again.');
         }
     };
@@ -73,22 +81,36 @@ export function ProfileUpdate() {
         fetchUserDetails();
     }, []);
 
-
-    const [images, setImages] = useState({
-        FSSAIImage: null,
-        AdharImageFront: null,
-        AdharImageBack: null,
-        PanImage: null
-    });
+    const renderCategoryDropdown = () => (
+        <View style={styles.inputContainer}>
+            <View style={styles.labelContainer}>
+                <Icon name="food" size={20} color="#6366f1" />
+                <Text style={styles.label}>Category</Text>
+            </View>
+            <View style={styles.inputWrapper}>
+                <Picker
+                    selectedValue={formData.restaurant_category}
+                    onValueChange={(itemValue) => setFormData(prev => ({ ...prev, restaurant_category: itemValue }))}
+                    style={styles.picker}
+                >
+                    <Picker.Item label="Veg" value="Veg" />
+                    <Picker.Item label="Non-Veg" value="Non-Veg" />
+                    <Picker.Item label="Veg-Non-Veg" value="Veg-Non-Veg" />
+                </Picker>
+            </View>
+        </View>
+    );
 
     const [addressSuggestions, setAddressSuggestions] = useState([]);
     const [searchTimeout, setSearchTimeout] = useState(null);
     const [loading, setLoading] = useState(false);
 
     const fetchAddressSuggestions = async (query) => {
+        // console.log("query",query)
         try {
             const response = await axios.get(`https://www.api.blueaceindia.com/api/v1/autocomplete?input=${encodeURIComponent(query)}`);
             // const data = await response.json();
+            // console.log("response", response.data)
             setAddressSuggestions(response.data || []);
         } catch (error) {
             console.error('Error fetching suggestions:', error);
@@ -103,7 +125,7 @@ export function ProfileUpdate() {
             );
             const data = await response.json();
             const { latitude, longitude } = data;
-
+            
             setFormData(prev => ({
                 ...prev,
                 address: {
@@ -115,6 +137,9 @@ export function ProfileUpdate() {
                     }
                 }
             }));
+        
+
+            console.log("formdata",formData)
             setAddressSuggestions([]);
         } catch (error) {
             console.error('Error fetching geocode:', error);
@@ -149,8 +174,7 @@ export function ProfileUpdate() {
     const handleImageUpload = async (type) => {
         try {
             const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-            if (permissionResult.granted === false) {
+            if (!permissionResult.granted) {
                 alert('Permission to access camera roll is required!');
                 return;
             }
@@ -158,53 +182,71 @@ export function ProfileUpdate() {
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
-                aspect: [12, 3],  // Adjust as needed
-                allowsEditing:true,
+                aspect: [12, 3],
                 quality: 1,
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                const selectedImage = result.assets[0];
-                setImages(prev => ({ ...prev, [type]: selectedImage }));
+                setImages(prev => ({ ...prev, [type]: result.assets[0] }));
             }
         } catch (error) {
-            console.error('Error selecting image: ', error);
+            console.error('Error selecting image:', error);
             alert('An error occurred while selecting the image');
         }
     };
-
 
 
     const handleSubmit = async () => {
         try {
             setLoading(true);
             const formDataToSend = new FormData();
-
-            // Append text data
-            formDataToSend.append('name', formData.name);
-            formDataToSend.append('email', formData.email);
-            formDataToSend.append('category', formData.category);
-            formDataToSend.append('address', JSON.stringify(formData.address));
-
-            // Append images if they exist
-            Object.keys(images).forEach(key => {
-                if (images[key]) {
-                    formDataToSend.append(key, images[key]);
+    
+            // Append text fields properly
+            Object.keys(formData).forEach(key => {
+                if (typeof formData[key] === 'object' && key !== "address") {
+                    formDataToSend.append(key, JSON.stringify(formData[key]));
+                } else {
+                    formDataToSend.append(key, formData[key]);
                 }
             });
-
-            const res = await axios.put(`http://192.168.1.8:8111/api/tiffin/vendor/${vendorId}`, formDataToSend)
-
-            // Make API call here
+    
+            // Append image files properly
+            Object.keys(images).forEach(key => {
+                if (images[key]) {
+                    formDataToSend.append(key, {
+                        uri: images[key].uri,
+                        name: `${key}.jpg`, // Ensure it has a filename
+                        type: 'image/jpeg',  // Ensure the correct MIME type
+                    });
+                }
+            });
+    
+            console.log("Final formDataToSend", formDataToSend);
+    
+    
+            const response = await axios.put(
+                `http://192.168.11.251:3000/api/v1/tiffin/update_restaurant_details/${vendorId}`,
+                formDataToSend,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                }
+            );
+    
+            console.log("Response from API:", response.data);
             Alert.alert('Success', 'Profile updated successfully');
+    
         } catch (error) {
-            Alert.alert('Error', error.message);
+            console.error("Error updating profile:", error.response?.data || error.message);
+            Alert.alert('Error', 'Failed to update profile');
         } finally {
             setLoading(false);
         }
     };
+    
 
-    const renderInput = (label, icon, value, key, keyboardType = 'default') => (
+    const renderInput = (label, icon, value, key, options, keyboardType = 'default') => (
         <View style={styles.inputContainer}>
             <View style={styles.labelContainer}>
                 <Icon name={icon} size={20} color="#6366f1" />
@@ -215,8 +257,13 @@ export function ProfileUpdate() {
                     style={styles.input}
                     value={value}
                     onChangeText={(text) => {
-                        if (key === 'address.street_address') {
+                        console.log(key)
+                        if (key == 'restaurant_address.street') {
                             handleAddressChange(text);
+                            setFormData((prev)=>(
+                               { ...prev,
+                                street_address:text}
+                            ))
                         } else if (key.includes('.')) {
                             const [parent, child] = key.split('.');
                             setFormData(prev => ({
@@ -232,21 +279,27 @@ export function ProfileUpdate() {
                     keyboardType={keyboardType}
                 />
             </View>
-            {key === 'address.street_address' && addressSuggestions.length > 0 && (
+            {key === 'restaurant_address.street' && addressSuggestions.length > 0 && (
                 <View style={[styles.suggestionsContainer, { maxHeight: 200 }]}>
-                    <FlatList
-                        data={addressSuggestions}
-                        keyExtractor={(item, index) => index.toString()}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={styles.suggestionItem}
-                                onPress={() => fetchGeocode(item.description)} // Use the description or a valid string
-                            >
-                                <Icon name="map-marker" size={16} color="#6366f1" />
-                                <Text style={styles.suggestionText}>{item.description}</Text> {/* Render the description */}
-                            </TouchableOpacity>
-                        )}
-                    />
+                    {addressSuggestions.map((item, index) => (
+                       <TouchableOpacity
+                       key={index}
+                       style={styles.suggestionItem}
+                       onPress={() => {
+                        fetchGeocode(item.description)
+                           handleAddressChange(item.description); // ✅ Call function if necessary
+                           setFormData(prev => ({
+                               ...prev,
+                               street_address: item.description // ✅ Update the form data
+                           }));
+                       }}
+                   >
+                       <Icon name="map-marker" size={16} color="#6366f1" />
+                       <Text style={styles.suggestionText}>{item.description}</Text>
+                   </TouchableOpacity>
+                   
+                    ))}
+
                 </View>
             )}
         </View>
@@ -295,20 +348,21 @@ export function ProfileUpdate() {
             </View>
 
             <View style={styles.formContainer}>
-                {renderInput('Name', 'account', formData.name, 'name')}
-                {renderInput('Email', 'email', formData.email, 'email', 'email-address')}
-                {renderInput('Category', 'food', formData.category, 'category')}
-                {renderInput('Area', 'map-marker-radius', formData.address.area, 'address.area')}
-                {renderInput('Street Address', 'map-marker', formData.address.street_address, 'address.street_address')}
-                {renderInput('Landmark', 'map-marker-check', formData.address.landmark, 'address.landmark')}
-                {renderInput('Pincode', 'numeric', formData.address.pincode, 'address.pincode', 'numeric')}
+                {renderInput('Restaurant Name', 'account', formData.restaurant_name, 'restaurant_name')}
+                {renderInput('Phone', 'phone', formData.restaurant_phone, 'restaurant_phone')}
+                {renderInput('Contact Person', 'account', formData.restaurant_contact, 'restaurant_contact')}
+                {renderInput('Opening Hours', 'clock-outline', formData.openingHours, 'openingHours')}
+                {/* {renderInput('Category', 'food', formData.restaurant_category, 'restaurant_category')} */}
+                {renderCategoryDropdown()} 
+                {renderInput('FSSAI Number', 'certificate', formData.restaurant_fssai, 'restaurant_fssai')}
+
 
                 <View style={styles.documentsSection}>
                     <Text style={styles.sectionTitle}>Documents</Text>
-                    {renderImageUpload('FSSAI License', 'FSSAIImage')}
-                    {renderImageUpload('Aadhar Card Front', 'AdharImageFront')}
-                    {renderImageUpload('Aadhar Card Back', 'AdharImageBack')}
-                    {renderImageUpload('PAN Card', 'PanImage')}
+                    {renderImageUpload('FSSAI License', 'restaurant_fssai_image')}
+                    {renderImageUpload('Aadhar Card Front', 'restaurant_adhar_front_image')}
+                    {renderImageUpload('Aadhar Card Back', 'restaurant_adhar_back_image')}
+                    {renderImageUpload('PAN Card', 'restaurant_pan_image')}
                 </View>
 
                 <TouchableOpacity

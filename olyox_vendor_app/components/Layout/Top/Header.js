@@ -62,8 +62,8 @@ const Header = () => {
         { title: 'Home', icon: 'home' },
         { title: 'Profile', icon: 'account' },
         { title: 'All Order', icon: 'shopping' },
-        { title: 'Addresses', icon: 'map-marker' },
-        { title: 'Settings', icon: 'cog' },
+        // { title: 'Addresses', icon: 'map-marker' },
+        // { title: 'Settings', icon: 'cog' },
         { title: 'AllFood', icon: 'cog' },
         { title: 'Help', icon: 'help-circle' },
     ];

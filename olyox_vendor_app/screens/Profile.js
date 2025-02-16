@@ -1,14 +1,17 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
-import { useNavigation } from '@react-navigation/native';
+import { CommonActions, useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 
 const Profile = () => {
     const navigation = useNavigation();
-    const [restaurant, setRestaurant] = React.useState('');
+    const [restaurant, setRestaurant] = useState('');
+    const [selectImage, setSelectedImages] = useState([]);
+    const [loading, setLoading] = useState(false);
     // Sample data
     const profileData = {
         name: "Sharma's Kitchen",
@@ -26,47 +29,119 @@ const Profile = () => {
         AsyncStorage.removeItem('userToken')
         navigation.dispatch(
             CommonActions.reset({
-              index: 0,
-              routes: [{ name: "Home" }],
-            }) 
-          );
+                index: 0,
+                routes: [{ name: "Home" }],
+            })
+        );
     };
 
     useEffect(() => {
         const fetchProfile = async () => {
-          try {
-            const storedToken = await AsyncStorage.getItem('userToken');
-            if (!storedToken) {
-              navigation.replace('Login');
-              return;
+            try {
+                const storedToken = await AsyncStorage.getItem('userToken');
+                if (!storedToken) {
+                    navigation.replace('Login');
+                    return;
+                }
+
+                // console.log("storedToken",storedToken)
+
+                const { data } = await axios.get(
+                    'http://192.168.11.251:3000/api/v1/tiffin/get_single_tiffin_profile',
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${storedToken}`
+                        }
+                    }
+                );
+
+                // console.log("API Response:", data); // Debug API response
+
+                if (data?.data) {
+                    setRestaurant(data.data);
+                } else {
+                    console.error("Error: restaurant_id not found in API response");
+                }
+
+            } catch (error) {
+                console.error("Internal server error", error);
+            }
+        };
+
+        fetchProfile();
+    }, []);
+
+    const pickImage = async () => {
+        try {
+            if (selectImage.length >= 1) {
+                Alert.alert("Limit Exceeded", "You can only upload up to 1 image");
+                return;
+            }
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== "granted") {
+                Alert.alert("Permission Denied", "You need to allow access to upload images.");
+                return;
             }
 
-            // console.log("storedToken",storedToken)
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 1,
+            });
+
+            if (!result.canceled && result.assets.length > 0) {
+                setSelectedImages([result.assets[0]]); // Store only the latest selected image
+                // Automatically upload the selected image
+                handleUploadImage(result.assets[0]);
+            }
+        } catch (error) {
+            console.error("Error picking image:", error);
+        }
+    };
+
+
+    const handleUploadImage = async (image) => {
+        setLoading(true);
+        try {
+            const formData = new FormData();
+            if (image) {
+                const imageUri = image.uri;
+                const filename = imageUri.split('/').pop();
+                const match = /\.(\w+)$/.exec(filename);
+                const type = match ? `image/${match[1]}` : 'image/jpeg';
     
-            const { data } = await axios.get(
-              'http://192.168.11.28:3000/api/v1/tiffin/get_single_tiffin_profile',
-              {
-                headers: {
-                  'Authorization': `Bearer ${storedToken}`
-                }
-              }
-            );
-    
-            // console.log("API Response:", data); // Debug API response
-    
-            if (data?.data) {
-                setRestaurant(data.data);
-            } else {
-              console.error("Error: restaurant_id not found in API response");
+                formData.append('logo', {
+                    uri: imageUri,
+                    name: filename,
+                    type
+                });
             }
     
-          } catch (error) {
-            console.error("Internal server error", error);
-          }
-        };
+            console.log("formdata", formData,restaurant._id);
     
-        fetchProfile();
-      }, []);
+            const res = await axios.put(`http://192.168.11.251:3000/api/v1/tiffin/upload_logo/${restaurant._id}`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                }
+            });
+    
+            if (res.data.success) {
+                Alert.alert('Success', 'Profile image uploaded successfully!');
+                setRestaurant(prevState => ({
+                    ...prevState,
+                    logo: res.data.logo // Assuming the logo data is returned from the backend
+                }));
+                navigation.goBack();
+            } else {
+                Alert.alert('Error', res.data.message || 'Failed to upload profile image');
+            }
+        } catch (error) {
+            console.error('Submit error:', error);
+            Alert.alert('Error', 'Failed to upload profile image');
+        } finally {
+            setLoading(false);
+        }
+    };
+    
 
     const MenuItem = ({ icon, title, value, onPress }) => (
         <TouchableOpacity style={styles.menuItem} onPress={onPress}>
@@ -88,13 +163,16 @@ const Profile = () => {
             <View style={styles.header}>
                 <View style={styles.profileImageContainer}>
                     <Image
-                        source={{ uri: 'https://via.placeholder.com/100' }}
+                        source={{ uri: restaurant?.logo?.url || 'https://via.placeholder.com/100' }}
                         style={styles.profileImage}
                     />
-                    <TouchableOpacity style={styles.editImageButton}>
+                    <TouchableOpacity style={styles.editImageButton} onPress={pickImage}>
                         <Icon name="camera" size={20} color="#FFF" />
                     </TouchableOpacity>
                 </View>
+
+                {loading && <ActivityIndicator size="large" color="#0000ff" />}
+
                 <Text style={styles.name}>{restaurant?.restaurant_name || ''}</Text>
                 <Text style={styles.category}>{profileData?.category || ''}</Text>
                 <View style={styles.planBadge}>
@@ -130,28 +208,28 @@ const Profile = () => {
                     <Text style={styles.referralCode}>Referral Code: {profileData.referralCode}</Text>
                 </View>
                 <TouchableOpacity style={styles.rechargeButton}>
-                    <Text onPress={()=>navigation.navigate('Recharge Plan')} style={styles.rechargeButtonText}>Recharge Now</Text>
+                    <Text onPress={() => navigation.navigate('Recharge Plan')} style={styles.rechargeButtonText}>Recharge Now</Text>
                 </TouchableOpacity>
             </View>
 
             {/* Menu Items */}
             <View style={styles.menuContainer}>
                 <Text style={styles.menuHeader}>Business</Text>
-                <MenuItem icon="food"  title="Add Listing" onPress={()=> navigation.navigate('Add Listing')} />
-                <MenuItem icon="food-variant" title="Customize Tiffin Plan" onPress={()=>navigation.navigate('Customize Tiffine Plan')} />
-                <MenuItem icon="chart-bar" title="Order Report" onPress={()=>navigation.navigate('Order Report')} />
-                <MenuItem icon="account-multiple" title="Other Vendor IDs" />
+                <MenuItem icon="food" title="Add Listing" onPress={() => navigation.navigate('Add Listing')} />
+                <MenuItem icon="food-variant" title="Customize Tiffin Plan" onPress={() => navigation.navigate('Customize Tiffine Plan')} />
+                <MenuItem icon="chart-bar" title="Order Report" onPress={() => navigation.navigate('Order Report')} />
+                {/* <MenuItem icon="account-multiple" title="Other Vendor IDs" /> */}
 
-                <Text style={styles.menuHeader}>Earnings & History</Text>
-                <MenuItem icon="wallet" title="Sales Earnings" value={`₹${restaurant?.wallet?.toFixed(2) || 0}`} />
-                <MenuItem icon="history" title="Recharge History" onPress={()=>navigation.navigate('Recharge History')} />
-                <MenuItem icon="cash-multiple" title="Withdraw History" onPress={()=>navigation.navigate('Withdraw History')} />
-                <MenuItem icon="account-group" title="Referral History" onPress={()=>navigation.navigate('Referral History')} />
+                {/* <Text style={styles.menuHeader}>Earnings & History</Text> */}
+                {/* <MenuItem icon="wallet" title="Sales Earnings" value={`₹${restaurant?.wallet?.toFixed(2) || 0}`} /> */}
+                {/* <MenuItem icon="history" title="Recharge History" onPress={()=>navigation.navigate('Recharge History')} /> */}
+                {/* <MenuItem icon="cash-multiple" title="Withdraw History" onPress={()=>navigation.navigate('Withdraw History')} /> */}
+                {/* <MenuItem icon="account-group" title="Referral History" onPress={()=>navigation.navigate('Referral History')} /> */}
 
                 <Text style={styles.menuHeader}>Account Settings</Text>
-                <MenuItem icon="account-edit" title="Update Profile" onPress={()=>navigation.navigate('Profile Update')} />
-                <MenuItem icon="lock-reset" title="Change Password" onPress={()=>navigation.navigate('Change Password')} />
-                <MenuItem icon="headphones" title="Support" onPress={()=>navigation.navigate('Support')} />
+                <MenuItem icon="account-edit" title="Update Profile" onPress={() => navigation.navigate('Profile Update')} />
+                {/* <MenuItem icon="lock-reset" title="Change Password" onPress={() => navigation.navigate('Change Password')} /> */}
+                <MenuItem icon="headphones" title="Support" onPress={() => navigation.navigate('Support')} />
                 <MenuItem onPress={handleLogout} icon="logout" title="Logout" />
             </View>
         </ScrollView>
@@ -208,7 +286,7 @@ const styles = StyleSheet.create({
     planBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f7de02',
+        backgroundColor: '#FFF9C4',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 16,
