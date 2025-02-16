@@ -47,6 +47,7 @@ app.use(cookies_parser());
 const userSocketMap = new Map();
 const driverSocketMap = new Map();
 
+console.log("driverSocketMap-5", driverSocketMap)
 
 app.set('driverSocketMap', driverSocketMap)
 io.on('connection', (socket) => {
@@ -75,9 +76,7 @@ io.on('connection', (socket) => {
     });
 
     const emitRideToDrivers = (rideData) => {
-        // console.log('Driver Socket Map:', driverSocketMap);  // Check the map's contents
-
-        // Loop through the driverSocketMap and emit the event to each connected driver
+      
         driverSocketMap.forEach((driverSocketId) => {
             console.log('Emitting ride data to driver with socket ID:', driverSocketId);
             io.to(driverSocketId).emit('ride_come', rideData);
@@ -94,10 +93,10 @@ io.on('connection', (socket) => {
 
             if (dataof.rideStatus === 'accepted') {
                 // Get the socket ID of the user who made the ride request
-                console.log(String(dataof.user));
+                console.log("debug-1", String(dataof.user));
 
                 const userSocketId = userSocketMap.get(String(dataof.user));
-                console.log("userSocketId", userSocketMap);
+                console.log("debug-2-userSocketId", userSocketMap);
                 if (userSocketId) {
                     // Emit a message only to the specific user's socket ID
                     io.to(userSocketId).emit('ride_accepted_message', {
@@ -118,9 +117,10 @@ io.on('connection', (socket) => {
     socket.on('rideAccepted_by_user', (data) => {
         const { driver, ride } = data;
 
-
-        const driverSocketId = driverSocketMap.get(2);
-        console.log("driverSocketId", driverSocketId);
+        console.log("debug-4", ride.rider)
+        console.log("debug-5", driverSocketMap)
+        const driverSocketId = driverSocketMap.get(ride?.rider._id);
+        console.log("debug-1-3,driverSocketId", driverSocketId);
 
         if (driverSocketId) {
 
@@ -195,8 +195,10 @@ io.on('connection', (socket) => {
     socket.on('endRide', async (data) => {
         console.log("ride end", data);
         const ride_end = await rideEnd(data?.ride)
+        console.log("ride ends", ride_end);
         if (ride_end.success) {
-            const driverSocketId = driverSocketMap.get(2);
+            const Stringid = String(ride_end?.driverId)
+            const driverSocketId = driverSocketMap.get(Stringid);
             console.log("driverSocketId", driverSocketId);
             io.to(driverSocketId).emit('ride_end', {
                 message: 'Your ride  has been complete please collect money.',
@@ -229,7 +231,7 @@ io.on('connection', (socket) => {
         const ratingAdd = await AddRating(ride, rating)
         if (ratingAdd.success) {
             console.log("rating added")
-            const driverSocketId = driverSocketMap.get(2);
+            const driverSocketId = driverSocketMap.get(String(ratingAdd.driverId));
             console.log("driverSocketId", driverSocketId);
             io.to(driverSocketId).emit('rating', {
                 message: 'Your ride has been rated.',
@@ -276,7 +278,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('driver_reached', async (data) => {
-        console.log("driver_reached",data)
+        console.log("driver_reached", data)
         try {
             if (!data || !data._id || !data.driverId) {
                 return console.log("Invalid data received:", data);
@@ -311,7 +313,7 @@ io.on('connection', (socket) => {
         }
     })
     socket.on('mark_pick', async (data) => {
-        console.log("mark_pick",data)
+        console.log("mark_pick", data)
         try {
             if (!data || !data._id || !data.driverId) {
                 return console.log("Invalid data received:", data);
@@ -345,14 +347,14 @@ io.on('connection', (socket) => {
             console.error("Error processing driver_parcel_accept:", error.message);
         }
     })
-    socket.on('mark_deliver', async (data,moneyWriteAble,mode) => {
-        console.log("mark_deliver",data)
+    socket.on('mark_deliver', async (data, moneyWriteAble, mode) => {
+        console.log("mark_deliver", data)
         try {
             if (!data || !data._id || !data.driverId) {
                 return console.log("Invalid data received:", data);
             }
 
-            const response = await mark_deliver(io, data, driverSocketMap, userSocketMap,moneyWriteAble,mode);
+            const response = await mark_deliver(io, data, driverSocketMap, userSocketMap, moneyWriteAble, mode);
 
             if (response.status === true) {
                 console.log(response.message);
@@ -383,7 +385,7 @@ io.on('connection', (socket) => {
 
 
     socket.on('mark_cancel', async (data) => {
-       
+
         try {
             if (!data || !data._id || !data.driverId) {
                 return console.log("Invalid data received:", data);
@@ -441,7 +443,7 @@ io.on('connection', (socket) => {
     });
 });
 
-app.post('/image-upload',upload.any(),async(req,res)=>{
+app.post('/image-upload', upload.any(), async (req, res) => {
     try {
         console.log(req.files)
         return res.status(201).json({
@@ -488,6 +490,34 @@ app.post('/webhook/receive-location', Protect, async (req, res) => {
     }
 });
 
+
+app.post('/webhook/cab-receive-location', Protect, async (req, res) => {
+    try {
+        const { latitude, longitude } = req.body;
+        const userId = req.user.userId;
+        //   console.log("user hits",req.user)
+        //   console.log("body hits",req.body)
+
+        const data = await RiderModel.findOneAndUpdate(
+            { _id: userId },
+            {
+                location: {
+                    type: 'Point',
+                    coordinates: [longitude, latitude]
+                },
+                lastUpdated: new Date()
+            },
+            { upsert: true, new: true }
+        );
+        console.log("data", data)
+
+        res.status(200).json({ message: 'Location updated successfully' });
+    } catch (error) {
+        console.error('Error updating location:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // Define routes
 app.get('/rider', async (req, res) => {
     try {
@@ -527,7 +557,7 @@ app.post('/Fetch-Current-Location', async (req, res) => {
     }
 
     try {
- 
+
 
         // Fetch address details using the provided latitude and longitude
         const addressResponse = await axios.get(
@@ -660,7 +690,7 @@ app.post("/geo-code-distance", async (req, res) => {
 
 
 // Start the server
-const PORT =  3000;
+const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

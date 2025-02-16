@@ -27,7 +27,7 @@ export function ChangePassword() {
                 }
 
                 const { data } = await axios.get(
-                    'http://192.168.50.28:3000/api/v1/tiffin/get_single_tiffin_profile',
+                    'http://192.168.11.28:3000/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -68,7 +68,7 @@ export function ChangePassword() {
         try {
             setLoading(true);
             const response = await axios.put(
-                `http://192.168.50.28:3000/api/v1/tiffin/update_password/${restaurantId}`,
+                `http://192.168.11.28:3000/api/v1/tiffin/update_password/${restaurantId}`,
                 { Password: currentPassword, newPassword }
             );
 

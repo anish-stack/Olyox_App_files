@@ -21,7 +21,7 @@ export function NewOrder() {
                 }
 
                 const { data } = await axios.get(
-                    'http://192.168.50.28:3000/api/v1/tiffin/get_single_tiffin_profile',
+                    'http://192.168.11.28:3000/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -46,7 +46,7 @@ export function NewOrder() {
     const handleFetchOrderDetails = async () => {
         setLoading(true);
         try {
-            const { data } = await axios.get(`http://192.168.50.28:3000/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
+            const { data } = await axios.get(`http://192.168.11.28:3000/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
             if (data.success) {
                 const orders = data.data;
                 const filterData = orders.filter((order) => order.status === 'Pending');
@@ -69,7 +69,7 @@ export function NewOrder() {
     const handleChangeOrderStatus = async (orderId, status) => {
         try {
             console.log("object", orderId, status);
-            const { data } = await axios.put(`http://192.168.50.28:3000/api/v1/tiffin/update_order_status/${orderId}`, { status: status });
+            const { data } = await axios.put(`http://192.168.11.28:3000/api/v1/tiffin/update_order_status/${orderId}`, { status: status });
             if (data.success) {
                 alert('Order status updated successfully');
                 handleFetchOrderDetails();

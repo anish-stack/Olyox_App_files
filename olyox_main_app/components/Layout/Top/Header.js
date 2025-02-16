@@ -57,7 +57,7 @@ const Header = () => {
 
   const findCurrent = async () => {
     try {
-      const { data } = await axios.post(`http://192.168.50.28:3000/Fetch-Current-Location`, {
+      const { data } = await axios.post(`http://192.168.11.28:3000/Fetch-Current-Location`, {
         lat: location?.coords?.latitude,
         lng: location?.coords?.longitude,
       })

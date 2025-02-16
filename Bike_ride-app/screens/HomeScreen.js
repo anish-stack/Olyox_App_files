@@ -1,0 +1,376 @@
+import React, { useState, useCallback } from "react";
+import {
+  View,
+  StyleSheet,
+  Platform,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  Text,
+  Modal,
+  Pressable,
+  BackHandler,
+} from "react-native";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+import { useSocket } from "../context/SocketContext";
+
+import RideCome from "./Ride.come";
+import Report from "./Report/Report";
+import { useNavigation } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+const HomeScreen = () => {
+  const { isSocketReady, socket } = useSocket();
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isOnline, setIsOnline] = useState(false);
+  const [user_data, setUserData] = useState(null)
+  const [loading, setLoading] = useState(false);
+  const navigation = useNavigation()
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await SecureStore.deleteItemAsync('auth_token_cab');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Onboarding' }],
+      })
+     
+      BackHandler.exitApp()
+    } catch (error) {
+      console.error('Logout Error:', error);
+    }
+    setMenuVisible(false);
+  }, [navigation]);
+
+  const toggleOnlineStatus = async () => {
+    setLoading(true);
+    try {
+      const token = await SecureStore.getItemAsync('auth_token_cab');
+      const response = await axios.post(
+        'http://192.168.11.28:3000/api/v1/rider/toggleWorkStatusOfRider',
+        { status: !isOnline },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const response_two = await axios.get(
+        'http://192.168.11.28:3000/api/v1/rider/user-details',
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const partnerData = response_two.data.partner;
+      // console.log(partnerData)
+      setUserData(partnerData)
+      if (response.data.success) {
+        setIsOnline(!isOnline);
+      }
+    } catch (error) {
+      console.error('Toggle status failed:', error?.response?.data?.message || error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const ConnectionStatus = () => (
+    <View style={[
+      styles.connectionStatus,
+      { backgroundColor: isSocketReady ? '#FFF8E1' : '#FFEBEE' }
+    ]}>
+      <MaterialCommunityIcons
+        name={isSocketReady ? "wifi-check" : "wifi-off"}
+        size={20}
+        color={isSocketReady ? '#FFB300' : '#C62828'}
+      />
+      <Text style={[
+        styles.connectionText,
+        { color: isSocketReady ? '#FFB300' : '#C62828' }
+      ]}>
+        {isSocketReady ? "Connected" : "Offline"}
+      </Text>
+    </View>
+  );
+
+  const Menu = () => (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={menuVisible}
+      onRequestClose={() => setMenuVisible(false)}
+    >
+      <Pressable
+        style={styles.modalOverlay}
+        onPress={() => setMenuVisible(false)}
+      >
+        <View style={styles.menuContainer}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              setMenuVisible(false);
+              navigation.navigate('Profile')
+            }}
+          >
+            <MaterialCommunityIcons name="account" size={24} color="#FFB300" />
+            <Text style={styles.menuText}>Profile</Text>
+          </TouchableOpacity>
+
+          {/* <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              setMenuVisible(false);
+              router.push('/settings');
+            }}
+          >
+            <MaterialCommunityIcons name="cog" size={24} color="#FFB300" />
+            <Text style={styles.menuText}>Settings</Text>
+          </TouchableOpacity> */}
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={handleLogout}
+          >
+            <MaterialCommunityIcons name="logout" size={24} color="#FFB300" />
+            <Text style={styles.menuText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+
+  return (
+    <SafeAreaView style={{ flex: 1 }}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Dashboard</Text>
+        <TouchableOpacity
+          onPress={() => setMenuVisible(true)}
+          style={styles.menuButton}
+        >
+          <MaterialCommunityIcons name="dots-vertical" size={24} color="#212121" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#FFB300']}
+            tintColor="#FFB300"
+          />
+        }
+      >
+        <View style={styles.content}>
+          <View style={styles.welcomeCard}>
+            <View style={styles.welcomeCardContent}>
+              <View style={styles.avatarContainer}>
+                <View style={styles.avatar}>
+                  <MaterialCommunityIcons name="account" size={40} color="#FFB300" />
+                </View>
+                <ConnectionStatus />
+              </View>
+              <View style={styles.welcomeTextContainer}>
+                <Text style={styles.welcomeText}>
+                  Welcome back!
+                </Text>
+                <Text style={styles.subText}>
+                  Ready for today's rides?
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.onlineToggle,
+                  { backgroundColor: isOnline ? '#FFF8E1' : '#FFEBEE' }
+                ]}
+                onPress={toggleOnlineStatus}
+                disabled={loading}
+              >
+                <MaterialCommunityIcons
+                  name={user_data?.isAvailable ? "car" : "car-off"}
+                  size={24}
+                  color={user_data?.isAvailable ? '#FFB300' : '#C62828'}
+                />
+                <Text style={[
+                  styles.onlineToggleText,
+                  { color: user_data?.isAvailable ? '#FFB300' : '#C62828' }
+                ]}>
+                  {loading ? 'Updating...' : (user_data?.isAvailable ? 'Online' : 'Offline')}
+                </Text>
+              </TouchableOpacity>
+              <RideCome isRefresh={refreshing} />
+            </View>
+          </View>
+
+          <Report isRefresh={refreshing} />
+        </View>
+      </ScrollView>
+
+      <Menu />
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  header: {
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    paddingTop: Platform.OS === 'ios' ? 60 : 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#212121',
+  },
+  menuButton: {
+    padding: 8,
+  },
+  scrollView: {
+    flex: 1,
+    backgroundColor: '#f7de02',
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  content: {
+    padding: 8,
+  },
+  welcomeCard: {
+    backgroundColor: '#FFFFFF',
+    marginBottom: 16,
+    borderRadius: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  welcomeCardContent: {
+    padding: 16,
+  },
+  avatarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FFF8E1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  connectionStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 20,
+  },
+  connectionText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  welcomeTextContainer: {
+    marginTop: 8,
+  },
+  welcomeText: {
+    fontSize: 24,
+    color: '#212121',
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  subText: {
+    fontSize: 16,
+    color: '#757575',
+  },
+  onlineToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  onlineToggleText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  menuContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  menuText: {
+    marginLeft: 16,
+    fontSize: 16,
+    color: '#212121',
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginVertical: 8,
+  },
+});
+
+export default HomeScreen;

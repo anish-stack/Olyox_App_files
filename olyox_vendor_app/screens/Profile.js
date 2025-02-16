@@ -44,7 +44,7 @@ const Profile = () => {
             // console.log("storedToken",storedToken)
     
             const { data } = await axios.get(
-              'http://192.168.50.28:3000/api/v1/tiffin/get_single_tiffin_profile',
+              'http://192.168.11.28:3000/api/v1/tiffin/get_single_tiffin_profile',
               {
                 headers: {
                   'Authorization': `Bearer ${storedToken}`
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     planBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFF9C4',
+        backgroundColor: '#f7de02',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 16,

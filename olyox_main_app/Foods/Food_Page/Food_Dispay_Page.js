@@ -20,7 +20,7 @@ export default function Food_Display_Page() {
         setLoading(true)
         try {
             const { data } = await axios.get(
-                `http://192.168.50.28:3000/api/v1/tiffin/find_Restaurant_foods?food_category=${title}`,
+                `http://192.168.11.28:3000/api/v1/tiffin/find_Restaurant_foods?food_category=${title}`,
             )
             if (data.data) {
                 setFoodData(data.data)

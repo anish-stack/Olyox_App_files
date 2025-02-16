@@ -138,8 +138,6 @@ exports.login = async (req, res) => {
     }
 };
 
-
-
 exports.resendOtp = async (req, res) => {
     try {
         const { number } = req.body;
@@ -245,6 +243,7 @@ exports.verifyOtp = async (req, res) => {
 
         // OTP is verified, so clear the OTP and reset fields
         partner.otp = null; // Clear the OTP
+        partner.isOtpVerify = true; // Clear the OTP
         partner.howManyTimesHitResend = 0; // Reset resend attempts
         partner.isOtpBlock = false; // Unblock OTP if it was previously blocked
         partner.otpUnblockAfterThisTime = null; // Clear the OTP unblock time

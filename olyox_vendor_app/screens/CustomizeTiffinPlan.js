@@ -31,7 +31,7 @@ export function CustomizeTiffinPlan() {
         }
 
         const { data } = await axios.get(
-          'http://192.168.50.28:3000/api/v1/tiffin/get_single_tiffin_profile',
+          'http://192.168.11.28:3000/api/v1/tiffin/get_single_tiffin_profile',
           {
             headers: {
               'Authorization': `Bearer ${storedToken}`
@@ -240,7 +240,7 @@ export function CustomizeTiffinPlan() {
       // const data = await response.json();
       // console.log("data",formData)
 
-      const response = await axios.post('http://192.168.50.28:3000/api/v1/tiffin/create_custom_tiffin', requestData)
+      const response = await axios.post('http://192.168.11.28:3000/api/v1/tiffin/create_custom_tiffin', requestData)
 
       const data = response.data;
 

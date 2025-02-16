@@ -19,7 +19,7 @@ export function Login({ navigation }) {
 
         setLoading(true);
         try {
-            const response = await fetch('http://192.168.50.28:3000/api/v1/tiffin/tiffin_login', {
+            const response = await fetch('http://192.168.11.28:3000/api/v1/tiffin/tiffin_login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID }),
@@ -49,7 +49,7 @@ export function Login({ navigation }) {
 
         setLoading(true);
         try {
-            const response = await fetch('http://192.168.50.28:3000/api/v1/tiffin/verify_otp', {
+            const response = await fetch('http://192.168.11.28:3000/api/v1/tiffin/verify_otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID, otp }),

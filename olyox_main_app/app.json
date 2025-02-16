@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Olyox Ride",
-    "slug": "olyox-ride",
+    "name": "Olyox",
+    "slug": "olyox",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/playstore-icon.png",

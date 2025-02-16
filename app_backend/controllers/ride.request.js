@@ -141,6 +141,11 @@ exports.findRider = async (id, io) => {
 
         const eta = Math.round(trafficDuration);
 
+        if(riders.length === 0){
+            console.log("No riders available")
+            return 
+        }
+
         const rideInfo = {
             message: "Nearby riders found successfully",
             riders: riders.map((rider) => ({
@@ -327,6 +332,7 @@ exports.rideEnd = async (data) => {
 
         return {
             success: true,
+            driverId: findRider._id,
             message: 'Ride End successfully'
         }
 
@@ -389,6 +395,7 @@ exports.AddRating = async (data, rate) => {
 
         return {
             success: true,
+            driverId: ride_id.rider,
             message: 'Ride End and Payment Success successfully'
         }
 

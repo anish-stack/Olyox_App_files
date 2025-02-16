@@ -41,7 +41,7 @@ export default function App() {
       if (authToken) {
         try {
           const response = await axios.get(
-            'http://192.168.50.28:3000/api/v1/parcel/user-details',  // Replace with your API endpoint
+            'http://192.168.11.28:3000/api/v1/parcel/user-details',  // Replace with your API endpoint
             {
               headers: { Authorization: `Bearer ${authToken}` },
             }

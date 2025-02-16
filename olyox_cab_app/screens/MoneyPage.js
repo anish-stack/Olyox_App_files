@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from "@react-navigation/native";
 import QRCode from 'react-native-qrcode-svg';
-import { COLORS } from '../constants/colors'; 
+import { COLORS } from '../constants/colors';
 import { FontAwesome } from '@expo/vector-icons';
 import { useSocket } from '../context/SocketContext';
 
@@ -42,6 +42,7 @@ export default function MoneyPage() {
     useEffect(() => {
         socket.on('rating', (data) => {
             console.log(data);
+            navigation.navigate('Home')
             setRateValue(data?.rating || 0);
         });
 
@@ -80,7 +81,7 @@ export default function MoneyPage() {
                 </Text>
                 <TouchableOpacity
                     style={styles.backButton}
-                    onPress={() => navigation.goBack()}
+                    onPress={() => navigation.navigate('Home')}
                 >
                     <Text style={styles.buttonText}>Go Back</Text>
                 </TouchableOpacity>
@@ -112,7 +113,7 @@ export default function MoneyPage() {
             <View style={styles.buttonRow}>
                 <TouchableOpacity
                     style={styles.backButton}
-                    onPress={() => navigation.goBack()}
+                    onPress={() => navigation.navigate('Home')}
                     disabled={isLoading}
                 >
                     <Text style={styles.buttonText}>Go Back</Text>
