@@ -16,7 +16,7 @@ cloudinary.config({
 //still pending due to error of cors in uploading images
 exports.register_parcel_partner = async (req, res) => {
     try {
-        const { name, phone, address, bikeDetails } = req.body;
+        const { name, phone, address, type,bikeDetails } = req.body;
 
         // 1. Validate required fields
         if (!name.trim() || !phone.trim() || !address.trim() || !bikeDetails) {
@@ -38,6 +38,7 @@ exports.register_parcel_partner = async (req, res) => {
                 const otp = generateOtp();
                 if (existingPartner.howManyTimesHitResend >= 5) {
                     existingPartner.isOtpBlock = true;
+                    existingPartner.isDocumentUpload=false
                     existingPartner.otpUnblockAfterThisTime = new Date(Date.now() + 30 * 60000); // 30 minutes later
                     await existingPartner.save();
                     await SendWhatsAppMessage(`Your account is blocked for 30 minutes.`, phone);
@@ -45,6 +46,8 @@ exports.register_parcel_partner = async (req, res) => {
                 }
                 existingPartner.otp = otp;
                 existingPartner.howManyTimesHitResend += 1;
+                existingPartner.isDocumentUpload=false
+
                 await existingPartner.save();
                 await SendWhatsAppMessage(`Your OTP for parcel registration is: ${otp}`, phone);
                 return res.status(201).json({ success: true, message: "Partner exists. Please verify OTP." });
@@ -59,7 +62,7 @@ exports.register_parcel_partner = async (req, res) => {
         }
 
         // 6. Create new partner
-        const newPartner = new Parcel_Bike_Register({ name, phone, address, bikeDetails });
+        const newPartner = new Parcel_Bike_Register({ name, phone, address,type, bikeDetails,isDocumentUpload:false });
         const otp = generateOtp();
         newPartner.otp = otp;
         await newPartner.save();
@@ -411,6 +414,7 @@ exports.partner_work_status = async (req, res) => {
             date: today
         });
 
+        console.log("checkStatus",checkStatus)
         if (!checkStatus) {
             return res.status(404).json({ message: 'No status found for today' });
         }

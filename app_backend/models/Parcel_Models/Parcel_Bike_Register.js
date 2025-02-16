@@ -64,6 +64,7 @@ const ParcelBikeRegisterSchema = new Schema({
     },
     isActive: {
         type: Boolean,
+        default: true
     },
     isFreeMember: {
         type: Boolean,

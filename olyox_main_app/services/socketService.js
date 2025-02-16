@@ -1,6 +1,6 @@
 import io from "socket.io-client";
 
-const SOCKET_URL = "http://192.168.1.8:9630";
+const SOCKET_URL = "http://192.168.50.28:3000";
 let socket; // Singleton socket instance
 
 export const initializeSocket = ({ userType = "user", userId = 1 }) => {

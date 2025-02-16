@@ -20,7 +20,7 @@ import { useSocket } from "../../../context/SocketContext";
 const ActionButtons = ({ isNearCustomer, hasReached, functionHim, onMarkReached, orderData }) => {
   console.log("sss", functionHim)
   const [deliveryPhotoTaken, setDeliveryPhotoTaken] = useState(false);
-  const [isNearDropoff, setIsNearDropoff] = useState(false);
+  const [isNearDropoff, setIsNearDropoff] = useState(true);
   const [amountReceived, setAmountReceived] = useState("");
   const [paymentMode, setPaymentMode] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -36,7 +36,7 @@ const ActionButtons = ({ isNearCustomer, hasReached, functionHim, onMarkReached,
         // orderData.droppOffGeo.coordinates[1],
         // orderData.droppOffGeo.coordinates[0]
       );
-      setIsNearDropoff(distance <= 0.05); // 50 meters
+      setIsNearDropoff(distance <= 0.50); // 50 meters
     }
   }, [driverLocation, orderData]);
 
@@ -111,7 +111,7 @@ const ActionButtons = ({ isNearCustomer, hasReached, functionHim, onMarkReached,
       };
       socket.emit("mark_deliver", copyData);
       console.log("Parcel delivered:", copyData);
-      callFnc();
+      // callFnc();
     }
 
     setModalVisible(false);
@@ -184,7 +184,7 @@ const ActionButtons = ({ isNearCustomer, hasReached, functionHim, onMarkReached,
                 <Text style={styles.actionButtonText}>Start Ride to Drop-off</Text>
               </TouchableOpacity>
 
-              {isNearDropoff && !orderData?.is_driver_reached_at_deliver_place && (
+              {!isNearDropoff && !orderData?.is_driver_reached_at_deliver_place && (
                 <TouchableOpacity
                   style={[
                     styles.actionButton,

@@ -1,9 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
+import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Profile = () => {
+    const navigation = useNavigation();
+    const [restaurant, setRestaurant] = React.useState('');
     // Sample data
     const profileData = {
         name: "Sharma's Kitchen",
@@ -16,6 +21,52 @@ const Profile = () => {
         salesEarnings: 45000,
         totalEarnings: 50000
     };
+
+    const handleLogout = () => {
+        AsyncStorage.removeItem('userToken')
+        navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: "Home" }],
+            }) 
+          );
+    };
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+          try {
+            const storedToken = await AsyncStorage.getItem('userToken');
+            if (!storedToken) {
+              navigation.replace('Login');
+              return;
+            }
+
+            // console.log("storedToken",storedToken)
+    
+            const { data } = await axios.get(
+              'http://192.168.50.28:3000/api/v1/tiffin/get_single_tiffin_profile',
+              {
+                headers: {
+                  'Authorization': `Bearer ${storedToken}`
+                }
+              }
+            );
+    
+            // console.log("API Response:", data); // Debug API response
+    
+            if (data?.data) {
+                setRestaurant(data.data);
+            } else {
+              console.error("Error: restaurant_id not found in API response");
+            }
+    
+          } catch (error) {
+            console.error("Internal server error", error);
+          }
+        };
+    
+        fetchProfile();
+      }, []);
 
     const MenuItem = ({ icon, title, value, onPress }) => (
         <TouchableOpacity style={styles.menuItem} onPress={onPress}>
@@ -44,8 +95,8 @@ const Profile = () => {
                         <Icon name="camera" size={20} color="#FFF" />
                     </TouchableOpacity>
                 </View>
-                <Text style={styles.name}>{profileData.name}</Text>
-                <Text style={styles.category}>{profileData.category}</Text>
+                <Text style={styles.name}>{restaurant?.restaurant_name || ''}</Text>
+                <Text style={styles.category}>{profileData?.category || ''}</Text>
                 <View style={styles.planBadge}>
                     <Icon name="crown" size={16} color="#FFD700" />
                     <Text style={styles.planText}>Premium Plan</Text>
@@ -56,17 +107,17 @@ const Profile = () => {
             <View style={styles.statsContainer}>
                 <View style={styles.statBox}>
                     <Icon name="currency-inr" size={24} color="#4CAF50" />
-                    <Text style={styles.statAmount}>₹{profileData.totalEarnings}</Text>
+                    <Text style={styles.statAmount}>₹{restaurant?.wallet?.toFixed(2) || 0}</Text>
                     <Text style={styles.statLabel}>Total Earnings</Text>
                 </View>
                 <View style={styles.statBox}>
                     <Icon name="account-group" size={24} color="#2196F3" />
-                    <Text style={styles.statAmount}>{profileData.referralCount}</Text>
+                    <Text style={styles.statAmount}>{restaurant?.referralCount || 0}</Text>
                     <Text style={styles.statLabel}>Referrals</Text>
                 </View>
                 <View style={styles.statBox}>
                     <Icon name="gift" size={24} color="#FF9800" />
-                    <Text style={styles.statAmount}>₹{profileData.referralEarnings}</Text>
+                    <Text style={styles.statAmount}>₹{restaurant?.referral_earning || 0}</Text>
                     <Text style={styles.statLabel}>Referral Earnings</Text>
                 </View>
             </View>
@@ -79,29 +130,29 @@ const Profile = () => {
                     <Text style={styles.referralCode}>Referral Code: {profileData.referralCode}</Text>
                 </View>
                 <TouchableOpacity style={styles.rechargeButton}>
-                    <Text style={styles.rechargeButtonText}>Recharge Now</Text>
+                    <Text onPress={()=>navigation.navigate('Recharge Plan')} style={styles.rechargeButtonText}>Recharge Now</Text>
                 </TouchableOpacity>
             </View>
 
             {/* Menu Items */}
             <View style={styles.menuContainer}>
                 <Text style={styles.menuHeader}>Business</Text>
-                <MenuItem icon="food"  title="Add Listing" />
-                <MenuItem icon="food-variant" title="Customize Tiffin Plan" />
-                <MenuItem icon="chart-bar" title="Order Report" />
+                <MenuItem icon="food"  title="Add Listing" onPress={()=> navigation.navigate('Add Listing')} />
+                <MenuItem icon="food-variant" title="Customize Tiffin Plan" onPress={()=>navigation.navigate('Customize Tiffine Plan')} />
+                <MenuItem icon="chart-bar" title="Order Report" onPress={()=>navigation.navigate('Order Report')} />
                 <MenuItem icon="account-multiple" title="Other Vendor IDs" />
 
                 <Text style={styles.menuHeader}>Earnings & History</Text>
-                <MenuItem icon="wallet" title="Sales Earnings" value={`₹${profileData.salesEarnings}`} />
-                <MenuItem icon="history" title="Recharge History" />
-                <MenuItem icon="cash-multiple" title="Withdraw History" />
-                <MenuItem icon="account-group" title="Referral History" />
+                <MenuItem icon="wallet" title="Sales Earnings" value={`₹${restaurant?.wallet?.toFixed(2) || 0}`} />
+                <MenuItem icon="history" title="Recharge History" onPress={()=>navigation.navigate('Recharge History')} />
+                <MenuItem icon="cash-multiple" title="Withdraw History" onPress={()=>navigation.navigate('Withdraw History')} />
+                <MenuItem icon="account-group" title="Referral History" onPress={()=>navigation.navigate('Referral History')} />
 
                 <Text style={styles.menuHeader}>Account Settings</Text>
-                <MenuItem icon="account-edit" title="Update Profile" />
-                <MenuItem icon="lock-reset" title="Change Password" />
-                <MenuItem icon="headphones" title="Support" />
-                <MenuItem icon="logout" title="Logout" />
+                <MenuItem icon="account-edit" title="Update Profile" onPress={()=>navigation.navigate('Profile Update')} />
+                <MenuItem icon="lock-reset" title="Change Password" onPress={()=>navigation.navigate('Change Password')} />
+                <MenuItem icon="headphones" title="Support" onPress={()=>navigation.navigate('Support')} />
+                <MenuItem onPress={handleLogout} icon="logout" title="Logout" />
             </View>
         </ScrollView>
     );

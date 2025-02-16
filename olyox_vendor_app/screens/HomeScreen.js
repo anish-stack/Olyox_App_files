@@ -1,18 +1,30 @@
-import React from 'react';
-import { StyleSheet, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { COLORS } from '../constants/colors';
 import Layout from '../components/Layout/_layout';
 import Status from '../components/Status/Status';
 import OrderCount from '../components/OrderCount/OrderCount';
 import Graph from '../components/Graph/Graph';
+import axios from 'axios';
 
 const HomeScreen = () => {
+  const [isRefreshDone, setIsRefreshDone] = useState(false);
+
+  const onRefresh = () => {
+    setIsRefreshDone(true);
+    setTimeout(() => setIsRefreshDone(false), 1000 ); // Simulating refresh
+  };
+
   return (
     <Layout>
-      <ScrollView contentContainerStyle={styles.scrollViewContent}>
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={isRefreshDone} onRefresh={onRefresh} />
+        }
+        contentContainerStyle={styles.scrollViewContent}
+      >
         <Status />
-    
-        <OrderCount />
+        <OrderCount isRefresh={isRefreshDone} />
         <Graph />
       </ScrollView>
     </Layout>

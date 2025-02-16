@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
 
 const restaurantSchema = new mongoose.Schema({
     restaurant_name: {
@@ -53,7 +54,39 @@ const restaurantSchema = new mongoose.Schema({
     },
     restaurant_fssai: {
         type: String,
-        required: true
+        // required: true
+    },
+    restaurant_fssai_image: {
+        url: {
+            type: String
+        },
+        public_id: {
+            type: String
+        }
+    },
+    restaurant_pan_image: {
+        url: {
+            type: String
+        },
+        public_id: {
+            type: String
+        }
+    },
+    restaurant_adhar_front_image: {
+        url: {
+            type: String
+        },
+        public_id: {
+            type: String
+        }
+    },
+    restaurant_adhar_back_image: {
+        url: {
+            type: String
+        },
+        public_id: {
+            type: String
+        }
     },
     status: {
         type: Boolean,
@@ -66,12 +99,66 @@ const restaurantSchema = new mongoose.Schema({
     restaurant_in_top_list: {
         type: Boolean,
         default: false
+    },
+    otp: {
+        type: String
+    },
+    isWorking: {
+        type: Boolean,
+        default: true
+    },
+    bank_details: {
+        account_holder_name: {
+            type: String,
+            // required: true
+        },
+        account_number: {
+            type: String,
+            // required: true
+        },
+        ifsc_code: {
+            type: String,
+            // required: true
+        },
+        bank_name: {
+            type: String,
+            // required: true
+        }
+    },
+    wallet: {
+        type: Number,
+        default: 0
+    },
+    referral_earning:{
+        type: Number,
+        default: 0
+    },
+    Password : {
+        type: String
+    },
+    newPassword: {
+        type: String
     }
 }, {
     timestamps: true
 });
 
 restaurantSchema.index({ geo_location: '2dsphere' });
+
+restaurantSchema.pre('save', async function (next) {
+    if (!this.isModified('Password')) return next();
+    try {
+        const salt = await bcrypt.genSalt(10);
+        this.Password = await bcrypt.hash(this.Password, salt);
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
+
+restaurantSchema.methods.comparePassword = async function (candidatePassword) {
+    return await bcrypt.compare(candidatePassword, this.Password);
+}
 
 const Restaurant = mongoose.model('Restaurant', restaurantSchema);
 

@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity, ScrollView, Linking, Platform, Alert } from 'react-native';
+import { StyleSheet, Text, View, Image, TouchableOpacity, ScrollView, Linking, Alert, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 
-export function NewOrder() {
+export default function OnGoingOrder() {
     const navigation = useNavigation();
     const [order, setOrder] = useState([]);
     const [restaurantId, setRestaurantId] = useState(null);
@@ -49,7 +49,7 @@ export function NewOrder() {
             const { data } = await axios.get(`http://192.168.50.28:3000/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
             if (data.success) {
                 const orders = data.data;
-                const filterData = orders.filter((order) => order.status === 'Pending');
+                const filterData = orders.filter((order) => order.status === 'Confirmed');
                 const reverse = filterData.reverse();
                 setOrder(reverse || []);
             }
@@ -60,6 +60,25 @@ export function NewOrder() {
         }
     };
 
+    const handleMakeCall = (phone) => {
+        let phoneNumber = phone;
+        if (Platform.OS !== 'android') {
+            phoneNumber = `telprompt:${phone}`;
+        }
+        else {
+            phoneNumber = `tel:${phone}`;
+        }
+        Linking.canOpenURL(phoneNumber)
+            .then(supported => {
+                if (!supported) {
+                    Alert.alert('Phone number is not available');
+                } else {
+                    return Linking.openURL(phoneNumber);
+                }
+            })
+        // Linking.openURL(`tel:${phone}`);
+    }
+
     useEffect(() => {
         if (restaurantId !== null) {
             handleFetchOrderDetails();
@@ -68,35 +87,16 @@ export function NewOrder() {
 
     const handleChangeOrderStatus = async (orderId, status) => {
         try {
-            console.log("object", orderId, status);
+            // console.log("object", orderId, status);
             const { data } = await axios.put(`http://192.168.50.28:3000/api/v1/tiffin/update_order_status/${orderId}`, { status: status });
             if (data.success) {
-                alert('Order status updated successfully');
+                alert("Order status updated successfully");
                 handleFetchOrderDetails();
             }
         } catch (error) {
             console.log("Internal server error", error);
         }
     };
-
-    const handleMakeCall = (phone) => {
-            let phoneNumber = phone;
-            if (Platform.OS !== 'android') {
-                phoneNumber = `telprompt:${phone}`;
-            }
-            else {
-                phoneNumber = `tel:${phone}`;
-            }
-            Linking.canOpenURL(phoneNumber)
-                .then(supported => {
-                    if (!supported) {
-                        Alert.alert('Phone number is not available');
-                    } else {
-                        return Linking.openURL(phoneNumber);
-                    }
-                })
-            // Linking.openURL(`tel:${phone}`);
-        }
 
     const formatDate = (dateString) => {
         const date = new Date(dateString);
@@ -157,7 +157,7 @@ export function NewOrder() {
                         </View>
                         <TouchableOpacity
                             style={styles.callButton}
-                            onPress={() => {handleMakeCall(item?.user?.number)}}
+                            onPress={() => { handleMakeCall(item?.user?.number) }}
                         >
                             <Icon name="phone" size={20} color="#4CAF50" />
                         </TouchableOpacity>
@@ -191,18 +191,18 @@ export function NewOrder() {
                     <View style={styles.actionButtons}>
                         <TouchableOpacity
                             style={[styles.button, styles.acceptButton]}
-                            onPress={() => handleChangeOrderStatus(item._id, 'Confirmed')}
+                            onPress={() => handleChangeOrderStatus(item._id, 'Out for Delivery')}
                         >
                             <Icon name="check-circle" size={20} color="#FFF" />
-                            <Text style={styles.buttonText}>Accept Order</Text>
+                            <Text style={styles.buttonText}>Prepared</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
+                        {/* <TouchableOpacity
                             style={[styles.button, styles.rejectButton]}
                             onPress={() => handleChangeOrderStatus(item._id, 'Cancelled')}
                         >
                             <Icon name="close-circle" size={20} color="#FFF" />
                             <Text style={styles.buttonText}>Reject</Text>
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
                     </View>
                 </View>
             ))}

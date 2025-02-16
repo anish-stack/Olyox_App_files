@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from "@react-navigation/native";
 import QRCode from 'react-native-qrcode-svg';
-import { COLORS } from '../constants/colors'; // Ensure your COLORS object is correctly set up
+import { COLORS } from '../constants/colors'; 
 import { FontAwesome } from '@expo/vector-icons';
 import { useSocket } from '../context/SocketContext';
 
@@ -26,8 +26,8 @@ export default function MoneyPage() {
 
     const [isLoading, setIsLoading] = useState(false);
 
-    const price = data.rideDetails?.price || '0'; // Price from route params
-    const qrValue = data?.qrValue || '123456'; // QR code value
+    const price = data.rideDetails?.price || '0';
+    const qrValue = data?.qrValue || '123456';
 
     const handleISPay = () => {
         setIsLoading(true);

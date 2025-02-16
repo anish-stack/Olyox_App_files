@@ -279,6 +279,71 @@ exports.get_order_by_id = async (req, res) => {
     }
 };
 
+exports.get_orders_by_restaurant = async (req, res) => {
+    try {
+        const { restaurantId } = req.params; // Extract restaurant ID from request params
+
+        const orders = await RestuarntOrderModel.find({ restaurant: restaurantId })
+            .sort({ createdAt: -1 })
+            .populate("items.foodItem_id")
+            .populate("user")
+            .populate("restaurant");
+
+        if (!orders || orders.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No orders found for this restaurant"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: orders
+        });
+
+    } catch (error) {
+        console.error("Error fetching orders by restaurant ID:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
+exports.change_order_status = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { status } = req.body;
+        // console.log("object", req.body,orderId)
+        const order = await RestuarntOrderModel.findById(orderId);
+        if (!order) {
+            return res.status(404).json({
+                success: false, 
+                message: "Order not found"
+            });
+        }
+        order.status = status;
+        await order.save();
+        if(status === "Out for Delivery"){
+            const resturant_id = order?.restaurant;
+            const resturant = await Restaurant.findById(resturant_id); 
+            resturant.wallet = resturant.wallet + order.totalPrice
+            await resturant.save();
+        }
+        return res.status(200).json({
+            success: true,
+            message: "Order status updated successfully"
+        });
+
+    } catch (error) {
+        console.log("Internal sever error", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
 
 exports.admin_cancel_order = async (req, res) => {
     try {

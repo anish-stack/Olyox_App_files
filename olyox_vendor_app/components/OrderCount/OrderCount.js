@@ -1,44 +1,137 @@
-import React from 'react';
-import { Text, View, StyleSheet, Dimensions } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import { Text, View, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-export default function OrderCount() {
+export default function OrderCount({isRefresh}) {
+    const navigation = useNavigation();
+    const [restaurantId, setRestaurantId] = useState('null');
+    const [orderCount, setOrderCount] = useState({
+        allOrder: 0,
+        running: 0,
+        completed: 0,
+        newOrder:0
+    })
+    const [loading, setLoading] = useState(false)
     const orderStats = [
         {
-            title: 'New Orders',
-            count: 25,
+            title: 'New Order',
+            count: orderCount.newOrders,
             icon: 'shopping-outline',
             color: '#FF6B6B',
-            bgColor: '#FFE8E8'
+            bgColor: '#FFE8E8',
+            link: 'New Order'
         },
         {
             title: 'Running',
-            count: 12,
+            count: orderCount.running,
             icon: 'run-fast',
             color: '#4ECDC4',
-            bgColor: '#E8F8F7'
+            bgColor: '#E8F8F7',
+            link: 'Running Order'
         },
         {
             title: 'Completed',
-            count: 156,
+            count: orderCount.completed,
             icon: 'check-circle-outline',
             color: '#45B7D1',
-            bgColor: '#E6F6FA'
+            bgColor: '#E6F6FA',
+            link: 'Complete Order'
         },
         {
-            title: 'Products',
-            count: 48,
+            title: 'All Orders',
+            count: orderCount.allOrder,
             icon: 'package-variant-closed',
             color: '#96C93D',
-            bgColor: '#F0F7E6'
+            bgColor: '#F0F7E6',
+            link: 'All Order'
         }
     ];
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const storedToken = await AsyncStorage.getItem('userToken');
+                if (!storedToken) {
+                    navigation.replace('Login');
+                    return;
+                }
+
+                const { data } = await axios.get(
+                    'http://192.168.50.28:3000/api/v1/tiffin/get_single_tiffin_profile',
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${storedToken}`
+                        }
+                    }
+                );
+
+                if (data?.data) {
+                    setRestaurantId(data.data._id);
+                } else {
+                    console.error("Error: restaurant_id not found in API response");
+                }
+
+            } catch (error) {
+                console.error("Internal server error", error);
+            }
+        };
+
+        fetchProfile();
+    }, []);
+
+    const handleFetchOrderDetails = async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get(`http://192.168.50.28:3000/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
+            if (data.success) {
+                const allOder = data.data;
+                const runningOrders = allOder.filter(order => order.status === 'Confirmed');
+                const newOrders = allOder.filter(order => order.status === 'Pending');
+                const completedOrders = allOder.filter(order => order.status === 'Delivered');
+                setOrderCount({
+                    allOrder: allOder.length,
+                    running: runningOrders.length,
+                    completed: completedOrders.length,
+                    newOrders:newOrders.length
+                });
+            }
+        } catch (error) {
+            console.log("Internal server error have come", error.response);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (restaurantId !== 'null') {
+            handleFetchOrderDetails();
+        }
+    }, [restaurantId]);
+
+
+    useEffect(()=>{
+        if(isRefresh === true){
+
+            handleFetchOrderDetails()
+        }
+    },[isRefresh])
+
+     if (loading) {
+            return (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text>Loading...</Text>
+                </View>
+            );
+        }
 
     return (
         <View style={styles.container}>
             <View style={styles.inner_container}>
                 {orderStats.map((stat, index) => (
-                    <View key={index} style={styles.col}>
+                    <TouchableOpacity onPress={() => navigation.navigate(stat.link)} key={index} style={styles.col}>
                         <View style={[styles.statBox, { backgroundColor: stat.bgColor }]}>
                             <View style={[styles.iconContainer, { backgroundColor: stat.color }]}>
                                 <Icon name={stat.icon} size={24} color="white" />
@@ -46,18 +139,18 @@ export default function OrderCount() {
                             <Text style={styles.count}>{stat.count}</Text>
                             <Text style={styles.title}>{stat.title}</Text>
                             <View style={[styles.progressBar, { backgroundColor: stat.color + '40' }]}>
-                                <View 
+                                <View
                                     style={[
-                                        styles.progress, 
-                                        { 
+                                        styles.progress,
+                                        {
                                             backgroundColor: stat.color,
                                             width: `${Math.min((stat.count / 200) * 100, 100)}%`
                                         }
-                                    ]} 
+                                    ]}
                                 />
                             </View>
                         </View>
-                    </View>
+                    </TouchableOpacity>
                 ))}
             </View>
         </View>

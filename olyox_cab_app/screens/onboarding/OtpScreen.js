@@ -26,20 +26,20 @@ const OtpScreen = ({ onVerify, number }) => {
   const handleOtpVerify = async () => {
     try {
       const response = await axios.post(
-        'http://192.168.1.8:9630/api/v1/parcel/login_parcel_otp_verify',
+        'http://192.168.50.28:3000/api/v1/parcel/login_parcel_otp_verify',
         { otp, number }
       );
       if (response.data.success) {
         const token = response.data.token;
         const type = response.data.redirect?.type;
-        await AsyncStorage.setItem('auth_token_partner', token); 
+        await AsyncStorage.setItem('auth_token_partner', token);
         console.log("OTP verified:", response.data);
         if (type === 'parcel') {
           navigation.navigate('parcelHome')
         } else if (type === "CAB") {
           navigation.navigate('cabHome')
         } else {
-          navigation.navigate('partnerHomeScreen')
+          navigation.navigate('parcelHome')
         }
 
         onVerify();
@@ -56,7 +56,7 @@ const OtpScreen = ({ onVerify, number }) => {
   const handleResendOtp = async () => {
     try {
       const response = await axios.post(
-        'http://192.168.1.8:9630/api/v1/parcel/login_parcel_otp_resend',
+        'http://192.168.50.28:3000/api/v1/parcel/login_parcel_otp_resend',
         { number }
       );
       if (response.data.success) {

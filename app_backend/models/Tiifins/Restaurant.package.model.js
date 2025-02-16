@@ -2,41 +2,45 @@ const mongoose = require('mongoose');
 
 const Schema = mongoose.Schema;
 
-const RestaurantPackageSchema = new Schema({
-    package_validity: {
-        type: String,
-        required: true
-    },
-    package_meals: {
-        type: String,
-        required: true,
-        enum: ['Break-Fast', 'Lunch', 'Dinner']
-    },
-    package_lunch_includes: [String],
-    package_break_fast_includes: [String],
-    package_dinner_includes: [String],
-    package_price:{
-        type: Number,
-        required: true
-    },
-    package_discount:{
-        type: Number,
-        required: true
-    },
-    package_description:{
-        type: String,
-    },
-    package_available:{
-        type:Boolean,
-        default: true
-    },
-        restaurant_id: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Restaurant',
-        }
-
-},{
-    timestamps: true
+const MealItemSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    price: { type: Number, required: true }
 });
+
+const MealSchema = new mongoose.Schema({
+    enabled: { type: Boolean, default: false },
+    items: [MealItemSchema]
+});
+
+const RestaurantPackageSchema = new Schema({
+    duration: { type: Number, required: true, enum: [7, 15, 30] }, // 7, 15, or 30 days
+    images: {
+        url: {
+            type: String
+        },
+        public_id: {
+            type: String
+        }
+    },
+    meals: {
+        breakfast: { type: MealSchema, required: true },
+        lunch: { type: MealSchema, required: true },
+        dinner: { type: MealSchema, required: true }
+    },
+    preferences: {
+        isVeg: { type: Boolean, default: true },
+        spiceLevel: { type: String, enum: ["low", "medium", "high"], default: "medium" },
+        includeWeekends: { type: Boolean, default: true }
+    },
+    totalPrice: { type: Number, required: true },
+    restaurant_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Restaurant',
+    },
+    food_availability: {
+        type: Boolean,
+        default: true
+    }
+}, { timestamps: true });
 
 module.exports = mongoose.model('RestaurantPackage', RestaurantPackageSchema);

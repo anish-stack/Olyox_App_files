@@ -1,8 +1,70 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Animated } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 
 export default function Status() {
-    const [isActive, setIsActive] = useState(true);
+    const navigation = useNavigation();
+    const [isActive, setIsActive] = useState(null);
+    const [restaurantId, setRestaurantId] = useState(null); // Store restaurant ID
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const storedToken = await AsyncStorage.getItem('userToken');
+                if (!storedToken) {
+                    navigation.replace('Login');
+                    return;
+                }
+
+                const { data } = await axios.get(
+                    'http://192.168.50.28:3000/api/v1/tiffin/get_single_tiffin_profile',
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${storedToken}`
+                        }
+                    }
+                );
+
+                if (data?.data) {
+                    setIsActive(data.data.isWorking);
+                    setRestaurantId(data.data._id); // Save restaurant ID
+                } else {
+                    console.error("Error: restaurant_id not found in API response");
+                }
+
+            } catch (error) {
+                console.error("Internal server error", error);
+            }
+        };
+
+        fetchProfile();
+    }, []);
+
+    const toggleStatus = async () => {
+        if (!restaurantId) {
+            console.error("Restaurant ID is missing!");
+            return;
+        }
+        
+        try {
+            const newStatus = !isActive;
+
+            const response = await axios.put(
+                `http://192.168.50.28:3000/api/v1/tiffin/update_is_working/${restaurantId}`,
+                { isWorking: newStatus }
+            );
+
+            if (response.data.success) {
+                setIsActive(newStatus);
+            } else {
+                console.error("Failed to update status");
+            }
+        } catch (error) {
+            console.error("Error updating status:", error);
+        }
+    };
 
     return (
         <View style={styles.container}>
@@ -16,9 +78,9 @@ export default function Status() {
                 </View>
 
                 {/* Right side - Toggle button */}
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.toggleContainer, isActive ? styles.toggleActive : styles.toggleInactive]}
-                    onPress={() => setIsActive(!isActive)}
+                    onPress={toggleStatus}
                     activeOpacity={0.8}
                 >
                     <View style={[styles.toggleButton, isActive ? styles.toggleButtonRight : styles.toggleButtonLeft]} />

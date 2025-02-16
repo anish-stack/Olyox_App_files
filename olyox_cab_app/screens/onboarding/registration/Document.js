@@ -29,14 +29,14 @@ const DOCUMENTS = [
   { id: 'pan', title: 'PAN Card', icon: 'wallet-outline' },
 ];
 
-const API_URL = 'http://192.168.1.9:3000/api/v1/parcel/uploadDocuments';
+const API_URL = 'http://192.168.50.28:3000/api/v1/parcel/uploadDocuments';
 
-export default function Documents() {
+export default function Documents({navigation}) {
   const [images, setImages] = useState({});
   const [loading, setLoading] = useState({});
   const [error, setError] = useState({});
   const [uploadProgress, setUploadProgress] = useState({});
-const navigation = useNavigation()
+
   const isAllUploaded = DOCUMENTS.every(doc => images[doc.id]);
 
   const pickImage = async (type) => {
@@ -95,7 +95,7 @@ const navigation = useNavigation()
       setLoading(prev => ({ ...prev, submit: true }));
 
       // Get the authentication token
-      const token = await SecureStore.getItemAsync('token_Rider');
+      const token = await SecureStore.getItemAsync('auth_token_partner');
       if (!token) {
         throw new Error('Authentication token not found');
       }

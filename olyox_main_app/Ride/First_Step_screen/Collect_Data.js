@@ -104,7 +104,7 @@ export default function Collect_Data() {
         // let location = await Location.getCurrentPositionAsync({});
         // console.log("location",location)
         // try {
-        //     const response = await axios.post('http://192.168.1.8:9630/api/v1/rides/create-ride', {
+        //     const response = await axios.post('http://192.168.50.28:3000/api/v1/rides/create-ride', {
         //         currentLocation: location.coords,
         //         pickupLocation: complete_ride.pickup,
         //         dropLocation: complete_ride.dropoff,

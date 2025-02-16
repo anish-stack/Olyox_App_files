@@ -37,13 +37,14 @@ export default function OrderDetails() {
                 return
             }
 
-            const { data } = await axios.get(`http://192.168.1.9:3000/api/v1/parcel/single_my_parcel?id=${id}`)
+            const { data } = await axios.get(`http://192.168.50.28:3000/api/v1/parcel/single_my_parcel?id=${id}`)
             console.log(data.data)
             setOrderData(data.data)
             await setupLocation()
         } catch (error) {
+            setOrderData([])
             console.error("Error fetching order data:", error)
-            setError(error.message)
+            // setError(error.message)
         } finally {
             setLoading(false)
         }

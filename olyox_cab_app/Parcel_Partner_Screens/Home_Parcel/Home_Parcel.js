@@ -23,6 +23,7 @@ export default function Home_Parcel() {
     const [userData, setUserData] = useState(null);
     const navigation = useNavigation()
     const [workStatus, setWorkStatus] = useState(null);
+    const [statusOfPartner, setStatus] = useState(false);
     const [order, setOrder] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
     const [location, setLocation] = useState(null);
@@ -59,7 +60,7 @@ export default function Home_Parcel() {
             }
 
             const response = await axios.get(
-                'http://192.168.1.8:9630/api/v1/parcel/user-details',
+                'http://192.168.50.28:3000/api/v1/parcel/user-details',
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 }
@@ -71,7 +72,7 @@ export default function Home_Parcel() {
             console.error('Error fetching user details:', error);
         }
     };
-    // console.log(location)
+  
 
     useEffect(() => {
         const getLocation = async () => {
@@ -79,8 +80,8 @@ export default function Home_Parcel() {
                 console.log('Socket not connected, waiting...');
                 return;
             }
-            console.log(workStatus?.status)
-            if (workStatus?.status !== 'online') {
+          
+            if (statusOfPartner !== 'online') {
                 console.log('Work status is not online, skipping location update');
                 return;
             }
@@ -98,7 +99,7 @@ export default function Home_Parcel() {
                 const { coords } = await Location.getCurrentPositionAsync({});
                 setLocation(coords);
                 sendLocationToServer(coords.latitude, coords.longitude);
-            }, 2510);
+            }, 1000);
 
             return () => clearInterval(interval);
         };
@@ -107,11 +108,11 @@ export default function Home_Parcel() {
             getLocation(); // Only run this function if socket is connected
         }
 
-        // return () => {
-        //     if (isSocketReady) {
-        //         socket.off('rider-location');
-        //     }
-        // };
+        return () => {
+            if (isSocketReady) {
+                socket.off('rider-location');
+            }
+        };
     }, [workStatus]);
 
     const sendLocationToServer = async (latitude, longitude) => {
@@ -119,7 +120,7 @@ export default function Home_Parcel() {
         if (!token) return;
 
         try {
-            const response = await fetch('http://192.168.1.8:9630/webhook/receive-location', {
+            const response = await fetch('http://192.168.50.28:3000/webhook/receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -129,7 +130,7 @@ export default function Home_Parcel() {
             });
 
             const data = await response.json();
-            // console.log('Location data sent to server:', data);
+            console.log('Location data sent to server:', data);
         } catch (error) {
             console.error('Error sending location:', error);
         }
@@ -151,22 +152,28 @@ export default function Home_Parcel() {
     const fetchWorkStatus = async () => {
         try {
             const token = await AsyncStorage.getItem('auth_token_partner');
-            console.log(token)
+            console.log("fetch", token);
             if (!token) return;
-
-            const response = await axios.get(
-                'http://192.168.1.8:9630/api/v1/parcel/my_parcel_driver-details',
-                {
+    
+            // Run both requests concurrently using Promise.all
+            const [response, sresponse] = await Promise.all([
+                axios.get('http://192.168.50.28:3000/api/v1/parcel/my_parcel_driver-details', {
                     headers: { Authorization: `Bearer ${token}` },
-                }
-            );
-            console.log("i am ", response.data.summary)
+                }),
+                axios.get('http://192.168.50.28:3000/api/v1/parcel/partner_work_status_details', {
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            ]);
+    
+            console.log("i am ", response.data.summary);
             setWorkStatus(response.data.summary);
+            setStatus(sresponse.data.status);
+    
         } catch (error) {
-            console.error('Error fetching work status:', error.response.data);
+            console.error('Error fetching work status:', error.response ? error.response.data : error.message);
         }
     };
-
+    
 
     useEffect(() => {
         const loadData = async () => {
@@ -212,6 +219,7 @@ export default function Home_Parcel() {
         setRefreshing(false);
     }, []);
 
+    console.log("workStatus",workStatus)
     if (loading) {
         return (
             <SafeAreaView style={styles.safeArea}>

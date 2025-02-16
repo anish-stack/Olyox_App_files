@@ -1,46 +1,38 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { COLORS } from '../../../constants/colors';
+import MaterialIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import { useNavigation } from '@react-navigation/native';
 
 const BottomNav = () => {
     const navigation = useNavigation();
-    const route = useRoute();
-    const { title } = route.params || {}
+
     const tabs = [
         { name: 'Home', icon: 'home', route: 'Home' },
         { name: 'Profile', icon: 'account', route: 'Profile' },
-        { name: 'Services', icon: 'briefcase', route: 'Services' },
-        { name: 'Offers', icon: 'tag', route: 'Payment' },
-        { name: 'Get A Call', icon: 'phone', route: 'get-a-call' },
+        { name: 'All Food', icon: 'utensils', route: 'AllFood' }, // ✅ Fixed route name
+        { name: 'Custom Food', icon: 'concierge-bell', route: 'CustomFood' }, // ✅ Fixed typo
+        { name: 'Get A Call', icon: 'phone', route: 'GetACall' }, // ✅ Fixed format
     ];
+
+    const redirect = (screen) => {
+        console.log(`Navigating to: ${screen}`);
+        navigation.navigate(screen);
+    };
 
     return (
         <View style={styles.bottomNav}>
-            {tabs.map((tab, index) => {
-                const isActive = route.name.toLowerCase() === tab.route.toLowerCase();
-
-                return (
-                    <TouchableOpacity
-                        key={index}
-                        style={styles.tabItem}
-                        onPress={() => navigation.navigate(tab.route)}
-                        // onPress={() => navigation.navigate(tab.route, { title: "hello" })}
-                    >
-                        <Icon
-                            name={tab.icon}
-                            size={24}
-                            color={isActive ? COLORS.primary : COLORS.inactive}
-                        />
-                        <Text style={isActive ? styles.activeTabText : styles.tabText}>
-                            {tab.name}
-                        </Text>
-                    </TouchableOpacity>
-                );
-            })}
+            {tabs.map((tab, index) => (
+                <TouchableOpacity key={index} style={styles.tabItem} onPress={() => redirect(tab.route)}>
+                    {['utensils', 'concierge-bell'].includes(tab.icon) ? (
+                        <FontAwesome5 name={tab.icon} size={24} />
+                    ) : (
+                        <MaterialIcon name={tab.icon} size={24} />
+                    )}
+                    <Text style={styles.tabText}>{tab.name}</Text>
+                </TouchableOpacity>
+            ))}
         </View>
-
     );
 };
 
@@ -60,11 +52,6 @@ const styles = StyleSheet.create({
     tabText: {
         fontSize: 12,
         color: '#111',
-    },
-    activeTabText: {
-        fontSize: 12,
-        color: '#6366F1',
-        fontWeight: 'bold',
     },
 });
 

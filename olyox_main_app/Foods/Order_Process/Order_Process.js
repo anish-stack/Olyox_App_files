@@ -139,7 +139,7 @@ const OrderTracking = () => {
         setError(null);
         try {
             const response = await axios.get(
-                `http://192.168.1.8:9630/api/v1/tiffin/get_order_by_id/${orderId}`
+                `http://192.168.50.28:3000/api/v1/tiffin/get_order_by_id/${orderId}`
             );
             if (response.data.success) {
                 setOrder(response.data.order);

@@ -32,19 +32,21 @@ export default function App() {
 
   useEffect(() => {
     const checkAuthToken = async () => {
-      const token = await AsyncStorage.getItem('auth_token_partners');
+      // await AsyncStorage.removeItem('auth_token_partner');
+      const token = await AsyncStorage.getItem('auth_token_partner');
      
       const authToken = token 
+      console.log(authToken)
   
       if (authToken) {
         try {
           const response = await axios.get(
-            'http://192.168.1.9:3000/api/v1/parcel/user-details',  // Replace with your API endpoint
+            'http://192.168.50.28:3000/api/v1/parcel/user-details',  // Replace with your API endpoint
             {
               headers: { Authorization: `Bearer ${authToken}` },
             }
           );
-          console.log(response.data);
+          console.log("data",response.data.partner);
           setImageUplaod(response?.data?.partner?.isDocumentUpload)
           setUserType(response?.data?.partner?.type || '');  // Set the user type from the API response
         } catch (error) {
@@ -61,7 +63,6 @@ export default function App() {
   
 
   if (loading) {
-    // Show loading screen while waiting for API response
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#0000ff" />
@@ -74,6 +75,7 @@ export default function App() {
     
   }
 
+  console.log("userType",userType)
   return (
     <Provider store={store}>
       <PaperProvider>
