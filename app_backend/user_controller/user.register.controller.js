@@ -1,4 +1,8 @@
 const User = require("../models/normal_user/User.model");
+const OrderSchema = require("../models/Tiifins/Restuarnt.Order.model");
+const RideRequestSchema = require("../models/ride.request.model");
+const HotelBookings = require("../models/Hotel.booking_request");
+const ParcelBooks = require("../models/Parcel_Models/Parcel_Request");
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const SendWhatsAppMessage = require("../utils/whatsapp_send");
@@ -286,7 +290,7 @@ exports.login = async (req, res) => {
         const { email, isGoogle } = req.body;
         // console.log(email)
         // Find user by email
-        const user = await User.find({ email:email[0]?.emailAddress });
+        const user = await User.find({ email: email[0]?.emailAddress });
         if (!user) {
             return res.status(404).json({
                 message: "User not found. Please register first.",
@@ -337,6 +341,58 @@ exports.login = async (req, res) => {
             message: "An error occurred during login.",
             error: error.message,
             status: 500,
+        });
+    }
+};
+
+
+
+exports.findAllOrders = async (req, res) => {
+    try {
+        const userData = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
+        console.log("userd",userData)
+        if (!userData?._id) {
+            return res.status(400).json({
+                success: false,
+                message: "User ID not found",
+            });
+        }
+
+        // Fetch and sort all orders by latest (-1)
+        const OrderFood = await OrderSchema.find({ user: userData._id })
+        .populate({ path: "items.foodItem_id" })  // Correct way to populate nested field inside an array
+        .sort({ createdAt: -1 });
+
+            const RideData = await RideRequestSchema.find({ user: userData._id }).sort({ createdAt: -1 });
+        const Parcel = await ParcelBooks.find({ customerId: userData._id }).sort({ createdAt: -1 });
+        const Hotel = await HotelBookings.find({ guest_id: userData._id }).sort({ createdAt: -1 });
+
+        // Count each type of order
+        const orderCounts = {
+            foodOrders: OrderFood.length,
+            rideRequests: RideData.length,
+            parcels: Parcel.length,
+            hotelBookings: Hotel.length,
+        };
+
+        return res.status(200).json({
+            success: true,
+            message: "Orders fetched successfully",
+            data: {
+                orderCounts,
+                OrderFood,
+                RideData,
+                Parcel,
+                Hotel,
+            },
+        });
+
+    } catch (error) {
+        console.error("Error fetching orders:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message,
         });
     }
 };

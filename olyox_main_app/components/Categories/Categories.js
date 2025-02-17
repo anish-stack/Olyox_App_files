@@ -32,7 +32,10 @@ export default function Categories() {
 
         if (screen === 'Cab Service') {
             navigation.navigate('Start_Booking_Ride')
-        } else {
+        } else if(screen === "Transport"){
+            navigation.navigate('delivery_parcel')
+            
+        }else {
             navigation.navigate(screen)
         }
 

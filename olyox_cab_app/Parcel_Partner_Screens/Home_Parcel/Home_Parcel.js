@@ -60,7 +60,7 @@ export default function Home_Parcel() {
             }
 
             const response = await axios.get(
-                'https://demoapi.olyox.com/api/v1/parcel/user-details',
+                'http://192.168.1.4:3000/api/v1/parcel/user-details',
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 }
@@ -120,7 +120,7 @@ export default function Home_Parcel() {
         if (!token) return;
 
         try {
-            const response = await fetch('https://demoapi.olyox.com/webhook/receive-location', {
+            const response = await fetch('http://192.168.1.4:3000/webhook/receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -157,10 +157,10 @@ export default function Home_Parcel() {
     
             // Run both requests concurrently using Promise.all
             const [response, sresponse] = await Promise.all([
-                axios.get('https://demoapi.olyox.com/api/v1/parcel/my_parcel_driver-details', {
+                axios.get('http://192.168.1.4:3000/api/v1/parcel/my_parcel_driver-details', {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
-                axios.get('https://demoapi.olyox.com/api/v1/parcel/partner_work_status_details', {
+                axios.get('http://192.168.1.4:3000/api/v1/parcel/partner_work_status_details', {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
             ]);

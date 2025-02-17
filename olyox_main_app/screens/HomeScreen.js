@@ -24,7 +24,7 @@ const HomeScreen = () => {
         if (isLoaded) {
             setLoading(false); // Set loading to false once user data is loaded
             if (isSignedIn) {
-            
+
                 // console.log("User is signed in", user.externalAccounts);
             } else {
                 console.log("User is not signed in");
@@ -53,9 +53,9 @@ const HomeScreen = () => {
                 <Categories />
                 <BookARide />
                 {/* <Top_Hotel /> */}
-                <Food_Cats/>
+                <Food_Cats />
                 <TopFood />
-               
+
             </ScrollView>
         </Layout>
     );

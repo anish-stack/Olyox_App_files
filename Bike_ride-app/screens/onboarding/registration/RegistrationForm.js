@@ -8,7 +8,7 @@ import * as SecureStore from 'expo-secure-store';
 import { useNavigation } from "@react-navigation/native"
 
 const API_BASE_URL = "https://api.olyox.com/api/v1"
-const MAIN_API_BASE_URL = "https://demoapi.olyox.com/api/v1/rider"
+const MAIN_API_BASE_URL = "http://192.168.1.4:3000/api/v1/rider"
 
 const vehicleTypes = ["SEDAN", "SUV", "PRIME", "MINI"]
 const vehicleBrands = [

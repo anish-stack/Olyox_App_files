@@ -20,7 +20,6 @@ import { RideConfirmed } from './Ride/Show_near_by_cab/Ride_Confirmed';
 import Hotels_details from './Hotels/Hotel_Details/Hotels_details';
 import Single_Hotel_details from './Hotels/Hotel_Details/Single_Hotel_details';
 import BookingSuccess from './Hotels/Hotel_Details/BookingSuccess';
-import Profile from './Auth/Profile';
 import { AppRegistry } from 'react-native';
 import { name as appName } from './app.json';
 import { tokenCache } from './Auth/cache';
@@ -41,6 +40,7 @@ import BookParcel from './Transport/Parcel_Transport/Book-Parcel';
 import Parcel_Orders from './Transport/Parcel_Transport/Parcel_orders/Parcel_Orders';
 import OrderDetails from './Transport/Parcel_Transport/Parcel_orders/OrderDetails';
 import { Button } from 'react-native';
+import UserProfile from './screens/Profile';
 
 const Stack = createNativeStackNavigator();
 Sentry.init({
@@ -170,6 +170,7 @@ const App = () => {
                         {/* User Profile and Auth */}
 
 
+                        <Stack.Screen name="Profile" options={{ headerShown: true }} component={UserProfile} />
                         {/* Transport */}
                         <Stack.Screen name="Transport" options={{ headerShown: false }} component={MainTransport} />
                         <Stack.Screen name="delivery_parcel" options={{ headerShown: false }} component={Parcel_Transport} />

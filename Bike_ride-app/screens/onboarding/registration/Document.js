@@ -28,7 +28,7 @@ const DOCUMENTS = [
   { id: 'insurance', title: 'Insurance', icon: 'card-outline' },
 ];
 
-const API_URL = 'https://demoapi.olyox.com/api/v1/rider/rider-upload';
+const API_URL = 'http://192.168.1.4:3000/api/v1/rider/rider-upload';
 
 export default function Documents() {
   const [images, setImages] = useState({});

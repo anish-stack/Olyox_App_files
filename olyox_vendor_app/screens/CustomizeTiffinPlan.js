@@ -33,7 +33,7 @@ export function CustomizeTiffinPlan() {
         }
 
         const { data } = await axios.get(
-          'https://demoapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
+          'http://192.168.1.4:3000/api/v1/tiffin/get_single_tiffin_profile',
           {
             headers: {
               'Authorization': `Bearer ${storedToken}`
@@ -260,7 +260,7 @@ const handleSubmit = async () => {
 
   try {
     const response = await axios.post(
-      'https://demoapi.olyox.com/api/v1/tiffin/create_custom_tiffin', 
+      'http://192.168.1.4:3000/api/v1/tiffin/create_custom_tiffin', 
       formData, 
       {
         headers: {

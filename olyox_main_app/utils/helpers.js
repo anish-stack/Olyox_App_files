@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { tokenCache } from '../Auth/cache';
-const BACKEND_URL = 'https://demoapi.olyox.com/api/v1/user'
+const BACKEND_URL = 'http://192.168.1.4:3000/api/v1/user'
 export const formatDate = (date) => {
   // Example helper function
   return new Date(date).toLocaleDateString();
@@ -45,8 +45,8 @@ export const resend_otp = async (formdata) => {
 export const find_me = async () => {
   try {
     const token  = await tokenCache.getToken('auth_token_db')
-    // console.log(token)
-    const data = await axios.get(`https://demoapi.olyox.com/api/v1/user/find_me`,{
+    console.log("sss",token)
+    const data = await axios.get(`http://192.168.1.4:3000/api/v1/user/find_me`,{
       headers: {
         'Authorization': `Bearer ${token}`
       }

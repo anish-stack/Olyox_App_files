@@ -41,7 +41,7 @@ export default function App() {
       if (authToken) {
         try {
           const response = await axios.get(
-            'https://demoapi.olyox.com/api/v1/parcel/user-details',  // Replace with your API endpoint
+            'http://192.168.1.4:3000/api/v1/parcel/user-details',  // Replace with your API endpoint
             {
               headers: { Authorization: `Bearer ${authToken}` },
             }

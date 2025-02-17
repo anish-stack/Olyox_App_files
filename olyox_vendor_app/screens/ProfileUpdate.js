@@ -39,7 +39,7 @@ export function ProfileUpdate() {
 
             // Make the API request
             const { data } = await axios.get(
-                'https://demoapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
+                'http://192.168.1.4:3000/api/v1/tiffin/get_single_tiffin_profile',
                 {
                     headers: {
                         'Authorization': `Bearer ${storedToken}`
@@ -228,7 +228,7 @@ export function ProfileUpdate() {
 
 
             const response = await axios.put(
-                `https://demoapi.olyox.com/api/v1/tiffin/update_restaurant_details/${vendorId}`,
+                `http://192.168.1.4:3000/api/v1/tiffin/update_restaurant_details/${vendorId}`,
                 formDataToSend,
                 {
                     headers: {

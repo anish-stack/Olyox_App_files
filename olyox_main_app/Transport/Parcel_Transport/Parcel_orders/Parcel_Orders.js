@@ -27,7 +27,7 @@ export default function Parcel_Orders() {
         }
 
         try {
-            const response = await axios.get("https://demoapi.olyox.com/api/v1/parcel/my_parcel_user-details", {
+            const response = await axios.get("http://192.168.1.4:3000/api/v1/parcel/my_parcel_user-details", {
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,

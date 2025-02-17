@@ -62,7 +62,7 @@ export function RideConfirmed() {
                 return;
             }
 
-            const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/rides/find-ride_details?id=${rideId}`);
+            const { data } = await axios.get(`http://192.168.1.4:3000/api/v1/rides/find-ride_details?id=${rideId}`);
             if (data.data) {
                 SetRideData(data.data)
                 setRideDetails((prev) => ({

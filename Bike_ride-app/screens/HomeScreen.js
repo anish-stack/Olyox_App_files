@@ -61,12 +61,12 @@ const HomeScreen = () => {
     try {
       const token = await SecureStore.getItemAsync('auth_token_cab');
       const response = await axios.post(
-        'https://demoapi.olyox.com/api/v1/rider/toggleWorkStatusOfRider',
+        'http://192.168.1.4:3000/api/v1/rider/toggleWorkStatusOfRider',
         { status: !isOnline },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const response_two = await axios.get(
-        'https://demoapi.olyox.com/api/v1/rider/user-details',
+        'http://192.168.1.4:3000/api/v1/rider/user-details',
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
