@@ -20,9 +20,10 @@ export default function TopFood({ show = false }) {
         try {
 
             const { latitude, longitude } = location.coords || {};
+            console.log(latitude, longitude)
 
             setLoading(true);
-            const response = await axios.get(`http://192.168.1.4:3000/api/v1/tiffin/find_RestaurantTop`, {
+            const response = await axios.get(`https://demoapi.olyox.com/api/v1/tiffin/find_RestaurantTop`, {
                 params: {
                     lat: latitude,
                     lng: longitude
@@ -30,6 +31,7 @@ export default function TopFood({ show = false }) {
             });
 
             if (response.data) {
+                console.log("hey",response.data.data[0])
                 setFoodData(response.data.data);
             } else {
                 Alert.alert('Error', 'No top restaurants found.');

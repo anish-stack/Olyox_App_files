@@ -41,6 +41,7 @@ import Parcel_Orders from './Transport/Parcel_Transport/Parcel_orders/Parcel_Ord
 import OrderDetails from './Transport/Parcel_Transport/Parcel_orders/OrderDetails';
 import { Button } from 'react-native';
 import UserProfile from './screens/Profile';
+import Tiffins_Page from './Foods/Tiffins_Page/Tiffins_Page';
 
 const Stack = createNativeStackNavigator();
 Sentry.init({
@@ -163,6 +164,7 @@ const App = () => {
                         <Stack.Screen name="Booking_hotel_success" options={{ headerShown: false }} component={BookingSuccess} />
                         {/* User Profile and Auth */}
                         <Stack.Screen name="Tiffin" options={{ headerShown: false }} component={AllFoods} />
+                        <Stack.Screen name="Tiffins_Page" options={{ headerShown: true,title:"Tiffins Package" }} component={Tiffins_Page} />
                         <Stack.Screen name="food_Page_By_Cats" options={{ headerShown: false }} component={Food_Dispay_Page} />
                         <Stack.Screen name="restaurants_page" options={{ headerShown: false }} component={Restaurant} />
                         <Stack.Screen name="Checkout" options={{ headerShown: false }} component={Checkout} />
@@ -208,7 +210,6 @@ const styles = StyleSheet.create({
 const WrappedApp = Sentry.wrap(App);
 const RootApp = () => (
   <FoodProvider>
-
     <WrappedApp />
   </FoodProvider>
 );

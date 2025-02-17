@@ -20,7 +20,7 @@ const WorkStatusCard = ({ workStatus }) => {
                         <Icon name="clock-outline" size={24} color="#666" />
                         <View style={styles.statTextContainer}>
                             <Text style={styles.statLabel}>Hours Online</Text>
-                            <Text style={styles.statValue}>{workStatus.hoursOnline || '0'} hrs</Text>
+                            <Text style={styles.statValue}>{workStatus?.hoursOnline || '0'} hrs</Text>
                         </View>
                     </View>
 
@@ -28,7 +28,7 @@ const WorkStatusCard = ({ workStatus }) => {
                         <Icon name="bike-fast" size={24} color="#666" />
                         <View style={styles.statTextContainer}>
                             <Text style={styles.statLabel}>Distance Covered</Text>
-                            <Text style={styles.statValue}>{workStatus.distanceCovered || '0'} km</Text>
+                            <Text style={styles.statValue}>{workStatus?.distanceCovered || '0'} km</Text>
                         </View>
                     </View>
 
@@ -36,7 +36,7 @@ const WorkStatusCard = ({ workStatus }) => {
                         <Icon name="cash" size={24} color="#666" />
                         <View style={styles.statTextContainer}>
                             <Text style={styles.statLabel}>Today's Earnings</Text>
-                            <Text style={styles.statValue}>₹{workStatus.todayEarnings || '0'}</Text>
+                            <Text style={styles.statValue}>₹{workStatus?.todayEarnings || '0'}</Text>
                         </View>
                     </View>
                 </View>

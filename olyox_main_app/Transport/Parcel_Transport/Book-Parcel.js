@@ -163,15 +163,33 @@ const ParcelBooking = () => {
   };
 
   useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 5; // Number of times to retry
+    const retryDelay = 2000; // 2 seconds delay between retries
+
     const initialize = async () => {
-      const data = await find_me();
-      console.log(data.user._id)
-      initializeSocket({ userId: data.user._id });
-      const cleanup = redirectIfPartnerAccept();
-      return cleanup; // Proper cleanup of socket listeners
+      try {
+        const data = await find_me();
+
+        if (data?.user?._id) {
+          initializeSocket({ userId: data.user._id });
+          redirectIfPartnerAccept();
+        } else if (retryCount < maxRetries) {
+          retryCount++;
+          console.warn(`Retrying fetch user data... Attempt ${retryCount}`);
+          setTimeout(initialize, retryDelay);
+        } else {
+          console.error("Max retries reached. User ID is still missing.");
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
     };
+
     initialize();
   }, [socket]);
+
+
   useEffect(() => {
     // Listening for the event
     socket.on("order_accepted_by_rider", (data) => {
@@ -183,7 +201,7 @@ const ParcelBooking = () => {
       socket.off("order_accepted_by_rider");
     };
   }, []);
-  console.log("socket", socket.id)
+
 
 
   if (loading) {
@@ -204,7 +222,7 @@ const ParcelBooking = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Truck Illustration */}
+
       <Image
         source={{ uri: "https://i.ibb.co/R4sjSHKm/pngwing-com-20.png" }}
         style={styles.truckImage}
@@ -236,10 +254,10 @@ const ParcelBooking = () => {
           {suggestions.length > 0 && activeInput === "pickup" && (
             <FlatList
               data={suggestions}
-              keyExtractor={(item) => item.place_id}
+              keyExtractor={(item) => item?.place_id}
               renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => handleLocationSelect(item.description)} style={styles.suggestionItem}>
-                  <Text style={styles.suggestionText}>{item.description}</Text>
+                <TouchableOpacity onPress={() => handleLocationSelect(item?.description)} style={styles.suggestionItem}>
+                  <Text style={styles.suggestionText}>{item?.description}</Text>
                 </TouchableOpacity>
               )}
               style={styles.suggestionList}
@@ -263,9 +281,9 @@ const ParcelBooking = () => {
           {suggestions.length > 0 && activeInput === "dropoff" && (
             <FlatList
               data={suggestions}
-              keyExtractor={(item) => item.place_id}
+              keyExtractor={(item) => item?.place_id}
               renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => handleLocationSelect(item.description)} style={styles.suggestionItem}>
+                <TouchableOpacity onPress={() => handleLocationSelect(item?.description)} style={styles.suggestionItem}>
                   <Text style={styles.suggestionText}>{item.description}</Text>
                 </TouchableOpacity>
               )}
@@ -278,9 +296,9 @@ const ParcelBooking = () => {
         {etaData && (
           <View style={styles.etaContainer}>
             <Text style={styles.etaTitle}>Estimated Trip Details:</Text>
-            <Text style={styles.etaText}>Distance: {etaData.distance}</Text>
-            <Text style={styles.etaText}>Duration: {etaData.duration}</Text>
-            <Text style={styles.etaText}>Price: {etaData.price}</Text>
+            <Text style={styles.etaText}>Distance: {etaData?.distance}</Text>
+            <Text style={styles.etaText}>Duration: {etaData?.duration}</Text>
+            <Text style={styles.etaText}>Price: {etaData?.price}</Text>
           </View>
         )}
 

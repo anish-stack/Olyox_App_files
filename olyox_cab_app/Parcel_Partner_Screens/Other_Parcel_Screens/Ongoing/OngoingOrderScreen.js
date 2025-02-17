@@ -6,7 +6,6 @@ import axios from "axios"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { Ionicons } from "@expo/vector-icons"
 import * as Location from "expo-location"
-import * as TaskManager from "expo-task-manager"
 import styles from "./Styles"
 import MapComponent from "./MapComponent"
 import OrderDetails from "./OrderDetails"
@@ -180,16 +179,7 @@ const OngoingOrderScreen = () => {
   )
 }
 
-TaskManager.defineTask(LOCATION_TASK_NAME, ({ data, error }) => {
-  if (error) {
-    console.error(error)
-    return
-  }
-  if (data) {
-    const { locations } = data
-    // Do something with the locations captured in the background
-  }
-})
+
 
 export default OngoingOrderScreen
 
