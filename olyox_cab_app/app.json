@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "cab_app",
-    "slug": "cab_app",
+    "name": "Olyox Parcel Partner",
+    "slug": "Olyox-Parcel-Partner",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/playstore-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/ic_launcher-web.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,7 +17,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/ic_launcher-web.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
@@ -29,14 +29,20 @@
         "googleMaps": {
           "apiKey": "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34"
         }
-      }
+      },
+      "package": "com.happy_coding.OlyoxParcelPartner"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/playstore-icon.png"
     },
     "plugins": [
       "expo-font",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9bf10135-c15c-46b6-a66d-abdfb206d2d4"
+      }
+    }
   }
 }

@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
+import * as Sentry from '@sentry/react-native';
 
 import { store } from './redux/store';
 import { SocketProvider } from './context/SocketContext';

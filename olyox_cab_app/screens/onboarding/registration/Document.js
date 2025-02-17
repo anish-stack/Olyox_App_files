@@ -31,12 +31,12 @@ const DOCUMENTS = [
 
 const API_URL = 'https://demoapi.olyox.com/api/v1/parcel/uploadDocuments';
 
-export default function Documents({navigation}) {
+export default function Documents() {
   const [images, setImages] = useState({});
   const [loading, setLoading] = useState({});
   const [error, setError] = useState({});
   const [uploadProgress, setUploadProgress] = useState({});
-
+  const navigation = useNavigation()
   const isAllUploaded = DOCUMENTS.every(doc => images[doc.id]);
 
   const pickImage = async (type) => {
@@ -136,10 +136,10 @@ export default function Documents({navigation}) {
       if (response.data.success) {
         Alert.alert(
           'Success',
-          'Documents uploaded successfully!',
+          'Documents uploaded successfully! Please Login Now',
           [{ text: 'OK' }]
         );
-       
+        navigation.navigate('Home')
       } else {
         throw new Error(response.data.message || 'Upload failed');
       }
@@ -147,7 +147,7 @@ export default function Documents({navigation}) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to submit documents';
       Alert.alert(
         'Error',
-        errorMessage,
+        "Please Upload Images Not more than 4 mb ",
         [{ text: 'OK' }]
       );
       setError(prev => ({ ...prev, submit: errorMessage }));

@@ -4,6 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { styles } from './FoodStyles';
 
 export default function TopFoodCard({ restaurant, onPress }) {
+    console.log("restaurant",restaurant)
     return (
         <TouchableOpacity style={styles.foodCard} onPress={onPress}>
             <View style={styles.imageContainer}>

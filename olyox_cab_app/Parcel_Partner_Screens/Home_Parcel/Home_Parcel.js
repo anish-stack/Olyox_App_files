@@ -72,7 +72,7 @@ export default function Home_Parcel() {
             console.error('Error fetching user details:', error);
         }
     };
-  
+
 
     useEffect(() => {
         const getLocation = async () => {
@@ -80,7 +80,7 @@ export default function Home_Parcel() {
                 console.log('Socket not connected, waiting...');
                 return;
             }
-          
+
             if (statusOfPartner !== 'online') {
                 console.log('Work status is not online, skipping location update');
                 return;
@@ -154,7 +154,7 @@ export default function Home_Parcel() {
             const token = await AsyncStorage.getItem('auth_token_partner');
             console.log("fetch", token);
             if (!token) return;
-    
+
             // Run both requests concurrently using Promise.all
             const [response, sresponse] = await Promise.all([
                 axios.get('https://demoapi.olyox.com/api/v1/parcel/my_parcel_driver-details', {
@@ -164,16 +164,16 @@ export default function Home_Parcel() {
                     headers: { Authorization: `Bearer ${token}` },
                 }),
             ]);
-    
+
             console.log("i am ", response.data.summary);
             setWorkStatus(response.data.summary);
             setStatus(sresponse.data.status);
-    
+
         } catch (error) {
             console.error('Error fetching work status:', error.response ? error.response.data : error.message);
         }
     };
-    
+
 
     useEffect(() => {
         const loadData = async () => {
@@ -211,6 +211,10 @@ export default function Home_Parcel() {
 
     const logout = async () => {
         await AsyncStorage.removeItem('auth_token_partner')
+        navigation.reset({
+            index: 0,
+            routes: [{ name: 'Ongoing_Order' }]
+        })
 
     }
     const onRefresh = useCallback(async () => {
@@ -219,7 +223,7 @@ export default function Home_Parcel() {
         setRefreshing(false);
     }, []);
 
-    console.log("workStatus",workStatus)
+    console.log("workStatus", workStatus)
     if (loading) {
         return (
             <SafeAreaView style={styles.safeArea}>
@@ -276,7 +280,7 @@ export default function Home_Parcel() {
                         <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
                             <Icon name="package-variant" size={32} color="#ff0000" />
                         </View>
-                        <Text style={styles.statsNumber}>{workStatus.todayOrders || 0}</Text>
+                        <Text style={styles.statsNumber}>{workStatus?.todayOrders || 0}</Text>
                         <Text style={styles.statsLabel}>Today's Orders</Text>
                     </View>
                     <TouchableOpacity onPress={() => navigation.navigate('All_Orders_parcel')} style={[styles.statsCard, { width: cardWidth }]}>
@@ -290,7 +294,7 @@ export default function Home_Parcel() {
                         <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
                             <Icon name="wallet" size={32} color="#ff0000" />
                         </View>
-                        <Text style={styles.statsNumber}>₹{workStatus.totalDeliveredEarnings || 0}</Text>
+                        <Text style={styles.statsNumber}>₹{workStatus?.totalDeliveredEarnings || 0}</Text>
                         <Text style={styles.statsLabel}>Complete Order Earnings</Text>
                     </View>
                     <View style={[styles.statsCard, { width: cardWidth }]}>
@@ -302,12 +306,11 @@ export default function Home_Parcel() {
                     </View>
                 </View>
                 <UserProfileCard userData={userData} />
-                <TouchableOpacity onPress={logout}>
-                    <Text>Logout</Text>
-                </TouchableOpacity>
-
-                {/* Work Status Card */}
-
+                <View style={styles.containers}>
+                    <TouchableOpacity style={styles.button} onPress={logout}>
+                        <Text style={styles.buttonText}>Logout</Text>
+                    </TouchableOpacity>
+                </View>
 
             </ScrollView>
             {order && (
@@ -324,6 +327,29 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
+    },
+    containers: {
+        flex: 1,
+        width: '100%',
+        // justifyContent: 'center',
+        // alignItems: 'center',
+    },
+    button: {
+        backgroundColor: '#FF6347', // Tomato color for the button
+        paddingVertical: 12,
+        paddingHorizontal: 32,
+        borderRadius: 8,
+        elevation: 3, // Adds shadow on Android
+        shadowColor: '#000', // Shadow for iOS
+        shadowOffset: { width: 0, height: 2 }, // iOS shadow position
+        shadowOpacity: 0.3, // Shadow opacity for iOS
+        shadowRadius: 4, // Shadow radius for iOS
+    },
+    buttonText: {
+        color: '#FFFFFF', // White text
+        fontSize: 18,
+        fontWeight: 'bold',
+        textAlign: 'center',
     },
     header: {
         backgroundColor: '#ff0000',

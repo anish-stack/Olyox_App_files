@@ -10,8 +10,7 @@ import { useNavigation } from "@react-navigation/native"
 
 const PARTNER_TYPES = [
   { label: "Parcel", value: "parcel" },
-  { label: "Cab", value: "cab" },
-  { label: "Heavy Transport", value: "heavy_transport" },
+
 ]
 
 export default function ImprovedRegistrationForm() {
@@ -91,6 +90,8 @@ export default function ImprovedRegistrationForm() {
         setOtpModalVisible(true)
       } catch (error) {
         console.log(error)
+        alert(error?.response?.data?.message)
+
         setErrorMessage(error.response?.data?.message || "Registration Failed. Please try again.")
       } finally {
         setLoading(false)
@@ -131,6 +132,7 @@ export default function ImprovedRegistrationForm() {
 
     } catch (error) {
       console.log(error)
+      alert(error?.response?.data?.message)
       setErrorMessage("OTP verification failed. Please try again.")
     }
   }

@@ -1,6 +1,7 @@
 const Restaurant = require("../models/Tiifins/Resturant_register.model");
 const Restaurant_Listing = require("../models/Tiifins/Restaurant.listing.model");
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
+const RestaurantPackageModel = require("../models/Tiifins/Restaurant.package.model");
 exports.find_Restaurant = async (req, res) => {
     try {
         const { restaurant_category, status, restaurant_in_top_list } = req.query;
@@ -126,12 +127,7 @@ exports.find_Restaurant_And_Her_foods = async (req, res) => {
 exports.find_RestaurantTop = async (req, res) => {
     try {
         let { lat, lng } = req.query;
-      console.log("Restaurant",req.query)
-
-
         let query = { restaurant_in_top_list: true };
-
-
         if (lat && lng) {
             lat = parseFloat(lat);
             lng = parseFloat(lng);
@@ -181,5 +177,62 @@ exports.find_RestaurantTop = async (req, res) => {
     } catch (error) {
         console.error("Error fetching top restaurants:", error);
         res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+};
+exports.getPackages = async (req, res) => {
+    try {
+        let { lat, lng } = req.query || {};
+        let query = {};
+
+        if (lat && lng) {
+            lat = parseFloat(lat);
+            lng = parseFloat(lng);
+            if (isNaN(lat) || isNaN(lng)) {
+                return res.status(400).json({ success: false, message: "Invalid latitude or longitude" });
+            }
+
+            query.geo_location = {
+                $near: {
+                    $geometry: {
+                        type: "Point",
+                        coordinates: [lng, lat]
+                    },
+                    $maxDistance: 5000 // 5km radius
+                }
+            };
+        }
+
+        let AllNearByRestaurant = await Restaurant.find(query);
+        // If no nearby restaurants found, fetch restaurants within 10km radius
+        if (lat && lng && AllNearByRestaurant.length === 0) {
+            query.geo_location.$near.$maxDistance = 10000; // 10km radius
+            AllNearByRestaurant = await Restaurant.find(query);
+        }
+
+        // If no latitude and longitude provided, fetch all restaurants
+        if (!lat || !lng) {
+            AllNearByRestaurant = await Restaurant.find({});
+        }
+        console.log("AllNearByRestaurant",AllNearByRestaurant)
+
+
+        if (AllNearByRestaurant.length === 0) {
+            return res.status(404).json({ success: false, message: "No restaurants found" });
+        }
+
+        const foundPackages = await RestaurantPackageModel.find({
+            restaurant_id: { $in: AllNearByRestaurant.map((restaurant) => restaurant._id) }
+        }).populate('restaurant_id');
+
+        // Shuffle the array using Fisher-Yates algorithm
+        for (let i = foundPackages.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [foundPackages[i], foundPackages[j]] = [foundPackages[j], foundPackages[i]];
+        }
+
+        return res.status(200).json({ success: true, packages: foundPackages });
+    } catch (error) {
+        console.error("Error fetching packages:", error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
     }
 };

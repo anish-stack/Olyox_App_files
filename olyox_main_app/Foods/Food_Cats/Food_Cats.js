@@ -10,6 +10,7 @@ export default function Food_Cats() {
         {
             id: 1,
             title: "Tiffins",
+
             image: "https://i.ibb.co/tZgXSQF/breakfast.gif",
         },
 
@@ -42,8 +43,13 @@ export default function Food_Cats() {
         ]).start()
 
         setTimeout(() => {
-            navigation.navigate('food_Page_By_Cats', { title: title })
-        }, 1200)
+            if(title === "Tiffins"){
+                navigation.navigate("Tiffins_Page")
+            }else{
+
+                navigation.navigate('food_Page_By_Cats', { title: title })
+            }
+        }, 400)
     }
 
     return (
