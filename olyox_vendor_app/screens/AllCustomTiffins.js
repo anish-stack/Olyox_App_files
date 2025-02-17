@@ -6,7 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  RefreshControl
+  RefreshControl,
+  Image
 } from 'react-native';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -110,10 +111,23 @@ const AllCustomTiffins = () => {
 
   const renderTiffinCard = (tiffin) => (
     <View key={tiffin._id} style={styles.card}>
+      {tiffin.images?.url && (
+        <Image 
+          source={{ uri: tiffin.images.url }} 
+          style={styles.tiffinImage}
+          // defaultSource={require('../assets/placeholder.png')}
+        />
+      )}
+      
       <View style={styles.cardHeader}>
-        <View style={styles.durationBadge}>
-          <Icon name="calendar-clock" size={20} color="#1976D2" />
-          <Text style={styles.durationText}>{tiffin.duration} Days Plan</Text>
+        <View style={styles.headerInfo}>
+          <View style={styles.durationBadge}>
+            <Icon name="calendar-clock" size={20} color="#1976D2" />
+            <Text style={styles.durationText}>{tiffin.duration} Days Plan</Text>
+          </View>
+          {tiffin.packageName && (
+            <Text style={styles.packageName}>{tiffin.packageName}</Text>
+          )}
         </View>
         <Text style={styles.totalPrice}>₹{tiffin.totalPrice}</Text>
       </View>
@@ -167,13 +181,6 @@ const AllCustomTiffins = () => {
       </View>
 
       <View style={styles.cardActions}>
-        {/* <TouchableOpacity 
-          style={[styles.actionButton, styles.updateButton]}
-          onPress={() => handleUpdate(tiffin)}
-        >
-          <Icon name="pencil" size={20} color="#fff" />
-          <Text style={styles.actionButtonText}>Update</Text>
-        </TouchableOpacity> */}
         <View style={styles.availabilityRow}>
           <Text style={styles.availabilityText}>{tiffin.food_availability ? 'Available' : 'Unavailable'}</Text>
           <Switch
@@ -254,11 +261,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  tiffinImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
+  },
+  headerInfo: {
+    flex: 1,
+    marginRight: 12,
   },
   durationBadge: {
     flexDirection: 'row',
@@ -268,11 +285,18 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
     gap: 6,
+    alignSelf: 'flex-start',
   },
   durationText: {
     color: '#1976D2',
     fontWeight: '600',
     fontSize: 14,
+  },
+  packageName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 8,
   },
   totalPrice: {
     fontSize: 24,
@@ -362,8 +386,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-  availabilityRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  availabilityText: { fontSize: 14, fontWeight: '600' },
+  availabilityRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 8 
+  },
+  availabilityText: { 
+    fontSize: 14, 
+    fontWeight: '600' 
+  },
 });
 
 export default AllCustomTiffins;

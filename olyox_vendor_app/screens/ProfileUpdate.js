@@ -16,7 +16,10 @@ export function ProfileUpdate() {
         restaurant_contact: '',
         openingHours: '',
         restaurant_category: '',
-        restaurant_fssai: ''
+        restaurant_fssai: '',
+        priceForTwoPerson: '',
+        minDeliveryTime: '',
+        minPrice: ''
     });
 
 
@@ -57,6 +60,9 @@ export function ProfileUpdate() {
                 openingHours: vendor.openingHours,
                 restaurant_category: vendor.restaurant_category,
                 restaurant_fssai: vendor.restaurant_fssai,
+                priceForTwoPerson: vendor.priceForTwoPerson,
+                minDeliveryTime: vendor.minDeliveryTime,
+                minPrice: vendor.minPrice,
             });
             setImages({
                 restaurant_fssai_image: vendor.restaurant_fssai_image
@@ -414,6 +420,9 @@ export function ProfileUpdate() {
                 {/* {renderInput('Category', 'food', formData.restaurant_category, 'restaurant_category')} */}
                 {renderCategoryDropdown()}
                 {renderInput('FSSAI Number', 'certificate', formData.restaurant_fssai, 'restaurant_fssai')}
+                {renderInput('Price For Two Person', 'certificate', formData.priceForTwoPerson, 'priceForTwoPerson')}
+                {renderInput('Min Delivery Time', 'certificate', formData.minDeliveryTime, 'minDeliveryTime')}
+                {renderInput('Min Price', 'certificate', formData.minPrice, 'minPrice')}
 
 
                 <View style={styles.documentsSection}>

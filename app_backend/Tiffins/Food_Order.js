@@ -313,7 +313,7 @@ exports.get_orders_by_restaurant = async (req, res) => {
 exports.change_order_status = async (req, res) => {
     try {
         const { orderId } = req.params;
-        const { status } = req.body;
+        const { status, deliveryBoyName,deliveryBoyPhone,deliveryBoyBikeNumber} = req.body;
         // console.log("object", req.body,orderId)
         const order = await RestuarntOrderModel.findById(orderId);
         if (!order) {
@@ -348,6 +348,11 @@ Thank you for choosing our service. Enjoy your meal! 😋`
             const resturant = await Restaurant.findById(resturant_id);
             resturant.wallet = resturant.wallet + order.totalPrice
             await resturant.save();
+            order.deliveryBoyName = deliveryBoyName;
+            order.deliveryBoyPhone = deliveryBoyPhone;
+            order.deliveryBoyBikeNumber = deliveryBoyBikeNumber;
+            order.save();
+
             const message = `🚚 Order Out for Delivery 🚚
 
 Your food order is out for delivery! 🚀

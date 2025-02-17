@@ -90,7 +90,7 @@ export default function OrderCount({isRefresh}) {
                 const allOder = data.data;
                 const runningOrders = allOder.filter(order => order.status === 'Confirmed');
                 const newOrders = allOder.filter(order => order.status === 'Pending');
-                const completedOrders = allOder.filter(order => order.status === 'Delivered');
+                const completedOrders = allOder.filter(order => order.status === 'Out for Delivery');
                 setOrderCount({
                     allOrder: allOder.length,
                     running: runningOrders.length,

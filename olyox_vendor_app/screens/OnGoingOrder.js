@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity, ScrollView, Linking, Alert, Platform, RefreshControl } from 'react-native';
+import { Modal, TextInput, StyleSheet, Text, View, Image, TouchableOpacity, ScrollView, Linking, Alert, Platform, RefreshControl } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 
@@ -11,6 +11,13 @@ export default function OnGoingOrder() {
     const [restaurantId, setRestaurantId] = useState(null);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [selectedOrderId, setSelectedOrderId] = useState(null);
+    const [formData, setFormData] = useState({
+        deliveryBoyName: '',
+        deliveryBoyPhone: '',
+        deliveryBoyBikeNumber: '',
+    });
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -94,7 +101,7 @@ export default function OnGoingOrder() {
     const handleChangeOrderStatus = async (orderId, status) => {
         try {
             // console.log("object", orderId, status);
-            const { data } = await axios.put(`https://demoapi.olyox.com/api/v1/tiffin/update_order_status/${orderId}`, { status: status });
+            const { data } = await axios.put(`https://demoapi.olyox.com/api/v1/tiffin/update_order_status/${selectedOrderId}`, { ...formData, status: "Out for Delivery" });
             if (data.success) {
                 alert("Order status updated successfully");
                 handleFetchOrderDetails();
@@ -201,7 +208,10 @@ export default function OnGoingOrder() {
                     <View style={styles.actionButtons}>
                         <TouchableOpacity
                             style={[styles.button, styles.acceptButton]}
-                            onPress={() => handleChangeOrderStatus(item._id, 'Out for Delivery')}
+                            onPress={() => {
+                                setSelectedOrderId(item._id);
+                                setModalVisible(true);
+                            }}
                         >
                             <Icon name="check-circle" size={20} color="#FFF" />
                             <Text style={styles.buttonText}>Prepared</Text>
@@ -209,6 +219,36 @@ export default function OnGoingOrder() {
                     </View>
                 </View>
             ))}
+            {/* Modal */}
+            <Modal animationType="slide" transparent={true} visible={modalVisible}>
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Enter Delivery Details</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Delivery Boy Name"
+                            value={formData.deliveryBoyName}
+                            onChangeText={(text) => setFormData({ ...formData, deliveryBoyName: text })}
+                        />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Delivery Boy Phone"
+                            keyboardType="phone-pad"
+                            value={formData.deliveryBoyPhone}
+                            onChangeText={(text) => setFormData({ ...formData, deliveryBoyPhone: text })}
+                        />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Delivery Boy Bike Number"
+                            value={formData.deliveryBoyBikeNumber}
+                            onChangeText={(text) => setFormData({ ...formData, deliveryBoyBikeNumber: text })}
+                        />
+                        <TouchableOpacity style={styles.confirmButton} onPress={handleChangeOrderStatus}>
+                            <Text style={styles.buttonText}>Confirm</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </ScrollView>
     );
 }
@@ -416,5 +456,43 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#666',
         textAlign: 'center',
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    modalContent: {
+        backgroundColor: '#FFF',
+        padding: 20,
+        borderRadius: 8,
+        width: '80%',
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    input: {
+        width: '100%',
+        padding: 10,
+        borderWidth: 1,
+        borderColor: '#CCC',
+        borderRadius: 5,
+        marginVertical: 5,
+    },
+    confirmButton: {
+        backgroundColor: '#4CAF50',
+        padding: 12,
+        borderRadius: 8,
+        marginTop: 10,
+        alignItems: 'center',
+        width: '100%',
+    },
+    buttonText: {
+        color: '#FFF',
+        fontWeight: '600',
     },
 });

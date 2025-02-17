@@ -173,7 +173,7 @@ exports.updateResturant = async (req, res) => {
     try {
         // console.log("updateResturant",req.body)
         const { id } = req.params;
-        const { restaurant_name, restaurant_phone, openingHours, restaurant_contact, restaurant_category, restaurant_fssai, } = req.body;
+        const { restaurant_name, restaurant_phone, openingHours, restaurant_contact, restaurant_category, restaurant_fssai, priceForTwoPerson, minDeliveryTime, minPrice } = req.body;
         const resturant = await Restaurant.findById(id);
         if (!resturant) {
             return res.status(404).json({
@@ -188,6 +188,9 @@ exports.updateResturant = async (req, res) => {
         resturant.restaurant_contact = restaurant_contact;
         resturant.restaurant_category = restaurant_category;
         resturant.restaurant_fssai = restaurant_fssai;
+        resturant.priceForTwoPerson = priceForTwoPerson;
+        resturant.minDeliveryTime = minDeliveryTime;
+        resturant.minPrice = minPrice;
 
         if (req.files) {
             const { restaurant_fssai_image, restaurant_pan_image, restaurant_adhar_front_image, restaurant_adhar_back_image } = req.files;

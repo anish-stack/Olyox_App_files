@@ -87,6 +87,15 @@ const OrderSchema = new Schema({
     },
     adminWhyCancel:{
         type:String
+    },
+    deliveryBoyName:{
+        type:String
+    },
+    deliveryBoyPhone:{
+        type: Number
+    },
+    deliveryBoyBikeNumber:{
+        type:String
     }
 
 });

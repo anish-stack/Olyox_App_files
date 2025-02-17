@@ -9,9 +9,9 @@ const BottomNav = () => {
 
     const tabs = [
         { name: 'Home', icon: 'home', route: 'Home' },
-        { name: 'Profile', icon: 'account', route: 'Profile' },
         { name: 'All Food', icon: 'utensils', route: 'AllFood' }, // ✅ Fixed route name
         { name: 'Custom Food', icon: 'concierge-bell', route: 'CustomFood' }, // ✅ Fixed typo
+        { name: 'Profile', icon: 'account', route: 'Profile' },
         // { name: 'Get A Call', icon: 'phone', route: 'GetACall' }, // ✅ Fixed format
     ];
 

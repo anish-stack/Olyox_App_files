@@ -23,13 +23,16 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION"
+        "ACCESS_BACKGROUND_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34"
         }
-      }
+      },
+      "package": "com.coderhitesh.OlyoxTiffinsApp"
     },
     "web": {
       "favicon": "./assets/ic_launcher-web.png"
@@ -42,7 +45,20 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Olyox Tiffins to use your location."
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "digital4now-pz"
+        }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "0a8c9055-5866-43dc-b6aa-71bace9d0f79"
+      }
+    }
   }
 }
