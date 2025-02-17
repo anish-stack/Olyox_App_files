@@ -58,6 +58,7 @@ export function CustomizeTiffinPlan() {
   }, []);
 
   const [plan, setPlan] = useState({
+    packageName: '',
     duration: 7,
     // images: null,
     meals: {
@@ -204,84 +205,85 @@ export function CustomizeTiffinPlan() {
 
   // Update the handleSubmit function to properly handle image upload
 
-const handleSubmit = async () => {
-  setLoading(true);
-  const totalPrice = calculateTotalPrice();
-  const formData = new FormData();
+  const handleSubmit = async () => {
+    setLoading(true);
+    const totalPrice = calculateTotalPrice();
+    const formData = new FormData();
 
-  // Convert meals object to match the schema
-  const mealsData = {
-    breakfast: {
-      enabled: plan.meals.breakfast.enabled,
-      items: plan.meals.breakfast.items.map(item => ({
-        name: item.name,
-        price: Number(item.price)
-      }))
-    },
-    lunch: {
-      enabled: plan.meals.lunch.enabled,
-      items: plan.meals.lunch.items.map(item => ({
-        name: item.name,
-        price: Number(item.price)
-      }))
-    },
-    dinner: {
-      enabled: plan.meals.dinner.enabled,
-      items: plan.meals.dinner.items.map(item => ({
-        name: item.name,
-        price: Number(item.price)
-      }))
+    // Convert meals object to match the schema
+    const mealsData = {
+      breakfast: {
+        enabled: plan.meals.breakfast.enabled,
+        items: plan.meals.breakfast.items.map(item => ({
+          name: item.name,
+          price: Number(item.price)
+        }))
+      },
+      lunch: {
+        enabled: plan.meals.lunch.enabled,
+        items: plan.meals.lunch.items.map(item => ({
+          name: item.name,
+          price: Number(item.price)
+        }))
+      },
+      dinner: {
+        enabled: plan.meals.dinner.enabled,
+        items: plan.meals.dinner.items.map(item => ({
+          name: item.name,
+          price: Number(item.price)
+        }))
+      }
+    };
+
+    // Append form data
+    formData.append('duration', plan.duration.toString());
+    formData.append('meals', JSON.stringify(mealsData));
+    formData.append('preferences', JSON.stringify(plan.preferences));
+    formData.append('totalPrice', totalPrice.toString());
+    formData.append('restaurant_id', restaurant_id);
+    formData.append('packageName', plan.packageName);
+
+    // Handle image upload
+    if (selectImage.length > 0) {
+      const image = selectImage[0];
+      const imageUri = image.uri;
+      const filename = imageUri.split('/').pop();
+
+      // Infer the type from the extension
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('images', {
+        uri: imageUri,
+        name: filename,
+        type
+      });
+    }
+
+    try {
+      const response = await axios.post(
+        'https://demoapi.olyox.com/api/v1/tiffin/create_custom_tiffin',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      if (response.data.success) {
+        Alert.alert('Success', 'Tiffin plan created successfully!');
+        navigation.goBack();
+      } else {
+        Alert.alert('Error', response.data.message || 'Failed to create tiffin plan');
+      }
+    } catch (error) {
+      console.error('Submit error:', error);
+      Alert.alert('Error', 'Failed to create tiffin plan');
+    } finally {
+      setLoading(false);
     }
   };
-
-  // Append form data
-  formData.append('duration', plan.duration.toString());
-  formData.append('meals', JSON.stringify(mealsData));
-  formData.append('preferences', JSON.stringify(plan.preferences));
-  formData.append('totalPrice', totalPrice.toString());
-  formData.append('restaurant_id', restaurant_id);
-
-  // Handle image upload
-  if (selectImage.length > 0) {
-    const image = selectImage[0];
-    const imageUri = image.uri;
-    const filename = imageUri.split('/').pop();
-    
-    // Infer the type from the extension
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
-    
-    formData.append('images', {
-      uri: imageUri,
-      name: filename,
-      type
-    });
-  }
-
-  try {
-    const response = await axios.post(
-      'https://demoapi.olyox.com/api/v1/tiffin/create_custom_tiffin', 
-      formData, 
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
-
-    if (response.data.success) {
-      Alert.alert('Success', 'Tiffin plan created successfully!');
-      navigation.goBack();
-    } else {
-      Alert.alert('Error', response.data.message || 'Failed to create tiffin plan');
-    }
-  } catch (error) {
-    console.error('Submit error:', error);
-    Alert.alert('Error', 'Failed to create tiffin plan');
-  } finally {
-    setLoading(false);
-  }
-};
 
   const renderMealCard = (mealType, icon) => {
     const mealData = plan.meals[mealType];
@@ -427,6 +429,18 @@ const handleSubmit = async () => {
           ))}
         </View>
       </View>
+
+      <View
+         style={styles.durationCard}
+        >
+          <Text style={styles.cardTitle}>Package Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter package name"
+            value={plan.packageName}
+            onChangeText={(text) => setPlan((prev) => ({ ...prev, packageName: text }))}
+          />
+        </View>
 
       {/* Preferences Section */}
       <View style={styles.preferencesCard}>
@@ -818,6 +832,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginRight: 10,
+  },
+  input: {
+    height: 40,
+    borderColor: "#ddd",
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 10,
   },
 });
 

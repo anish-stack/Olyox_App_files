@@ -31,6 +31,14 @@ import AllCustomTiffins from './screens/AllCustomTiffins';
 import OnGoingOrder from './screens/OnGoingOrder';
 import CompleteOrder from './screens/CompleteOrder';
 import RegistrationForm from './screens/RegistrationForm';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://517d3fb5279b487fb84063c1fb2804c9@o4508835632185344.ingest.us.sentry.io/4508835637493760',
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 const Stack = createNativeStackNavigator();
 

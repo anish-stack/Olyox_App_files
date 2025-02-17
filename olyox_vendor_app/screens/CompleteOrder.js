@@ -50,7 +50,7 @@ export default function CompleteOrder() {
             const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
             if (data.success) {
                 const reverse = data.data.reverse();
-                const filteredOrders = reverse.filter(order => order.status === 'Delivered');
+                const filteredOrders = reverse.filter(order => order.status === 'Out for Delivery');
                 setAllOrders(filteredOrders || []);
             }
         } catch (error) {

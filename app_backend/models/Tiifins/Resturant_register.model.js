@@ -165,6 +165,18 @@ const restaurantSchema = new mongoose.Schema({
     documentVerify: {
         type: Boolean,
         default: false
+    },
+    priceForTwoPerson: {
+        type: Number,
+        default: 200
+    },
+    minDeliveryTime: {
+        type: String,
+        default: '40 mins'
+    },
+    minPrice: {
+        type: Number,
+        default: 200
     }
 }, {
     timestamps: true
