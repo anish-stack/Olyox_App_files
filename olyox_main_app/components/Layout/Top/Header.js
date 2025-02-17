@@ -57,7 +57,7 @@ const Header = () => {
 
   const findCurrent = async () => {
     try {
-      const { data } = await axios.post(`http://192.168.1.4:3000/Fetch-Current-Location`, {
+      const { data } = await axios.post(`https://demoapi.olyox.com/Fetch-Current-Location`, {
         lat: location?.coords?.latitude,
         lng: location?.coords?.longitude,
       })
@@ -83,11 +83,11 @@ const Header = () => {
   const menuItems = [
     { title: "Home", icon: Home },
     { title: "Profile", icon: User },
-    { title: "Orders", icon: ShoppingBag },
+    // { title: "Orders", icon: ShoppingBag },
     { title: "Parcel", icon: Briefcase },
-    { title: "Addresses", icon: MapPinned },
-    { title: "Settings", icon: Settings },
-    { title: "Help", icon: HelpCircle },
+    // { title: "Addresses", icon: MapPinned },
+    // { title: "Settings", icon: Settings },
+    // { title: "Help", icon: HelpCircle },
   ]
 
   const handleMenuClick = (title) => {

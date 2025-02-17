@@ -23,15 +23,22 @@ import { createUserRegister, login, verify_otp } from '../utils/helpers';
 // Warm up the Web Browser for OAuth
 const useWarmUpBrowser = () => {
     useEffect(() => {
+        console.log("Attempting to warm up WebBrowser...");
         const warmUp = async () => {
-            await WebBrowser.warmUpAsync();
+            if (Platform.OS !== 'web') {  
+                await WebBrowser.warmUpAsync();
+            }
         };
         warmUp();
+        console.log("WebBrowser warmed up successfully.");
         return () => {
-            WebBrowser.coolDownAsync();
+            if (Platform.OS !== 'web') {
+                WebBrowser.coolDownAsync();
+            }
         };
     }, []);
 };
+
 
 WebBrowser.maybeCompleteAuthSession();
 

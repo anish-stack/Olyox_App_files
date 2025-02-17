@@ -65,7 +65,7 @@ const ParcelBooking = () => {
     setError("");
     setLoading(true);
     try {
-      const { data } = await axios.post("http://192.168.1.4:3000/geo-code-distance", {
+      const { data } = await axios.post("https://demoapi.olyox.com/geo-code-distance", {
         pickup,
         dropOff: dropoff,
       });
@@ -126,7 +126,7 @@ const ParcelBooking = () => {
     const token = db_token || gmail_token;
 
     try {
-      const { data } = await axios.post("http://192.168.1.4:3000/api/v1/parcel/request_of_parcel", payload, {
+      const { data } = await axios.post("https://demoapi.olyox.com/api/v1/parcel/request_of_parcel", payload, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,

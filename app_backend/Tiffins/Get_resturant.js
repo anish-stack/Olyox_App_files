@@ -5,10 +5,9 @@ exports.find_Restaurant = async (req, res) => {
     try {
         const { restaurant_category, status, restaurant_in_top_list } = req.query;
 
-        // Initialize the query object
+
         let query = {};
 
-        // Add filters dynamically based on the query parameters
         if (restaurant_category) {
             query.restaurant_category = restaurant_category;
         }
@@ -122,5 +121,65 @@ exports.find_Restaurant_And_Her_foods = async (req, res) => {
             message: "An error occurred while fetching the restaurant's foods. Please try again later.",
             error: error.message,
         });
+    }
+};
+exports.find_RestaurantTop = async (req, res) => {
+    try {
+        let { lat, lng } = req.query;
+      console.log("Restaurant",req.query)
+
+
+        let query = { restaurant_in_top_list: true };
+
+
+        if (lat && lng) {
+            lat = parseFloat(lat);
+            lng = parseFloat(lng);
+            if (isNaN(lat) || isNaN(lng)) {
+                return res.status(400).json({ success: false, message: "Invalid latitude or longitude" });
+            }
+
+            query.geo_location = {
+                $near: {
+                    $geometry: {
+                        type: "Point",
+                        coordinates: [lng, lat]
+                    },
+                    $maxDistance: 4000 // 5km radius
+                }
+            };
+        }
+
+        // Find top restaurants based on the query
+        const topRestaurants = await Restaurant.find(query);
+
+        if (!topRestaurants.length) {
+            // If no nearby restaurants found, show all top restaurants and message
+            let allTopRestaurants = await Restaurant.find({ restaurant_in_top_list: true });
+
+            return res.status(200).json({
+                success: true,
+                message: "No nearby restaurants found. Showing all top restaurants.",
+                count: allTopRestaurants.length,
+                data: allTopRestaurants
+            });
+        }
+
+        // Shuffle the array using Fisher-Yates algorithm
+        for (let i = topRestaurants.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [topRestaurants[i], topRestaurants[j]] = [topRestaurants[j], topRestaurants[i]];
+        }
+
+        // Send shuffled restaurants as response
+        res.status(200).json({
+            success: true,
+            message: "Nearby top restaurants found.",
+            count: topRestaurants.length,
+            data: topRestaurants
+        });
+    } catch (error) {
+        console.error("Error fetching top restaurants:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 };

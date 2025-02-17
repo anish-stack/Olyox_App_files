@@ -37,7 +37,7 @@ export default function OrderDetails() {
                 return
             }
 
-            const { data } = await axios.get(`http://192.168.1.4:3000/api/v1/parcel/single_my_parcel?id=${id}`)
+            const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/parcel/single_my_parcel?id=${id}`)
             console.log(data.data)
             setOrderData(data.data)
             await setupLocation()
