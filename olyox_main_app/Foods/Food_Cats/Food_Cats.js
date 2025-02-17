@@ -9,19 +9,11 @@ export default function Food_Cats() {
     const Foods_Cats = [
         {
             id: 1,
-            title: "Breakfast",
+            title: "Tiffins",
             image: "https://i.ibb.co/tZgXSQF/breakfast.gif",
         },
-        {
-            id: 2,
-            title: "Lunch",
-            image: "https://i.ibb.co/vkB2FhX/lunch-box.gif",
-        },
-        {
-            id: 3,
-            title: "Dinner",
-            image: "https://i.ibb.co/b3h9qMM/dining-table.gif",
-        },
+
+
         {
             id: 4,
             title: "Veg",
@@ -106,10 +98,10 @@ const styles = StyleSheet.create({
         padding: 15,
     },
     scrollViewContent: {
-        paddingRight: 15,
+        paddingRight: 20,
     },
     itemContainer: {
-        marginRight: 25,
+        marginRight: 50,
         alignItems: "center",
     },
     touchable: {

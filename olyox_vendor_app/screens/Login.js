@@ -3,15 +3,16 @@ import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert, ActivityInd
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS } from '../constants/colors';
+import { useNavigation } from '@react-navigation/native';
 
-export function Login({ navigation }) {
+export function Login() {
     const [restaurant_BHID, setRestaurant_BHID] = useState('');
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
-    const [step, setStep] = useState(1); // Step 1: Enter BHID, Step 2: Enter OTP
+    const [step, setStep] = useState(1);
     const [resendDisabled, setResendDisabled] = useState(false);
+    const navigation = useNavigation()
 
-    // Handle sending OTP
     const sendOTP = async () => {
         if (!restaurant_BHID) {
             Alert.alert('Error', 'Please enter your Restaurant BHID');
@@ -20,7 +21,7 @@ export function Login({ navigation }) {
 
         setLoading(true);
         try {
-            const response = await fetch('http://192.168.11.251:3000/api/v1/tiffin/tiffin_login', {
+            const response = await fetch('https://demoapi.olyox.com/api/v1/tiffin/tiffin_login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID }),
@@ -30,7 +31,7 @@ export function Login({ navigation }) {
 
             if (data.success) {
                 Alert.alert('Success', 'OTP sent to your registered phone');
-                setStep(2); // Move to OTP step
+                setStep(2);
             } else {
                 Alert.alert('Error', data.message || 'Failed to send OTP');
             }
@@ -52,7 +53,7 @@ export function Login({ navigation }) {
         setTimeout(() => setResendDisabled(false), 30000); // Re-enable after 30s
 
         try {
-            const response = await fetch('http://192.168.11.251:3000/api/v1/tiffin/resend-otp', {
+            const response = await fetch('https://demoapi.olyox.com/api/v1/tiffin/resend-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID }),
@@ -79,7 +80,7 @@ export function Login({ navigation }) {
 
         setLoading(true);
         try {
-            const response = await fetch('http://192.168.11.251:3000/api/v1/tiffin/verify_otp', {
+            const response = await fetch('https://demoapi.olyox.com/api/v1/tiffin/verify_otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID, otp }),
@@ -168,6 +169,20 @@ export function Login({ navigation }) {
                             <Icon name="arrow-forward" size={24} color="#fff" style={styles.loginIcon} />
                         </>
                     )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={{
+                        backgroundColor: '#ed3131',
+                        paddingVertical: 10,
+                        paddingHorizontal: 20,
+                        marginTop: 10,
+                        borderRadius: 8,
+                        alignItems: 'center'
+                    }}
+                    activeOpacity={0.8}
+                    onPress={() => navigation.navigate('Regisiter')}
+                >
+                    <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>New Register</Text>
                 </TouchableOpacity>
             </View>
         </View>

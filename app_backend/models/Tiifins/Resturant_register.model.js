@@ -15,12 +15,12 @@ const restaurantSchema = new mongoose.Schema({
     },
     geo_location: {
         type: {
-            type: String, 
-            enum: ['Point'], 
+            type: String,
+            enum: ['Point'],
             required: true
         },
         coordinates: {
-            type: [Number], 
+            type: [Number],
             required: true
         }
     },
@@ -36,15 +36,18 @@ const restaurantSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    restaurant_contact:{
+    restaurant_contact: {
         type: Number,
+        default: 0
     },
     logo: {
         url: {
-            type: String
+            type: String,
+            default: null
         },
         public_id: {
-            type: String
+            type: String,
+            default: null
         }
     },
     restaurant_category: {
@@ -105,7 +108,7 @@ const restaurantSchema = new mongoose.Schema({
     },
     isWorking: {
         type: Boolean,
-        default: true
+        default: false
     },
     bank_details: {
         account_holder_name: {
@@ -129,15 +132,39 @@ const restaurantSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    referral_earning:{
+    referral_earning: {
         type: Number,
         default: 0
     },
-    Password : {
+    Password: {
         type: String
     },
     newPassword: {
         type: String
+    },
+    isOtpBlock: {
+        type: Boolean,
+        default: false
+    },
+    isDocumentUpload: {
+        type: Boolean,
+        default: false
+    },
+    otpUnblockAfterThisTime: {
+        type: Date,
+        default: null
+    },
+    howManyTimesHitResend: {
+        type: Number,
+        default: 0
+    },
+    isOtpVerify:{
+        type: Boolean,
+        default: false
+    },
+    documentVerify: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true

@@ -6,7 +6,7 @@ const { uploadSingleImage } = require("../utils/cloudinary");
 exports.createCustomTiffin = async (req, res) => {
     try {
         // console.log("i am hit", req.body)
-        const { duration, meals, preferences, totalPrice, restaurant_id } = req.body;
+        const { packageName,duration, meals, preferences, totalPrice, restaurant_id } = req.body;
 
         // Check for missing fields
         const emptyFields = [];

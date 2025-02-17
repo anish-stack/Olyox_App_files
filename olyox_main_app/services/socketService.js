@@ -1,6 +1,6 @@
 import io from "socket.io-client";
 
-const SOCKET_URL = "http://192.168.11.28:3000";
+const SOCKET_URL = "https://demoapi.olyox.com";
 let socket; // Singleton socket instance
 
 export const initializeSocket = ({ userType = "user", userId = 1 }) => {

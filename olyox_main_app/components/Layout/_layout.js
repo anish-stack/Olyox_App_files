@@ -19,7 +19,7 @@ export default function Layout({ children, isHeaderShown = true, isBottomNavShow
                 <View style={styles.content}>
                     {children}
                 </View>
-                {isBottomNavShown && <BottomNav activeTab={activeTab} onTabPress={setActiveTab} />}
+                {/* {isBottomNavShown && <BottomNav activeTab={activeTab} onTabPress={setActiveTab} />} */}
             </SafeAreaView>
         </SafeAreaProvider>
     )

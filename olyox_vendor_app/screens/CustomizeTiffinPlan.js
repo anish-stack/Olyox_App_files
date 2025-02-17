@@ -33,7 +33,7 @@ export function CustomizeTiffinPlan() {
         }
 
         const { data } = await axios.get(
-          'http://192.168.11.251:3000/api/v1/tiffin/get_single_tiffin_profile',
+          'https://demoapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
           {
             headers: {
               'Authorization': `Bearer ${storedToken}`
@@ -62,12 +62,12 @@ export function CustomizeTiffinPlan() {
     // images: null,
     meals: {
       breakfast: {
-        enabled: true,
-        items: [{ name: 'Poha', price: 40 }]
+        enabled: false,
+        items: []
       },
       lunch: {
-        enabled: true,
-        items: [{ name: 'Dal', price: 60 }, { name: 'Rice', price: 30 }]
+        enabled: false,
+        items: []
       },
       dinner: {
         enabled: false,
@@ -260,7 +260,7 @@ const handleSubmit = async () => {
 
   try {
     const response = await axios.post(
-      'http://192.168.11.251:3000/api/v1/tiffin/create_custom_tiffin', 
+      'https://demoapi.olyox.com/api/v1/tiffin/create_custom_tiffin', 
       formData, 
       {
         headers: {

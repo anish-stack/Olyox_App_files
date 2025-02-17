@@ -4,7 +4,7 @@ import FoodData from '../utils/Food.data';
 import TopFoodCard from './TopFoodCard';
 import { styles } from './FoodStyles';
 
-export default function TopFood({show=false}) {
+export default function TopFood({ show = false }) {
     const [showAll, setShowAll] = useState(show);
     const displayedRestaurants = showAll ? FoodData : FoodData.slice(0, 4);
 
@@ -12,8 +12,8 @@ export default function TopFood({show=false}) {
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>Top Restaurants</Text>
-                <TouchableOpacity 
-                    style={styles.viewAllButton} 
+                <TouchableOpacity
+                    style={styles.viewAllButton}
                     onPress={() => setShowAll(!showAll)}
                 >
                     <Text style={styles.viewAllText}>

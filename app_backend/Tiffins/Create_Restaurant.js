@@ -9,128 +9,156 @@ const SendWhatsAppMessage = require('../utils/whatsapp_send');
 const bcrypt = require('bcrypt');
 const RestaurantPackageModel = require('../models/Tiifins/Restaurant.package.model');
 const { uploadSingleImage, deleteImage } = require('../utils/cloudinary');
+const generateOtp = require('../utils/Otp.Genreator');
 exports.register_restaurant = async (req, res) => {
     try {
-
         const {
             restaurant_BHID,
             restaurant_fssai,
             restaurant_category,
-            openingHours,
+            opening_hours,
             restaurant_phone,
-            restaurant_address,
+            restaurant_contact,
+            address, // Use "address" consistently
             geo_location,
+            restaurant_owner_name,
             restaurant_name
         } = req.body;
+        console.log("req.body", req.body)
 
+        // Validate required fields
+        const requiredFields = {
+            restaurant_BHID,
+            restaurant_fssai,
+            restaurant_category,
+            opening_hours,
+            restaurant_phone,
+            address,
+            restaurant_name,
+        };
 
-        if (!restaurant_BHID || !restaurant_fssai || !restaurant_category || !openingHours ||
-            !restaurant_phone || !restaurant_address || !restaurant_name) {
-            return res.status(400).json({ success: false, message: "Please fill all required fields." });
+        const missingFields = Object.entries(requiredFields)
+            .filter(([key, value]) => !value)
+            .map(([key]) => key);
+
+        if (missingFields.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Please fill all required fields. Missing: ${missingFields.join(", ")}.`
+            });
         }
-        let logo = req.file || {}
-        if (!logo) {
-            logo = `https://ui-avatars.com/api/?name=${restaurant_name}`
+
+
+        // Process logo file if provided; otherwise, use a default avatar URL
+        let logo;
+        if (req.file) {
+            // Assuming the file path is stored in req.file.path
+            logo = req.file.path;
+        } else {
+            logo = `https://ui-avatars.com/api/?name=${encodeURIComponent(restaurant_name)}`;
         }
 
+        // Validate restaurant_category
         const validCategories = ['Veg', 'Non-Veg', 'Veg-Non-Veg'];
         if (!validCategories.includes(restaurant_category)) {
-            return res.status(400).json({ success: false, message: "Invalid restaurant category. Choose from 'Veg', 'Non-Veg', or 'Veg-Non-Veg'." });
-        }
-
-        // Validate restaurant_fssai (14-digit numeric code)
-        const fssaiRegex = /^[0-9]{14}$/;
-        if (!fssaiRegex.test(restaurant_fssai)) {
-            return res.status(400).json({ success: false, message: "Invalid FSSAI number. It must be a 14-digit numeric code." });
-        }
-
-        // Validate restaurant_BHID with Olyox API
-        let restaurant;
-        try {
-            const { data } = await axios.post('https://api.olyox.com/api/v1/check-bh-id', {
-                bh: restaurant_BHID
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Invalid restaurant category. Choose from 'Veg', 'Non-Veg', or 'Veg-Non-Veg'."
             });
-            if (!data.data.success) {
-                return res.status(403).json({
-                    success: false,
-                    message: "Invalid BH ID. Please register at Olyox.com before proceeding."
+        }
+
+        // Check if the restaurant BHID is already registered
+        const existingBh = await Restaurant.findOne({ restaurant_BHID });
+        if (existingBh) {
+            return res.status(400).json({
+                success: false,
+                message: "BH number already registered."
+            });
+        }
+
+        // Check if the phone number is already registered
+        let existingRestaurant = await Restaurant.findOne({ restaurant_phone });
+        if (existingRestaurant) {
+            // If OTP has not been verified yet, update OTP and resend it
+            if (!existingRestaurant.isOtpVerify) {
+                const otp = generateOtp();
+
+                // Block if resend limit exceeded
+                if ((existingRestaurant.howManyTimesHitResend || 0) >= 5) {
+                    existingRestaurant.isOtpBlock = true;
+                    existingRestaurant.isDocumentUpload = false;
+                    existingRestaurant.otpUnblockAfterThisTime = new Date(Date.now() + 30 * 60000); // Block for 30 minutes
+                    await existingRestaurant.save();
+
+                    await SendWhatsAppMessage(
+                        "Your account is blocked for 30 minutes.",
+                        restaurant_phone
+                    );
+                    return res.status(400).json({
+                        success: false,
+                        message: "Your account is blocked for 30 minutes."
+                    });
+                }
+
+                // Update OTP details and resend OTP
+                existingRestaurant.otp = otp;
+                existingRestaurant.howManyTimesHitResend = (existingRestaurant.howManyTimesHitResend || 0) + 1;
+                existingRestaurant.isDocumentUpload = false;
+                await existingRestaurant.save();
+
+                await SendWhatsAppMessage(
+                    `Your OTP for Tiffin registration is: ${otp}`,
+                    restaurant_phone
+                );
+                return res.status(201).json({
+                    success: true,
+                    message: "Existing restaurant found. Please verify OTP."
                 });
             }
-        } catch (error) {
-            console.error("Olyox API Error:", error.message);
-            return res.status(500).json({
+
+            return res.status(400).json({
                 success: false,
-                message: "Failed to validate BH ID. Please try again later."
+                message: "Phone number already registered."
             });
         }
 
-        // Geo-location handling
-        let updatedGeoLocation = geo_location;
-        if (!geo_location || !geo_location.coordinates) {
-            try {
-                const address = `${restaurant_address.street}, ${restaurant_address.city}, ${restaurant_address.state}, ${restaurant_address.zip}`;
-                const mapsApiKey = process.env.GOOGLE_MAP_KEY;
-                const mapsApiUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${mapsApiKey}`;
+        // For a new restaurant registration, generate an OTP if needed for verification
+        const otp = generateOtp();
 
-                const { data } = await axios.get(mapsApiUrl);
-
-                if (data.status === "OK" && data.results.length > 0) {
-                    const location = data.results[0].geometry.location;
-                    updatedGeoLocation = {
-                        type: "Point",
-                        coordinates: [location.lng, location.lat]
-                    };
-                } else {
-                    console.warn("Google Maps API Warning: Unable to determine geo-location for the provided address.");
-
-                    updatedGeoLocation = {
-                        type: "Point",
-                        coordinates: [0.0, 0.0]
-                    };
-                }
-            } catch (error) {
-                console.error("Google Maps API Error:", error.message);
-
-                updatedGeoLocation = {
-                    type: "Point",
-                    coordinates: [0.0, 0.0]
-                };
-            }
-        }
-
-        //try to upload image 
-        try {
-            const mimeType = ''
-            const buffer = ''
-            const bucket_name = 'my-image-bucketapphotel'
-            const key = ``
-            const data = await uploadFile.uploadBufferImage(buffer, mimeType, bucket_name, key)
-            console.log(data)
-        } catch (error) {
-
-        }
-
-        // Create a new restaurant document
+        // Create the new restaurant record
         const newRestaurant = new Restaurant({
             restaurant_BHID,
             restaurant_fssai,
             restaurant_category,
-            openingHours,
+            openingHours: opening_hours,
             restaurant_phone,
-            restaurant_address,
-            geo_location: updatedGeoLocation,
-            restaurant_name
+            restaurant_address: address, // Use the address value from req.body
+            geo_location, // Assuming geo_location is valid and provided correctly
+            restaurant_owner_name,
+            restaurant_name,
+            restaurant_contact,
+            logo,
+            otp, // Store OTP for verification
+            howManyTimesHitResend: 0, // Initialize the resend counter
+            isOtpVerify: false,
+            isDocumentUpload: false
         });
 
-        // Save to database
-        // await newRestaurant.save();
+        // Save the new restaurant in the database
+        const dataSave = await newRestaurant.save();
+        console.log(dataSave)
+        // Optionally, send the OTP to the restaurant phone
+        await SendWhatsAppMessage(
+            `Your OTP for Tiffin registration is: ${otp}`,
+            restaurant_phone
+        );
 
         return res.status(201).json({
             success: true,
             message: "Restaurant registered successfully.",
             data: newRestaurant
         });
-
     } catch (error) {
         console.error("Error registering restaurant:", error.message);
         return res.status(500).json({
@@ -139,6 +167,7 @@ exports.register_restaurant = async (req, res) => {
         });
     }
 };
+
 
 exports.updateResturant = async (req, res) => {
     try {
@@ -194,10 +223,13 @@ exports.updateResturant = async (req, res) => {
                 const { image, public_id } = imgUrl;
                 resturant.restaurant_adhar_back_image = { url: image, public_id };
             }
+
         }
 
-        console.log('resturant',resturant)
 
+        if (req.files) {
+            resturant.isDocumentUpload = true;
+        }
         await resturant.save();
         return res.status(200).json({
             success: true,
@@ -265,12 +297,27 @@ exports.updateIsWorking = async (req, res) => {
         const { id } = req.params;
         const { isWorking } = req.body;
         const restaurant = await Restaurant.findById(id);
+
         if (!restaurant) {
             return res.status(404).json({
                 success: false,
                 message: "Restaurant not found"
             })
         }
+        if (restaurant.isDocumentUpload === false) {
+            return res.status(400).json({
+                success: false,
+                message: "Please verify your documents first."
+            })
+        }
+        if (restaurant.documentVerify === false) {
+            return res.status(400).json({
+                success: false,
+                message: "Document Verification in Progress "
+            })
+        }
+
+
         restaurant.isWorking = isWorking;
         await restaurant.save();
         return res.status(200).json({
@@ -624,10 +671,9 @@ exports.login = async (req, res) => {
         });
     }
 };
-
 exports.resend_otp = async (req, res) => {
     try {
-        const { restaurant_BHID } = req.body;
+        const { restaurant_BHID, type = "login" } = req.body;
 
         if (!restaurant_BHID) {
             return res.status(400).json({
@@ -647,23 +693,54 @@ exports.resend_otp = async (req, res) => {
             });
         }
 
-        // Generate a new 4-digit OTP
-        const otp = Math.floor(1000 + Math.random() * 9000);
-        const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes expiry
+        // Check if OTP resend is blocked
+        if (restaurant.isOtpBlock) {
+            const currentTime = new Date();
+            if (currentTime < restaurant.otpUnblockAfterThisTime) {
+                const timeRemaining = Math.ceil((restaurant.otpUnblockAfterThisTime - currentTime) / 1000);
+                return res.status(400).json({
+                    success: false,
+                    message: `OTP resend is blocked. Try again in ${timeRemaining} seconds.`
+                });
+            } else {
+                // Unblock after the set time has passed
+                restaurant.isOtpBlock = false;
+                restaurant.howManyTimesHitResend = 0;
+                restaurant.otpUnblockAfterThisTime = null;
+                await restaurant.save();
+            }
+        }
+
+        // Check if resend limit is reached
+        if (restaurant.howManyTimesHitResend >= 5) {
+            restaurant.isOtpBlock = true;
+            restaurant.otpUnblockAfterThisTime = new Date(Date.now() + 30 * 60 * 1000); // Block for 30 minutes
+            await restaurant.save();
+            return res.status(400).json({
+                success: false,
+                message: "OTP resend limit reached. Please try again later."
+            });
+        }
+
+        const otp = generateOtp()
+        const otpExpiry = new Date(Date.now() + 2 * 60 * 1000);
 
         restaurant.otp = otp;
         restaurant.otpExpiry = otpExpiry;
+        restaurant.howManyTimesHitResend = (restaurant.howManyTimesHitResend || 0) + 1;
         await restaurant.save();
 
+        // Determine the context of the OTP (login vs. verification)
+        const action = type === "verify" ? "verification" : "login";
+        const message = `Your new OTP for ${action} is: ${otp}. It is valid for 2 minutes. Please do not share it.`;
+
         // Send the new OTP via WhatsApp
-        const message = `Your new OTP for login is: ${otp}. It is valid for 2 minutes. Please do not share it.`;
         await SendWhatsAppMessage(message, restaurant.restaurant_phone);
 
         return res.status(200).json({
             success: true,
-            message: "New OTP sent successfully to registered phone number",
+            message: "New OTP sent successfully to registered phone number"
         });
-
     } catch (error) {
         console.error("Error resending OTP:", error.message);
         return res.status(500).json({
@@ -715,17 +792,21 @@ exports.verify_otp = async (req, res) => {
             });
         }
 
-        // Clear OTP after successful verification
+
         restaurant.otp = null;
         restaurant.otpExpiry = null;
+        restaurant.isOtpVerify = true
+        restaurant.howManyTimesHitResend = 0; // Reset resend attempts
+        restaurant.isOtpBlock = false; // Unblock OTP if it was previously blocked
+        restaurant.otpUnblockAfterThisTime = null; // Clear the OTP unblock time
+
+
+
         await restaurant.save();
 
         await sendToken(restaurant, res, 200);
 
-        // return res.status(200).json({
-        //     success: true,
-        //     message: "OTP verified successfully",
-        // });
+
 
     } catch (error) {
         console.error("Error verifying OTP:", error.message);

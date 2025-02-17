@@ -14,7 +14,7 @@ const storage = multer.memoryStorage()
 const upload = multer({ storage: storage });
 
 // Tiffin routes
-tiffin.post('/register_restaurant', upload.single('logo'), register_restaurant)
+tiffin.post('/register_restaurant', register_restaurant)
 tiffin.put('/update_is_working/:id', updateIsWorking)
 tiffin.get('/fake_register_restaurant', register_restaurant_fake)
 tiffin.post('/register_listing', upload.single('images'), add_food_listing)

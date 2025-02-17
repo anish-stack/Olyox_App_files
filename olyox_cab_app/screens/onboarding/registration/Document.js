@@ -29,7 +29,7 @@ const DOCUMENTS = [
   { id: 'pan', title: 'PAN Card', icon: 'wallet-outline' },
 ];
 
-const API_URL = 'http://192.168.11.28:3000/api/v1/parcel/uploadDocuments';
+const API_URL = 'https://demoapi.olyox.com/api/v1/parcel/uploadDocuments';
 
 export default function Documents({navigation}) {
   const [images, setImages] = useState({});

@@ -13,6 +13,10 @@ const MealSchema = new mongoose.Schema({
 });
 
 const RestaurantPackageSchema = new Schema({
+    packageName:{
+        type: String,
+   
+    },
     duration: { type: Number, required: true, enum: [7, 15, 30] }, // 7, 15, or 30 days
     images: {
         url: {
@@ -40,6 +44,10 @@ const RestaurantPackageSchema = new Schema({
     food_availability: {
         type: Boolean,
         default: true
+    },
+    isThisTopPackage:{
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true });
 

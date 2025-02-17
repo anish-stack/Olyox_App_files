@@ -42,7 +42,7 @@ export default function App() {
 
         if (token) {
           const response = await axios.get(
-            'http://192.168.11.28:3000/api/v1/rider/user-details',
+            'https://demoapi.olyox.com/api/v1/rider/user-details',
             { headers: { Authorization: `Bearer ${token}` } }
           );
 

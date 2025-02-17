@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Olyox Tiffins",
+    "slug": "Olyox-Tiffins-App",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/playstore-icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/ic_launcher-web.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/ic_launcher-web.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/ic_launcher-web.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Olyox Tiffins to use your location."
+        }
+      ]
+    ]
+  }
+}

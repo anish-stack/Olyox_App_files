@@ -10,7 +10,7 @@ const LoginForm = ({ onLogin }) => {
     const handleLogin = async () => {
         try {
             // Make the Axios request to the login endpoint
-            const response = await axios.post('http://192.168.11.28:3000/api/v1/parcel/login_parcel_partner', { number: phone });
+            const response = await axios.post('https://demoapi.olyox.com/api/v1/parcel/login_parcel_partner', { number: phone });
             console.log("response", response.data)
             if (response.data.success) {
                 console.log("Login successful", response.data);

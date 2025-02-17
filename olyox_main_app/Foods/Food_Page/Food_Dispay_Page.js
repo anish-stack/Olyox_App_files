@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from "react"
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Image } from "react-native"
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Image, TouchableOpacity } from "react-native"
 import { useRoute } from "@react-navigation/native"
 import axios from "axios"
 import Food_Card from "../Food_Card/Food_Card"
@@ -20,9 +20,10 @@ export default function Food_Display_Page() {
         setLoading(true)
         try {
             const { data } = await axios.get(
-                `http://192.168.11.28:3000/api/v1/tiffin/find_Restaurant_foods?food_category=${title}`,
+                `https://demoapi.olyox.com/api/v1/tiffin/find_Restaurant_foods?food_category=${title}`,
             )
             if (data.data) {
+                console.log(data.data[0])
                 setFoodData(data.data)
             } else {
                 setFoodData([])
@@ -40,13 +41,28 @@ export default function Food_Display_Page() {
 
     const handleSearch = (query) => {
         setSearchQuery(query)
+        console.log("objecqueryt", query)
     }
 
-    const filteredFoodData = foodData.filter(
-        (item) =>
-            item.food_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.description.toLowerCase().includes(searchQuery.toLowerCase()),
-    )
+    const filteredFoodData = foodData
+    .filter((item) => {
+        console.log(item.restaurant_id?.rating)
+        if (searchQuery === "Top Rated") {
+        return item.restaurant_id?.rating !== undefined;
+      }
+      return (
+        item.food_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    })
+    .sort((a, b) => {
+      if (searchQuery === "Top Rated") {
+       
+        return (b.restaurant_id?.rating || 0) - (a.restaurant_id?.rating || 0);
+      }
+      return 0; // No sorting for normal search
+    });
+  
 
     const renderFood = ({ item }) => (
         <Food_Card

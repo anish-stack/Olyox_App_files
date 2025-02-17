@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Image, Alert, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Dimensions, ScrollView, StyleSheet, Image, Alert, FlatList, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import { Picker } from '@react-native-picker/picker';
-
+import { LinearGradient } from 'expo-linear-gradient';
+const { width } = Dimensions.get('screen')
 export function ProfileUpdate() {
     const [vendorId, setVendorId] = useState(null)
+    const [vendorData, setVendorData] = useState(null)
     const [formData, setFormData] = useState({
         restaurant_name: '',
         restaurant_phone: '',
@@ -24,7 +26,7 @@ export function ProfileUpdate() {
         restaurant_adhar_back_image: null,
         restaurant_pan_image: null
     });
- 
+
 
     const fetchUserDetails = async () => {
         try {
@@ -37,7 +39,7 @@ export function ProfileUpdate() {
 
             // Make the API request
             const { data } = await axios.get(
-                'http://192.168.11.251:3000/api/v1/tiffin/get_single_tiffin_profile',
+                'https://demoapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
                 {
                     headers: {
                         'Authorization': `Bearer ${storedToken}`
@@ -45,8 +47,9 @@ export function ProfileUpdate() {
                 }
             );
             const vendor = data?.data
-            console.log("response", vendor?.restaurant_phone)
+
             setVendorId(vendor?._id)
+            setVendorData(vendor)
             setFormData({
                 restaurant_name: vendor.restaurant_name,
                 restaurant_phone: vendor.restaurant_phone,
@@ -56,20 +59,20 @@ export function ProfileUpdate() {
                 restaurant_fssai: vendor.restaurant_fssai,
             });
             setImages({
-                restaurant_fssai_image: vendor.restaurant_fssai_image 
-                    ? { uri: vendor.restaurant_fssai_image.url } 
+                restaurant_fssai_image: vendor.restaurant_fssai_image
+                    ? { uri: vendor.restaurant_fssai_image.url }
                     : null,
-                restaurant_adhar_front_image: vendor.restaurant_adhar_front_image 
-                    ? { uri: vendor.restaurant_adhar_front_image.url } 
+                restaurant_adhar_front_image: vendor.restaurant_adhar_front_image
+                    ? { uri: vendor.restaurant_adhar_front_image.url }
                     : null,
-                restaurant_adhar_back_image: vendor.restaurant_adhar_back_image 
-                    ? { uri: vendor.restaurant_adhar_back_image.url } 
+                restaurant_adhar_back_image: vendor.restaurant_adhar_back_image
+                    ? { uri: vendor.restaurant_adhar_back_image.url }
                     : null,
-                restaurant_pan_image: vendor.restaurant_pan_image 
-                    ? { uri: vendor.restaurant_pan_image.url } 
+                restaurant_pan_image: vendor.restaurant_pan_image
+                    ? { uri: vendor.restaurant_pan_image.url }
                     : null
             });
-            
+
 
         } catch (error) {
             console.log('Error:', error);
@@ -125,7 +128,7 @@ export function ProfileUpdate() {
             );
             const data = await response.json();
             const { latitude, longitude } = data;
-            
+
             setFormData(prev => ({
                 ...prev,
                 address: {
@@ -137,9 +140,9 @@ export function ProfileUpdate() {
                     }
                 }
             }));
-        
 
-            console.log("formdata",formData)
+
+            console.log("formdata", formData)
             setAddressSuggestions([]);
         } catch (error) {
             console.error('Error fetching geocode:', error);
@@ -182,7 +185,7 @@ export function ProfileUpdate() {
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
-                aspect: [12, 3],
+
                 quality: 1,
             });
 
@@ -200,7 +203,7 @@ export function ProfileUpdate() {
         try {
             setLoading(true);
             const formDataToSend = new FormData();
-    
+
             // Append text fields properly
             Object.keys(formData).forEach(key => {
                 if (typeof formData[key] === 'object' && key !== "address") {
@@ -209,7 +212,7 @@ export function ProfileUpdate() {
                     formDataToSend.append(key, formData[key]);
                 }
             });
-    
+
             // Append image files properly
             Object.keys(images).forEach(key => {
                 if (images[key]) {
@@ -220,12 +223,12 @@ export function ProfileUpdate() {
                     });
                 }
             });
-    
+
             console.log("Final formDataToSend", formDataToSend);
-    
-    
+
+
             const response = await axios.put(
-                `http://192.168.11.251:3000/api/v1/tiffin/update_restaurant_details/${vendorId}`,
+                `https://demoapi.olyox.com/api/v1/tiffin/update_restaurant_details/${vendorId}`,
                 formDataToSend,
                 {
                     headers: {
@@ -233,10 +236,10 @@ export function ProfileUpdate() {
                     },
                 }
             );
-    
+
             console.log("Response from API:", response.data);
             Alert.alert('Success', 'Profile updated successfully');
-    
+
         } catch (error) {
             console.error("Error updating profile:", error.response?.data || error.message);
             Alert.alert('Error', 'Failed to update profile');
@@ -244,7 +247,7 @@ export function ProfileUpdate() {
             setLoading(false);
         }
     };
-    
+
 
     const renderInput = (label, icon, value, key, options, keyboardType = 'default') => (
         <View style={styles.inputContainer}>
@@ -260,9 +263,11 @@ export function ProfileUpdate() {
                         console.log(key)
                         if (key == 'restaurant_address.street') {
                             handleAddressChange(text);
-                            setFormData((prev)=>(
-                               { ...prev,
-                                street_address:text}
+                            setFormData((prev) => (
+                                {
+                                    ...prev,
+                                    street_address: text
+                                }
                             ))
                         } else if (key.includes('.')) {
                             const [parent, child] = key.split('.');
@@ -282,22 +287,22 @@ export function ProfileUpdate() {
             {key === 'restaurant_address.street' && addressSuggestions.length > 0 && (
                 <View style={[styles.suggestionsContainer, { maxHeight: 200 }]}>
                     {addressSuggestions.map((item, index) => (
-                       <TouchableOpacity
-                       key={index}
-                       style={styles.suggestionItem}
-                       onPress={() => {
-                        fetchGeocode(item.description)
-                           handleAddressChange(item.description); // ✅ Call function if necessary
-                           setFormData(prev => ({
-                               ...prev,
-                               street_address: item.description // ✅ Update the form data
-                           }));
-                       }}
-                   >
-                       <Icon name="map-marker" size={16} color="#6366f1" />
-                       <Text style={styles.suggestionText}>{item.description}</Text>
-                   </TouchableOpacity>
-                   
+                        <TouchableOpacity
+                            key={index}
+                            style={styles.suggestionItem}
+                            onPress={() => {
+                                fetchGeocode(item.description)
+                                handleAddressChange(item.description); // ✅ Call function if necessary
+                                setFormData(prev => ({
+                                    ...prev,
+                                    street_address: item.description // ✅ Update the form data
+                                }));
+                            }}
+                        >
+                            <Icon name="map-marker" size={16} color="#6366f1" />
+                            <Text style={styles.suggestionText}>{item.description}</Text>
+                        </TouchableOpacity>
+
                     ))}
 
                 </View>
@@ -336,6 +341,60 @@ export function ProfileUpdate() {
 
     return (
         <ScrollView style={styles.container}>
+            {!vendorData?.isDocumentUpload && (
+                <View style={styles.badgeContainer}>
+                    <LinearGradient
+                        colors={['#4f46e5', '#6366f1']}
+                        style={styles.badge}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                    >
+                        <View style={styles.iconContainer}>
+                            <Icon name="file-upload" size={40} color="#fff" />
+                            <View style={styles.pulseRing} />
+                        </View>
+                        <Text style={styles.badgeTitle}>Document Upload Required</Text>
+                        <Text style={styles.badgeSubtitle}>Please upload your documents to start working</Text>
+                    </LinearGradient>
+                </View>
+            )}
+
+            {vendorData?.isDocumentUpload && !vendorData?.documentVerify && (
+                <View style={styles.badgeContainer}>
+                    <LinearGradient
+                        colors={['#eab308', '#fbbf24']}
+                        style={styles.badge}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                    >
+                        <View style={styles.iconContainer}>
+                            <Icon name="clock" size={40} color="#fff" />
+                            <View style={[styles.spinner]} />
+                        </View>
+                        <Text style={styles.badgeTitle}>Verification in Progress</Text>
+                        <Text style={styles.badgeSubtitle}>Your documents are being reviewed</Text>
+                    </LinearGradient>
+                </View>
+            )}
+
+            {vendorData?.isDocumentUpload && vendorData?.documentVerify && (
+                <View style={styles.badgeContainer}>
+                    <LinearGradient
+                        colors={['#16a34a', '#22c55e']}
+                        style={styles.badge}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                    >
+                        <View style={styles.iconContainer}>
+                            <Icon name="check-circle" size={40} color="#fff" />
+                            <View style={styles.successRing} />
+                        </View>
+                        <Text style={styles.badgeTitle}>Documents Verified</Text>
+                        <Text style={styles.badgeSubtitle}>You're ready to start working</Text>
+                    </LinearGradient>
+                </View>
+            )}
+
             <View style={styles.header}>
                 <View style={styles.avatarContainer}>
                     <Icon name="account-circle" size={80} color="#6366f1" />
@@ -353,7 +412,7 @@ export function ProfileUpdate() {
                 {renderInput('Contact Person', 'account', formData.restaurant_contact, 'restaurant_contact')}
                 {renderInput('Opening Hours', 'clock-outline', formData.openingHours, 'openingHours')}
                 {/* {renderInput('Category', 'food', formData.restaurant_category, 'restaurant_category')} */}
-                {renderCategoryDropdown()} 
+                {renderCategoryDropdown()}
                 {renderInput('FSSAI Number', 'certificate', formData.restaurant_fssai, 'restaurant_fssai')}
 
 
@@ -555,5 +614,69 @@ const styles = StyleSheet.create({
         color: '#ffffff',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    badgeContainer: {
+        padding: 16,
+        width: '100%',
+    },
+    badge: {
+        borderRadius: 16,
+        padding: 20,
+        alignItems: 'center',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+    },
+    iconContainer: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+        position: 'relative',
+    },
+    badgeTitle: {
+        color: '#fff',
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    badgeSubtitle: {
+        color: 'rgba(255, 255, 255, 0.9)',
+        fontSize: 14,
+        textAlign: 'center',
+    },
+    pulseRing: {
+        position: 'absolute',
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.5)',
+        animation: 'pulse 2s infinite',
+    },
+    spinner: {
+        position: 'absolute',
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.5)',
+        borderTopColor: 'transparent',
+        animation: 'spin 1s linear infinite',
+    },
+    successRing: {
+        position: 'absolute',
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.5)',
+        opacity: 0.8,
     },
 });

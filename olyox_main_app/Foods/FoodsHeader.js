@@ -16,20 +16,20 @@ export default function FoodsHeader({ onSearch }) {
                         onChangeText={onSearch}
                     />
                 </View>
-                <View style={styles.bottomRow}>
-                    <TouchableOpacity style={styles.bottomButton}>
+                {/* <View style={styles.bottomRow}>
+                    <TouchableOpacity onPress={()=>onSearch("Top Rated")} style={styles.bottomButton}>
                         <Icon name="silverware-fork-knife" size={20} color="#E23744" />
                         <Text style={styles.bottomButtonText}>Delivery</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.bottomButton}>
+                    <TouchableOpacity onPress={()=>onSearch("Top Rated")} style={styles.bottomButton}>
                         <Icon name="star" size={20} color="#E23744" />
                         <Text style={styles.bottomButtonText}>Top Rated</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.bottomButton}>
+                    <TouchableOpacity onPress={()=>onSearch(Packages)} style={styles.bottomButton}>
                         <Icon name="thumb-up" size={20} color="#E23744" />
-                        <Text style={styles.bottomButtonText}>Best</Text>
+                        <Text style={styles.bottomButtonText}>Packages</Text>
                     </TouchableOpacity>
-                </View>
+                </View> */}
             </View>
         </SafeAreaView>
     )

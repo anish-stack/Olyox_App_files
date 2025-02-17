@@ -1,10 +1,11 @@
 import { useNavigation } from "@react-navigation/native"
 import React, { useState, useCallback } from "react"
-import { View, Text, Image, StyleSheet, TouchableOpacity, Animated,Vibration } from "react-native"
+import { View, Text, Image, StyleSheet, TouchableOpacity, Animated, Vibration } from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import { useFood } from "../../context/Food_Context/Food_context"
 
 const Food_Card = ({ item, isAddAble = false }) => {
+
     const { cart, addFood, updateQuantity } = useFood()
     const [scaleValue] = useState(new Animated.Value(1))
     const navigation = useNavigation()
@@ -32,7 +33,7 @@ const Food_Card = ({ item, isAddAble = false }) => {
     const handleAddOrUpdate = useCallback(() => {
         if (quantity === 0) {
             addFood(item)
-            
+
         } else {
             updateQuantity(item._id, quantity + 1)
         }
@@ -121,7 +122,7 @@ const Food_Card = ({ item, isAddAble = false }) => {
 
                 {item?.food_availability ? (
                     <View style={styles.rightContent}>
-                        <Image source={{ uri: item.images.url }} style={styles.image} />
+                        <Image source={{ uri: item?.images?.url }} style={styles.image} />
                         {isAddAble && renderAddButton()}
                         {isAddAble ? null : (
                             <>

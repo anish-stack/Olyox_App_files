@@ -40,10 +40,11 @@ export default function Restaurant() {
     setLoading(true)
     try {
       const { data } = await axios.get(
-        `http://192.168.11.28:3000/api/v1/tiffin/find_Restaurant_And_Her_foods?restaurant_id=${item}`,
+        `https://demoapi.olyox.com/api/v1/tiffin/find_Restaurant_And_Her_foods?restaurant_id=${item}`,
       )
       if (data.details) {
         setDetails(data.details)
+        console.log("details?.isWorking", data)
         setFoods(data.food)
       }
     } catch (error) {
@@ -64,60 +65,71 @@ export default function Restaurant() {
   }
 
   const renderBanner = () => (
-      <Animated.View
-        style={[
-          styles.bannerContainer,
-          {
-            transform: [
-              {
-                translateY: scrollY.interpolate({
-                  inputRange: [0, HEADER_SCROLL_DISTANCE],
-                  outputRange: [0, -HEADER_SCROLL_DISTANCE],
-                  extrapolate: "clamp",
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        <Image source={{ uri: "https://placehold.co/600x400" }} style={styles.bannerImage} />
-        <LinearGradient colors={["transparent", "rgba(0,0,0,0.8)"]} style={styles.bannerGradient}>
-          <Animated.Text
-            style={[
-              styles.restaurantName,
-              {
-                opacity: scrollY.interpolate({
-                  inputRange: [0, HEADER_SCROLL_DISTANCE / 2, HEADER_SCROLL_DISTANCE],
-                  outputRange: [1, 0.5, 0],
-                  extrapolate: "clamp",
-                }),
-                transform: [
-                  {
-                    translateY: scrollY.interpolate({
-                      inputRange: [0, HEADER_SCROLL_DISTANCE],
-                      outputRange: [0, 50],
-                      extrapolate: "clamp",
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            {details?.restaurant_name}
-          </Animated.Text>
-          <View style={styles.restaurantInfoContainer}>
-            <View style={styles.ratingContainer}>
-              <Icon name="star" size={16} color="#FFD700" />
-              <Text style={styles.ratingText}>{details?.rating || "New"}</Text>
-            </View>
-            <Text style={styles.restaurantCategory}>{details?.restaurant_category}</Text>
+    <Animated.View
+      style={[
+        styles.bannerContainer,
+        {
+          transform: [
+            {
+              translateY: scrollY.interpolate({
+                inputRange: [0, HEADER_SCROLL_DISTANCE],
+                outputRange: [0, -HEADER_SCROLL_DISTANCE],
+                extrapolate: "clamp",
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <Image source={{ uri: "https://placehold.co/600x400/orange/white?text=Hello+World" }} style={styles.bannerImage} />
+      <LinearGradient colors={["transparent", "rgba(0,0,0,0.8)"]} style={styles.bannerGradient}>
+        <Animated.Text
+          style={[
+            styles.restaurantName,
+            {
+              opacity: scrollY.interpolate({
+                inputRange: [0, HEADER_SCROLL_DISTANCE / 2, HEADER_SCROLL_DISTANCE],
+                outputRange: [1, 0.5, 0],
+                extrapolate: "clamp",
+              }),
+              transform: [
+                {
+                  translateY: scrollY.interpolate({
+                    inputRange: [0, HEADER_SCROLL_DISTANCE],
+                    outputRange: [0, 50],
+                    extrapolate: "clamp",
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          {details?.restaurant_name}
+        </Animated.Text>
+        <View style={styles.restaurantInfoContainer}>
+          <View style={styles.ratingContainer}>
+            <Icon name="star" size={16} color="#FFD700" />
+            <Text style={styles.ratingText}>{details?.rating || "New"}</Text>
           </View>
-        </LinearGradient>
-      </Animated.View>
+          <Text style={styles.restaurantCategory}>{details?.restaurant_category}</Text>
+        </View>
+      </LinearGradient>
+    </Animated.View>
   )
 
   const renderDetails = () => (
     <View style={styles.detailsContainer}>
+      <View>
+        {details?.isWorking ? (
+          <View style={[styles.badge, styles.badgeSuccess]}>
+            <Text style={styles.badgeText}>Delivery Available</Text>
+          </View>
+        ) : (
+          <View style={[styles.badge, styles.badgeError]}>
+            <Text style={styles.badgeText}>Delivery Not Available - Restaurant Closed</Text>
+          </View>
+        )}
+      </View>
       <View style={styles.detailsHeader}>
         <Text style={styles.sectionTitle}>Restaurant Info</Text>
         <TouchableOpacity style={styles.moreInfoButton}>
@@ -141,6 +153,10 @@ export default function Restaurant() {
           <Text style={[styles.detailText, styles.phoneNumber]}>{details?.restaurant_phone}</Text>
         </TouchableOpacity>
       </View>
+
+
+
+
       <View style={styles.tagsContainer}>
         {details?.restaurant_category === "Veg" && (
           <View style={styles.tag}>
@@ -165,7 +181,7 @@ export default function Restaurant() {
       <Text style={styles.sectionTitle}>Menu</Text>
       <FlatList
         data={foods}
-        renderItem={({ item }) => <Food_Card isAddAble={true} item={item} />}
+        renderItem={({ item }) => <Food_Card isAddAble={details?.isWorking} item={item} />}
         keyExtractor={(item) => item._id}
         showsVerticalScrollIndicator={false}
       />
@@ -386,6 +402,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,
+  },
+  badge: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    borderRadius: 20,
+    alignSelf: 'center',
+    marginTop: 10,
+  },
+  badgeSuccess: {
+    backgroundColor: '#28a745', // Green for Available
+  },
+  badgeError: {
+    backgroundColor: '#dc3545', // Red for Not Available
+  },
+  badgeText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 14,
+    textAlign: 'center',
   },
 })
 

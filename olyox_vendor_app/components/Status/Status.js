@@ -2,12 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 
 export default function Status() {
     const navigation = useNavigation();
     const [isActive, setIsActive] = useState(null);
-    const [restaurantId, setRestaurantId] = useState(null); // Store restaurant ID
+    const [restaurantId, setRestaurantId] = useState(null);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -19,7 +19,7 @@ export default function Status() {
                 }
 
                 const { data } = await axios.get(
-                    'http://192.168.11.251:3000/api/v1/tiffin/get_single_tiffin_profile',
+                    'https://demoapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -29,7 +29,7 @@ export default function Status() {
 
                 if (data?.data) {
                     setIsActive(data.data.isWorking);
-                    setRestaurantId(data.data._id); // Save restaurant ID
+                    setRestaurantId(data.data._id);
                 } else {
                     console.error("Error: restaurant_id not found in API response");
                 }
@@ -47,15 +47,15 @@ export default function Status() {
             console.error("Restaurant ID is missing!");
             return;
         }
-        
+    
         try {
             const newStatus = !isActive;
-
+    
             const response = await axios.put(
-                `http://192.168.11.251:3000/api/v1/tiffin/update_is_working/${restaurantId}`,
+                `https://demoapi.olyox.com/api/v1/tiffin/update_is_working/${restaurantId}`,
                 { isWorking: newStatus }
             );
-
+    
             if (response.data.success) {
                 setIsActive(newStatus);
             } else {
@@ -63,8 +63,42 @@ export default function Status() {
             }
         } catch (error) {
             console.error("Error updating status:", error);
+    
+            if (error.response && error.response.data && error.response.data.message) {
+                const errorMessage = error.response.data.message;
+    
+                if (errorMessage === "Document Verification in Progress") {
+                    Alert.alert(
+                        'Verification Status',
+                        errorMessage,
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'View Documents', onPress: () => navigation.navigate('Profile') },
+                        ],
+                        { cancelable: true }
+                    );
+                } else {
+                    Alert.alert(
+                        'Work Status',
+                        errorMessage,
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Upload Documents', onPress: () => navigation.navigate('Profile Update') },
+                        ],
+                        { cancelable: true }
+                    );
+                }
+            } else {
+                // Handle generic error if response is undefined
+                Alert.alert(
+                    'Error',
+                    'Something went wrong. Please try again later.',
+                    [{ text: 'OK' }]
+                );
+            }
         }
     };
+    
 
     return (
         <View style={styles.container}>
