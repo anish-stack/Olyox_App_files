@@ -23,17 +23,29 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION"
       ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34"
         }
-      }
+      },
+      "package": "com.happy_coding.OlyoxDriverApp"
     },
     "web": {
       "favicon": "./assets/ic_launcher-web.png"
     },
-    "plugins": ["expo-font", "expo-secure-store"]
+    "plugins": [
+      "expo-font",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "63e230fe-1308-43b4-8002-d4465e009e29"
+      }
+    }
   }
 }

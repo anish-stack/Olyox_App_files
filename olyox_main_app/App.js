@@ -66,6 +66,7 @@ const App = () => {
       try {
         const gmail_token = await tokenCache.getToken('auth_token');
         const db_token = await tokenCache.getToken('auth_token_db');
+        console.log(db_token)
         setIsLogin(gmail_token !== null || db_token !== null);
       } catch (error) {
         console.error('Error fetching tokens:', error);

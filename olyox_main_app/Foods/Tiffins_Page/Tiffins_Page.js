@@ -78,7 +78,7 @@ export default function TiffinsPage() {
 
     if (error) {
         return (
-            <View style={styles.centered}>  
+            <View style={styles.centered}>
                 <Text style={styles.errorText}>{error}</Text>
                 <TouchableOpacity style={styles.retryButton} onPress={fetchPackages}>
                     <Text style={styles.retryButtonText}>Retry</Text>
