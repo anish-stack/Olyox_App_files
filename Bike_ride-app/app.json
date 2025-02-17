@@ -29,11 +29,20 @@
         "googleMaps": {
           "apiKey": "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34"
         }
-      }
+      },
+      "package": "com.coderhitesh.OlyoxDriverApp"
     },
     "web": {
       "favicon": "./assets/ic_launcher-web.png"
     },
-    "plugins": ["expo-font", "expo-secure-store"]
+    "plugins": [
+      "expo-font",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "983dbfc4-d47d-49ac-b1b0-b3fa1e978b59"
+      }
+    }
   }
 }

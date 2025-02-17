@@ -45,14 +45,6 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Olyox Tiffins to use your location."
         }
-      ],
-      [
-        "@sentry/react-native/expo",
-        {
-          "url": "https://sentry.io/",
-          "project": "react-native",
-          "organization": "digital4now-pz"
-        }
       ]
     ],
     "extra": {
