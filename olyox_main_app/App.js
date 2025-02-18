@@ -42,6 +42,7 @@ import OrderDetails from './Transport/Parcel_Transport/Parcel_orders/OrderDetail
 import { Button } from 'react-native';
 import UserProfile from './screens/Profile';
 import Tiffins_Page from './Foods/Tiffins_Page/Tiffins_Page';
+import ErrorBoundaryWrapper from './context/ErrorBoundary';
 
 const Stack = createNativeStackNavigator();
 Sentry.init({
@@ -147,45 +148,48 @@ const App = () => {
               <SafeAreaProvider>
                 <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
                   <ClerkLoaded>
-                    <NavigationContainer>
-                      <Stack.Navigator initialRouteName={isLogin ? 'Home' : 'Onboarding'}>
-                        <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
-                        {/* Booking Ride Screens */}
-                        <Stack.Screen name="Start_Booking_Ride" options={{ headerShown: false }} component={Collect_Data} />
-                        <Stack.Screen name="second_step_of_booking" options={{ headerShown: false }} component={Show_Cabs} />
-                        <Stack.Screen name="confirm_screen" options={{ headerShown: false }} component={BookingConfirmation} />
-                        <Stack.Screen name="driver_match" options={{ headerShown: false }} component={DriverMatching} />
-                        <Stack.Screen name="RideStarted" options={{ headerShown: false }} component={RideConfirmed} />
-                        <Stack.Screen name="Rate_Your_ride" options={{ headerShown: false }} component={Ride_Rating} />
-                        {/* Hotel Booking Screens */}
-                        <Stack.Screen name="hotels-details" options={{ headerShown: false }} component={Hotels_details} />
-                        <Stack.Screen name="Hotel" options={{ headerShown: false }} component={AllHotel} />
-                        <Stack.Screen name="Single-hotels-listing" options={{ headerShown: false }} component={Single_Hotel_details} />
-                        <Stack.Screen name="Booking_hotel_success" options={{ headerShown: false }} component={BookingSuccess} />
-                        {/* User Profile and Auth */}
-                        <Stack.Screen name="Tiffin" options={{ headerShown: false }} component={AllFoods} />
-                        <Stack.Screen name="Tiffins_Page" options={{ headerShown: true,title:"Tiffins Package" }} component={Tiffins_Page} />
-                        <Stack.Screen name="food_Page_By_Cats" options={{ headerShown: false }} component={Food_Dispay_Page} />
-                        <Stack.Screen name="restaurants_page" options={{ headerShown: false }} component={Restaurant} />
-                        <Stack.Screen name="Checkout" options={{ headerShown: false }} component={Checkout} />
-                        <Stack.Screen name="Order_Process" options={{ headerShown: false }} component={OrderTracking} />
-                        {/* User Profile and Auth */}
+                    <ErrorBoundaryWrapper>
+
+                      <NavigationContainer>
+                        <Stack.Navigator initialRouteName={isLogin ? 'Home' : 'Onboarding'}>
+                          <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
+                          {/* Booking Ride Screens */}
+                          <Stack.Screen name="Start_Booking_Ride" options={{ headerShown: false }} component={Collect_Data} />
+                          <Stack.Screen name="second_step_of_booking" options={{ headerShown: false }} component={Show_Cabs} />
+                          <Stack.Screen name="confirm_screen" options={{ headerShown: false }} component={BookingConfirmation} />
+                          <Stack.Screen name="driver_match" options={{ headerShown: false }} component={DriverMatching} />
+                          <Stack.Screen name="RideStarted" options={{ headerShown: false }} component={RideConfirmed} />
+                          <Stack.Screen name="Rate_Your_ride" options={{ headerShown: false }} component={Ride_Rating} />
+                          {/* Hotel Booking Screens */}
+                          <Stack.Screen name="hotels-details" options={{ headerShown: false }} component={Hotels_details} />
+                          <Stack.Screen name="Hotel" options={{ headerShown: false }} component={AllHotel} />
+                          <Stack.Screen name="Single-hotels-listing" options={{ headerShown: false }} component={Single_Hotel_details} />
+                          <Stack.Screen name="Booking_hotel_success" options={{ headerShown: false }} component={BookingSuccess} />
+                          {/* User Profile and Auth */}
+                          <Stack.Screen name="Tiffin" options={{ headerShown: false }} component={AllFoods} />
+                          <Stack.Screen name="Tiffins_Page" options={{ headerShown: true, title: "Tiffins Package" }} component={Tiffins_Page} />
+                          <Stack.Screen name="food_Page_By_Cats" options={{ headerShown: false }} component={Food_Dispay_Page} />
+                          <Stack.Screen name="restaurants_page" options={{ headerShown: false }} component={Restaurant} />
+                          <Stack.Screen name="Checkout" options={{ headerShown: false }} component={Checkout} />
+                          <Stack.Screen name="Order_Process" options={{ headerShown: false }} component={OrderTracking} />
+                          {/* User Profile and Auth */}
 
 
-                        <Stack.Screen name="Profile" options={{ headerShown: true }} component={UserProfile} />
-                        {/* Transport */}
-                        <Stack.Screen name="Transport" options={{ headerShown: false }} component={MainTransport} />
-                        <Stack.Screen name="delivery_parcel" options={{ headerShown: false }} component={Parcel_Transport} />
-                        <Stack.Screen name="Book-Parcel" options={{ headerShown: false }} component={BookParcel} />
-                        <Stack.Screen name="Parcel" options={{ headerShown: false }} component={Parcel_Orders} />
-                        <Stack.Screen name="OrderDetails" options={{ headerShown: false }} component={OrderDetails} />
+                          <Stack.Screen name="Profile" options={{ headerShown: true }} component={UserProfile} />
+                          {/* Transport */}
+                          <Stack.Screen name="Transport" options={{ headerShown: false }} component={MainTransport} />
+                          <Stack.Screen name="delivery_parcel" options={{ headerShown: false }} component={Parcel_Transport} />
+                          <Stack.Screen name="Book-Parcel" options={{ headerShown: false }} component={BookParcel} />
+                          <Stack.Screen name="Parcel" options={{ headerShown: false }} component={Parcel_Orders} />
+                          <Stack.Screen name="OrderDetails" options={{ headerShown: false }} component={OrderDetails} />
 
 
 
-                        <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={Onboarding} />
-                      </Stack.Navigator>
-                      <FloatingRide />
-                    </NavigationContainer>
+                          <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={Onboarding} />
+                        </Stack.Navigator>
+                        <FloatingRide />
+                      </NavigationContainer>
+                    </ErrorBoundaryWrapper>
                   </ClerkLoaded>
                 </ClerkProvider>
               </SafeAreaProvider>
@@ -209,9 +213,12 @@ const styles = StyleSheet.create({
 
 const WrappedApp = Sentry.wrap(App);
 const RootApp = () => (
+
   <FoodProvider>
+
     <WrappedApp />
   </FoodProvider>
+
 );
 
 AppRegistry.registerComponent(appName, () => RootApp);

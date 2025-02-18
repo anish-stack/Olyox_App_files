@@ -101,7 +101,7 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
     paddingVertical: 8,
-    fontSize: 16,
+    fontSize: 16
   },
   dimensionX: {
     paddingHorizontal: 8,
@@ -140,5 +140,26 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: "#4b5563",
     marginBottom: 4,
+  },
+  errorContainer: {
+    flex: 1,
+    paddingTop: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Light transparent background for emphasis
+  },
+  errorText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    padding: 10,
+    backgroundColor: 'red', // Red background to grab attention
+    borderRadius: 5, // Rounded corners
+    shadowColor: '#000', // Shadow for better visibility
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
   },
 });

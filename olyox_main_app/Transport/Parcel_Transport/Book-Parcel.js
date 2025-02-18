@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { styles } from "./parcel-booking.styles";
 import { OtherInput } from "./OtherInputes";
 import { useNavigation } from "@react-navigation/native";
 
+
 const ParcelBooking = () => {
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
@@ -34,7 +35,7 @@ const ParcelBooking = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [riderFound, setRiderFound] = useState(false);
-  const navigation = useNavigation()
+  const navigation = useNavigation();
   const socket = useSocket();
 
   useSocketInitialization(socket, () => {
@@ -46,16 +47,15 @@ const ParcelBooking = () => {
     if (!socket) return;
 
     console.log('🔵 Setting up socket listeners');
-
     socket.on("order_accepted_by_rider", (data) => {
       console.log("🟢 Order accepted by rider:", data);
       setLoading(false);
       setRiderFound(true);
-      alert(`Order accepted by rider: ${JSON.stringify(data)}`);
+
     });
 
     return () => {
-      console.log('🔵 hey Cleaning up socket listeners');
+      console.log('🔵 Cleaning up socket listeners');
       socket.off("order_accepted_by_rider");
     };
   }, [socket]);
@@ -77,7 +77,7 @@ const ParcelBooking = () => {
       setError("Failed to fetch location suggestions. Please try again.");
     }
   }, []);
-
+  socket
   const handleLocationSelect = useCallback((location) => {
     console.log('🔵 Location selected:', activeInput);
     if (activeInput === "pickup") {
@@ -140,7 +140,7 @@ const ParcelBooking = () => {
     if (!validateInputs()) return;
 
     setLoading(true);
-    setError("");
+    setError(""); // Clear any existing error
 
     try {
       console.log('🔵 Starting booking process');
@@ -169,33 +169,39 @@ const ParcelBooking = () => {
       console.log('🟢 Booking request sent:', data);
 
       if (data.availableRiders.length === 0) {
-        console.log('🟡 No available riders found');
         setError("No available riders");
         setLoading(false);
+        return;
       }
     } catch (error) {
-      console.error('🔴 Booking error:', error.response.data.message);
-      setError(error.response.data.message);
+      console.error('🔴 Booking error:', error?.response?.data?.message || "Failed to book");
+      setError(error?.response?.data?.message || "Failed to book");
       setLoading(false);
     }
   };
 
   useEffect(() => {
     if (socket) {
-      socket.on("order_accepted_by_rider", (data) => {
+      const handleOrderAccepted = (data) => {
         console.log("🟢 Order accepted by rider:", data);
         setLoading(false);
         setRiderFound(true);
-        navigation.navigate('Parcel');
-      });
-    } else {
-      Alert.alert("No Free Riders Available", "Sorry please try again later.", {
-        text: "OK",
-        style: "default",
+        navigation.navigate("Parcel");
+      };
 
-      });
+      socket.on("order_accepted_by_rider", handleOrderAccepted);
+
+      return () => {
+        socket.off("order_accepted_by_rider", handleOrderAccepted); // Cleanup
+      };
+    } else {
+      Alert.alert("No Free Riders Available", "Sorry, please try again later.", [
+        { text: "OK", style: "default" },
+      ]);
+      console.error("🔴 Socket is undefined");
     }
-  }, [socket])
+  }, [socket]);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -224,7 +230,6 @@ const ParcelBooking = () => {
         <Text style={styles.subtitle}>Pickup & Drop service</Text>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
 
         <LocationInput
           icon="map-marker-alt"
@@ -277,24 +282,18 @@ const ParcelBooking = () => {
         <Text style={styles.sectionTitle}>Receiver Details</Text>
 
         <OtherInput
-
           icon="user"
           placeholder="Receiver name"
           value={customerName}
-          onChangeText={(text) => {
-            setCustomerName(text);
-          }}
+          onChangeText={(text) => setCustomerName(text)}
         />
-        <OtherInput
 
+        <OtherInput
           icon="phone"
           placeholder="Receiver Number"
           value={customerPhone}
-          onChangeText={(text) => {
-            setCustomerPhone(text);
-          }}
+          onChangeText={(text) => setCustomerPhone(text)}
         />
-
 
         <TouchableOpacity style={styles.bookButton} onPress={handleBookNow}>
           <Text style={styles.bookButtonText}>Book Now</Text>
@@ -304,4 +303,6 @@ const ParcelBooking = () => {
   );
 };
 
-export default ParcelBooking;
+// Wrap the ParcelBooking component with ErrorBoundary
+export default ParcelBooking
+

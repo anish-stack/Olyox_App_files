@@ -12,8 +12,17 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aanu9745.OlyoxTiffinsApp",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Allow Olyox Tiffins to use your location.",
+        "NSLocationAlwaysUsageDescription": "Allow Olyox Tiffins to use your location in the background."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -32,7 +41,8 @@
           "apiKey": "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34"
         }
       },
-      "package": "com.coderhitesh.OlyoxTiffinsApp"
+      "package": "com.aanu9745.OlyoxTiffinsApp",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/ic_launcher-web.png"
@@ -49,8 +59,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "0a8c9055-5866-43dc-b6aa-71bace9d0f79"
+        "projectId": "2b003e61-d659-40cd-85eb-24f7edf6b109"
       }
     }
   }
 }
+
