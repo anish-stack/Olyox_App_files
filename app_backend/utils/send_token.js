@@ -7,7 +7,7 @@ const send_token = async (user, message, res, req) => {
       process.env.JWT_SECRET_KEY,
       { expiresIn: '30d' }
     );
-    console.log("token",token)
+    console.log("token", token)
 
     res.cookie('auth_token', token, {
       httpOnly: true,
@@ -19,7 +19,8 @@ const send_token = async (user, message, res, req) => {
 
     return res.status(200).json({
       success: true,
-      redirect:message,
+      redirect: message,
+      user: user._id,
       message: 'Token generated and saved successfully',
       token: token,
     });

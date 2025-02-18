@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Animated } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const OnlineStatusToggle = ({ workStatus, onStatusChange }) => {
-    const [isOnline, setIsOnline] = useState(workStatus?.status === 'offline' ? false : true);
+const OnlineStatusToggle = ({ workStatus, onStatusChange, statusOfPartner }) => {
+    const [isOnline, setIsOnline] = useState(statusOfPartner);
     const [workTime, setWorkTime] = useState(0);
     const [startTime, setStartTime] = useState(null);
-    // console.log("workStatus",workStatus)
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [fadeAnim] = useState(new Animated.Value(1));
+    const [slideAnim] = useState(new Animated.Value(0));
+    console.log("workStatus", workStatus)
     useEffect(() => {
         if (workStatus?.isOnline) {
             setIsOnline(true);
@@ -28,6 +33,26 @@ const OnlineStatusToggle = ({ workStatus, onStatusChange }) => {
         return () => clearInterval(timer);
     }, [isOnline, startTime]);
 
+    useEffect(() => {
+        if (error) {
+            Animated.sequence([
+                Animated.timing(fadeAnim, {
+                    toValue: 0,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 200,
+                    useNativeDriver: true,
+                })
+            ]).start();
+
+            const timer = setTimeout(() => setError(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [error]);
+
     const formatTime = (seconds) => {
         const hrs = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
@@ -37,24 +62,26 @@ const OnlineStatusToggle = ({ workStatus, onStatusChange }) => {
 
     const toggleOnlineStatus = async () => {
         try {
+            setLoading(true);
+            setError(null);
+
             const token = await AsyncStorage.getItem('auth_token_partner');
             if (!token) {
-                console.error('No auth token found');
-                return;
+                throw new Error('Authentication required. Please login again.');
             }
 
             const response = await axios.post(
                 'https://demoapi.olyox.com/api/v1/parcel/manage_offline_online',
                 { status: isOnline ? 'offline' : 'online' },
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            console.log(response.data); // Log the response for debugging
-
-            // Check if the status update was successful
             if (response.data.message === 'Status updated successfully') {
+                Animated.spring(slideAnim, {
+                    toValue: isOnline ? 0 : 1,
+                    useNativeDriver: true,
+                }).start();
+
                 setIsOnline(!isOnline);
                 if (!isOnline) {
                     setStartTime(new Date());
@@ -62,49 +89,70 @@ const OnlineStatusToggle = ({ workStatus, onStatusChange }) => {
                     setStartTime(null);
                     setWorkTime(0);
                 }
-                onStatusChange();
+                onStatusChange?.();
             } else {
-                console.error('Failed to update status:', response.data.message);
+                throw new Error(response.data.message || 'Failed to update status');
             }
-
         } catch (error) {
-            console.error('Error toggling status:', error?.response?.data || error.message);
+            const errorMessage = error.response?.data?.message || error.message || 'Something went wrong';
+            setError(errorMessage);
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <View style={styles.container}>
-            <View style={styles.card}>
+            <LinearGradient
+                colors={isOnline ? ['#ec363f', '#b9030c'] : ['#9e9e9e', '#757575']}
+                style={styles.card}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            >
                 <View style={styles.statusHeader}>
-                    <Icon 
-                        name={isOnline ? "bike-fast" : "bike"} 
-                        size={24} 
-                        color={isOnline ? "#ff0000" : "#666"}
+                    <MaterialCommunityIcons
+                        name={isOnline ? "bike-fast" : "bike"}
+                        size={32}
+                        color="#fff"
+                        style={styles.icon}
                     />
-                    <Text style={[styles.statusText, isOnline && styles.onlineText]}>
+                    <Text style={styles.statusText}>
                         {isOnline ? 'You\'re Online' : 'You\'re Offline'}
                     </Text>
                 </View>
-                
-                <View style={styles.toggleContainer}>
-                    <TouchableOpacity 
-                        style={[styles.toggleButton, isOnline && styles.toggleButtonActive]}
-                        onPress={toggleOnlineStatus}
-                    >
-                        <Text style={[styles.toggleText, isOnline && styles.toggleTextActive]}>
-                            {isOnline ? 'Go Offline' : 'Go Online'}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
+
+                {error && (
+                    <Animated.View style={[styles.errorContainer, { opacity: fadeAnim }]}>
+                        <Text style={styles.errorText}>{error}</Text>
+                    </Animated.View>
+                )}
+
+                <TouchableOpacity
+                    style={[styles.toggleButton, loading && styles.toggleButtonDisabled]}
+                    onPress={toggleOnlineStatus}
+                    disabled={loading}
+                >
+                    <Animated.View style={[styles.toggleSlider, {
+                        transform: [{
+                            translateX: slideAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, 22]
+                            })
+                        }]
+                    }]} />
+                    <Text style={styles.toggleText}>
+                        {loading ? 'Updating...' : (isOnline ? 'Go Offline' : 'Go Online')}
+                    </Text>
+                </TouchableOpacity>
 
                 {isOnline && (
                     <View style={styles.timeContainer}>
-                        <Icon name="clock-outline" size={20} color="#666" />
+                        <MaterialCommunityIcons name="clock-outline" size={20} color="#fff" />
                         <Text style={styles.timeLabel}>Time Online:</Text>
                         <Text style={styles.timeValue}>{formatTime(workTime)}</Text>
                     </View>
                 )}
-            </View>
+            </LinearGradient>
         </View>
     );
 };
@@ -115,76 +163,89 @@ const styles = StyleSheet.create({
         marginTop: -20,
     },
     card: {
-        backgroundColor: '#fff',
-        borderRadius: 16,
+        borderRadius: 20,
         padding: 20,
         ...Platform.select({
             ios: {
                 shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
+                shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.1,
-                shadowRadius: 8,
+                shadowRadius: 12,
             },
             android: {
-                elevation: 4,
+                elevation: 8,
             },
         }),
     },
     statusHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 20,
+    },
+    icon: {
+        marginRight: 12,
     },
     statusText: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: 'bold',
-        color: '#666',
-        marginLeft: 12,
+        color: '#fff',
     },
-    onlineText: {
-        color: '#ff0000',
-    },
-    toggleContainer: {
-        alignItems: 'center',
+    errorContainer: {
+        backgroundColor: 'rgba(244, 67, 54, 0.9)',
+        padding: 12,
+        borderRadius: 12,
         marginBottom: 16,
     },
-    toggleButton: {
-        backgroundColor: '#f5f5f5',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 24,
-        width: '100%',
-        alignItems: 'center',
+    errorText: {
+        color: '#fff',
+        fontSize: 14,
+        textAlign: 'center',
     },
-    toggleButtonActive: {
-        backgroundColor: '#ff0000',
+    toggleButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        padding: 16,
+        borderRadius: 30,
+        alignItems: 'center',
+        flexDirection: 'row',
+        marginBottom: 20,
+        position: 'relative',
+        overflow: 'hidden',
+    },
+    toggleButtonDisabled: {
+        opacity: 0.7,
+    },
+    toggleSlider: {
+        position: 'absolute',
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#fff',
+        left: 4,
     },
     toggleText: {
+        color: '#fff',
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#666',
-    },
-    toggleTextActive: {
-        color: '#fff',
+        marginLeft: 40,
     },
     timeContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#f8f9fa',
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
         padding: 12,
-        borderRadius: 8,
+        borderRadius: 15,
     },
     timeLabel: {
         fontSize: 14,
-        color: '#666',
+        color: '#fff',
         marginLeft: 8,
         marginRight: 8,
     },
     timeValue: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#ff0000',
+        color: '#fff',
     },
 });
 

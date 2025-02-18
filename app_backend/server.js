@@ -18,6 +18,7 @@ const Protect = require('./middleware/Auth');
 const { update_parcel_request, mark_reached, mark_pick, mark_deliver, mark_cancel } = require('./driver');
 require('dotenv').config();
 const multer = require('multer');
+const admin = require('./routes/Admin/admin.routes');
 const storage = multer.memoryStorage()
 
 const upload = multer({ storage: storage });
@@ -46,6 +47,7 @@ app.use(cookies_parser());
 
 const userSocketMap = new Map();
 const driverSocketMap = new Map();
+const tiffin_partnerMap = new Map();
 
 console.log("driverSocketMap-5", driverSocketMap)
 
@@ -75,8 +77,23 @@ io.on('connection', (socket) => {
         console.log(`Driver ${data.userId} connected with socket ID: ${socket.id}`);
     });
 
+
+    socket.on('tiffin_partner', (data) => {
+        console.log(data)
+        if (!data.userId) {
+            console.error('Invalid tiffin_partner connect data:', data);
+            return;
+        }
+
+        tiffin_partnerMap.set(data.userId, socket.id);
+        console.log(`tiffin_partner ${data.userId} connected with socket ID: ${socket.id}`);
+    });
+
+
+
+
     const emitRideToDrivers = (rideData) => {
-      
+
         driverSocketMap.forEach((driverSocketId) => {
             console.log('Emitting ride data to driver with socket ID:', driverSocketId);
             io.to(driverSocketId).emit('ride_come', rideData);
@@ -252,7 +269,7 @@ io.on('connection', (socket) => {
 
             if (response.status === true) {
                 console.log(response.message);
-                // Send success response back to driver
+
                 const driverSocketId = driverSocketMap[data.driver_id];
                 if (driverSocketId) {
                     io.to(driverSocketId).emit("order_update_success", {
@@ -543,6 +560,7 @@ app.use('/api/v1/hotels', hotel_router);
 app.use('/api/v1/user', users);
 app.use('/api/v1/tiffin', tiffin);
 app.use('/api/v1/parcel', parcel);
+app.use('/api/v1/admin', admin);
 
 
 app.post('/Fetch-Current-Location', async (req, res) => {

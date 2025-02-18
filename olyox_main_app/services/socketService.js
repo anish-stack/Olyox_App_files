@@ -3,8 +3,8 @@ import io from "socket.io-client";
 const SOCKET_URL = "https://demoapi.olyox.com";
 let socket; // Singleton socket instance
 
-export const initializeSocket = ({ userType = "user", userId = 1 }) => {
-  console.log("userId",userId)
+export const initializeSocket = ({ userType = "user", userId }) => {
+
   if (!socket) {
     socket = io(SOCKET_URL, {
       transports: ["websocket"],
@@ -18,7 +18,6 @@ export const initializeSocket = ({ userType = "user", userId = 1 }) => {
       console.log("Socket connected:", socket.id);
       console.log("User Type:", socket.userType);
 
-      // Emit user type when connected
       socket.emit("user_connect", { userType: socket.userType, userId: socket.userId });
     });
 

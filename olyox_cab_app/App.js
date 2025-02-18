@@ -103,9 +103,9 @@ const App = () => {
                       <Stack.Screen name="cabHome" options={{ headerShown: false }} component={start} />
                     ) : null}
 
-                    <Stack.Screen name="Ongoing_Order" options={{ headerShown: false }} component={OngoingOrderScreen} />
+                    <Stack.Screen name="Ongoing_Order" options={{ headerShown: true }} component={OngoingOrderScreen} />
                     <Stack.Screen name="All_Orders_parcel" options={{ headerShown: true, title: 'All Orders' }} component={All_Orders} />
-                    <Stack.Screen name="Order_View" options={{ headerShown: false, title: 'Order' }} component={OrderDetails} />
+                    <Stack.Screen name="Order_View" options={{ headerShown: true, title: 'Parcel' }} component={OrderDetails} />
                     <Stack.Screen name="start" options={{ headerShown: false }} component={start} />
                     <Stack.Screen name="collect_money" component={MoneyPage} />
                     <Stack.Screen name="register" options={{ headerShown: true, title: 'Register' }} component={RegistrationForm} />

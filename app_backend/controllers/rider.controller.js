@@ -362,8 +362,7 @@ exports.uploadDocuments = async (req, res) => {
 
 exports.details = async (req, res) => {
   try {
-    // console.log("i am hits done", req.user)
-    // Retrieve userId from the request object, assuming it's populated by middleware
+
     const userId = req.user?.userId;
 
     // Check if userId exists

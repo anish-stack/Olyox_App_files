@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Alert, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, Alert, TouchableOpacity, ActivityIndicator } from "react-native";
 import Input from "../../components/Input";
 import Button from "../../components/Button";
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
+import { initializeSocket } from "../../context/socketService";
 
 const OtpScreen = ({ onVerify, number }) => {
   const [otp, setOtp] = useState("");
+  const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(30);
   const [isResendDisabled, setIsResendDisabled] = useState(false);
-  const navigation = useNavigation()
+  const navigation = useNavigation();
+
   useEffect(() => {
     let interval;
     if (isResendDisabled && timer > 0) {
-      interval = setInterval(() => {
-        setTimer(prev => prev - 1);
-      }, 1000);
+      interval = setInterval(() => setTimer(prev => prev - 1), 1000);
     } else if (timer === 0) {
       setIsResendDisabled(false);
     }
@@ -24,34 +25,46 @@ const OtpScreen = ({ onVerify, number }) => {
   }, [isResendDisabled, timer]);
 
   const handleOtpVerify = async () => {
+    setLoading(true);
     try {
       const response = await axios.post(
         'https://demoapi.olyox.com/api/v1/parcel/login_parcel_otp_verify',
         { otp, number }
       );
+
       if (response.data.success) {
         const token = response.data.token;
+        const userId = response.data.user;
+
+        await AsyncStorage.setItem('auth_token_partner', token);
         console.log("OTP verified:", token);
 
-        const type = response.data.redirect?.type;
-        await AsyncStorage.setItem('auth_token_partner', token);
-        console.log("OTP verified:", response.data.redirect?.type);
-        if (type === 'parcel') {
-          navigation.navigate('parcelHome')
-        } else if (type === "CAB") {
-          navigation.navigate('cabHome')
-        } else {
-          navigation.navigate('parcelHome')
+        let isConnected = false;
+        let retryCount = 0;
+        const maxRetries = 3;
+
+        while (!isConnected && retryCount < maxRetries) {
+          isConnected = await initializeSocket({ userType: "driver", userId });
+          if (!isConnected) {
+            retryCount++;
+            console.warn(`Socket connection failed. Retrying... (${retryCount}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
         }
 
-        onVerify();
+        if (!isConnected) {
+          Alert.alert('Error', 'Failed to connect to the server after multiple attempts.');
+        } else {
+          navigation.navigate('parcelHome');
+          onVerify();
+        }
       } else {
-        console.log("OTP verification failed:", response.data.message);
         Alert.alert("Error", response.data.message);
       }
     } catch (error) {
       Alert.alert('Error', error?.response?.data?.message || "Something went wrong");
-      console.error("Error during OTP verification:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -61,16 +74,16 @@ const OtpScreen = ({ onVerify, number }) => {
         'https://demoapi.olyox.com/api/v1/parcel/login_parcel_otp_resend',
         { number }
       );
+
       if (response.data.success) {
         setIsResendDisabled(true);
-        setTimer(30); // Reset timer to 30 seconds after each resend
-        console.log("OTP resent:", response.data);
+        setTimer(30); // Reset timer
+        Alert.alert("Success", "OTP has been resent.");
       } else {
-        console.log("Failed to resend OTP:", response.data.message);
+        Alert.alert("Error", response.data.message);
       }
     } catch (error) {
       Alert.alert('Error', error?.response?.data?.message || "Something went wrong");
-      console.error("Error during OTP resend:", error);
     }
   };
 
@@ -88,11 +101,13 @@ const OtpScreen = ({ onVerify, number }) => {
         style={styles.input}
       />
 
-      <Button title="Verify OTP" onPress={handleOtpVerify} style={styles.verifyButton} />
+      <TouchableOpacity onPress={handleOtpVerify} style={styles.verifyButton} disabled={loading}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.verifyButtonText}>Verify OTP</Text>}
+      </TouchableOpacity>
 
       <View style={styles.resendContainer}>
         <Text style={styles.timerText}>
-          {isResendDisabled ? `Resend available in ${timer}s` : `Resend OTP`}
+          {isResendDisabled ? `Resend available in ${timer}s` : `Didn't receive?`}
         </Text>
         <TouchableOpacity
           onPress={handleResendOtp}
@@ -140,6 +155,11 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 5,
     alignItems: "center",
+  },
+  verifyButtonText: {
+    fontSize: 16,
+    color: "#ffffff",
+    fontWeight: "bold",
   },
   resendContainer: {
     marginTop: 20,

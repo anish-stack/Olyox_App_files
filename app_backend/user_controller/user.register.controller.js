@@ -152,6 +152,7 @@ exports.verify_user = async (req, res) => {
                     return res.status(200).json({
                         status: 200,
                         token,
+                        User:user,
                         tryLogin: user.tryLogin
                     });
                 }
@@ -180,6 +181,7 @@ exports.verify_user = async (req, res) => {
             return res.status(200).json({
                 message: "Congratulations! Your OTP has been verified successfully. Welcome to Olyox, your ultimate companion for rides, food, and more.",
                 status: 200,
+                user:user,
                 token
             });
         } else {

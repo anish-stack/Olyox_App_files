@@ -16,6 +16,7 @@ import * as Location from "expo-location";
 import styles from "./Styles";
 import { useLocation } from "./LocationContext";
 import { useSocket } from "../../../context/SocketContext";
+import { useNavigation } from "@react-navigation/native";
 
 const ActionButtons = ({ isNearCustomer, hasReached, functionHim, onMarkReached, orderData }) => {
   console.log("sss", functionHim)
@@ -26,7 +27,7 @@ const ActionButtons = ({ isNearCustomer, hasReached, functionHim, onMarkReached,
   const [modalVisible, setModalVisible] = useState(false);
   const { driverLocation } = useLocation();
   const { socket } = useSocket();
-
+  const navigation = useNavigation()
   useEffect(() => {
     if (driverLocation && orderData?.droppOffGeo?.coordinates) {
       const distance = calculateDistance(
@@ -111,7 +112,7 @@ const ActionButtons = ({ isNearCustomer, hasReached, functionHim, onMarkReached,
       };
       socket.emit("mark_deliver", copyData);
       console.log("Parcel delivered:", copyData);
-      // callFnc();
+      navigation.navigate('parcelHome')
     }
 
     setModalVisible(false);

@@ -7,12 +7,7 @@ const styles = StyleSheet.create({
     flex: 1,
     // backgroundColor: "#B5100C",
   },
-  mapContainer: {
-    height: height * 0.4,
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
+ 
   detailsContainer: {
     flex: 1,
     padding: 16,
@@ -53,20 +48,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  driverMarker: {
-    backgroundColor: "#FFF",
-    padding: 5,
-    borderRadius: 50,
-    borderWidth: 2,
-    borderColor: "#FF6600",
-  },
-  locationMarker: {
-    backgroundColor: "#FFF",
-    padding: 5,
-    borderRadius: 50,
-    borderWidth: 2,
-    borderColor: "#333",
-  },
+  
   orderInfo: {
     backgroundColor: "#FFF",
     padding: 16,
@@ -254,6 +236,111 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#333",
     fontWeight: "bold",
+  },
+
+  mapContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  driverMarker: {
+    padding: 8,
+    backgroundColor: 'white',
+    borderRadius: 50,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  locationMarker: {
+    padding: 8,
+    backgroundColor: 'white',
+    borderRadius: 50,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  buttonContainer: {
+    position: 'absolute',
+    right: 16,
+    top: '50%',
+    transform: [{ translateY: -100 }],
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 8,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  locationButton: {
+    width: 32,
+    height: 32,
+    backgroundColor: 'white',
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
+  },
+  currentLocationButton: {
+    marginTop: 8,
+    backgroundColor: '#E3F2FD',
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  tooltip: {
+    position: 'absolute',
+    right: 56,
+    backgroundColor: '#333',
+    padding: 8,
+    borderRadius: 6,
+    width: 140,
+  },
+  tooltipText: {
+    color: 'white',
+    fontSize: 12,
+    textAlign: 'right',
+  },
+  tooltipArrow: {
+    position: 'absolute',
+    right: -6,
+    top: '50%',
+    marginTop: -6,
+    borderTopWidth: 6,
+    borderBottomWidth: 6,
+    borderLeftWidth: 6,
+    borderRightWidth: 0,
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderLeftColor: '#333',
+    borderRightColor: 'transparent',
   },
 })
 
