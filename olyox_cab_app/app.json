@@ -29,8 +29,7 @@
         "googleMaps": {
           "apiKey": "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34"
         }
-      },
-      "package": "com.happy_coding.OlyoxParcelPartner"
+      }
     },
     "web": {
       "favicon": "./assets/playstore-icon.png"
@@ -41,7 +40,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "9bf10135-c15c-46b6-a66d-abdfb206d2d4"
+        "projectId": "f244b26f-706b-4f68-b8c1-23bc6e531bc1"
       }
     }
   }

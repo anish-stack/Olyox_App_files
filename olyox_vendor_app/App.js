@@ -32,6 +32,7 @@ import OnGoingOrder from './screens/OnGoingOrder';
 import CompleteOrder from './screens/CompleteOrder';
 import RegistrationForm from './screens/RegistrationForm';
 import * as Sentry from '@sentry/react-native';
+import { SocketProvider } from './context/SocketContext';
 
 Sentry.init({
   dsn: 'https://517d3fb5279b487fb84063c1fb2804c9@o4508835632185344.ingest.us.sentry.io/4508835637493760',
@@ -95,6 +96,8 @@ export default function App() {
     <Provider store={store}>
       <PaperProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
+          <SocketProvider>
+
           <SafeAreaProvider>
             <NavigationContainer>
               <Stack.Navigator initialRouteName={initialRoute}>
@@ -122,6 +125,8 @@ export default function App() {
               </Stack.Navigator>
             </NavigationContainer>
           </SafeAreaProvider>
+
+          </SocketProvider>
         </GestureHandlerRootView>
       </PaperProvider>
     </Provider>

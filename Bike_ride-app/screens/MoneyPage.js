@@ -6,218 +6,329 @@ import {
     TouchableOpacity,
     Dimensions,
     ActivityIndicator,
+    Image,
+    Animated,
 } from 'react-native';
 import { useNavigation, useRoute } from "@react-navigation/native";
-import QRCode from 'react-native-qrcode-svg';
-import { COLORS } from '../constants/colors'; 
+import * as SecureStore from 'expo-secure-store';
+import axios from 'axios';
+import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome } from '@expo/vector-icons';
 import { useSocket } from '../context/SocketContext';
+import { BlurView } from 'expo-blur';
 
 const { width } = Dimensions.get('window');
 
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+
 export default function MoneyPage() {
     const navigation = useNavigation();
+    const [userData, setUserData] = useState(null);
+    const [loading, setLoading] = useState(false);
     const route = useRoute();
     const [isRideRate, setIsRideRate] = useState(false);
     const [rateValue, setRateValue] = useState(0);
-
     const { data } = route.params || {};
     const { socket } = useSocket();
-
     const [isLoading, setIsLoading] = useState(false);
-
     const price = data.rideDetails?.price || '0';
-    const qrValue = data?.qrValue || '123456';
+    
+    // Animation values
+    const [fadeAnim] = useState(new Animated.Value(0));
+    const [scaleAnim] = useState(new Animated.Value(0.9));
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 8,
+                tension: 40,
+                useNativeDriver: true,
+            })
+        ]).start();
+    }, []);
+
+    const fetchUserDetails = async () => {
+        setLoading(true);
+        try {
+            const token = await SecureStore.getItemAsync('auth_token_cab');
+            if (token) {
+                const response = await axios.get(
+                    'https://demoapi.olyox.com/api/v1/rider/user-details',
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                setUserData(response.data.partner);
+            }
+        } catch (error) {
+            console.error('Error:', error?.response?.data?.message || error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUserDetails();
+    }, []);
 
     const handleISPay = () => {
         setIsLoading(true);
-
         setTimeout(() => {
             socket.emit('isPay', data);
             setIsLoading(false);
-            setIsRideRate(true); // Show rating screen
+            setIsRideRate(true);
         }, 2000);
     };
 
     useEffect(() => {
         socket.on('rating', (data) => {
-            console.log(data);
             setRateValue(data?.rating || 0);
         });
-
-        return () => {
-            socket.off('rating');
-        };
+        return () => socket.off('rating');
     }, []);
 
     const handleRating = (rate) => {
         setRateValue(rate);
-        socket.emit('rateRide', { rating: rate }); // Emit the rating to the server
+        socket.emit('rateRide', { rating: rate });
     };
 
     if (isRideRate) {
         return (
-            <View style={styles.container}>
-                <Text style={styles.title}>Rate Your Ride</Text>
-                <Text style={styles.instructions}>Please rate your ride experience.</Text>
-                <View style={styles.starsContainer}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                        <TouchableOpacity
-                            key={star}
-                            onPress={() => handleRating(star)}
-                        >
-                            <FontAwesome
-                                name={star <= rateValue ? 'star' : 'star-o'}
-                                size={40}
-                                color={COLORS.primary}
-                                style={styles.star}
-                            />
-                        </TouchableOpacity>
-                    ))}
-                </View>
-                <Text style={styles.subtitle}>
-                    {rateValue > 0 ? `You rated: ${rateValue} Star${rateValue > 1 ? 's' : ''}` : ''}
-                </Text>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.navigate('Home')}
+            <LinearGradient
+                colors={['#4F46E5', '#7C3AED']}
+                style={styles.gradientContainer}
+            >
+                <Animated.View 
+                    style={[
+                        styles.ratingContainer,
+                        {
+                            opacity: fadeAnim,
+                            transform: [{ scale: scaleAnim }]
+                        }
+                    ]}
                 >
-                    <Text style={styles.buttonText}>Go Back</Text>
-                </TouchableOpacity>
-            </View>
+                    <BlurView intensity={80} style={styles.blurContainer}>
+                        <Text style={styles.ratingTitle}>How was your ride?</Text>
+                        <View style={styles.starsContainer}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <TouchableOpacity
+                                    key={star}
+                                    onPress={() => handleRating(star)}
+                                    style={styles.starButton}
+                                >
+                                    <FontAwesome
+                                        name={star <= rateValue ? 'star' : 'star-o'}
+                                        size={44}
+                                        color="#FFD700"
+                                        style={styles.star}
+                                    />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                        <Text style={styles.ratingSubtitle}>
+                            {rateValue > 0 ? `You rated ${rateValue} star${rateValue > 1 ? 's' : ''}` : 'Tap to rate'}
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.doneButton}
+                            onPress={() => navigation.navigate('Home')}
+                        >
+                            <Text style={styles.doneButtonText}>Done</Text>
+                        </TouchableOpacity>
+                    </BlurView>
+                </Animated.View>
+            </LinearGradient>
         );
     }
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Amount to be Collected</Text>
+        <LinearGradient
+            colors={['#4F46E5', '#7C3AED']}
+            style={styles.gradientContainer}
+        >
+            <Animated.View 
+                style={[
+                    styles.mainContainer,
+                    {
+                        opacity: fadeAnim,
+                        transform: [{ scale: scaleAnim }]
+                    }
+                ]}
+            >
+                <BlurView intensity={80} style={styles.blurContainer}>
+                    <Text style={styles.title}>Payment Collection</Text>
 
-            <View style={styles.priceContainer}>
-                <Text style={styles.price}>₹{price}</Text>
-            </View>
+                    <View style={styles.priceContainer}>
+                        <Text style={styles.currencySymbol}>₹</Text>
+                        <Text style={styles.price}>{price}</Text>
+                    </View>
 
-            <View style={styles.qrContainer}>
-                <QRCode
-                    value={qrValue}
-                    size={200}
-                    color={COLORS.primary}
-                    backgroundColor={COLORS.white}
-                />
-            </View>
-
-            <Text style={styles.instructions}>
-                Scan the QR code to complete your payment and collect the amount. Please verify the amount before confirming the transaction.
-            </Text>
-
-            <View style={styles.buttonRow}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.navigate('Home')}
-                    disabled={isLoading}
-                >
-                    <Text style={styles.buttonText}>Go Back</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.collectButton}
-                    onPress={handleISPay}
-                    disabled={isLoading}
-                >
-                    {isLoading ? (
-                        <ActivityIndicator size="small" color={COLORS.white} />
-                    ) : (
-                        <Text style={styles.buttonText}>Collect Cash</Text>
+                    {userData?.YourQrCodeToMakeOnline && (
+                        <View style={styles.qrWrapper}>
+                            <Image 
+                                source={{ uri: userData.YourQrCodeToMakeOnline }}
+                                style={styles.qrCode}
+                            />
+                        </View>
                     )}
-                </TouchableOpacity>
-            </View>
-        </View>
+
+                    <Text style={styles.instructions}>
+                        Scan QR code to complete payment
+                    </Text>
+
+                    <View style={styles.buttonContainer}>
+                        <TouchableOpacity
+                            style={[styles.button, styles.backButton]}
+                            onPress={() => navigation.navigate('Home')}
+                            disabled={isLoading}
+                        >
+                            <Text style={styles.buttonText}>Cancel</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.button, styles.collectButton]}
+                            onPress={handleISPay}
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                                <Text style={styles.buttonText}>Confirm Payment</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </BlurView>
+            </Animated.View>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    gradientContainer: {
         flex: 1,
-        backgroundColor: COLORS.background,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+    },
+    mainContainer: {
+        width: width * 0.9,
+        borderRadius: 24,
+        overflow: 'hidden',
+    },
+    blurContainer: {
+        padding: 24,
+        alignItems: 'center',
     },
     title: {
         fontSize: 24,
-        fontWeight: 'bold',
-        color: COLORS.text,
-        marginBottom: 20,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 24,
+        textAlign: 'center',
     },
     priceContainer: {
-        backgroundColor: COLORS.primary,
-        padding: 20,
-        borderRadius: 10,
-        marginBottom: 30,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 32,
+    },
+    currencySymbol: {
+        fontSize: 24,
+        color: '#FFFFFF',
+        marginTop: 8,
     },
     price: {
-        fontSize: 36,
-        fontWeight: 'bold',
-        color: COLORS.white,
+        fontSize: 48,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
-    qrContainer: {
-        marginBottom: 30,
-        padding: 10,
-        backgroundColor: COLORS.white,
-        borderRadius: 10,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3.84,
-        elevation: 4,
+    qrWrapper: {
+        padding: 16,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 5,
+        marginBottom: 24,
+    },
+    qrCode: {
+        width: width * 0.6,
+        height: width * 0.6,
+        borderRadius: 8,
     },
     instructions: {
         fontSize: 16,
-        color: COLORS.text,
+        color: '#FFFFFF',
         textAlign: 'center',
-        marginBottom: 30,
+        marginBottom: 32,
+        opacity: 0.9,
+    },
+    buttonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+        gap: 12,
+    },
+    button: {
+        flex: 1,
+        paddingVertical: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    backButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    collectButton: {
+        backgroundColor: '#10B981',
+    },
+    buttonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    ratingContainer: {
+        width: width * 0.9,
+        borderRadius: 24,
+        overflow: 'hidden',
+    },
+    ratingTitle: {
+        fontSize: 28,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 32,
+        textAlign: 'center',
     },
     starsContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        marginBottom: 20,
+        marginBottom: 24,
+    },
+    starButton: {
+        padding: 8,
     },
     star: {
-        marginHorizontal: 10,
+        marginHorizontal: 4,
     },
-    subtitle: {
+    ratingSubtitle: {
+        fontSize: 18,
+        color: '#FFFFFF',
+        marginBottom: 32,
+        opacity: 0.9,
+        textAlign: 'center',
+    },
+    doneButton: {
+        backgroundColor: '#10B981',
+        paddingVertical: 16,
+        paddingHorizontal: 48,
+        borderRadius: 12,
+    },
+    doneButtonText: {
+        color: '#FFFFFF',
         fontSize: 16,
-        color: COLORS.text,
-        marginBottom: 20,
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        width: width * 0.8,
-        gap: 10,
-    },
-    backButton: {
-        backgroundColor: COLORS.secondary,
-        paddingVertical: 15,
-        paddingHorizontal: 40,
-        borderRadius: 10,
-    },
-    collectButton: {
-        backgroundColor: COLORS.success,
-        paddingVertical: 15,
-        paddingHorizontal: 40,
-        borderRadius: 10,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    buttonText: {
-        color: COLORS.white,
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontWeight: '600',
     },
 });

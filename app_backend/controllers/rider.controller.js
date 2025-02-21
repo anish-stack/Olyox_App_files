@@ -358,12 +358,41 @@ exports.uploadDocuments = async (req, res) => {
 };
 
 
+exports.uploadPaymentQr = async (req, res) => {
+  try {
+    const file = req.file || {}
+    const userId = req.user.userId;
+    const findRider = await Rider.findById(userId);
+
+    if (!findRider) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+
+    const uploadedDocs = {};
+
+    const uploadResponse = await cloudinary.uploader.upload(file.path, { folder: "rider_qrs" });
+    fs.unlinkSync(file.path);
+
+
+
+    findRider.YourQrCodeToMakeOnline = uploadResponse.secure_url;
+
+    await findRider.save();
+
+    res.status(201).json({ success: true, message: "Documents uploaded successfully", data: uploadResponse });
+  } catch (error) {
+    console.error("Error uploading documents:", error);
+    res.status(500).json({ success: false, message: "Documents upload failed", error: error.message });
+  }
+};
+
+
 
 
 exports.details = async (req, res) => {
   try {
-    // console.log("i am hits done", req.user)
-    // Retrieve userId from the request object, assuming it's populated by middleware
+
     const userId = req.user?.userId;
 
     // Check if userId exists

@@ -4,9 +4,9 @@
   "main": "index.js",
   "proxy": "https://demoapi.olyox.com",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web"
   },
   "dependencies": {
@@ -28,7 +28,7 @@
     "lucide-react-native": "^0.469.0",
     "olyox_user_app": "file:",
     "react": "18.3.1",
-    "react-native": "0.76.5",
+    "react-native": "0.76.7",
     "react-native-dropdown-picker": "^5.4.6",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-image-crop-picker": "^0.42.0",
@@ -36,12 +36,13 @@
     "react-native-ionicons": "^4.6.5",
     "react-native-paper": "^5.11.1",
     "react-native-reanimated": "^3.16.1",
-    "react-native-safe-area-context": "4.12.0",
-    "react-native-screens": "~4.4.0",
+    "react-native-safe-area-context": "^5.2.0",
+    "react-native-screens": "^4.6.0",
     "react-native-snap-carousel": "^3.9.1",
     "react-native-svg": "15.8.0",
     "react-native-vector-icons": "^10.2.0",
-    "react-redux": "^8.1.1"
+    "react-redux": "^8.1.1",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

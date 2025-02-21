@@ -1,6 +1,6 @@
 
 import { useState } from "react"
-import { View, StyleSheet, ScrollView, ImageBackground } from "react-native"
+import { View, StyleSheet, Text, ScrollView, ImageBackground, TouchableOpacity } from "react-native"
 import { TextInput, Button, Card, Title, Paragraph, ActivityIndicator, Snackbar, Menu } from "react-native-paper"
 import axios from "axios"
 import { Alert } from "react-native"
@@ -93,7 +93,7 @@ export default function RegistrationForm() {
       }
     } catch (error) {
       console.error("Error registering rider:", error)
-      setError("Failed to register rider")
+      setError(error.response.data.message)
     } finally {
       setLoading(false)
     }
@@ -214,6 +214,9 @@ export default function RegistrationForm() {
       <Button mode="contained" onPress={fetchUserDetails} style={styles.button} labelStyle={styles.buttonLabel}>
         Next
       </Button>
+      <TouchableOpacity onPress={()=>navigation.navigate('enter_bh')} style={styles.referralCode}>
+        <Text style={styles.referralCodetext}>I have a Referral code </Text>
+      </TouchableOpacity>
     </View>
   )
 
@@ -409,5 +412,17 @@ const styles = StyleSheet.create({
   successSnackbar: {
     backgroundColor: "#77dd77",
   },
+  referralCode:{
+    textAlign:"center",
+    display:'flex',
+    alignItems:'center',
+    justifyContent:'center',
+    marginVertical:14
+  },
+  referralCodetext:{
+    fontSize:22,
+    fontWeight:500,
+    color:'#003300'
+  }
 })
 

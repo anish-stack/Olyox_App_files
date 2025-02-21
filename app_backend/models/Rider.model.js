@@ -31,7 +31,7 @@ const RiderSchema = new Schema({
     },
     TotalRides: {
         type: Number,
-        default:0
+        default: 0
     },
     rides: [{
         type: Schema.Types.ObjectId,
@@ -39,7 +39,7 @@ const RiderSchema = new Schema({
     }],
     Ratings: {
         type: Number,
-        default:0
+        default: 0
 
     },
     documents: {
@@ -53,7 +53,7 @@ const RiderSchema = new Schema({
         insurance: {
             type: String,
         }
-     
+
     },
     Bh: {
         type: String
@@ -133,10 +133,14 @@ const RiderSchema = new Schema({
         type: Date,
         default: Date.now
     },
-    BH:{
+    BH: {
         type: String
     },
-    
+    YourQrCodeToMakeOnline: {
+        type: String,
+        default: null
+
+    }
 });
 
 RiderSchema.index({ location: '2dsphere' });

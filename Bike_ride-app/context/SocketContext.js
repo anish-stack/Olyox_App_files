@@ -15,18 +15,22 @@ export const SocketProvider = ({ children }) => {
         const loadUserAndInitializeSocket = async () => {
             try {
                 const user = await fetchUserData();
+                if (!user || !user._id) throw new Error("Invalid user data");
+
                 setUserData(user);
 
-                socketRef.current = await initializeSocket({
+                const newSocket = await initializeSocket({
                     userType: "driver",
                     userId: user._id,
                 });
 
-                if (socketRef.current) {
+                if (newSocket) {
+                    socketRef.current = newSocket;
                     setSocketReady(true);
                     setReconnecting(false);
                 }
             } catch (err) {
+                console.error("Error initializing socket:", err);
                 setError(err.message);
             } finally {
                 setLoading(false);
@@ -36,9 +40,7 @@ export const SocketProvider = ({ children }) => {
         loadUserAndInitializeSocket();
 
         return () => {
-            if (socketRef.current) {
-                cleanupSocket();
-            }
+            cleanupSocket();
             setSocketReady(false);
             setReconnecting(false);
         };

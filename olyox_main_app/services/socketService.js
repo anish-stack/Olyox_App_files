@@ -1,29 +1,33 @@
 import io from "socket.io-client";
 
 const SOCKET_URL = "https://demoapi.olyox.com";
-let socket; // Singleton socket instance
+let socket = null; // Singleton instance
 
-export const initializeSocket = ({ userType = "user", userId = 1 }) => {
-  console.log("userId",userId)
+export const initializeSocket = ({ userType = "user", userId }) => {
   if (!socket) {
+    console.log("Initializing socket...");
     socket = io(SOCKET_URL, {
       transports: ["websocket"],
       jsonp: false,
+      reconnection: true, 
+      reconnectionAttempts: 5, 
+      reconnectionDelay: 3000, 
     });
 
     socket.userType = userType;
     socket.userId = userId;
 
     socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
-      console.log("User Type:", socket.userType);
-
-      // Emit user type when connected
+      console.log("🟢 Socket connected:", socket.id);
       socket.emit("user_connect", { userType: socket.userType, userId: socket.userId });
     });
 
-    socket.on("disconnect", () => {
-      console.log("Socket disconnected");
+    socket.on("disconnect", (reason) => {
+      console.log("🔴 Socket disconnected:", reason);
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("⚠️ Socket connection error:", error);
     });
   }
   return socket;
@@ -31,14 +35,15 @@ export const initializeSocket = ({ userType = "user", userId = 1 }) => {
 
 export const getSocket = () => {
   if (!socket) {
-    throw new Error("Socket is not initialized. Call initializeSocket() first.");
+    throw new Error("⚠️ Socket is not initialized. Call initializeSocket() first.");
   }
   return socket;
 };
 
-export const cleanupSocket = (socketInstance) => {
-  if (socketInstance) {
-    socketInstance.disconnect(); // Properly disconnect the socket
-    socket = null; // Reset the socket instance
+export const cleanupSocket = () => {
+  if (socket) {
+    console.log("🛑 Cleaning up socket...");
+    socket.disconnect();
+    socket = null;
   }
 };

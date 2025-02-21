@@ -16,11 +16,7 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app requires your location to provide better services.",
-        "CFBundleURLTypes": [
-          {
-            "CFBundleURLSchemes": ["com.happy_coding.olyoxride"]
-          }
-        ]
+        "CFBundleURLTypes": []
       }
     },
     "android": {
@@ -29,21 +25,18 @@
         "backgroundColor": "#ffffff"
       },
       "googleMaps": {
-          "apiKey": "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34"
-        },
+        "apiKey": "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34"
+      },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION"
-
       ],
-      "package": "com.happy_coding.olyoxride",
       "intentFilters": [
         {
           "action": "VIEW",
           "data": [
             {
-              "scheme": "com.happy_coding.olyoxride",
               "host": "auth/callback"
             }
           ],
@@ -61,12 +54,11 @@
       }
     },
     "extra": {
-      "eas": {
-        "projectId": "1223dac1-38d3-48f6-9ca1-7d82110ccdd9"
-      },
       "clerkFrontendApi": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk",
-      "clerkApiKey": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk"
-    },
-    "scheme": "com.happy_coding.olyoxride"
+      "clerkApiKey": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk",
+      "eas": {
+        "projectId": "f5e156f8-84ad-4bba-9ce5-dc5b288500db"
+      }
+    }
   }
 }

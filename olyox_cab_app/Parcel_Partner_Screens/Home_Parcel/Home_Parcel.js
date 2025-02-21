@@ -1,35 +1,39 @@
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, RefreshControl, Dimensions, Platform } from 'react-native';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+    View,
+    Text,
+    ActivityIndicator,
+    ScrollView,
+    RefreshControl,
+    TouchableOpacity
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
+import { Audio } from "expo-av";
+import { styles } from './styles';
 import OnlineStatusToggle from './OnlineStatusToggle';
 import UserProfileCard from './UserProfileCard';
 import WorkStatusCard from './WorkStatusCard';
-import * as Location from 'expo-location';
-import { useSocket } from '../../context/SocketContext';
-import { TouchableOpacity } from 'react-native';
 import NewOrder from '../Other_Parcel_Screens/New_Order/NewOrder';
-import { useNavigation } from '@react-navigation/native';
-import { Alert } from 'react-native';
-const { width } = Dimensions.get('window');
-import { Audio } from "expo-av";
+import { useSocket } from '../../context/SocketContext';
+import initializeSocket from '../../context/socketService';
 
-const cardWidth = width < 768 ? (width - 48) / 2 : (width - 64) / 4;
+const API_BASE_URL = 'https://demoapi.olyox.com/api/v1/parcel';
 
-export default function Home_Parcel() {
-    const { socket, isSocketReady, isReconnecting, loading, error } = useSocket();
+export default function Home_Parcel({ navigation }) {
+    const { socket, isSocketReady } = useSocket();
     const [userData, setUserData] = useState(null);
-    const navigation = useNavigation()
     const [workStatus, setWorkStatus] = useState(null);
     const [statusOfPartner, setStatus] = useState(false);
     const [order, setOrder] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
     const [location, setLocation] = useState(null);
-    const [errorMsg, setErrorMsg] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [sound, setSound] = useState(null);
-
 
     const playSound = async () => {
         try {
@@ -41,7 +45,6 @@ export default function Home_Parcel() {
         }
     };
 
-    // Stop the sound when user rejects or accepts
     const stopSound = async () => {
         if (sound) {
             await sound.stopAsync();
@@ -50,77 +53,105 @@ export default function Home_Parcel() {
         }
     };
 
-    // console.log("isReconnecting",isReconnecting)
-    const fetchUserData = async () => {
+    const fetchData = async () => {
         try {
+            console.log("🔵 Fetching data started...");
+
+            setError(null);
+            setLoading(true);
+
+            // Retrieve auth token
             const token = await AsyncStorage.getItem('auth_token_partner');
+            console.log("🟢 Retrieved token:", token);
+
             if (!token) {
-                setErrorMsg('No auth token found');
-                return;
+                throw new Error('❌ Authentication required. Please login again.');
             }
 
-            const response = await axios.get(
-                'https://demoapi.olyox.com/api/v1/parcel/user-details',
-                {
-                    headers: { Authorization: `Bearer ${token}` },
+            const headers = { Authorization: `Bearer ${token}` };
+            console.log("🟢 Headers set:", headers);
+
+            // Initialize state variables
+            let userData = null;
+            let workStatus = null;
+            let partnerStatus = null;
+
+            // Fetch user details
+            try {
+                console.log("🔵 Fetching user details...");
+                const userResponse = await axios.get(`${API_BASE_URL}/user-details`, { headers });
+                console.log("✅ User Details Response:", userResponse.data);
+                userData = userResponse.data.partner;
+            } catch (error) {
+                console.error("❌ Failed to fetch user details:", error?.response?.data?.message || error.message);
+            }
+
+            // Fetch work details
+            try {
+                console.log("🔵 Fetching work status...");
+                const workResponse = await axios.get(`${API_BASE_URL}/my_parcel_driver-details`, { headers });
+                console.log("✅ Work Status Response:", workResponse.data);
+                workStatus = workResponse.data.summary;
+            } catch (error) {
+                console.error("❌ Failed to fetch work status:", error?.response?.data?.message || error.message);
+            }
+
+            // Fetch partner work status
+            try {
+                console.log("🔵 Fetching partner work status...");
+                const statusResponse = await axios.get(`${API_BASE_URL}/partner_work_status_details`, { headers });
+                console.log("✅ Partner Work Status Response:", statusResponse.data);
+                partnerStatus = statusResponse.data.status;
+            } catch (error) {
+                if (error?.response?.data?.message === "No status found for today") {
+                    console.warn("⚠️ No status found for today. Setting status to false.");
+                    partnerStatus = false;
+                } else {
+                    console.error("❌ Failed to fetch partner status:", error?.response?.data?.message || error.message);
                 }
-            );
-            setUserData(response.data.partner);
-            setErrorMsg(null);
+            }
+
+            // Set state values if they exist
+            if (userData) setUserData(userData);
+            if (workStatus) setWorkStatus(workStatus);
+            if (partnerStatus !== null) setStatus(partnerStatus);
+
         } catch (error) {
-            setErrorMsg(error.message);
-            console.error('Error fetching user details:', error);
+            console.error("❌ Unexpected error:", error);
+            setError(error.message);
+        } finally {
+            console.log("🔵 Fetching data completed. Setting loading to false.");
+            setLoading(false);
         }
     };
 
 
-    useEffect(() => {
-        const getLocation = async () => {
-            if (!isSocketReady) {
-                console.log('Socket not connected, waiting...');
-                return;
-            }
 
-            if (statusOfPartner !== 'online') {
-                console.log('Work status is not online, skipping location update');
-                return;
-            }
+    const setupLocationTracking = async () => {
+        if (!isSocketReady || statusOfPartner !== 'online') return;
 
-            // Request permission for location
-
-            let { status } = await Location.requestForegroundPermissionsAsync();
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                setErrorMsg('Permission to access location was denied');
-                return;
+                throw new Error('Location permission denied');
             }
 
-            // Start tracking location every second
-            const interval = setInterval(async () => {
+            return setInterval(async () => {
                 const { coords } = await Location.getCurrentPositionAsync({});
                 setLocation(coords);
                 sendLocationToServer(coords.latitude, coords.longitude);
             }, 1000);
-
-            return () => clearInterval(interval);
-        };
-
-        if (isSocketReady) {
-            getLocation(); // Only run this function if socket is connected
+        } catch (error) {
+            console.error('Location tracking error:', error);
         }
-
-        return () => {
-            if (isSocketReady) {
-                socket.off('rider-location');
-            }
-        };
-    }, [workStatus]);
+    };
 
     const sendLocationToServer = async (latitude, longitude) => {
-        const token = await AsyncStorage.getItem('auth_token_partner');
-        if (!token) return;
-
         try {
-            const response = await fetch('https://demoapi.olyox.com/webhook/receive-location', {
+            const token = await AsyncStorage.getItem('auth_token_partner');
+            if (!token) return;
+
+            await fetch('https://demoapi.olyox.com/webhook/receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -128,324 +159,162 @@ export default function Home_Parcel() {
                 },
                 body: JSON.stringify({ latitude, longitude }),
             });
-
-            const data = await response.json();
-            console.log('Location data sent to server:', data);
         } catch (error) {
             console.error('Error sending location:', error);
         }
     };
 
     useEffect(() => {
-        // if (socket) {
-        //     socket.on('rider-location', (data) => {
-        //         console.log('Real-time location update:', data);
-        //         setLocation(data.location);
-        //     });
-        // }
-
-        // return () => {
-        //     socket.off('rider-location');
-        // };
-    }, [socket]);
-
-    const fetchWorkStatus = async () => {
-        try {
-            const token = await AsyncStorage.getItem('auth_token_partner');
-            console.log("fetch", token);
-            if (!token) return;
-
-            // Run both requests concurrently using Promise.all
-            const [response, sresponse] = await Promise.all([
-                axios.get('https://demoapi.olyox.com/api/v1/parcel/my_parcel_driver-details', {
-                    headers: { Authorization: `Bearer ${token}` },
-                }),
-                axios.get('https://demoapi.olyox.com/api/v1/parcel/partner_work_status_details', {
-                    headers: { Authorization: `Bearer ${token}` },
-                }),
-            ]);
-
-            console.log("i am ", response.data.summary);
-            setWorkStatus(response.data.summary);
-            setStatus(sresponse.data.status);
-
-        } catch (error) {
-            console.error('Error fetching work status:', error.response ? error.response.data : error.message);
-        }
-    };
-
-
-    useEffect(() => {
-        const loadData = async () => {
-            await Promise.all([fetchUserData(), fetchWorkStatus()]);
-        };
-        loadData();
-
-        // Refresh work status every minute
-        const statusInterval = setInterval(fetchWorkStatus, 60000);
-        return () => clearInterval(statusInterval);
+        fetchData();
+        const interval = setInterval(fetchData, 20000);
+        return () => clearInterval(interval);
     }, []);
 
-
     useEffect(() => {
-        console.log("socket", socket)
         if (socket) {
-            socket.on('new_parcel_request', (data) => {
-                setOrder(data)
-                console.log('Real-time location update done:', data);
-            })
-
-
-
-            socket.on('ride_cancel', (data) => {
-                console.log('ride cancelled', data)
+            socket.on('new_parcel_request', setOrder);
+            socket.on('ride_cancel', async (data) => {
+                await playSound();
                 Alert.alert(
                     "Ride Canceled",
-                    "Your ride has been  canceled.",
-                    [{ text: "OK", onPress: () => console.log("OK Pressed") }]
+                    "Your ride has been canceled.",
+                    [{ text: "OK", onPress: stopSound }]
                 );
-                playSound()
-            })
+            });
         }
-    }, [socket])
+        return () => {
+            if (socket) {
+                socket.off('new_parcel_request');
+                socket.off('ride_cancel');
+            }
+        };
+    }, [socket]);
 
-    const logout = async () => {
-        await AsyncStorage.removeItem('auth_token_partner')
-        navigation.reset({
-            index: 0,
-            routes: [{ name: 'Ongoing_Order' }]
-        })
+    useEffect(() => {
+        const locationInterval = setupLocationTracking();
+        return () => clearInterval(locationInterval);
+    }, [workStatus, isSocketReady]);
 
-    }
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        await Promise.all([fetchUserData(), fetchWorkStatus()]);
+        await fetchData();
         setRefreshing(false);
     }, []);
 
-    console.log("workStatus", workStatus)
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('auth_token_partner');
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }]
+            });
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+    };
+
     if (loading) {
         return (
-            <SafeAreaView style={styles.safeArea}>
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#ff0000" />
-                    <Text style={styles.loadingText}>Loading your dashboard...</Text>
-                </View>
-            </SafeAreaView>
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#ec363f" />
+                <Text style={styles.loadingText}>Loading your dashboard...</Text>
+            </View>
         );
     }
 
-    if (errorMsg || !userData) {
+    if (error) {
         return (
-            <SafeAreaView style={styles.safeArea}>
-                <View style={styles.errorContainer}>
-                    <Icon name="alert-circle-outline" size={80} color="#ff0000" />
-                    <Text style={styles.errorTitle}>Oops!</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('Homes')}>
-                        <Text style={styles.errorText}>
-                            {errorMsg || 'Please login to continue'}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-            </SafeAreaView>
+            <View style={styles.errorContainer}>
+                <Icon name="alert-circle-outline" size={80} color="#ec363f" />
+                <Text style={styles.errorTitle}>Oops!</Text>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity
+                    style={styles.errorRetryButton}
+                    onPress={fetchData}
+                >
+                    <Text style={styles.errorRetryText}>Retry</Text>
+                </TouchableOpacity>
+            </View>
         );
     }
-
 
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView
                 style={styles.container}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={['#ec363f']}
+                        tintColor="#ec363f"
+                    />
                 }
             >
-                {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerContent}>
                         <Text style={styles.welcomeText}>Welcome Back!</Text>
-                        <Text style={styles.nameText}>{userData.name}</Text>
-                        <Text style={styles.dateText}>{new Date().toLocaleDateString()}</Text>
+                        <Text style={styles.nameText}>{userData?.name || ""}</Text>
+                        <Text style={styles.dateText}>
+                            {new Date().toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            })}
+                        </Text>
                     </View>
                 </View>
 
-                {/* Online Status Toggle */}
-                <OnlineStatusToggle workStatus={workStatus} onStatusChange={fetchWorkStatus} />
+                <OnlineStatusToggle
+                    workStatus={workStatus}
+                    onStatusChange={fetchData}
+                    statusOfPartner={statusOfPartner}
+                />
 
-                {/* User Profile Card */}
-                <WorkStatusCard workStatus={workStatus} />
-                {/* Stats Grid */}
+                {/* <WorkStatusCard workStatus={workStatus} /> */}
+
                 <View style={styles.statsGrid}>
-                    <View style={[styles.statsCard, { width: cardWidth }]}>
-                        <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
-                            <Icon name="package-variant" size={32} color="#ff0000" />
-                        </View>
-                        <Text style={styles.statsNumber}>{workStatus?.todayOrders || 0}</Text>
-                        <Text style={styles.statsLabel}>Today's Orders</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => navigation.navigate('All_Orders_parcel')} style={[styles.statsCard, { width: cardWidth }]}>
-                        <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
-                            <Icon name="check-circle" size={32} color="#ff0000" />
-                        </View>
-                        <Text style={styles.statsNumber}>{workStatus?.totalOrders || 0}</Text>
-                        <Text style={styles.statsLabel}>All Orders</Text>
-                    </TouchableOpacity>
-                    <View style={[styles.statsCard, { width: cardWidth }]}>
-                        <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
-                            <Icon name="wallet" size={32} color="#ff0000" />
-                        </View>
-                        <Text style={styles.statsNumber}>₹{workStatus?.totalDeliveredEarnings || 0}</Text>
-                        <Text style={styles.statsLabel}>Complete Order Earnings</Text>
-                    </View>
-                    <View style={[styles.statsCard, { width: cardWidth }]}>
-                        <View style={[styles.iconContainer, { backgroundColor: '#ffe6e6' }]}>
-                            <Icon name="star" size={32} color="#ff0000" />
-                        </View>
-                        <Text style={styles.statsNumber}>{workStatus?.rating || '4.5'}</Text>
-                        <Text style={styles.statsLabel}>Rating</Text>
-                    </View>
-                </View>
-                <UserProfileCard userData={userData} />
-                <View style={styles.containers}>
-                    <TouchableOpacity style={styles.button} onPress={logout}>
-                        <Text style={styles.buttonText}>Logout</Text>
-                    </TouchableOpacity>
+                    {[
+                        { icon: 'package-variant', label: "Today's Orders", value: workStatus?.todayOrders || 0 },
+                        { icon: 'check-circle', label: 'All Orders', value: workStatus?.totalOrders || 0, onPress: () => navigation.navigate('All_Orders_parcel') },
+                        { icon: 'wallet', label: 'Complete Earnings', value: `₹${workStatus?.totalDeliveredEarnings || 0}` },
+                        { icon: 'star', label: 'Rating', value: workStatus?.rating || '4.5' }
+                    ].map((stat, index) => (
+                        <TouchableOpacity
+                            key={index}
+                            style={styles.statsCard}
+                            onPress={stat.onPress}
+                            disabled={!stat.onPress}
+                        >
+                            <View style={[styles.iconContainer, { backgroundColor: '#fff5f5' }]}>
+                                <Icon name={stat.icon} size={32} color="#ec363f" />
+                            </View>
+                            <Text style={styles.statsNumber}>{stat.value}</Text>
+                            <Text style={styles.statsLabel}>{stat.label}</Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
 
+                <UserProfileCard userData={userData} />
+
+                <TouchableOpacity
+                    style={styles.logoutButton}
+                    onPress={handleLogout}
+                >
+                    <Text style={styles.logoutText}>Logout</Text>
+                </TouchableOpacity>
             </ScrollView>
+
             {order && (
-                <NewOrder location={location} order={order} onClose={() => setOrder(null)} driverId={userData?._id} open={true} />
+                <NewOrder
+                    location={location}
+                    order={order}
+                    onClose={() => setOrder(null)}
+                    driverId={userData?._id}
+                    open={true}
+                />
             )}
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#f8f9fa',
-    },
-    container: {
-        flex: 1,
-    },
-    containers: {
-        flex: 1,
-        width: '100%',
-        // justifyContent: 'center',
-        // alignItems: 'center',
-    },
-    button: {
-        backgroundColor: '#FF6347', // Tomato color for the button
-        paddingVertical: 12,
-        paddingHorizontal: 32,
-        borderRadius: 8,
-        elevation: 3, // Adds shadow on Android
-        shadowColor: '#000', // Shadow for iOS
-        shadowOffset: { width: 0, height: 2 }, // iOS shadow position
-        shadowOpacity: 0.3, // Shadow opacity for iOS
-        shadowRadius: 4, // Shadow radius for iOS
-    },
-    buttonText: {
-        color: '#FFFFFF', // White text
-        fontSize: 18,
-        fontWeight: 'bold',
-        textAlign: 'center',
-    },
-    header: {
-        backgroundColor: '#ff0000',
-        paddingTop: 20,
-        paddingBottom: 30,
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
-    },
-    headerContent: {
-        padding: 20,
-    },
-    welcomeText: {
-        fontSize: 16,
-        color: '#ffe6e6',
-        marginBottom: 4,
-    },
-    nameText: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#ffffff',
-        marginBottom: 8,
-    },
-    dateText: {
-        fontSize: 14,
-        color: '#ffe6e6',
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-    },
-    loadingText: {
-        marginTop: 12,
-        fontSize: 16,
-        color: '#666',
-    },
-    errorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-        backgroundColor: '#fff',
-    },
-    errorTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#ff0000',
-        marginTop: 16,
-    },
-    errorText: {
-        fontSize: 16,
-        color: '#666',
-        textAlign: 'center',
-        marginTop: 8,
-    },
-    statsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        padding: 8,
-        justifyContent: 'space-between',
-    },
-    statsCard: {
-        backgroundColor: 'white',
-        padding: 8,
-        margin: 8,
-        borderRadius: 16,
-        alignItems: 'center',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 4,
-            },
-        }),
-    },
-    iconContainer: {
-        width: 30,
-        height: 30,
-        borderRadius: 28,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    statsNumber: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    statsLabel: {
-        fontSize: 14,
-        color: '#666',
-        marginTop: 4,
-    },
-});

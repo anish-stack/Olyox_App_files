@@ -301,7 +301,7 @@ exports.uploadDocuments = async (req, res) => {
 
 exports.details = async (req, res) => {
     try {
-        console.log("i am hits")
+      
         // Retrieve userId from the request object, assuming it's populated by middleware
         const userId = req.user?.userId;
 
@@ -413,7 +413,7 @@ exports.partner_work_status = async (req, res) => {
             date: today
         });
 
-        console.log("checkStatus",checkStatus)
+    
         if (!checkStatus) {
             return res.status(404).json({ message: 'No status found for today' });
         }

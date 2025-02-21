@@ -9,6 +9,7 @@ import {
     Platform,
     Modal,
     Dimensions,
+    Alert,
     Linking,
     BackHandler,
 } from 'react-native';
@@ -61,8 +62,8 @@ export default function Profile() {
                 // socket.off('di'); // Remove specific event listener
                 socket.disconnect(); // Disconnect from the server
             }
-                  BackHandler.exitApp()
-            
+            BackHandler.exitApp()
+
 
             // Reset navigation
             navigation.reset({
@@ -73,6 +74,24 @@ export default function Profile() {
             console.error('Logout Error:', error);
         }
     };
+
+
+    const shareOurApp = () => {
+        const msg = `🚀 *Join the Olyox Rides Family!* 🚖💨\n\nEarn *extra income* 💸 with *zero commission* 🆓 on every ride! 🛣️✨\n\nUse my *Referral Code*: 🔑 ${userData?.BH}\n\n📝 *Register now* and start earning in just a few minutes! ⏳💼\n\n👉(https://www.olyox.com/) 🌐`;
+
+        const url = `whatsapp://send?text=${encodeURIComponent(msg)}`;
+
+        Linking.canOpenURL(url)
+            .then((supported) => {
+                if (!supported) {
+                    Alert.alert('Error', 'WhatsApp is not installed on your device');
+                } else {
+                    return Linking.openURL(url);
+                }
+            })
+            .catch((err) => Alert.alert('Error', 'An unexpected error occurred'));
+    };
+
 
 
     const DocumentsModal = () => (
@@ -190,15 +209,7 @@ export default function Profile() {
                         </View>
 
                     </ScrollView>
-                    <TouchableOpacity
-                        style={styles.editButton}
-                        onPress={() => {
-                            setShowUpdateProfile(false);
-                            router.push('/profile-edit');
-                        }}
-                    >
-                        <Text style={styles.editButtonText}>Edit Profile</Text>
-                    </TouchableOpacity>
+                  
                     <TouchableOpacity
                         style={styles.closeButton}
                         onPress={() => setShowUpdateProfile(false)}
@@ -281,10 +292,19 @@ export default function Profile() {
 
                 <TouchableOpacity
                     style={styles.menuItem}
-                    onPress={() => router.push('/referral')}
+                    onPress={() => shareOurApp()}
                 >
                     <MaterialCommunityIcons name="gift" size={24} color="#FFB300" />
                     <Text style={styles.menuText}>Refer & Earn</Text>
+                    <MaterialCommunityIcons name="chevron-right" size={24} color="#757575" />
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => navigation.navigate('upload-qr')}
+                >
+                    <MaterialCommunityIcons name="cash" size={24} color="#FFB300" />
+                    <Text style={styles.menuText}>Payment Qr</Text>
                     <MaterialCommunityIcons name="chevron-right" size={24} color="#757575" />
                 </TouchableOpacity>
 

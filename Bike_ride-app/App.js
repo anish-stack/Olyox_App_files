@@ -7,7 +7,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
-import * as Sentry from '@sentry/react-native';
 
 import { store } from './redux/store';
 import { SocketProvider } from './context/SocketContext';
@@ -24,6 +23,9 @@ import Wait_Screen from './screens/Wait_Screen/Wait_Screen';
 import AllRides from './screens/All_Rides/AllRides';
 import Profile from './screens/Profile/Profile';
 import SupportScreen from './screens/Support/Support';
+import UploadQr from './screens/Profile/UploadQr';
+import BhVerification from './screens/onboarding/BH_Re/BhVerification';
+import RegisterWithBh from './screens/onboarding/BH_Re/Bh_registeration';
 
 const Stack = createNativeStackNavigator();
 
@@ -102,6 +104,12 @@ export default function App() {
                     <Stack.Screen name="collect_money" component={MoneyPage} />
                     <Stack.Screen name="AllRides" options={{ headerShown: false, title: 'All Rides' }} component={AllRides} />
                     <Stack.Screen name="Profile" options={{ headerShown: true, title: 'My Profile' }} component={Profile} />
+                    <Stack.Screen name="upload-qr" options={{ headerShown: false, title: 'My Profile' }} component={UploadQr} />
+                    {/* BhVerification */}
+                    <Stack.Screen name="enter_bh" options={{ headerShown: false, title: 'My Profile' }} component={BhVerification} />
+                    <Stack.Screen name="Register" options={{ headerShown: false, title: 'My Profile' }} component={RegisterWithBh} />
+
+
                   </Stack.Navigator>
                 </NavigationContainer>
               </SafeAreaProvider>

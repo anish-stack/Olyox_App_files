@@ -1,11 +1,11 @@
 import io from "socket.io-client";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import * as SecureStore from 'expo-secure-store';
 
 const SOCKET_URL = "https://demoapi.olyox.com";
 let socket = null;
 
+// Fetch user details
 export const fetchUserData = async () => {
     try {
         const token = await SecureStore.getItemAsync("auth_token_cab");
@@ -22,11 +22,12 @@ export const fetchUserData = async () => {
         );
         return response.data.partner;
     } catch (error) {
-        console.error("Error fetching user details context:", error);
+        console.error("Error fetching user details:", error);
         throw error;
     }
 };
 
+// Initialize socket connection
 export const initializeSocket = async ({ userType = "driver", userId }) => {
     if (!userId) {
         console.error("User ID is required to initialize socket");
@@ -38,7 +39,7 @@ export const initializeSocket = async ({ userType = "driver", userId }) => {
             transports: ["websocket"],
             reconnection: true,
             reconnectionAttempts: Infinity,
-            reconnectionDelay: 1000,
+            reconnectionDelay: 2000,
             timeout: 20000,
         });
 
@@ -47,13 +48,13 @@ export const initializeSocket = async ({ userType = "driver", userId }) => {
 
         socket.on("connect", () => {
             console.log("Socket connected:", socket.id);
-            socket.emit("driver_connect", { userType: socket.userType, userId: socket.userId });
+            socket.emit("driver_connect", { userType, userId });
         });
 
         socket.on("disconnect", (reason) => {
-            console.log("Socket disconnected:", reason);
+            console.warn("Socket disconnected:", reason);
             if (reason === "io server disconnect") {
-                socket.connect(); // Reconnect manually if disconnected by the server
+                socket.connect();
             }
         });
 
@@ -63,11 +64,11 @@ export const initializeSocket = async ({ userType = "driver", userId }) => {
 
         socket.on("reconnect", () => {
             console.log("Socket reconnected:", socket.id);
-            socket.emit("driver_connect", { userType: socket.userType, userId: socket.userId });
+            socket.emit("driver_connect", { userType, userId });
         });
 
         socket.on("reconnect_failed", () => {
-            console.error("Reconnection failed. Check your server or network.");
+            console.error("Reconnection failed. Check network.");
         });
 
         socket.on("connect_error", (error) => {
@@ -82,6 +83,7 @@ export const initializeSocket = async ({ userType = "driver", userId }) => {
     return socket;
 };
 
+// Get socket instance
 export const getSocket = () => {
     if (!socket) {
         throw new Error("Socket is not initialized. Call initializeSocket() first.");
@@ -89,6 +91,7 @@ export const getSocket = () => {
     return socket;
 };
 
+// Cleanup socket connection
 export const cleanupSocket = () => {
     if (socket) {
         socket.disconnect();

@@ -6,72 +6,54 @@ const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
-  const [socket, setSocket] = useState(null); // Track socket state
   const [user, setUser] = useState(null);
 
-  const firstFound = async () => {
-    const data = await find_me();
-   
-    if (data.user) {
-      setUser(data.user?._id);
-    } else {
-      console.log("No user found");
-      setUser(null);
-    }
-  };
-
-  const initializeAndSetSocket = () => {
-    const newSocket = initializeSocket({ userId: user });
-    socketRef.current = newSocket;
-    setSocket(newSocket); // Update socket state
-  };
-
-  const checkAndReconnectSocket = () => {
-    if (socketRef.current && socketRef.current.connected) {
-      console.log("Socket is already connected");
-    } else {
-      console.warn("Socket is disconnected. Reinitializing...");
-      cleanupSocket(socketRef.current);
-      initializeAndSetSocket();
-    }
-  };
-
+  // Fetch user data
   useEffect(() => {
-    firstFound();
+    const fetchUser = async () => {
+      const data = await find_me();
+      if (data?.user?._id) {
+        setUser(data.user._id);
+      } else {
+        console.warn("⚠️ No user found");
+      }
+    };
+    fetchUser();
   }, []);
 
+  // Initialize socket once user is set
   useEffect(() => {
-    if (user !== null) {
-      if (!socketRef.current) {
-        // Initialize socket once user is set
-        initializeAndSetSocket();
-      }
-    } else {
-      console.log("No user found");
+    if (user && !socketRef.current) {
+      console.log("🚀 Initializing socket for user:", user);
+      socketRef.current = initializeSocket({ userId: user });
     }
 
     return () => {
-      // Cleanup socket on component unmount
       if (socketRef.current) {
-        cleanupSocket(socketRef.current);
+        console.log("🛑 Cleaning up socket on unmount...");
+        cleanupSocket();
       }
     };
   }, [user]);
 
-  // Periodically check socket connection every 20 seconds
+  // Reconnect if socket disconnects
   useEffect(() => {
-    if (user) {
-      console.log("Starting periodic socket check");
-      const interval = setInterval(() => {
-        checkAndReconnectSocket();
-      }, 60000); // 20 seconds
+    const checkAndReconnect = () => {
+      if (socketRef.current && !socketRef.current.connected) {
+        console.warn("🔄 Socket disconnected. Reconnecting...");
+        cleanupSocket();
+        socketRef.current = initializeSocket({ userId: user });
+      }
+    };
 
-      return () => clearInterval(interval); // Cleanup interval on unmount
+    if (user) {
+      const interval = setInterval(checkAndReconnect, 60000); // Check every 60 seconds
+      return () => clearInterval(interval);
     }
   }, [user]);
 
   return (
-    <SocketContext.Provider value={socket}>
+    <SocketContext.Provider value={socketRef.current}>
       {children}
     </SocketContext.Provider>
   );

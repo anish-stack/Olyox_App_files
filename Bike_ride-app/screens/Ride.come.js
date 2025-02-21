@@ -1,19 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { ScrollView, View, StyleSheet, ActivityIndicator, Dimensions } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, StyleSheet, Dimensions } from 'react-native';
 import { useSocket } from '../context/SocketContext';
-import { Text, Card, Button, Divider, Surface, Portal, Modal } from 'react-native-paper';
+import { Text, Button, Surface, Portal, Modal } from 'react-native-paper';
 import { Audio } from 'expo-av';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import MapViewDirections from 'react-native-maps-directions';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-const GOOGLE_MAPS_APIKEY = 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34';
 import * as SecureStore from 'expo-secure-store';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import { useLocation } from '../context/LocationContext';
 
 const { width, height } = Dimensions.get('window');
+const RIDE_REQUEST_TIMEOUT = 120000; // 2 minutes in milliseconds
 
 export default function RideCome() {
     const navigation = useNavigation();
@@ -22,7 +20,10 @@ export default function RideCome() {
     const [rideData, setRideData] = useState(null);
     const [riderDetails, setRiderDetails] = useState(null);
     const [sound, setSound] = useState();
-    const [loading, setLoading] = useState(false);
+    const [timeLeft, setTimeLeft] = useState(RIDE_REQUEST_TIMEOUT);
+    const timeoutRef = useRef(null);
+    const soundLoopRef = useRef(null);
+
     const [errorMsg, setErrorMsg] = useState(null);
     const [showRideModal, setShowRideModal] = useState(false);
 
@@ -109,7 +110,9 @@ export default function RideCome() {
                 console.log('Received ride data:', data);
                 setRideData(data);
                 setShowRideModal(true);
-                playSound();
+                setTimeLeft(RIDE_REQUEST_TIMEOUT);
+                startSound();
+                startTimeout();
             });
 
             return () => {
@@ -118,48 +121,80 @@ export default function RideCome() {
         }
     }, [isSocketReady, socket]);
 
-    const playSound = async () => {
-        const { sound } = await Audio.Sound.createAsync(
-            require('./taxi.mp3'),
-            { shouldPlay: true }
-        );
-        setSound(sound);
+    const startTimeout = () => {
+        // Clear any existing timeout
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+        }
+
+        // Set new timeout
+        timeoutRef.current = setTimeout(() => {
+            handleRejectRide();
+        }, RIDE_REQUEST_TIMEOUT);
+
+        // Start countdown
+        const countdownInterval = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1000) {
+                    clearInterval(countdownInterval);
+                    return 0;
+                }
+                return prev - 1000;
+            });
+        }, 1000);
+    };
+
+    const startSound = async () => {
+        try {
+            const { sound } = await Audio.Sound.createAsync(
+                require('./sound.mp3'),
+                {
+                    shouldPlay: true,
+                    // isLooping: true
+                }
+            );
+            setSound(sound);
+            soundLoopRef.current = sound;
+        } catch (error) {
+            console.error("Error playing sound:", error);
+        }
     };
 
     const stopSound = async () => {
-        if (sound) {
-            await sound.stopAsync();
-            await sound.unloadAsync();
-            setSound(null);
+        if (soundLoopRef.current) {
+            try {
+                await soundLoopRef.current.stopAsync();
+                await soundLoopRef.current.unloadAsync();
+                soundLoopRef.current = null;
+                setSound(null);
+            } catch (error) {
+                console.error("Error stopping sound:", error);
+            }
         }
     };
 
     const handleRejectRide = async () => {
+        // Clear timeout
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+
         await stopSound();
         setShowRideModal(false);
         setRideData(null);
+        setTimeLeft(RIDE_REQUEST_TIMEOUT);
     };
 
-    const { dropLocation, pickupLocation } = rideData || {};
-    const origin = pickupLocation?.coordinates
-        ? {
-            latitude: pickupLocation.coordinates[1],
-            longitude: pickupLocation.coordinates[0],
-        }
-        : null;
-    const destination = dropLocation?.coordinates
-        ? {
-            latitude: dropLocation.coordinates[1],
-            longitude: dropLocation.coordinates[0],
-        }
-        : null;
-        console.log("rideData",rideData)
-        console.log("riderDetails",riderDetails)
-
     const matchedRider = rideData?.riders?.find((rider) => rider.name === riderDetails?.name);
-    console.log("matchedRider",matchedRider)
 
     const handleAcceptRide = async () => {
+        // Clear timeout
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+
         if (socket && matchedRider) {
             socket.emit('ride_accepted', {
                 data: {
@@ -177,6 +212,8 @@ export default function RideCome() {
         }
         await stopSound();
         setShowRideModal(false);
+        setRideData(null);
+        setTimeLeft(RIDE_REQUEST_TIMEOUT);
     };
 
     useEffect(() => {
@@ -197,56 +234,18 @@ export default function RideCome() {
         }
     }, [socket]);
 
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+            }
+            stopSound();
+        };
+    }, []);
+
     return (
         <View style={styles.container}>
-            {/* <View style={styles.mapContainer}>
-                {origin && destination && matchedRider ? (
-                    <MapView
-                        provider={PROVIDER_GOOGLE}
-                        style={styles.map}
-                        showsUserLocation={true}
-                        showsMyLocationButton={true}
-                        zoomControlEnabled={true}
-                        initialRegion={{
-                            latitude: origin.latitude,
-                            longitude: origin.longitude,
-                            latitudeDelta: 0.05,
-                            longitudeDelta: 0.05,
-                        }}
-                        customMapStyle={[
-                            {
-                                featureType: 'poi',
-                                stylers: [{ visibility: 'off' }],
-                            },
-                        ]}
-                    >
-                        <Marker coordinate={origin}>
-                            <Surface style={styles.markerContainer}>
-                                <MaterialCommunityIcons name="map-marker" size={24} color="#EF4444" />
-                            </Surface>
-                        </Marker>
-                        <Marker coordinate={destination}>
-                            <Surface style={styles.markerContainer}>
-                                <MaterialCommunityIcons name="flag-checkered" size={24} color="#22C55E" />
-                            </Surface>
-                        </Marker>
-                        <MapViewDirections
-                            origin={origin}
-                            destination={destination}
-                            apikey={GOOGLE_MAPS_APIKEY}
-                            strokeWidth={4}
-                            strokeColor="#6366F1"
-                            onError={(error) => console.error('Directions error:', error)}
-                        />
-                    </MapView>
-                ) : (
-                    <View style={styles.waitingContainer}>
-                        <MaterialCommunityIcons name="car" size={64} color="#6366F1" />
-                        <Text style={styles.waitingText}>Waiting for ride requests...</Text>
-                    </View>
-                )}
-            </View> */}
-
             <Portal>
                 <Modal
                     visible={showRideModal && !!rideData && !!matchedRider}
@@ -255,7 +254,10 @@ export default function RideCome() {
                 >
                     <Surface style={styles.modalContent}>
                         <Text style={styles.modalTitle}>New Ride Request</Text>
-                        
+                        <Text style={styles.timerText}>
+                            Time remaining: {Math.ceil(timeLeft / 1000)}s
+                        </Text>
+
                         <View style={styles.locationContainer}>
                             <View style={styles.locationItem}>
                                 <MaterialCommunityIcons name="map-marker" size={24} color="#EF4444" />
@@ -264,9 +266,9 @@ export default function RideCome() {
                                     <Text style={styles.locationDesc}>{rideData?.pickup_desc}</Text>
                                 </View>
                             </View>
-                            
+
                             <View style={styles.locationDivider} />
-                            
+
                             <View style={styles.locationItem}>
                                 <MaterialCommunityIcons name="flag-checkered" size={24} color="#22C55E" />
                                 <View style={styles.locationText}>
@@ -282,13 +284,13 @@ export default function RideCome() {
                                 <Text style={styles.detailLabel}>Distance</Text>
                                 <Text style={styles.detailValue}>{rideData?.distance} km</Text>
                             </View>
-                            
+
                             <View style={styles.detailItem}>
                                 <MaterialCommunityIcons name="clock-outline" size={20} color="#6366F1" />
                                 <Text style={styles.detailLabel}>Duration</Text>
                                 <Text style={styles.detailValue}>{rideData?.trafficDuration} min</Text>
                             </View>
-                            
+
                             <View style={styles.detailItem}>
                                 <MaterialCommunityIcons name="currency-inr" size={20} color="#6366F1" />
                                 <Text style={styles.detailLabel}>Fare</Text>
@@ -365,8 +367,15 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
         color: '#111827',
-        marginBottom: 20,
+        marginBottom: 8,
         textAlign: 'center',
+    },
+    timerText: {
+        fontSize: 16,
+        color: '#EF4444',
+        textAlign: 'center',
+        marginBottom: 20,
+        fontWeight: '500',
     },
     locationContainer: {
         backgroundColor: '#F3F4F6',

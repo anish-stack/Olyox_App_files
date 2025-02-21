@@ -44,6 +44,7 @@ const HomeScreen = () => {
   const handleLogout = useCallback(async () => {
     try {
       await SecureStore.deleteItemAsync('auth_token_cab');
+      await SecureStore.deleteItemAsync("isOnline"); 
       navigation.reset({
         index: 0,
         routes: [{ name: 'Onboarding' }],
@@ -59,25 +60,30 @@ const HomeScreen = () => {
   const toggleOnlineStatus = async () => {
     setLoading(true);
     try {
-      const token = await SecureStore.getItemAsync('auth_token_cab');
+      const token = await SecureStore.getItemAsync("auth_token_cab");
       const response = await axios.post(
-        'https://demoapi.olyox.com/api/v1/rider/toggleWorkStatusOfRider',
+        "https://demoapi.olyox.com/api/v1/rider/toggleWorkStatusOfRider",
         { status: !isOnline },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       const response_two = await axios.get(
-        'https://demoapi.olyox.com/api/v1/rider/user-details',
+        "https://demoapi.olyox.com/api/v1/rider/user-details",
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const partnerData = response_two.data.partner;
-      // console.log(partnerData)
-      setUserData(partnerData)
+      setUserData(partnerData);
+
       if (response.data.success) {
         setIsOnline(!isOnline);
+        await SecureStore.setItemAsync("isOnline", (!isOnline).toString()); // Store the new status
       }
     } catch (error) {
-      console.error('Toggle status failed:', error?.response?.data?.message || error.message);
+      console.error(
+        "Toggle status failed:",
+        error?.response?.data?.message || error.message
+      );
     } finally {
       setLoading(false);
     }
@@ -125,16 +131,7 @@ const HomeScreen = () => {
             <Text style={styles.menuText}>Profile</Text>
           </TouchableOpacity>
 
-          {/* <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => {
-              setMenuVisible(false);
-              router.push('/settings');
-            }}
-          >
-            <MaterialCommunityIcons name="cog" size={24} color="#FFB300" />
-            <Text style={styles.menuText}>Settings</Text>
-          </TouchableOpacity> */}
+          
 
           <View style={styles.menuDivider} />
 

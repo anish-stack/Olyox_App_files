@@ -1,33 +1,48 @@
 import { useState } from "react";
-import { View, Text, StyleSheet, Alert } from "react-native";
+import { View, Text, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import Input from "../../../components/Input";
 import Button from "../../../components/Button";
-import axios from 'axios';
+import axios from "axios";
 
 const LoginForm = ({ onLogin }) => {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
     const [phone, setPhone] = useState("");
 
     const handleLogin = async () => {
+        if (!phone.trim()) {
+            setError("Phone number is required");
+            return;
+        }
+
         try {
-            // Make the Axios request to the login endpoint
-            const response = await axios.post('https://demoapi.olyox.com/api/v1/parcel/login_parcel_partner', { number: phone });
-            console.log("response", response.data)
+            setLoading(true);
+            setError("");
+            const response = await axios.post(
+                "https://demoapi.olyox.com/api/v1/parcel/login_parcel_partner",
+                { number: phone }
+            );
+            console.log("response", response.data);
+
             if (response.data.success) {
                 console.log("Login successful", response.data);
-                onLogin(phone)
-
+                onLogin(phone);
             } else {
-                console.log("Login failed", response.data.message);
+                setError(response.data.message || "Login failed");
             }
         } catch (error) {
-            Alert.alert('Error', error?.response?.data?.message)
-            console.error("Error during login:", error);
+            const errorMessage = error?.response?.data?.message || "Something went wrong!";
+            setError(errorMessage);
+            Alert.alert("Error", errorMessage);
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Login</Text>
+
             <Input
                 placeholder="Phone Number"
                 value={phone}
@@ -35,7 +50,12 @@ const LoginForm = ({ onLogin }) => {
                 keyboardType="phone-pad"
                 icon="phone"
             />
-            <Button title="Send OTP" onPress={handleLogin} style={styles.button} />
+
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            <Button title={loading ? "Sending..." : "Send OTP"} onPress={handleLogin} style={styles.button} disabled={loading} />
+
+            {loading && <ActivityIndicator size="large" color="#e51e25" style={styles.loader} />}
         </View>
     );
 };
@@ -43,6 +63,7 @@ const LoginForm = ({ onLogin }) => {
 const styles = StyleSheet.create({
     container: {
         alignItems: "center",
+        padding: 20,
     },
     title: {
         fontSize: 24,
@@ -53,6 +74,13 @@ const styles = StyleSheet.create({
     button: {
         marginTop: 20,
         minWidth: 200,
+    },
+    loader: {
+        marginTop: 10,
+    },
+    errorText: {
+        color: "red",
+        marginTop: 10,
     },
 });
 

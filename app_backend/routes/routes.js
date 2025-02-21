@@ -1,5 +1,5 @@
 const express = require('express');
-const { registerRider, getAllRiders, changeLocation, login, resendOtp, verifyOtp, uploadDocuments, details, getMyAllDetails, getMyAllRides, toggleWorkStatusOfRider, verifyDocument } = require('../controllers/rider.controller');
+const { registerRider, getAllRiders, changeLocation, login, resendOtp, verifyOtp, uploadDocuments, details, getMyAllDetails, getMyAllRides, toggleWorkStatusOfRider, verifyDocument, uploadPaymentQr } = require('../controllers/rider.controller');
 const { calculateRidePriceForUser } = require('../controllers/ride.request');
 
 const router = express.Router();
@@ -25,6 +25,7 @@ router.post('/rider-verify', verifyOtp);
 router.post('/rider-resend', resendOtp);
 router.post('/rider-login', login);
 router.post('/rider-upload', Protect, upload.any(), uploadDocuments);
+router.post('/rider-uploadPaymentQr', Protect, upload.single('image'), uploadPaymentQr)
 router.get('/user-details', Protect, details);
 
 router.get('/getMyAllDetails', Protect, getMyAllDetails);

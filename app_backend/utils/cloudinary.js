@@ -11,11 +11,10 @@ cloudinary.config({
 
 const MAX_FILE_SIZE = 50000000; // 50 MB in bytes
 
-const uploadSingleImage = async (fileInput) => {
+const uploadSingleImage = async (fileInput,folder="image") => {
   try {
-    console.log("fileInput", fileInput);
 
-    // Check if fileInput is a Buffer
+
     if (Buffer.isBuffer(fileInput)) {
       // Validate file size for Buffer input
       if (fileInput.length > MAX_FILE_SIZE) {
@@ -24,7 +23,7 @@ const uploadSingleImage = async (fileInput) => {
       // Use upload_stream for Buffer input
       return await new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
-          { folder: "images", resource_type: "auto" }, // auto detects image/video type
+          { folder:folder, resource_type: "auto" }, // auto detects image/video type
           (error, result) => {
             if (error) {
               console.error("Error during image upload:", error.message);

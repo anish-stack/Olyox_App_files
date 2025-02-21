@@ -4,15 +4,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS } from '../constants/colors';
 import { useNavigation } from '@react-navigation/native';
+import { initializeSocket } from '../context/SocketService';
 
 export function Login() {
-    const [restaurant_BHID, setRestaurant_BHID] = useState('');
+    const [restaurant_BHID, setRestaurant_BHID] = useState('BH464998');
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
     const [resendDisabled, setResendDisabled] = useState(false);
     const navigation = useNavigation()
-
+    // const data = await initializeSocket({
+    //     userType: "tiffin_partner",
+    //     userId: data.user._id,
+    // });
     const sendOTP = async () => {
         if (!restaurant_BHID) {
             Alert.alert('Error', 'Please enter your Restaurant BHID');
@@ -87,10 +91,16 @@ export function Login() {
             });
 
             const data = await response.json();
-
+            console.log(data)
             if (data.success) {
                 await AsyncStorage.setItem('userToken', data.token);
                 await AsyncStorage.setItem('tiffin_data', JSON.stringify(data.user));
+                // const data = await initializeSocket({
+                //     userType: "tiffin_partner",
+                //     userId: data.user._id,
+                // });
+
+                console.log(data)
                 navigation.replace('Home');
             } else {
                 Alert.alert('Error', data.message || 'Invalid OTP');
