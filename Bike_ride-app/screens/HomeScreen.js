@@ -10,6 +10,7 @@ import {
   Modal,
   Pressable,
   BackHandler,
+  Alert,
 } from "react-native";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
@@ -44,12 +45,12 @@ const HomeScreen = () => {
   const handleLogout = useCallback(async () => {
     try {
       await SecureStore.deleteItemAsync('auth_token_cab');
-      await SecureStore.deleteItemAsync("isOnline"); 
+      await SecureStore.deleteItemAsync("isOnline");
       navigation.reset({
         index: 0,
         routes: [{ name: 'Onboarding' }],
       })
-     
+
       BackHandler.exitApp()
     } catch (error) {
       console.error('Logout Error:', error);
@@ -62,13 +63,13 @@ const HomeScreen = () => {
     try {
       const token = await SecureStore.getItemAsync("auth_token_cab");
       const response = await axios.post(
-        "https://demoapi.olyox.com/api/v1/rider/toggleWorkStatusOfRider",
+        "http://192.168.1.10:3000/api/v1/rider/toggleWorkStatusOfRider",
         { status: !isOnline },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const response_two = await axios.get(
-        "https://demoapi.olyox.com/api/v1/rider/user-details",
+        "http://192.168.1.10:3000/api/v1/rider/user-details",
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -80,6 +81,9 @@ const HomeScreen = () => {
         await SecureStore.setItemAsync("isOnline", (!isOnline).toString()); // Store the new status
       }
     } catch (error) {
+      Alert.alert("Toggle status", error?.response?.data?.message || "Toggle status failed", [
+        { text: "OK" }
+      ]);
       console.error(
         "Toggle status failed:",
         error?.response?.data?.message || error.message
@@ -131,9 +135,22 @@ const HomeScreen = () => {
             <Text style={styles.menuText}>Profile</Text>
           </TouchableOpacity>
 
-          
+
 
           <View style={styles.menuDivider} />
+
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              setMenuVisible(false);
+              navigation.navigate('Recharge')
+            }}
+
+          >
+            <MaterialCommunityIcons name="contactless-payment" size={24} color="#FFB300" />
+            <Text style={styles.menuText}>Recharge</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}

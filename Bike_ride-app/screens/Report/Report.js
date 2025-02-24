@@ -20,7 +20,7 @@ export default function Report({ isRefresh }) {
                     return;
                 }
 
-                const response = await axios.get('https://demoapi.olyox.com/api/v1/rider/getMyAllDetails', {
+                const response = await axios.get('http://192.168.1.10:3000/api/v1/rider/getMyAllDetails', {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
@@ -53,8 +53,8 @@ export default function Report({ isRefresh }) {
         );
     }
 
-    const StatCard = ({ icon, iconColor, bgColor, value, label ,route }) => (
-        <TouchableOpacity onPress={()=> navigation.navigate(route)} style={[styles.statsCard, { flex: 1 }]}>
+    const StatCard = ({ icon, iconColor, bgColor, value, label, route }) => (
+        <TouchableOpacity onPress={() => navigation.navigate(route)} style={[styles.statsCard, { flex: 1 }]}>
             <View style={[styles.iconContainer, { backgroundColor: bgColor }]}>
                 <MaterialCommunityIcons name={icon} size={24} color={iconColor} />
             </View>
@@ -81,28 +81,34 @@ export default function Report({ isRefresh }) {
                         label="Total Rides"
                     />
                     <StatCard
-                        icon="cash"
-                        iconColor="#22C55E"
-                        bgColor="#F0FDF4"
-                        value={`₹${reportData?.totalEarnings?.toFixed(2) || '0.00'}`}
-                        label="Total Earnings"
+                        icon="calendar-clock"
+                        iconColor="#7C3AED"
+                        route={'WorkingData'}
+
+                        bgColor="#F3E8FF"
+                        value={"Check"}
+                        label="Working Days"
                     />
+
                 </View>
 
                 <View style={styles.statsRow}>
                     <StatCard
                         icon="star"
                         iconColor="#F59E0B"
+                        route={""}
+
                         bgColor="#FEF3C7"
                         value={reportData?.averageRating?.toFixed(1) || '0.0'}
                         label="Average Rating"
                     />
                     <StatCard
-                        icon="calendar-clock"
-                        iconColor="#7C3AED"
-                        bgColor="#F3E8FF"
-                        value={reportData?.workingDays || 0}
-                        label="Working Days"
+                        icon="cash"
+                        iconColor="#22C55E"
+                        route={""}
+                        bgColor="#F0FDF4"
+                        value={`₹${reportData?.totalEarnings?.toFixed(2) || '0.00'}`}
+                        label="Total Earnings"
                     />
                 </View>
             </View>

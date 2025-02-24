@@ -1,3 +1,4 @@
+const CabRiderTimes = require('../models/CabRiderTimes');
 const rideRequestModel = require('../models/ride.request.model');
 const Rider = require('../models/Rider.model');
 const generateOtp = require('../utils/Otp.Genreator');
@@ -21,7 +22,7 @@ exports.registerRider = async (req, res) => {
       return res.status(400).json({ message: "Please enter your BH Number" });
     }
     // Validate required fields
-    if (!name || !phone || !vehicleName || !vehicleType || !PricePerKm || !VehicleNumber) {
+    if (!name || !phone || !vehicleName || !vehicleType || !VehicleNumber) {
       return res.status(400).json({ success: false, message: "All fields are required." });
     }
 
@@ -71,7 +72,7 @@ exports.registerRider = async (req, res) => {
     const newRider = new Rider({
       name,
       phone,
-      rideVehicleInfo: { vehicleName, vehicleType, PricePerKm, VehicleNumber },
+      rideVehicleInfo: { vehicleName, vehicleType, VehicleNumber },
       BH,
       otp,
       isOtpVerify: false,
@@ -342,6 +343,9 @@ exports.uploadDocuments = async (req, res) => {
       if (file.originalname.includes('dl')) uploadedDocs.license = uploadResponse.secure_url;
       if (file.originalname.includes('rc')) uploadedDocs.rc = uploadResponse.secure_url;
       if (file.originalname.includes('insurance')) uploadedDocs.insurance = uploadResponse.secure_url;
+      if (file.originalname.includes('aadharBack')) uploadedDocs.aadharBack = uploadResponse.secure_url;
+      if (file.originalname.includes('aadharFront')) uploadedDocs.aadharFront = uploadResponse.secure_url;
+      if (file.originalname.includes('pancard')) uploadedDocs.pancard = uploadResponse.secure_url;
       fs.unlinkSync(file.path);
     }
     console.log(uploadedDocs)
@@ -361,6 +365,7 @@ exports.uploadDocuments = async (req, res) => {
 exports.uploadPaymentQr = async (req, res) => {
   try {
     const file = req.file || {}
+    console.log(file)
     const userId = req.user.userId;
     const findRider = await Rider.findById(userId);
 
@@ -473,7 +478,7 @@ exports.getMyAllRides = async (req, res) => {
   }
 };
 
-
+const moment = require('moment');
 exports.toggleWorkStatusOfRider = async (req, res) => {
   try {
     const user_id = req.user?.userId;
@@ -483,28 +488,131 @@ exports.toggleWorkStatusOfRider = async (req, res) => {
 
     // Fetch the current status of the rider
     const rider = await Rider.findById({ _id: user_id });
-
     if (!rider) {
       return res.status(404).json({ message: "Rider not found" });
+    }
+
+    if (!rider.isPaid) {
+      return res.status(400).json({ message: "Oops! It looks like your account isn’t recharged. Please top up to proceed." });
     }
 
     // Toggle the status dynamically
     const newStatus = !rider.isAvailable;
 
-    // Update the status in the database
+    // Update rider's isAvailable status
     const toggleStatus = await Rider.updateOne({ _id: user_id }, { $set: { isAvailable: newStatus } });
 
-    if (toggleStatus.modifiedCount === 1) {
-      return res.status(200).json({ message: `Status updated to ${newStatus ? 'Available' : 'Unavailable'} successfully` });
-    } else {
+    if (toggleStatus.modifiedCount !== 1) {
       return res.status(400).json({ message: "Status update failed" });
     }
+
+    // Handle CabRider session tracking
+    const today = moment().format("YYYY-MM-DD");
+    let cabRider = await CabRiderTimes.findOne({ riderId: user_id, date: today });
+
+    if (!cabRider) {
+      cabRider = new CabRiderTimes({
+        riderId: user_id,
+        status: newStatus ? "online" : "offline",
+        date: today,
+        sessions: []
+      });
+    } else {
+      // Update status
+      cabRider.status = newStatus ? "online" : "offline";
+    }
+
+    if (newStatus) {
+      // Rider is going online - start a new session
+      cabRider.sessions.push({
+        onlineTime: new Date(),
+        offlineTime: null,
+        duration: null
+      });
+    } else {
+      // Rider is going offline - close the last session
+      const lastSession = cabRider.sessions[cabRider.sessions.length - 1];
+      if (lastSession && !lastSession.offlineTime) {
+        lastSession.offlineTime = new Date();
+        // Calculate duration in minutes
+        lastSession.duration = Math.round((new Date() - new Date(lastSession.onlineTime)) / 60000);
+      }
+    }
+
+    await cabRider.save();
+
+    return res.status(200).json({
+      message: `Status updated to ${newStatus ? 'Available (Online)' : 'Unavailable (Offline)'} successfully`,
+      cabRider
+    });
+
   } catch (error) {
     console.error("Error toggling work status:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
+
+
+exports.getMySessionsByUserId = async (req, res) => {
+  try {
+    const userId = req.query.userId;
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required in query." });
+    }
+
+    // Fetch all CabRider sessions for the user
+    const sessionsData = await CabRiderTimes.find({ riderId: userId }).sort({ date: -1 });
+
+    if (!sessionsData.length) {
+      return res.status(404).json({ message: "No session data found for this user." });
+    }
+
+    // Prepare response data
+    const result = sessionsData.map((daySession) => {
+      let totalDurationInSeconds = 0;
+
+      // Calculate total duration and format individual sessions
+      const formattedSessions = daySession.sessions.map((session) => {
+        if (session.onlineTime && session.offlineTime) {
+          totalDurationInSeconds += session.duration * 60; // Convert minutes to seconds
+        }
+
+        return {
+          onlineTime: session.onlineTime,
+          offlineTime: session.offlineTime || "Active", // If still online
+          duration: session.duration
+            ? `${Math.floor(session.duration)} min`
+            : "Ongoing",
+        };
+      });
+
+      // Format total time for the day
+      const hours = Math.floor(totalDurationInSeconds / 3600);
+      const minutes = Math.floor((totalDurationInSeconds % 3600) / 60);
+      const seconds = totalDurationInSeconds % 60;
+
+      const totalTimeFormatted = `${hours}h ${minutes}m ${seconds}s`;
+
+      return {
+        date: daySession.date,
+        totalSessions: daySession.sessions.length,
+        totalTimeOnline: totalTimeFormatted,
+        sessions: formattedSessions,
+      };
+    });
+
+    return res.status(200).json({
+      message: "Session data fetched successfully.",
+      data: result,
+    });
+
+  } catch (error) {
+    console.error("Error fetching session data:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
 
 exports.verifyDocument = async (req, res) => {
   try {

@@ -17,6 +17,7 @@ const RiderSchema = new Schema({
         },
         PricePerKm: {
             type: Number
+                
         },
         VehicleNumber: {
             type: String,
@@ -52,9 +53,23 @@ const RiderSchema = new Schema({
         },
         insurance: {
             type: String,
+        },
+        aadharBack:{
+            type: String
+        },
+        aadharFront:{
+            type: String
+        },
+        pancard:{
+            type: String
         }
 
     },
+    isPaid:{
+        type: Boolean,
+        default: false
+    },
+    
     Bh: {
         type: String
     },

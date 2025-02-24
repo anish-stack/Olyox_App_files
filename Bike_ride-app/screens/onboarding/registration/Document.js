@@ -26,9 +26,12 @@ const DOCUMENTS = [
   { id: 'dl', title: 'Driver\'s License', icon: 'car-outline' },
   { id: 'rc', title: 'Registration Certificate', icon: 'document-text-outline' },
   { id: 'insurance', title: 'Insurance', icon: 'card-outline' },
+  { id: 'aadharBack', title: 'aadharBack', icon: 'card-outline' },
+  { id: 'aadharFront', title: 'aadharFront', icon: 'card-outline' },
+  { id: 'pancard', title: 'pancard', icon: 'card-outline' }
 ];
 
-const API_URL = 'https://demoapi.olyox.com/api/v1/rider/rider-upload';
+const API_URL = 'http://192.168.1.10:3000/api/v1/rider/rider-upload';
 
 export default function Documents() {
   const [images, setImages] = useState({});
@@ -58,7 +61,7 @@ export default function Documents() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: 1,
-       
+
       });
 
       if (!result.canceled && result.assets?.[0]?.uri) {

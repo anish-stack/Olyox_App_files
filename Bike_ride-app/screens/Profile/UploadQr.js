@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const API_URL = 'http://192.168.194.28:3000/api/v1/rider/rider-uploadPaymentQr';
+const API_URL = 'http://demoapi.olyox.com/api/v1/rider/rider-uploadPaymentQr';
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB in bytes
 
 export default function UploadQr() {
@@ -58,7 +58,7 @@ export default function UploadQr() {
 
       if (!result.canceled && result.assets?.[0]?.uri) {
         const imageSize = await checkImageSize(result.assets[0].uri);
-        
+
         if (imageSize > MAX_IMAGE_SIZE) {
           setError('Image size must be less than 2MB');
           return;
@@ -79,7 +79,7 @@ export default function UploadQr() {
       setError('Please select an image first');
       return;
     }
-
+    console.log(image)
     try {
       setLoading(true);
       setError(null);
@@ -90,7 +90,7 @@ export default function UploadQr() {
       }
 
       const formData = new FormData();
-      
+
       // Get the file extension from the URI
       const uriParts = image.split('.');
       const fileType = uriParts[uriParts.length - 1];
@@ -129,6 +129,7 @@ export default function UploadQr() {
         throw new Error(response.data.message || 'Upload failed');
       }
     } catch (err) {
+      console.log(err.response.data)
       const errorMessage = err.response?.data?.message || err.message || 'Failed to upload QR code';
       setError(errorMessage);
       Alert.alert('Error', errorMessage);
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
   },
   uploadArea: {
     width: '100%',
-    aspectRatio: 4/3,
+    aspectRatio: 4 / 3,
     backgroundColor: '#F3F4F6',
     borderRadius: 12,
     borderWidth: 2,

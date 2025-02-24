@@ -26,6 +26,10 @@ import SupportScreen from './screens/Support/Support';
 import UploadQr from './screens/Profile/UploadQr';
 import BhVerification from './screens/onboarding/BH_Re/BhVerification';
 import RegisterWithBh from './screens/onboarding/BH_Re/Bh_registeration';
+import BhOtpVerification from './screens/onboarding/BH_Re/BhOtpVerification';
+import Recharge from './screens/Recharge/Recharge';
+import RechargeHistory from './screens/Profile/RechargeHistory';
+import WorkingData from './screens/WorkingData/WorkingData';
 
 const Stack = createNativeStackNavigator();
 
@@ -45,7 +49,7 @@ export default function App() {
 
         if (token) {
           const response = await axios.get(
-            'https://demoapi.olyox.com/api/v1/rider/user-details',
+            'http://192.168.1.10:3000/api/v1/rider/user-details',
             { headers: { Authorization: `Bearer ${token}` } }
           );
 
@@ -108,6 +112,10 @@ export default function App() {
                     {/* BhVerification */}
                     <Stack.Screen name="enter_bh" options={{ headerShown: false, title: 'My Profile' }} component={BhVerification} />
                     <Stack.Screen name="Register" options={{ headerShown: false, title: 'My Profile' }} component={RegisterWithBh} />
+                    <Stack.Screen name="OtpVerify" options={{ headerShown: false, title: 'Otp Verification' }} component={BhOtpVerification} />
+                    <Stack.Screen name="Recharge" options={{ headerShown: true, title: 'Recharge' }} component={Recharge} />
+                    <Stack.Screen name="recharge-history" options={{ headerShown: true, title: 'Recharge History' }} component={RechargeHistory} />
+                    <Stack.Screen name="WorkingData" options={{ headerShown: false, title: 'RechargeHistory' }} component={WorkingData} />
 
 
                   </Stack.Navigator>

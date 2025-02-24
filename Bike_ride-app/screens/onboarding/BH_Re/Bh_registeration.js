@@ -43,6 +43,7 @@ export default function RegisterWithBh() {
       },
     },
     dob: '',
+    member_id: '',
     referral_code_which_applied: bh_id,
     is_referral_applied: true,
   });

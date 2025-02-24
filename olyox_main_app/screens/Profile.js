@@ -33,7 +33,7 @@ export default function UserProfile() {
                   const gmail_token = await tokenCache.getToken('auth_token');
                     const db_token = await tokenCache.getToken('auth_token_db');
             const token = db_token || gmail_token
-            const response = await axios.get('https://demoapi.olyox.com/api/v1/user/find-Orders-details', {
+            const response = await axios.get('http://192.168.1.10:3000/api/v1/user/find-Orders-details', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setOrderData(response.data.data);

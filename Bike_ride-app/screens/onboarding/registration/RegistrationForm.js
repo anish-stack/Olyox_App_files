@@ -5,10 +5,10 @@ import { TextInput, Button, Card, Title, Paragraph, ActivityIndicator, Snackbar,
 import axios from "axios"
 import { Alert } from "react-native"
 import * as SecureStore from 'expo-secure-store';
-import { useNavigation } from "@react-navigation/native"
+import { useNavigation, useRoute } from "@react-navigation/native"
 
 const API_BASE_URL = "https://api.olyox.com/api/v1"
-const MAIN_API_BASE_URL = "https://demoapi.olyox.com/api/v1/rider"
+const MAIN_API_BASE_URL = "http://192.168.1.10:3000/api/v1/rider"
 
 const vehicleTypes = ["SEDAN", "SUV", "PRIME", "MINI"]
 const vehicleBrands = [
@@ -25,14 +25,15 @@ const vehicleBrands = [
 ]
 
 export default function RegistrationForm() {
-  const [step, setStep] = useState(1)
-  const [bhId, setBhId] = useState("BH")
+  const route = useRoute();
+  const { bh } = route.params || {};
+  const [step, setStep] = useState(1);
+  const [bhId, setBhId] = useState(bh ?? "BH");
   const [userData, setUserData] = useState(null)
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
   const [vehicleName, setVehicleName] = useState("")
   const [vehicleType, setVehicleType] = useState("")
-  const [pricePerKm, setPricePerKm] = useState("")
   const [vehicleNumber, setVehicleNumber] = useState("")
   const [otp, setOtp] = useState("")
   const [loading, setLoading] = useState(false)
@@ -41,6 +42,7 @@ export default function RegistrationForm() {
   const [vehicleTypeMenuVisible, setVehicleTypeMenuVisible] = useState(false)
   const [vehicleNameMenuVisible, setVehicleNameMenuVisible] = useState(false)
   const navigation = useNavigation()
+  console.log(bh)
   const fetchUserDetails = async () => {
     if (!bhId) {
       setError("Please enter a BH ID")
@@ -50,10 +52,11 @@ export default function RegistrationForm() {
     setError("")
     try {
       const response = await axios.get(`${API_BASE_URL}/app-get-details?Bh=${bhId}`)
+      
       if (response.data.success) {
         setUserData(response.data.data)
         setName(response.data.data.name)
-        setPhone(response.data.data.phone || "")
+        setPhone(response.data.data.number || "")
         setStep(2)
       } else {
         setError("User not found")
@@ -79,7 +82,7 @@ export default function RegistrationForm() {
         rideVehicleInfo: {
           vehicleName,
           vehicleType,
-          PricePerKm: pricePerKm,
+        
           VehicleNumber: vehicleNumber,
         },
         BH: bhId,
@@ -162,7 +165,6 @@ export default function RegistrationForm() {
     if (!phone) missingFields.push("Phone");
     if (!vehicleName) missingFields.push("Vehicle Name");
     if (!vehicleType) missingFields.push("Vehicle Type");
-    if (!pricePerKm) missingFields.push("Price Per Km");
     if (!vehicleNumber) missingFields.push("Vehicle Number");
 
     if (missingFields.length > 0) {
@@ -174,11 +176,7 @@ export default function RegistrationForm() {
       setError("Invalid phone number")
       return false
     }
-    const price = Number.parseFloat(pricePerKm)
-    if (isNaN(price) || price <= 15) {
-      setError("Price per Km must be a number greater than 15")
-      return false
-    }
+  
     return true
   }
 
@@ -190,7 +188,7 @@ export default function RegistrationForm() {
           <Title style={styles.cardTitle}>User Information</Title>
           <Paragraph style={styles.cardParagraph}>Name: {userData.name}</Paragraph>
           <Paragraph style={styles.cardParagraph}>Email: {userData.email}</Paragraph>
-          <Paragraph style={styles.cardParagraph}>Plan: {userData.member_id.title}</Paragraph>
+          <Paragraph style={styles.cardParagraph}>Plan: {userData?.member_id?.title || ""}</Paragraph>
           <Paragraph style={styles.cardParagraph}>
             Free Plan Active: {userData.isFreePlanActive ? "Yes" : "No"}
           </Paragraph>
@@ -214,7 +212,7 @@ export default function RegistrationForm() {
       <Button mode="contained" onPress={fetchUserDetails} style={styles.button} labelStyle={styles.buttonLabel}>
         Next
       </Button>
-      <TouchableOpacity onPress={()=>navigation.navigate('enter_bh')} style={styles.referralCode}>
+      <TouchableOpacity onPress={() => navigation.navigate('enter_bh')} style={styles.referralCode}>
         <Text style={styles.referralCodetext}>I have a Referral code </Text>
       </TouchableOpacity>
     </View>
@@ -280,15 +278,7 @@ export default function RegistrationForm() {
           />
         ))}
       </Menu>
-      <TextInput
-        label="Price per Km"
-        value={pricePerKm}
-        onChangeText={setPricePerKm}
-        mode="outlined"
-        style={styles.input}
-        keyboardType="numeric"
-        theme={{ colors: { primary: "#f7de02" } }}
-      />
+  
       <TextInput
         label="Vehicle Number"
         value={vehicleNumber}
@@ -412,17 +402,17 @@ const styles = StyleSheet.create({
   successSnackbar: {
     backgroundColor: "#77dd77",
   },
-  referralCode:{
-    textAlign:"center",
-    display:'flex',
-    alignItems:'center',
-    justifyContent:'center',
-    marginVertical:14
+  referralCode: {
+    textAlign: "center",
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 14
   },
-  referralCodetext:{
-    fontSize:22,
-    fontWeight:500,
-    color:'#003300'
+  referralCodetext: {
+    fontSize: 22,
+    fontWeight: 500,
+    color: '#003300'
   }
 })
 

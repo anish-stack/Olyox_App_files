@@ -41,7 +41,7 @@ export default function Profile() {
             const token = await SecureStore.getItemAsync('auth_token_cab');
             if (token) {
                 const response = await axios.get(
-                    'https://demoapi.olyox.com/api/v1/rider/user-details',
+                    'http://192.168.1.10:3000/api/v1/rider/user-details',
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 setUserData(response.data.partner);
@@ -209,7 +209,7 @@ export default function Profile() {
                         </View>
 
                     </ScrollView>
-                  
+
                     <TouchableOpacity
                         style={styles.closeButton}
                         onPress={() => setShowUpdateProfile(false)}
@@ -256,9 +256,9 @@ export default function Profile() {
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                     <Text style={styles.statValue}>
-                        ₹{userData?.rideVehicleInfo?.PricePerKm || 0}
+                        {userData?.BH || 0}
                     </Text>
-                    <Text style={styles.statLabel}>Per KM</Text>
+                    <Text style={styles.statLabel}>BH ID</Text>
                 </View>
             </View>
 
@@ -298,7 +298,15 @@ export default function Profile() {
                     <Text style={styles.menuText}>Refer & Earn</Text>
                     <MaterialCommunityIcons name="chevron-right" size={24} color="#757575" />
                 </TouchableOpacity>
-                
+                <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => navigation.navigate('recharge-history')}
+                >
+                    <MaterialCommunityIcons name="contactless-payment-circle" size={24} color="#FFB300" />
+                    <Text style={styles.menuText}>Recharge History</Text>
+                    <MaterialCommunityIcons name="chevron-right" size={24} color="#757575" />
+                </TouchableOpacity>
+
                 <TouchableOpacity
                     style={styles.menuItem}
                     onPress={() => navigation.navigate('upload-qr')}

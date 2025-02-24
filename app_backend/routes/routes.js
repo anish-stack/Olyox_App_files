@@ -1,5 +1,5 @@
 const express = require('express');
-const { registerRider, getAllRiders, changeLocation, login, resendOtp, verifyOtp, uploadDocuments, details, getMyAllDetails, getMyAllRides, toggleWorkStatusOfRider, verifyDocument, uploadPaymentQr } = require('../controllers/rider.controller');
+const { registerRider, getAllRiders, changeLocation, login, resendOtp, verifyOtp, uploadDocuments, details, getMyAllDetails, getMyAllRides, toggleWorkStatusOfRider, verifyDocument, uploadPaymentQr, getMySessionsByUserId } = require('../controllers/rider.controller');
 const { calculateRidePriceForUser } = require('../controllers/ride.request');
 
 const router = express.Router();
@@ -31,6 +31,7 @@ router.get('/user-details', Protect, details);
 router.get('/getMyAllDetails', Protect, getMyAllDetails);
 router.get('/getMyAllRides', Protect, getMyAllRides);
 router.post('/toggleWorkStatusOfRider', Protect, toggleWorkStatusOfRider);
+router.get('/getMySessionsByUserId', getMySessionsByUserId);
 
 router.get('/', getAllRiders);
 

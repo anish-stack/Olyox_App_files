@@ -526,7 +526,7 @@ app.post('/webhook/cab-receive-location', Protect, async (req, res) => {
             },
             { upsert: true, new: true }
         );
-        console.log("data", data)
+        // console.log("data", data)
 
         res.status(200).json({ message: 'Location updated successfully' });
     } catch (error) {
