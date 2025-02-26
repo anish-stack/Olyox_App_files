@@ -1,20 +1,32 @@
 const HotelUser = require("../models/Hotel.user");
 const HotelListing = require("../models/Hotels.model");
+const generateOtp = require("../utils/Otp.Genreator");
+const sendToken = require("../utils/SendToken");
+const SendWhatsAppMessage = require("../utils/whatsapp_send");
+const cloudinary = require("cloudinary").v2;
+require("dotenv").config();
+const fs = require("fs").promises;
+const streamifier = require("streamifier");
 
+cloudinary.config({
+    cloud_name: "dsd8nepa5",
+    api_key: "634914486911329",
+    api_secret: "dOXqEsWHQMjHNJH_FU6_iHlUHBE",
+});
 exports.register_hotel_user = async (req, res) => {
     try {
-        // Destructure request body and files
-        const files = req.files || [];
-        const { hotel_name, hotel_zone, hotel_address, hotel_owner, hotel_phone, amenities, area, hotel_geo_location, Documents } = req.body;
+        // Destructure request body
+        const { bh, hotel_name, BhJsonData, hotel_zone, hotel_address, hotel_owner, hotel_phone, amenities, area, hotel_geo_location, Documents } = req.body;
 
+        // Check for required fields
         const emptyFields = [];
         if (!hotel_name) emptyFields.push("hotel_name");
         if (!hotel_zone) emptyFields.push("hotel_zone");
         if (!hotel_address) emptyFields.push("hotel_address");
         if (!hotel_phone) emptyFields.push("hotel_phone");
         if (!hotel_geo_location) emptyFields.push("hotel_geo_location");
+        if (!bh) emptyFields.push("Bh");
 
-        // If there are missing fields, return a user-friendly error
         if (emptyFields.length > 0) {
             return res.status(400).json({
                 success: false,
@@ -23,11 +35,12 @@ exports.register_hotel_user = async (req, res) => {
             });
         }
 
-        // Validate geo_location format (ensure it's an array of two numbers)
+        // Validate geo_location format
         if (
+            !hotel_geo_location.coordinates ||
             !Array.isArray(hotel_geo_location.coordinates) ||
             hotel_geo_location.coordinates.length !== 2 ||
-            !hotel_geo_location.coordinates.every(coord => typeof coord === 'number')
+            !hotel_geo_location.coordinates.every(coord => typeof coord === "number")
         ) {
             return res.status(400).json({
                 success: false,
@@ -35,14 +48,42 @@ exports.register_hotel_user = async (req, res) => {
             });
         }
 
-        // Check for duplicate hotel_zone
-        const existingHotelZone = await HotelUser.findOne({ hotel_name });
-        if (existingHotelZone) {
+        // Check for duplicate hotel_name
+        const existingHotel = await HotelUser.findOne({ hotel_name });
+        if (existingHotel) {
             return res.status(409).json({
                 success: false,
-                message: `A hotel with the zone "${hotel_name}" already exists. Please use a different zone.`,
+                message: `A hotel with the name "${hotel_name}" already exists. Please use a different name.`,
             });
         }
+
+        // Check for duplicate Bh
+        const existingBh = await HotelUser.findOne({ bh });
+        if (existingBh) {
+            return res.status(409).json({
+                success: false,
+                message: `The Bh value "${bh}" is already registered. Please use a unique Bh.`,
+            });
+        }
+
+        // Check for duplicate hotel_phone
+        const existingPhone = await HotelUser.findOne({ hotel_phone });
+        if (existingPhone) {
+            return res.status(409).json({
+                success: false,
+                message: `The phone number "${hotel_phone}" is already in use. Please use a different number.`,
+            });
+        }
+
+        // Generate OTP
+        const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+        const GenrateOtp = generateOtp();
+        const ExpireTime = new Date().getTime() + 5 * 60 * 1000; // Expire time is 5 minutes
+
+        const message = `Please verify your hotel registration. Your OTP is ${GenrateOtp}, sent to your WhatsApp number ${hotel_phone}.`;
+
+        // Send a WhatsApp message with the OTP
+        SendWhatsAppMessage(message, hotel_phone);
 
         // Create a new hotel user
         const newHotelUser = new HotelUser({
@@ -53,8 +94,12 @@ exports.register_hotel_user = async (req, res) => {
             hotel_phone,
             amenities,
             area,
+            bh,
+            BhJsonData,
             hotel_geo_location,
             Documents, // Attach files if any
+            otp: GenrateOtp,
+            otp_expires: ExpireTime,
         });
 
         // Save the new hotel user to the database
@@ -63,12 +108,121 @@ exports.register_hotel_user = async (req, res) => {
         // Respond with success
         return res.status(201).json({
             success: true,
-            message: "Hotel user registered successfully!",
+            message: "Hotel user registered successfully! OTP sent for verification.",
             data: newHotelUser,
         });
     } catch (error) {
-        // Handle unexpected errors
         console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "An unexpected error occurred. Please try again later.",
+            error: error.message,
+        });
+    }
+};
+exports.verifyOtp = async (req, res) => {
+    try {
+        console.log(req.body)
+        const { hotel_phone, otp } = req.body;
+
+        if (!hotel_phone || !otp) {
+            return res.status(400).json({
+                success: false,
+                message: "Phone number and OTP are required.",
+            });
+        }
+
+        const hotelUser = await HotelUser.findOne({ hotel_phone });
+
+        if (!hotelUser) {
+            return res.status(404).json({
+                success: false,
+                message: "No user found with this phone number.",
+            });
+        }
+
+        if (hotelUser.contactNumberVerify) {
+            return res.status(400).json({
+                success: false,
+                message: "Contact number already verified.",
+            })
+        }
+
+        if (hotelUser.otp !== Number(otp)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid OTP. Please enter the correct OTP.",
+            });
+        }
+
+        const currentTime = new Date().getTime();
+        if (currentTime > hotelUser.otp_expires) {
+            return res.status(400).json({
+                success: false,
+                message: "OTP has expired. Please request a new OTP.",
+            });
+        }
+
+        // Mark user as verified
+        hotelUser.contactNumberVerify = true;
+        hotelUser.otp = null;
+        hotelUser.otp_expires = null;
+
+
+        // await hotelUser.save();
+        await sendToken(hotelUser, res, 200)
+        // return res.status(200).json({
+        //     success: true,
+        //     message: "OTP verified successfully. Your hotel registration is now complete.",
+        // });
+    } catch (error) {
+        console.error("Error verifying OTP:", error);
+        return res.status(500).json({
+            success: false,
+            message: "An unexpected error occurred. Please try again later.",
+            error: error.message,
+        });
+    }
+};
+
+exports.resendOtp = async (req, res) => {
+    try {
+        const { hotel_phone } = req.body;
+
+        if (!hotel_phone) {
+            return res.status(400).json({
+                success: false,
+                message: "Phone number is required to resend OTP.",
+            });
+        }
+
+        const hotelUser = await HotelUser.findOne({ hotel_phone });
+
+        if (!hotelUser) {
+            return res.status(404).json({
+                success: false,
+                message: "No user found with this phone number.",
+            });
+        }
+
+        // Generate a new OTP and set expiry time
+        const newOtp = generateOtp();
+        const newExpiryTime = new Date().getTime() + 5 * 60 * 1000; // 5 minutes validity
+
+        hotelUser.otp = newOtp;
+        hotelUser.otp_expires = newExpiryTime;
+        await hotelUser.save();
+
+        // Send the new OTP via WhatsApp
+        const message = `Your new OTP for hotel  is ${newOtp}. It will expire in 5 minutes.`;
+        SendWhatsAppMessage(message, hotel_phone);
+
+        return res.status(200).json({
+            success: true,
+            message: "A new OTP has been sent to your registered WhatsApp number.",
+        });
+    } catch (error) {
+        console.error("Error resending OTP:", error);
         return res.status(500).json({
             success: false,
             message: "An unexpected error occurred. Please try again later.",
@@ -78,20 +232,255 @@ exports.register_hotel_user = async (req, res) => {
 };
 
 
-exports.add_hotel_listing = async (req, res) => {
+exports.find_Hotel_Login = async (req, res) => {
     try {
-        const data = req.body
-        const newData = new HotelListing(data)
-        await newData.save()
-        return res.status(201).json({
+        const user = req.user.id
+
+        const foundFreshDetails = await HotelUser.findOne({ _id: user })
+        if (!foundFreshDetails) {
+            return res.status(404).json({
+                success: false,
+                message: "No user found with this id.",
+            });
+        }
+
+        const foundListingOfRooms = await HotelListing.find({ hotel_user: foundFreshDetails?._id })
+
+        return res.status(200).json({
             success: true,
-            message: "Hotel listing added successfully",
-            data: newData
+            message: "Hotel login successful.",
+            data: user,
+            listings: foundListingOfRooms,
+            listingCount: foundListingOfRooms.length
         })
     } catch (error) {
         console.log(error)
+        res.status(501).json({
+            success: false,
+            message: "An unexpected error occurred. Please try again later.",
+        })
+
     }
 }
+
+
+exports.LoginHotel = async (req, res) => {
+    try {
+        const { BH } = req.body;
+
+        // Find the hotel by BH ID
+        const foundHotel = await HotelUser.findOne({ BH });
+        if (!foundHotel) {
+            return res.status(404).json({
+                success: false,
+                message: "No user found with this ID.",
+            });
+        }
+
+        // Generate OTP and expiration time
+        const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+        const otpCode = generateOtp();
+        const otpExpireTime = Date.now() + 5 * 60 * 1000; // OTP valid for 5 minutes
+
+        // Update hotel details with OTP
+        foundHotel.otp = otpCode;
+        foundHotel.otp_expires = otpExpireTime;
+        await foundHotel.save();
+
+        // Construct message
+        const message = `Please verify your hotel login. Your OTP is ${otpCode}, sent to your WhatsApp number ${foundHotel.hotel_phone}.`;
+
+        // Send OTP via WhatsApp
+        await SendWhatsAppMessage(message, foundHotel.hotel_phone);
+
+        return res.status(200).json({
+            success: true,
+            message: "Hotel login initiated. Please verify your OTP.",
+        });
+    } catch (error) {
+        console.error("Error in hotel login:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong. Please try again later.",
+        });
+    }
+};
+
+
+
+exports.toggleHotelStatus = async (req, res) => {
+    try {
+        const { status } = req.body;
+        const userId = req.user.id;
+
+        // Fetch user details
+        const foundFreshDetails = await HotelUser.findById(userId);
+        if (!foundFreshDetails) {
+            return res.status(404).json({
+                success: false,
+                message: "No user found with this ID.",
+            });
+        }
+
+        // Check verification and block status
+        if (!foundFreshDetails.contactNumberVerify) {
+            return res.status(400).json({
+                success: false,
+                message: "Please verify your contact number first.",
+            });
+        }
+        if (!foundFreshDetails.DocumentUploaded) {
+            return res.status(400).json({
+                success: false,
+                message: "Please upload your document first.",
+            });
+        }
+        if (!foundFreshDetails.DocumentUploadedVerified) {
+            return res.status(400).json({
+                success: false,
+                message: "Document verification is pending.",
+            });
+        }
+        if (foundFreshDetails.isBlockByAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: "Your account has been blocked by the admin.",
+            });
+        }
+
+        // Convert status properly
+        const changeStatusToBoolean = status === true || status === "true";
+
+        // Update the online status
+        foundFreshDetails.isOnline = changeStatusToBoolean;
+        await foundFreshDetails.save(); // Ensure changes are saved
+
+        return res.status(200).json({
+            success: true,
+            message: changeStatusToBoolean
+                ? "Hotel is now online and ready to take bookings."
+                : "Hotel is now offline.",
+        });
+    } catch (error) {
+        console.error("Error in toggleHotelStatus:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "An unexpected error occurred. Please try again later.",
+            error: error.message, // Optional: Send error details for debugging
+        });
+    }
+};
+
+
+
+
+exports.add_hotel_listing = async (req, res) => {
+    try {
+        const user = req.user.id;
+        const {
+            room_type,
+            hotel_user,
+            has_tag,
+            amenities,
+            allowed_person,
+            cut_price,
+            book_price,
+            cancellation_policy,
+            is_tax_applied,
+            tax_fair,
+            isPackage,
+            package_add_ons
+        } = req.body;
+
+        if (!room_type || !book_price) {
+            return res.status(400).json({
+                success: false,
+                message: "room_type and book_price are required fields.",
+            });
+        }
+
+        // Convert has_tag string into an array
+        let hasTagArray = [];
+        if (typeof has_tag === "string" && has_tag.trim() !== "") {
+            hasTagArray = has_tag.split(",").map(tag => tag.trim());
+        }
+
+        // Calculate discount percentage
+        const discount_percentage = cut_price > 0
+            ? Math.round(((cut_price - book_price) / cut_price) * 100)
+            : 0;
+
+        const images = {};
+        const imageFields = ['main_image', 'second_image', 'third_image', 'fourth_image', 'fifth_image'];
+
+        const uploadImage = async (file) => {
+            if (!file) return null;
+            const result = await cloudinary.uploader.upload(file.path, {
+                folder: "hotel_listings"
+            });
+            return { url: result.secure_url, public_id: result.public_id };
+        };
+
+        for (const field of imageFields) {
+            if (req.files[field]) {
+                images[field] = await uploadImage(req.files[field][0]);
+            }
+        }
+
+        // Ensure package_add_ons is an object/array if isPackage is true
+        let packageAddOns = [];
+        if (isPackage && package_add_ons) {
+            try {
+                packageAddOns = JSON.parse(package_add_ons);
+                if (!Array.isArray(packageAddOns)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "package_add_ons must be an array of objects.",
+                    });
+                }
+            } catch (error) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid format for package_add_ons. It should be a valid JSON array.",
+                });
+            }
+        }
+
+        const newHotelListing = new HotelListing({
+            room_type,
+            hotel_user: user?._id,
+            has_tag: hasTagArray,
+            amenities,
+            allowed_person,
+            cut_price,
+            book_price,
+            discount_percentage,
+            cancellation_policy,
+            is_tax_applied,
+            tax_fair,
+            isPackage,
+            package_add_ons: packageAddOns,
+            ...images
+        });
+
+        console.log(newHotelListing);
+        await newHotelListing.save();
+
+        return res.status(201).json({
+            success: true,
+            message: "Hotel listing added successfully",
+            data: newHotelListing
+        });
+    } catch (error) {
+        console.error("Error adding hotel listing:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong while adding the hotel listing",
+        });
+    }
+};
+
 
 
 

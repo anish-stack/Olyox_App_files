@@ -10,7 +10,7 @@ const HotelUserSchema = new Schema({
     hotel_zone: {
         type: String,
         required: true,
-       
+
     },
     hotel_address: {
         type: String,
@@ -45,9 +45,35 @@ const HotelUserSchema = new Schema({
         buzzerDoorBell: { type: Boolean, default: false },
         attachedBathroom: { type: Boolean, default: false },
     },
-    hotel_main_show_image:{
+    contactNumberVerify: {
+        type: Boolean,
+        default: false
+    },
+
+
+    isVerifiedTag: {
+        type: Boolean,
+        default: false
+    },
+    DocumentUploaded: {
+        type: Boolean,
+        default: false
+    },
+    DocumentUploadedVerified: {
+        type: Boolean,
+        default: false
+    },
+    isBlockByAdmin:{
+        type: Boolean,
+        default: false
+    },
+    ClearAllCheckOut: {
+        type: Boolean,
+        default: false
+    },
+    hotel_main_show_image: {
         type: String,
-        default:'https://content.jdmagicbox.com/v2/comp/delhi/t6/011pxx11.xx11.190201182203.t1t6/catalogue/hotel-la-pitampura-delhi-hotels-h7zomvqdiy-250.jpg'
+        default: 'https://content.jdmagicbox.com/v2/comp/delhi/t6/011pxx11.xx11.190201182203.t1t6/catalogue/hotel-la-pitampura-delhi-hotels-h7zomvqdiy-250.jpg'
     },
     area: {
         type: String,
@@ -65,6 +91,22 @@ const HotelUserSchema = new Schema({
     },
     property_pdf: {
         type: String,
+    },
+    bh: {
+        type: String
+    },
+    isOnline: {
+        type: Boolean,
+        default: false
+    },
+    BhJsonData: {
+        type: Object
+    },
+    otp: {
+        type: Number
+    },
+    otp_expires: {
+        type: Date
     },
     Documents: [{
         d_type: {

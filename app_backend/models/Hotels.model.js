@@ -6,18 +6,15 @@ const hotelRoomListing = new Schema({
     room_type: {
         type: String,
         required: true,
-       
     },
     hotel_user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'HotelUser',
-        required: true,
-     
+        // required: true,
     },
     has_tag: [
         {
             type: String,
-           
         }
     ],
     rating_number: {
