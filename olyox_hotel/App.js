@@ -12,11 +12,16 @@ import VerifyOtp from './screens/Hotel_List/VerifyOtp';
 import { TokenProvider, useToken } from './context/AuthContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HotelListingForm from './screens/HotelListingForm/HotelListingForm';
+import Login from './screens/Login/Login';
+import AllRoom from './screens/Room/AllRoom';
+import SingleDetailsPage from './screens/Room/SingleDetailsPage';
+import Booking_create from './screens/Booking_create/Booking_create';
 
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
   const { isLoggedIn } = useToken();
+
 
   if (!isLoggedIn) {
     return (
@@ -33,12 +38,20 @@ const AppNavigator = () => {
         <Stack.Screen name="Onboard" options={{ headerShown: false }} component={Onboarding} />
         <Stack.Screen name="BhVerification" options={{ headerShown: false }} component={BhVerification} />
         <Stack.Screen name="Register" options={{ headerShown: false }} component={RegisterViaBh} />
+        <Stack.Screen name="Login" options={{ headerShown: false }} component={Login} />
         <Stack.Screen name="OtpVerify" options={{ headerShown: false }} component={BhOtpVerification} />
         <Stack.Screen name="OtpVerifyRegister" options={{ headerShown: false }} component={VerifyOtp} />
 
         {/* Hotel Listing */}
         <Stack.Screen name="HotelListing" options={{ headerShown: false }} component={Hotel_List} />
         <Stack.Screen name="Rooms" options={{ headerShown: false }} component={HotelListingForm} />
+        <Stack.Screen name="All_Rooms" options={{ headerShown: false }} component={AllRoom} />
+        <Stack.Screen name="RoomDetail" options={{ headerShown: false }} component={SingleDetailsPage} />
+
+
+        {/* Booking */}
+        <Stack.Screen name="Booking-create" options={{ headerShown: false }} component={Booking_create} />
+
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -48,9 +61,9 @@ const RootApp = () => {
   return (
     <SafeAreaProvider>
 
-    <TokenProvider>
-      <AppNavigator />
-    </TokenProvider>
+      <TokenProvider>
+        <AppNavigator />
+      </TokenProvider>
     </SafeAreaProvider>
   );
 };

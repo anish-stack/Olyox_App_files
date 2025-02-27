@@ -62,6 +62,8 @@ const useHotelApi = () => {
     }
   };
 
+  
+
 
 
   return { findDetails ,toggleHotel};

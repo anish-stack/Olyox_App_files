@@ -28,9 +28,9 @@ const BhVerification = () => {
             setName(data.data);
             setResponse(data);
 
-            // setTimeout(() => {
-            //     navigation.navigate('Register', { bh_id: bh });
-            // }, 2000);
+            setTimeout(() => {
+                navigation.navigate('Register', { bh_id: bh });
+            }, 2000);
         } catch (err) {
             setResponse(null);
             setError(err.response?.data?.message || 'An unexpected error occurred. Please try again.');

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,16 @@ import {
   ActivityIndicator,
   Alert,
   TouchableOpacity,
-  Animated
+  Animated,
+  RefreshControl
+
 } from 'react-native';
 import { MaterialIcons, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import useHotelApi from '../../context/HotelDetails';
 import styles, { colors } from './styles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Layout from '../../components/Layout/Layout';
+import { useNavigation } from '@react-navigation/native';
 
 export default function HotelDashboard() {
   const { findDetails, toggleHotel } = useHotelApi();
@@ -23,7 +26,8 @@ export default function HotelDashboard() {
   const [workStatus, setWorkStatus] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const navigation = useNavigation()
+  const [refresh, setRefresh] = useState(false)
   // Mock data for the dashboard cards
   const [dashboardStats, setDashboardStats] = useState({
     totalRooms: 24,
@@ -75,8 +79,13 @@ export default function HotelDashboard() {
     }
   };
 
+  const handleRefresh = useCallback(() => {
+    fetchHotelData();
+  }, [refresh]); // Ensure dependencies are included
+
+
   const handleNewBooking = () => {
-    Alert.alert('New Booking', 'Navigate to booking screen');
+ navigation.navigate('Booking-create')
     // Navigation would go here in a real implementation
   };
 
@@ -121,7 +130,11 @@ export default function HotelDashboard() {
     <Layout data={hotelData} title={hotelData?.hotel_name} profileImages={"https://img.freepik.com/free-vector/user-blue-gradient_78370-4692.jpg"} >
 
       <View style={styles.container}>
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <ScrollView refreshControl={<RefreshControl
+          onRefresh={handleRefresh}
+          refreshing={refresh}
+
+        />} style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {/* Hotel Header Card */}
           <View style={styles.headerContainer}>
             <Text style={styles.hotelName}>{hotelData?.hotel_name || "Not Aviable"}</Text>
@@ -156,11 +169,13 @@ export default function HotelDashboard() {
           {/* Dashboard Cards */}
           <Text style={styles.sectionTitle}>Dashboard</Text>
           <View style={styles.cardsContainer}>
-            <View style={styles.card}>
-              <FontAwesome5 name="door-open" size={24} color={colors.primaryViolet} />
-              <Text style={styles.cardTitle}>Total Rooms</Text>
-              <Text style={styles.cardValue}>{listingData.length || 0}</Text>
-            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('All_Rooms')}>
+              <View style={styles.card}>
+                <FontAwesome5 name="door-open" size={24} color={colors.primaryViolet} />
+                <Text style={styles.cardTitle}>Total Rooms</Text>
+                <Text style={styles.cardValue}>{listingData.length || 0}</Text>
+              </View>
+            </TouchableOpacity>
 
             <View style={styles.card}>
               <FontAwesome5 name="bed" size={24} color={colors.primaryRed} />

@@ -123,7 +123,7 @@ exports.register_hotel_user = async (req, res) => {
 exports.verifyOtp = async (req, res) => {
     try {
         console.log(req.body)
-        const { hotel_phone, otp } = req.body;
+        const { hotel_phone, bh, otp, type = "register" } = req.body;
 
         if (!hotel_phone || !otp) {
             return res.status(400).json({
@@ -132,7 +132,14 @@ exports.verifyOtp = async (req, res) => {
             });
         }
 
-        const hotelUser = await HotelUser.findOne({ hotel_phone });
+        let hotelUser
+        if (type === "register") {
+            hotelUser = await HotelUser.findOne({ hotel_phone });
+        } else {
+            hotelUser = await HotelUser.findOne({ bh: hotel_phone });
+        }
+
+        console.log(hotelUser)
 
         if (!hotelUser) {
             return res.status(404).json({
@@ -269,7 +276,7 @@ exports.LoginHotel = async (req, res) => {
         const { BH } = req.body;
 
         // Find the hotel by BH ID
-        const foundHotel = await HotelUser.findOne({ BH });
+        const foundHotel = await HotelUser.findOne({ bh: BH });
         if (!foundHotel) {
             return res.status(404).json({
                 success: false,
@@ -305,6 +312,33 @@ exports.LoginHotel = async (req, res) => {
         });
     }
 };
+
+exports.find_My_rooms = async (req, res) => {
+    try {
+        const user = req.user.id;
+        const foundListingOfRooms = await HotelListing.find({ hotel_user: user });
+
+        if (!foundListingOfRooms.length) {
+            return res.status(404).json({
+                success: false,
+                message: "No rooms found for this user.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            rooms: foundListingOfRooms,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error.",
+            error: error.message,
+        });
+    }
+};
+
+
 
 
 
@@ -428,24 +462,32 @@ exports.add_hotel_listing = async (req, res) => {
             }
         }
 
-        // Ensure package_add_ons is an object/array if isPackage is true
         let packageAddOns = [];
+
         if (isPackage && package_add_ons) {
             try {
-                packageAddOns = JSON.parse(package_add_ons);
+                if (typeof package_add_ons === 'string') {
+                    // Convert comma-separated string to an array
+                    packageAddOns = package_add_ons.split(',').map(item => item.trim());
+                } else {
+                    packageAddOns = JSON.parse(package_add_ons);
+                }
+
                 if (!Array.isArray(packageAddOns)) {
                     return res.status(400).json({
                         success: false,
-                        message: "package_add_ons must be an array of objects.",
+                        message: "package_add_ons must be an array.",
                     });
                 }
             } catch (error) {
                 return res.status(400).json({
                     success: false,
-                    message: "Invalid format for package_add_ons. It should be a valid JSON array.",
+                    message: "Invalid format for package_add_ons. It should be a JSON array or a comma-separated string.",
                 });
             }
         }
+
+        console.log(packageAddOns)
 
         const newHotelListing = new HotelListing({
             room_type,
@@ -480,6 +522,39 @@ exports.add_hotel_listing = async (req, res) => {
         });
     }
 };
+
+exports.deleteHotelRoom = async (req, res) => {
+    try {
+        const { roomId } = req.query;
+
+        if (!roomId) {
+            return res.status(400).json({ success: false, message: "Room ID is required" });
+        }
+
+        const hotelRoom = await HotelListing.findById(roomId);
+        if (!hotelRoom) {
+            return res.status(404).json({ success: false, message: "Hotel room not found" });
+        }
+
+        // Delete images from Cloudinary
+        const imageFields = ["main_image", "second_image", "third_image", "fourth_image", "fifth_image"];
+        for (let field of imageFields) {
+            if (hotelRoom[field]?.public_id) {
+                await cloudinary.uploader.destroy(hotelRoom[field].public_id);
+            }
+        }
+
+        // Delete the hotel room from the database
+        await HotelListing.findByIdAndDelete(roomId);
+
+        return res.status(200).json({ success: true, message: "Hotel room deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting hotel room:", error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+
 
 
 
@@ -580,5 +655,33 @@ exports.getHotelsListingDetails = async (req, res) => {
             success: false,
             message: "Server error. Please try again later."
         });
+    }
+};
+
+exports.toggleRoomStatus = async (req, res) => {
+    try {
+        const { roomId } = req.query;
+        const { isRoomAvailable } = req.body;
+        console.log("isRoomAvailable",isRoomAvailable)
+
+        if (!roomId) {
+            return res.status(400).json({ success: false, message: "Room ID is required" });
+        }
+        if (isRoomAvailable === undefined) {
+            return res.status(400).json({ success: false, message: "Status is required" });
+        }
+
+        const room = await HotelListing.findById(roomId);
+        if (!room) {
+            return res.status(404).json({ success: false, message: "Room not found" });
+        }
+
+        room.isRoomAvailable = isRoomAvailable;
+        await room.save();
+
+        return res.status(200).json({ success: true, message: "Room status updated successfully" });
+    } catch (error) {
+        console.error("Error updating room status:", error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
     }
 };

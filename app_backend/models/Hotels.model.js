@@ -100,15 +100,12 @@ const hotelRoomListing = new Schema({
         default: false
     },
     package_add_ons: [
-        {
-            title: {
-                type: String
-            },
-            description: {
-                type: String
-            }
-        }
+        String
     ],
+    isRoomAvailable: {
+        type: Boolean,
+        default: false
+    },
     reviews: [
         {
             type: mongoose.Schema.Types.ObjectId,
