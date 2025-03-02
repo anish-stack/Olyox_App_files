@@ -1,4 +1,4 @@
-const { uploadSingleImage } = require("../../utils/cloudinary");
+const { uploadSingleImage, deleteImage } = require("../../utils/cloudinary");
 const OnboardModel = require('../../models/Admin/OnboardingSlides');
 
 exports.create_onboarding_slide = async (req, res) => {

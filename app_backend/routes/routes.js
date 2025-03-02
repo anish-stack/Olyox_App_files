@@ -1,5 +1,5 @@
 const express = require('express');
-const { registerRider, getAllRiders, changeLocation, login, resendOtp, verifyOtp, uploadDocuments, details, getMyAllDetails, getMyAllRides, toggleWorkStatusOfRider, verifyDocument, uploadPaymentQr, getMySessionsByUserId } = require('../controllers/rider.controller');
+const { registerRider, getAllRiders, changeLocation, login, resendOtp, verifyOtp, uploadDocuments, details, getMyAllDetails, getMyAllRides, toggleWorkStatusOfRider, verifyDocument, uploadPaymentQr, getMySessionsByUserId, riderDocumentsVerify, updateBlockStatus } = require('../controllers/rider.controller');
 const { calculateRidePriceForUser } = require('../controllers/ride.request');
 
 const router = express.Router();
@@ -27,11 +27,13 @@ router.post('/rider-login', login);
 router.post('/rider-upload', Protect, upload.any(), uploadDocuments);
 router.post('/rider-uploadPaymentQr', Protect, upload.single('image'), uploadPaymentQr)
 router.get('/user-details', Protect, details);
+router.put('/updateRiderBlock/:id',updateBlockStatus)
 
 router.get('/getMyAllDetails', Protect, getMyAllDetails);
 router.get('/getMyAllRides', Protect, getMyAllRides);
 router.post('/toggleWorkStatusOfRider', Protect, toggleWorkStatusOfRider);
 router.get('/getMySessionsByUserId', getMySessionsByUserId);
+router.put('/rider_document_verify/:id', riderDocumentsVerify)
 
 router.get('/', getAllRiders);
 
