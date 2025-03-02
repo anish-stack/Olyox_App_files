@@ -22,7 +22,6 @@ import Single_Hotel_details from './Hotels/Hotel_Details/Single_Hotel_details';
 import BookingSuccess from './Hotels/Hotel_Details/BookingSuccess';
 import { AppRegistry } from 'react-native';
 import { name as appName } from './app.json';
-import { tokenCache } from './Auth/cache';
 import Onboarding from './onboarding/Onboarding';
 import Ride_Rating from './Ride/Show_near_by_cab/Ride_Rating';
 import FloatingRide from './Ride/Floating_ride/Floating.ride';
@@ -43,6 +42,7 @@ import { Button } from 'react-native';
 import UserProfile from './screens/Profile';
 import Tiffins_Page from './Foods/Tiffins_Page/Tiffins_Page';
 import ErrorBoundaryWrapper from './context/ErrorBoundary';
+import { tokenCache } from './Auth/cache';
 
 const Stack = createNativeStackNavigator();
 Sentry.init({
@@ -65,10 +65,11 @@ const App = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const gmail_token = await tokenCache.getToken('auth_token');
+        console.log("I am start")
+        // const gmail_token = await tokenCache.getToken('auth_token');
         const db_token = await tokenCache.getToken('auth_token_db');
-        console.log(db_token)
-        setIsLogin(gmail_token !== null || db_token !== null);
+        console.log("DB Token", db_token)
+        setIsLogin(db_token !== null);
       } catch (error) {
         console.error('Error fetching tokens:', error);
       } finally {

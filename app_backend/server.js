@@ -545,6 +545,11 @@ app.get('/rider', async (req, res) => {
     }
 });
 
+app.get('/',(req,res)=>{
+    res.status(201).json({
+        message: 'Welcome to the API',
+    })
+})
 
 
 // Global error handler

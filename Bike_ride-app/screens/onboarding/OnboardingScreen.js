@@ -55,7 +55,8 @@ const navigation = useNavigation()
         <View style={styles.content}>
           {currentScreen === "onboarding" && (
             <OnboardingWelcome
-            onRegister={()=>navigation.navigate('register')}
+            onRegister={()=>navigation.navigate('enter_bh')}
+            onComplete={()=>navigation.navigate('register')}
               onLogin={() => setCurrentScreen("login")}
             />
           )}

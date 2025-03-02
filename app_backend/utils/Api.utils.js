@@ -1,0 +1,67 @@
+const Settings =require('../models/Admin/Settings');
+const axios = require('axios')
+
+exports.FindWeather = async (lat, lon) => {
+    if (!lat || !lon) {
+        throw new Error('Latitude and Longitude are required');
+    }
+
+    try {
+        const foundKey = await Settings.findOne();
+        const apiKey = foundKey?.openMapApiKey;
+
+        if (!apiKey) {
+            throw new Error('API Key is required');
+        }
+
+        const { data } = await axios.get(
+            `https://api.openweathermap.org/data/2.5/weather`,
+            {
+                params: { lat, lon, appid: apiKey }
+            }
+        );
+
+        return data.weather || data;
+    } catch (error) {
+        console.error('Weather API Error:', error.message);
+        throw new Error(error.message);
+    }
+};
+
+
+exports.CheckTolls = async (origin, destination) => {
+    if (!origin || !destination) {
+        throw new Error('Origin and destination are required');
+    }
+
+    try {
+        const foundKey = await Settings.findOne();
+        const apiKey = foundKey?.googleApiKey;
+
+        if (!apiKey) {
+            throw new Error('Google API Key is required');
+        }
+
+        const requestBody = {
+            origin: { location: { latLng: origin } },
+            destination: { location: { latLng: destination } },
+            travelMode: "DRIVE",
+            extraComputations: ["TOLLS"]
+        };
+
+        const { data } = await axios.post(
+            `https://routes.googleapis.com/directions/v2:computeRoutes?key=${apiKey}`,
+            requestBody,
+            {
+                headers: {
+                    'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration,routes.travelAdvisory.tollInfo'
+                }
+            }
+        );
+
+        return data.routes[0] || {};
+    } catch (error) {
+        console.error('Routes API Error:', error.message);
+        throw new Error(error.message);
+    }
+};

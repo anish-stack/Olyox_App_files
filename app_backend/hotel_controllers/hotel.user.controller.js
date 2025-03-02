@@ -148,12 +148,12 @@ exports.verifyOtp = async (req, res) => {
             });
         }
 
-        if (hotelUser.contactNumberVerify) {
-            return res.status(400).json({
-                success: false,
-                message: "Contact number already verified.",
-            })
-        }
+        // if (hotelUser.contactNumberVerify) {
+        //     return res.status(400).json({
+        //         success: false,
+        //         message: "Contact number already verified.",
+        //     })
+        // }
 
         if (hotelUser.otp !== Number(otp)) {
             return res.status(400).json({
@@ -256,7 +256,7 @@ exports.find_Hotel_Login = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Hotel login successful.",
-            data: user,
+            data: foundFreshDetails,
             listings: foundListingOfRooms,
             listingCount: foundListingOfRooms.length
         })
@@ -338,9 +338,74 @@ exports.find_My_rooms = async (req, res) => {
     }
 };
 
+exports.uploadDocuments = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "Unauthorized access. Please log in." });
+        }
 
+        const findUser = await HotelUser.findById(userId);
+        if (!findUser) {
+            return res.status(404).json({ success: false, message: "User not found. Please check your account details." });
+        }
 
+        if (findUser.DocumentUploaded) {
+            return res.status(400).json({ success: false, message: "You have already uploaded your documents." });
+        }
+        if (findUser.DocumentUploadedVerified) {
+            return res.status(400).json({ success: false, message: "Your documents have already been verified." });
+        }
 
+        if (!req.files || Object.keys(req.files).length === 0) {
+            return res.status(400).json({ success: false, message: "No files uploaded. Please upload the required documents." });
+        }
+
+        const documentFields = ['aadhar_front', 'aadhar_Back', 'panCard', 'gst', 'addressProof', 'ProfilePic'];
+        const documents = [];
+
+        // Helper function to upload images to Cloudinary
+        const uploadImage = async (file) => {
+            if (!file) return null;
+            const result = await cloudinary.uploader.upload(file.path, {
+                folder: "hotel_listings_documents"
+            });
+            return { url: result.secure_url, public_id: result.public_id };
+        };
+
+        for (const field of documentFields) {
+            if (req.files[field]) {
+                const uploadedImage = await uploadImage(req.files[field][0]);
+                if (uploadedImage) {
+                    documents.push({
+                        d_type: field,
+                        d_url: uploadedImage.url,
+                        d_public_id: uploadedImage.public_id
+                    });
+                }
+            }
+        }
+
+        if (documents.length === 0) {
+            return res.status(400).json({ success: false, message: "File upload failed. Please try again." });
+        }
+
+        // Update user document fields
+        findUser.Documents = documents;
+        findUser.DocumentUploaded = true;
+        await findUser.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Documents uploaded successfully.",
+            documents: documents
+        });
+
+    } catch (error) {
+        console.error("Upload Error:", error);
+        return res.status(500).json({ success: false, message: "An error occurred while uploading documents. Please try again later." });
+    }
+};
 
 exports.toggleHotelStatus = async (req, res) => {
     try {
@@ -562,7 +627,7 @@ exports.deleteHotelRoom = async (req, res) => {
 exports.getHotelsNearByMe = async (req, res) => {
     try {
         const { lat, lng } = req.query;
-        console.log(req.query)
+
 
 
         let hotel_listing = await HotelUser.find({
@@ -579,7 +644,7 @@ exports.getHotelsNearByMe = async (req, res) => {
 
         // If no nearby hotels are found, fetch all hotels and shuffle the data
         if (hotel_listing.length === 0) {
-            hotel_listing = await HotelListing.find();
+            hotel_listing = await HotelListing.find().sort({ isRoomAvailable: -1 }).populate('hotel_user');
 
             hotel_listing = hotel_listing.sort(() => Math.random() - 0.5);
         }
@@ -602,6 +667,7 @@ exports.getHotelsDetails = async (req, res) => {
         console.log(req.params)
 
         let hotel_user = await HotelUser.findById(params);
+
         if (!hotel_user) {
             return res.status(404).json({ success: false, message: "Hotel not found." })
 
@@ -614,6 +680,7 @@ exports.getHotelsDetails = async (req, res) => {
             hotel_listing = await HotelListing.find();
             hotel_listing = hotel_listing.sort(() => Math.random() - 0.5);
         }
+        console.log("hotel_listing", hotel_listing)
 
         res.status(200).json({
             success: true,
@@ -634,7 +701,7 @@ exports.getHotelsListingDetails = async (req, res) => {
         const { hotelId } = req.params;
 
         // Find the hotel by its ID
-        let hotel_listing = await HotelListing.findById(hotelId);
+        let hotel_listing = await HotelListing.findById(hotelId).populate('hotel_user');
 
         // Check if the hotel was found
         if (!hotel_listing) {
@@ -662,7 +729,7 @@ exports.toggleRoomStatus = async (req, res) => {
     try {
         const { roomId } = req.query;
         const { isRoomAvailable } = req.body;
-        console.log("isRoomAvailable",isRoomAvailable)
+        console.log("isRoomAvailable", isRoomAvailable)
 
         if (!roomId) {
             return res.status(400).json({ success: false, message: "Room ID is required" });

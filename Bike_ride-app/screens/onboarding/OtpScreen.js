@@ -6,6 +6,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
+import { initializeSocket } from "../../context/socketService";
 
 const OtpScreen = ({ onVerify, number }) => {
   const [otp, setOtp] = useState("");
@@ -24,24 +25,75 @@ const OtpScreen = ({ onVerify, number }) => {
     return () => clearInterval(interval);
   }, [isResendDisabled, timer]);
 
+
+  const initializeConnection = async (maxRetries = 4, retryDelay = 2000, userId) => {
+    let attempts = 0;
+    console.log(userId)
+    while (attempts < maxRetries) {
+      try {
+        const data = await initializeSocket({
+          userType: 'driver',
+          userId: userId
+        });
+        console.log(data)
+
+        if (data?.connected) {
+          console.log('Socket connected successfully:', data);
+          navigation.navigate('Home');
+          return; // Exit function if connected
+        }
+      } catch (error) {
+        console.error(`Socket connection failed (Attempt ${attempts + 1}):`, error);
+      }
+
+      attempts++;
+      if (attempts < maxRetries) {
+        console.log(`Retrying socket connection... (${attempts}/${maxRetries})`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      }
+    }
+
+    // If all attempts fail, show an alert
+    Alert.alert('Connection Failed', 'Unable to connect to the server. Please try again later.');
+  };
+
   const handleOtpVerify = async () => {
+    console.log(
+
+      otp, number
+    )
     try {
       const response = await axios.post(
-        'http://192.168.1.10:3000/api/v1/rider/rider-verify',
+        'http://192.168.1.3:3000/api/v1/rider/rider-verify',
         { otp, number }
       );
+      console.log("response.data", response.data)
       if (response.data.success) {
         const token = response.data.token;
         const type = response.data.redirect?.type;
+        const accountStatus = response.data.accountStatus;
+        const isDocumentUpload = response.data.isDocumentUpload;
+        const DocumentVerify = response.data.DocumentVerify;
+
         await SecureStore.setItemAsync('auth_token_cab', token);
-     
-          navigation.navigate('Home')
-      
+
+        console.log(response.data)
+        // 🚀 Improved Navigation Logic
+        if (!accountStatus) {
+          navigation.navigate('UploadDocuments');
+        } else if (!isDocumentUpload) {
+          navigation.navigate('UploadDocuments');
+        } else if (!DocumentVerify) {
+          navigation.navigate('Wait_Screen');
+        } else {
+          await initializeConnection(5, 6000, response?.data?.user)
+        }
 
         onVerify();
       } else {
         console.log("OTP verification failed:", response.data.message);
         Alert.alert("Error", response.data.message);
+        navigation.navigate('Onboard'); // Ensure `Onboard` is correct
       }
     } catch (error) {
       Alert.alert('Error', error?.response?.data?.message || "Something went wrong");
@@ -49,10 +101,11 @@ const OtpScreen = ({ onVerify, number }) => {
     }
   };
 
+
   const handleResendOtp = async () => {
     try {
       const response = await axios.post(
-        'http://192.168.1.10:3000/api/v1/parcel/login_parcel_otp_resend',
+        'http://192.168.1.3:3000/api/v1/parcel/login_parcel_otp_resend',
         { number }
       );
       if (response.data.success) {

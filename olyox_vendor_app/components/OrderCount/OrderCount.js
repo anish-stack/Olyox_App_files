@@ -60,7 +60,7 @@ export default function OrderCount({isRefresh}) {
                 }
 
                 const { data } = await axios.get(
-                    'http://192.168.1.10:3000/api/v1/tiffin/get_single_tiffin_profile',
+                    'http://192.168.1.3:3000/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -85,7 +85,7 @@ export default function OrderCount({isRefresh}) {
     const handleFetchOrderDetails = async () => {
         setLoading(true);
         try {
-            const { data } = await axios.get(`http://192.168.1.10:3000/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
+            const { data } = await axios.get(`http://192.168.1.3:3000/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
             if (data.success) {
                 const allOder = data.data;
                 const runningOrders = allOder.filter(order => order.status === 'Confirmed');

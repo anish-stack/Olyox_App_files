@@ -2,7 +2,7 @@
   "name": "olyox_user_app",
   "version": "1.0.0",
   "main": "index.js",
-  "proxy": "http://192.168.1.10:3000",
+  "proxy": "http://192.168.1.3:3000",
   "scripts": {
     "start": "expo start --dev-client",
     "android": "expo run:android",

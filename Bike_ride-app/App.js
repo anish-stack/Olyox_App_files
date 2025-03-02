@@ -30,6 +30,8 @@ import BhOtpVerification from './screens/onboarding/BH_Re/BhOtpVerification';
 import Recharge from './screens/Recharge/Recharge';
 import RechargeHistory from './screens/Profile/RechargeHistory';
 import WorkingData from './screens/WorkingData/WorkingData';
+import ReferalHistory from './screens/Profile/ReferalHistory';
+import Withdraw from './screens/Profile/Withdraw';
 
 const Stack = createNativeStackNavigator();
 
@@ -49,7 +51,7 @@ export default function App() {
 
         if (token) {
           const response = await axios.get(
-            'http://192.168.1.10:3000/api/v1/rider/user-details',
+            'http://192.168.1.3:3000/api/v1/rider/user-details',
             { headers: { Authorization: `Bearer ${token}` } }
           );
 
@@ -116,6 +118,8 @@ export default function App() {
                     <Stack.Screen name="Recharge" options={{ headerShown: true, title: 'Recharge' }} component={Recharge} />
                     <Stack.Screen name="recharge-history" options={{ headerShown: true, title: 'Recharge History' }} component={RechargeHistory} />
                     <Stack.Screen name="WorkingData" options={{ headerShown: false, title: 'RechargeHistory' }} component={WorkingData} />
+                    <Stack.Screen name="referral-history" options={{ headerShown: false, title: 'RechargeHistory' }} component={ReferalHistory} />
+                    <Stack.Screen name="withdraw" options={{ headerShown: false, title: 'RechargeHistory' }} component={Withdraw} />
 
 
                   </Stack.Navigator>

@@ -36,11 +36,11 @@ export default function AddOn({ restaurant_id }) {
   )
 
   const fetchFoods = useCallback(async () => {
-    console.log("restaurant_ haveid",restaurant_id)
+    // console.log("restaurant_ haveid",restaurant_id)
     setLoading(true)
     try {
       const { data } = await axios.get(
-        `http://192.168.1.10:3000/api/v1/tiffin/find_Restaurant_And_Her_foods?restaurant_id=${restaurant_id?._id}`,
+        `http://192.168.1.3:3000/api/v1/tiffin/find_Restaurant_And_Her_foods?restaurant_id=${restaurant_id?._id}`,
       )
       if (data.details) {
         setDetails(data.details)

@@ -1,7 +1,9 @@
 const RideRequest = require('../models/ride.request.model');
 const Riders = require('../models/Rider.model')
 const axios = require('axios');
-const Crypto = require('crypto')
+const Crypto = require('crypto');
+const { FindWeather, CheckTolls } = require('../utils/Api.utils');
+const Settings = require('../models/Admin/Settings');
 exports.createRequest = async (req, res) => {
     try {
 
@@ -56,6 +58,7 @@ exports.createRequest = async (req, res) => {
 
 
         await newRideRequest.save();
+        console.log("ride save 0", newRideRequest)
 
         res.status(201).json({
             message: 'Ride request created successfully',
@@ -87,7 +90,7 @@ exports.findRider = async (id, io) => {
         }
 
         const [longitude, latitude] = pickupLocation.coordinates;
-
+        console.log(vehicleType)
         const riders = await Riders.aggregate([
             {
                 $geoNear: {
@@ -141,9 +144,9 @@ exports.findRider = async (id, io) => {
 
         const eta = Math.round(trafficDuration);
 
-        if(riders.length === 0){
+        if (riders.length === 0) {
             console.log("No riders available")
-            return 
+            return
         }
 
         const rideInfo = {
@@ -491,27 +494,32 @@ const calculateRidePrice = async (origin, destination, waitingTimeInMinutes, rat
     }
 };
 
+
 exports.calculateRidePriceForUser = async (req, res) => {
-    const { origin, destination, waitingTimeInMinutes = 0, ratePerKm } = req.body;
-    console.log(req.body)
-    // Extract the numerical rate per km
-    const numericalRate = ratePerKm?.match(/\d+/)?.[0];
-    const perKmRate = Number(numericalRate) || 15; // Default to 15 Rs per km if invalid
-    const formattedOrigin = `${origin.latitude},${origin.longitude}`;
-    const formattedDestination = `${destination.latitude},${destination.longitude}`;
     try {
-        // Fetch directions from Google Maps API
+        // Extract request parameters
+        const { origin, destination, waitingTimeInMinutes = 0, ratePerKm } = req.body;
+        
+        // Convert ratePerKm to a number, defaulting to 15 if invalid
+        const numericalRate = ratePerKm?.match(/\d+/)?.[0];
+        const perKmRate = Number(numericalRate) || 15;
+
+        // Format origin and destination coordinates for API request
+        const formattedOrigin = `${origin.latitude},${origin.longitude}`;
+        const formattedDestination = `${destination.latitude},${destination.longitude}`;
+
+        // Fetch route details from Google Maps Directions API
         const response = await axios.get("https://maps.googleapis.com/maps/api/directions/json", {
             params: {
                 origin: formattedOrigin,
                 destination: formattedDestination,
-                key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34', // Use env variable for security
+                key: process.env.GOOGLE_MAPS_API_KEY, // Use environment variable instead of hardcoding
                 traffic_model: "best_guess",
-                departure_time: Math.floor(Date.now() / 1000), // Current time as UNIX timestamp
+                departure_time: Math.floor(Date.now() / 1000),
             },
         });
 
-        // Ensure route data exists
+        // Check if the response contains valid route data
         if (!response.data.routes || !response.data.routes.length) {
             return res.status(400).json({
                 success: false,
@@ -520,30 +528,57 @@ exports.calculateRidePriceForUser = async (req, res) => {
         }
 
         const route = response.data.routes[0];
-        const distance = route.legs[0].distance.value / 1000; // Convert meters to km
+        const distance = route.legs[0].distance.value / 1000; // Convert meters to kilometers
         const duration = route.legs[0].duration.value / 60; // Convert seconds to minutes
-        const trafficDuration = route.legs[0].duration_in_traffic?.value / 60 || duration; // Handle traffic duration fallback
+        const trafficDuration = route.legs[0].duration_in_traffic?.value / 60 || duration; // Handle missing traffic data
 
-        // Calculate pricing
-        let totalPrice = 70; // Basic fare for up to 2 km
-        if (distance > 2) {
-            totalPrice += (distance - 2) * perKmRate; // Charge per km after 2 km
+        // Check weather conditions at the origin location
+        let rain = false;
+        const checkWeather = await FindWeather(origin.latitude, origin.longitude);
+        if (checkWeather && checkWeather[0]?.main === 'Rain') {
+            rain = true;
         }
-        totalPrice += trafficDuration * 2; // Charge 2 Rs per minute in traffic
-        const waitingTimeCost = waitingTimeInMinutes * 2; // 2 Rs per minute of waiting
-        totalPrice += waitingTimeCost;
 
-        // Respond with the calculated price
+        // Check for tolls on the route
+        let tolls = false;
+        let tollPrice = 0;
+        const checkTolls = await CheckTolls(origin, destination);
+        if (checkTolls?.travelAdvisory) {
+            tolls = true;
+            tollPrice = checkTolls?.tollInfo?.estimatedPrice?.units || 0;
+        }
+
+        // Retrieve fare settings from the database
+        const settingData = await Settings.findOne();
+        const basicFare = settingData?.BasicFare || 94;
+        const trafficDurationPricePerMinute = settingData?.trafficDurationPricePerMinute || 0;
+        const rainModeFare = settingData?.RainModeFareOnEveryThreeKm || 0;
+        const waitingTimeCost = waitingTimeInMinutes * (settingData?.waitingTimeInMinutes || 0);
+
+        // Calculate total fare
+        let totalPrice = basicFare + (trafficDuration * trafficDurationPricePerMinute) + waitingTimeCost;
+        if (rain) {
+            totalPrice += rainModeFare;
+        }
+        if (tolls) {
+            totalPrice += tollPrice;
+        }
+        totalPrice += distance * perKmRate;
+
+        // Return the calculated ride price
         res.status(200).json({
             success: true,
             message: "Ride price calculated successfully",
-            totalPrice: totalPrice,
+            totalPrice,
             distanceInKm: distance,
+            rain,
+            tolls,
+            tollPrice,
             durationInMinutes: trafficDuration,
-            waitingTimeCost: waitingTimeCost,
+            waitingTimeCost,
         });
     } catch (error) {
-        // console.error("Error calculating ride price:", error);
+        console.error("Error calculating ride price:", error);
         res.status(500).json({
             success: false,
             message: "Failed to calculate the ride price",

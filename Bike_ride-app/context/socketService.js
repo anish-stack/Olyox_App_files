@@ -2,7 +2,7 @@ import io from "socket.io-client";
 import axios from "axios";
 import * as SecureStore from 'expo-secure-store';
 
-const SOCKET_URL = "http://192.168.1.10:3000";
+const SOCKET_URL = "http://192.168.1.3:3000";
 let socket = null;
 
 // Fetch user details
@@ -15,7 +15,7 @@ export const fetchUserData = async () => {
         }
 
         const response = await axios.get(
-            "http://192.168.1.10:3000/api/v1/rider/user-details",
+            "http://192.168.1.3:3000/api/v1/rider/user-details",
             {
                 headers: { Authorization: `Bearer ${token}` },
             }
@@ -29,10 +29,12 @@ export const fetchUserData = async () => {
 
 // Initialize socket connection
 export const initializeSocket = async ({ userType = "driver", userId }) => {
+    console.log("userId",userId)
     if (!userId) {
         console.error("User ID is required to initialize socket");
         return null;
     }
+    console.log("I am connecting ✔️")
 
     if (!socket) {
         socket = io(SOCKET_URL, {

@@ -8,7 +8,7 @@ import * as SecureStore from 'expo-secure-store';
 import { useNavigation, useRoute } from "@react-navigation/native"
 
 const API_BASE_URL = "https://api.olyox.com/api/v1"
-const MAIN_API_BASE_URL = "http://192.168.1.10:3000/api/v1/rider"
+const MAIN_API_BASE_URL = "http://192.168.1.3:3000/api/v1/rider"
 
 const vehicleTypes = ["SEDAN", "SUV", "PRIME", "MINI"]
 const vehicleBrands = [
@@ -52,7 +52,7 @@ export default function RegistrationForm() {
     setError("")
     try {
       const response = await axios.get(`${API_BASE_URL}/app-get-details?Bh=${bhId}`)
-      
+
       if (response.data.success) {
         setUserData(response.data.data)
         setName(response.data.data.name)
@@ -82,7 +82,7 @@ export default function RegistrationForm() {
         rideVehicleInfo: {
           vehicleName,
           vehicleType,
-        
+
           VehicleNumber: vehicleNumber,
         },
         BH: bhId,
@@ -176,7 +176,7 @@ export default function RegistrationForm() {
       setError("Invalid phone number")
       return false
     }
-  
+
     return true
   }
 
@@ -212,9 +212,9 @@ export default function RegistrationForm() {
       <Button mode="contained" onPress={fetchUserDetails} style={styles.button} labelStyle={styles.buttonLabel}>
         Next
       </Button>
-      <TouchableOpacity onPress={() => navigation.navigate('enter_bh')} style={styles.referralCode}>
+      {/* <TouchableOpacity onPress={() => navigation.navigate('enter_bh')} style={styles.referralCode}>
         <Text style={styles.referralCodetext}>I have a Referral code </Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   )
 
@@ -278,7 +278,7 @@ export default function RegistrationForm() {
           />
         ))}
       </Menu>
-  
+
       <TextInput
         label="Vehicle Number"
         value={vehicleNumber}

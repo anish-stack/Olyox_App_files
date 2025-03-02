@@ -11,6 +11,10 @@ const BookingRequestSchema = new Schema({
             },
             guestPhone: {
                 type: String
+            },
+            guestAge:{
+                type: Number,
+                
             }
         }
     ],
@@ -36,18 +40,23 @@ const BookingRequestSchema = new Schema({
         type: Number,
         required: true
     },
+    anyNotes: {
+        type: String,
+        default: "No Note"
+    },
     status: {
         type: String,
-        enum: ['Pending', 'Confirmed', 'Cancelled', 'Checkout'],
+        enum: ['Pending', 'Confirmed', 'Cancelled', 'CheckIn', 'Checkout'],
         default: 'Pending'
     },
     booking_payment_done: {
         type: Boolean,
         default: false
     },
+    
     modeOfBooking: {
         type: String,
-        enum: ['Online', 'Offline'],
+        enum: ['Online', 'Offline',],
         default: 'Online'
     },
     bookingAmount: {
@@ -59,7 +68,7 @@ const BookingRequestSchema = new Schema({
     },
     paymentMode: {
         type: String,
-        enum: ['Cash', 'Online'],
+        enum: ['Cash', 'Online','Pay at Hotel'],
         default: 'Cash'
     },
     HotelUserId: {
@@ -77,6 +86,20 @@ const BookingRequestSchema = new Schema({
         default: false
     },
 
+    useCheckAt: {
+        type: Date,
+    },
+    isUserCheckedIn: {
+        type: Boolean,
+        default: false
+    },
+    userCheckOut: {
+        type: Date,
+    },
+    userCheckOutStatus: {
+        type: Boolean,
+        default: false
+    },
 
     Booking_id: {
         type: String,

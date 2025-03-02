@@ -4,16 +4,16 @@ const send_token = async (user, message, res, req) => {
   try {
     const token = jwt.sign(
       { userId: user._id },
-      process.env.JWT_SECRET_KEY,
+      'dfhdhfuehfuierrheuirheuiryueiryuiewyrshddjidshfuidhduih',
       { expiresIn: '30d' }
     );
     console.log("token", token)
 
     res.cookie('auth_token', token, {
-      httpOnly: true,
+      // httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 30 * 24 * 60 * 60 * 1000,
-      sameSite: 'strict',
+      // sameSite: 'strict',
     });
 
 
@@ -21,6 +21,9 @@ const send_token = async (user, message, res, req) => {
       success: true,
       redirect: message,
       user: user._id,
+      accountStatus:user?.isProfileComplete,
+      isDocumentUpload:user?.isDocumentUpload,
+      DocumentVerify:user?.DocumentVerify,
       message: 'Token generated and saved successfully',
       token: token,
     });

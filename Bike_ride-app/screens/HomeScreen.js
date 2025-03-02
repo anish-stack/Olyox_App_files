@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -58,18 +58,43 @@ const HomeScreen = () => {
     setMenuVisible(false);
   }, [navigation]);
 
+  
+  const fetchUserDetails = async () => {
+    setLoading(true);
+    try {
+        const token = await SecureStore.getItemAsync('auth_token_cab');
+        if (token) {
+            const response = await axios.get(
+                'http://192.168.1.3:3000/api/v1/rider/user-details',
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (response.data.partner) {
+              setUserData(response.data.partner);
+            }
+          }
+    } catch (error) {
+        console.error('Error fetching user details:', error?.response?.data?.message || error.message);
+    } finally {
+        setLoading(false);
+    }
+};
+
+useEffect(()=>{
+  fetchUserDetails()
+},[])
+
   const toggleOnlineStatus = async () => {
     setLoading(true);
     try {
       const token = await SecureStore.getItemAsync("auth_token_cab");
       const response = await axios.post(
-        "http://192.168.1.10:3000/api/v1/rider/toggleWorkStatusOfRider",
+        "http://192.168.1.3:3000/api/v1/rider/toggleWorkStatusOfRider",
         { status: !isOnline },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const response_two = await axios.get(
-        "http://192.168.1.10:3000/api/v1/rider/user-details",
+        "http://192.168.1.3:3000/api/v1/rider/user-details",
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -92,6 +117,7 @@ const HomeScreen = () => {
       setLoading(false);
     }
   };
+  console.log("user_data",user_data)
 
   const ConnectionStatus = () => (
     <View style={[

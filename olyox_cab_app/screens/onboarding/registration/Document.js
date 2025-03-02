@@ -29,7 +29,7 @@ const DOCUMENTS = [
   { id: 'pan', title: 'PAN Card', icon: 'wallet-outline' },
 ];
 
-const API_URL = 'http://192.168.1.10:3000/api/v1/parcel/uploadDocuments';
+const API_URL = 'http://192.168.1.3:3000/api/v1/parcel/uploadDocuments';
 
 export default function Documents() {
   const [images, setImages] = useState({});

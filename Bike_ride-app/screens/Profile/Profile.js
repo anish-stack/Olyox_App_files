@@ -18,6 +18,7 @@ import * as SecureStore from 'expo-secure-store';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSocket } from '../../context/SocketContext';
 import { useNavigation } from '@react-navigation/native';
+import { checkBhDetails } from '../../utils/Api';
 
 const { width } = Dimensions.get('window');
 
@@ -27,6 +28,7 @@ export default function Profile() {
 
     const [loading, setLoading] = useState(false);
     const [userData, setUserData] = useState(null);
+    const [checkBhData, setBhData] = useState([]);
     const [showDocuments, setShowDocuments] = useState(false);
     const [showVehicleDetails, setShowVehicleDetails] = useState(false);
     const [showUpdateProfile, setShowUpdateProfile] = useState(false);
@@ -35,15 +37,27 @@ export default function Profile() {
         fetchUserDetails();
     }, []);
 
+
     const fetchUserDetails = async () => {
         setLoading(true);
         try {
             const token = await SecureStore.getItemAsync('auth_token_cab');
             if (token) {
                 const response = await axios.get(
-                    'http://192.168.1.10:3000/api/v1/rider/user-details',
+                    'http://192.168.1.3:3000/api/v1/rider/user-details',
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
+                if (response.data.partner) {
+                    try {
+                        const data = await checkBhDetails(response.data.partner?.BH)
+                        if (data.complete) {
+                            console.log(data.complete)
+                            setBhData([data.complete])
+                        }
+                    } catch (error) {
+                        console.log('BH Found Error', error)
+                    }
+                }
                 setUserData(response.data.partner);
             }
         } catch (error) {
@@ -52,6 +66,19 @@ export default function Profile() {
             setLoading(false);
         }
     };
+
+    const calculateTotalReferrals = checkBhData.reduce((acc, index) => {
+        return acc +
+            (index.Child_referral_ids?.length || 0) +
+            (index.Level1?.length || 0) +
+            (index.Level2?.length || 0) +
+            (index.Level3?.length || 0) +
+            (index.Level4?.length || 0) +
+            (index.Level5?.length || 0) +
+            (index.Level6?.length || 0) +
+            (index.Level7?.length || 0);
+    }, 0);
+
 
     const handleLogout = async () => {
         try {
@@ -249,10 +276,25 @@ export default function Profile() {
             <View style={styles.statsContainer}>
                 <View style={styles.statItem}>
                     <Text style={styles.statValue}>{userData?.TotalRides || 0}</Text>
-                    <Text style={styles.statLabel}>Total Rides</Text>
+                    <Text style={styles.statLabel}>Rides</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{calculateTotalReferrals || 0}</Text>
+                    <Text style={styles.statLabel}>Total Refer</Text>
                 </View>
                 <View style={styles.statDivider} />
 
+                <TouchableOpacity onPress={() => navigation.navigate('withdraw', {
+                    _id: checkBhData[0]?._id,
+                    wallet: checkBhData[0]?.wallet
+                })}>
+                    <View style={styles.statItem}>
+                        <Text style={styles.statValue}>₹{checkBhData[0]?.wallet || 0}</Text>
+                        <Text style={styles.statLabel}>Refer Earning</Text>
+                        <Text style={styles.statLabel}>Make a Withdraw</Text>
+                    </View>
+                </TouchableOpacity>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                     <Text style={styles.statValue}>
@@ -298,6 +340,15 @@ export default function Profile() {
                     <Text style={styles.menuText}>Refer & Earn</Text>
                     <MaterialCommunityIcons name="chevron-right" size={24} color="#757575" />
                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => navigation.navigate('referral-history')}
+                >
+                    <MaterialCommunityIcons name="account-edit" size={24} color="#FFB300" />
+                    <Text style={styles.menuText}>Referral History</Text>
+                    <MaterialCommunityIcons name="chevron-right" size={24} color="#757575" />
+                </TouchableOpacity>
+
                 <TouchableOpacity
                     style={styles.menuItem}
                     onPress={() => navigation.navigate('recharge-history')}
@@ -399,8 +450,9 @@ const styles = StyleSheet.create({
     statsContainer: {
         flexDirection: 'row',
         backgroundColor: '#FFFFFF',
-        margin: 16,
-        padding: 16,
+        margin: 8,
+
+        padding: 8,
         borderRadius: 12,
         ...Platform.select({
             ios: {
@@ -416,22 +468,23 @@ const styles = StyleSheet.create({
     },
     statItem: {
         flex: 1,
+
         alignItems: 'center',
     },
     statValue: {
-        fontSize: 20,
+        fontSize: 14,
         fontWeight: 'bold',
         color: '#FFB300',
         marginBottom: 4,
     },
     statLabel: {
-        fontSize: 14,
+        fontSize: 12,
         color: '#757575',
     },
     statDivider: {
         width: 1,
         backgroundColor: '#E0E0E0',
-        marginHorizontal: 16,
+        marginHorizontal: 4,
     },
     menuContainer: {
         backgroundColor: '#FFFFFF',

@@ -17,74 +17,47 @@ const SettingsSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-
-    cabServicesSettings: {
-        isRainModeOn: {
-            type: Boolean,
-            default: false
-        },
-        rainSurge: {
-            type: Number,
-            default: 15
-        },
-        rangeOfDriversShowUser: {
-            type: Number,
-            default: 5  // in meters
-        },
-        isOnMaintenance: {
-            type: Boolean,
-            default: false
-        },
-        priceForFirst3Km: {
-            type: Number,
-            default: 70
-        },
-        priceHikeAfter3KmAddOn: {
-            type: Number,
-            default: 100
-        },
+    BasicFare: {
+        type: Number,
+        default: 0
     },
-
-    parcelServicesSettings: {
-        isRainModeOn: {
-            type: Boolean,
-            default: false
-        },
-        rainSurge: {
-            type: Number,
-            default: 15
-        },
-        rangeOfDriversShowUser: {
-            type: Number,
-            default: 5  // in meters
-        },
-        isOnMaintenance: {
-            type: Boolean,
-            default: false
-        },
-        price: {
-            type: Number,
-            default: 70
-        },
+    BasicFarePerKm: {
+        type: Number,
+        default: 0
     },
+    RainModeOn: {
+        type: Boolean,
+        default: false
+    },
+    RainModeFareOnEveryThreeKm: {
+        type: Number,
+        default: 0
+    },
+    ShowingRainOnApp: {
+        type: Boolean,
+        default: false
+    },
+    ShowingOfferScreenOnApp: {
+        type: Boolean,
+        default: false
+    },
+    openMapApiKey: {
+        type: String,
+        default: ''
+    },
+    googleApiKey: {
+        type: String,
+        default: ''
+    },
+    trafficDurationPricePerMinute: {
+        type: Number,
+        default: 0
+    },
+    waitingTimeInMinutes: {
+        type: Number,
+        default: 0
+    }
 
-    ridesPrices: [{
-        vehicleName: {
-            type: String
-        },
-        price: {
-            type: Number,
-            default: 0
-        },
-        surgeOn: {
-            type: Boolean,
-            default: false
-        },
-        surgePrice: {
-            type: Number,
-            default: 0
-        }
-    }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Settings', SettingsSchema);

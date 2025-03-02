@@ -71,7 +71,7 @@ const OnlineStatusToggle = ({ workStatus, onStatusChange, statusOfPartner }) => 
             }
 
             const response = await axios.post(
-                'http://192.168.1.10:3000/api/v1/parcel/manage_offline_online',
+                'http://192.168.1.3:3000/api/v1/parcel/manage_offline_online',
                 { status: isOnline ? 'offline' : 'online' },
                 { headers: { Authorization: `Bearer ${token}` } }
             );

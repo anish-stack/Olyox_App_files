@@ -263,7 +263,6 @@ exports.verifyOtp = async (req, res) => {
       });
     }
 
-    // OTP is verified, so clear the OTP and reset fields
     partner.otp = null; // Clear the OTP
     partner.isOtpVerify = true; // Clear the OTP
     partner.howManyTimesHitResend = 0; // Reset resend attempts
@@ -352,6 +351,7 @@ exports.uploadDocuments = async (req, res) => {
 
     findRider.documents = uploadedDocs;
     findRider.isDocumentUpload = true;
+    findRider.isProfileComplete = true;
     await findRider.save();
 
     res.status(201).json({ success: true, message: "Documents uploaded successfully", data: uploadedDocs });

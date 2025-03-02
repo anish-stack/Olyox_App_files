@@ -7,11 +7,13 @@ const SocketContext = createContext(null);
 export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
   const [user, setUser] = useState(null);
-
+  console.log("Use r",user)
   // Fetch user data
   useEffect(() => {
     const fetchUser = async () => {
       const data = await find_me();
+      console.log("Use r",data)
+
       if (data?.user?._id) {
         setUser(data.user._id);
       } else {

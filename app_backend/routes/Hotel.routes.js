@@ -1,8 +1,8 @@
 const express = require('express');
-const { register_hotel_user, add_hotel_listing,find_My_rooms, getHotelsNearByMe, getHotelsDetails, getHotelsListingDetails, verifyOtp, resendOtp, find_Hotel_Login, toggleHotelStatus, LoginHotel, toggleRoomStatus, deleteHotelRoom } = require('../hotel_controllers/hotel.user.controller');
+const { register_hotel_user, add_hotel_listing,find_My_rooms, getHotelsNearByMe, getHotelsDetails, getHotelsListingDetails, verifyOtp, resendOtp, find_Hotel_Login, toggleHotelStatus, LoginHotel, toggleRoomStatus, deleteHotelRoom, uploadDocuments } = require('../hotel_controllers/hotel.user.controller');
 const Protect = require('../middleware/Auth');
 const upload = require('../middleware/multer');
-const { makeBookingOffline, verifyOtpForBooking, resendOtpForBookingConfirm } = require('../hotel_controllers/BookingHotel');
+const { makeBookingOffline, verifyOtpForBooking, resendOtpForBookingConfirm, UpdateBooking, getMyBookingAll, markCheckIn, markCheckOut, getAllUniqueGuestAndBookingAndHerAmount, UserMakesBooking } = require('../hotel_controllers/BookingHotel');
 const hotel_router = express.Router()
 
 hotel_router.post('/register-hotel', register_hotel_user)
@@ -22,6 +22,16 @@ hotel_router.post('/add-hotel-listing', upload.fields([
     { name: 'fifth_image', maxCount: 1 }
 ]),Protect, add_hotel_listing);
 
+
+hotel_router.post('/add-document', upload.fields([
+    { name: 'aadhar_front', maxCount: 1 },
+    { name: 'aadhar_Back', maxCount: 1 },
+    { name: 'panCard', maxCount: 1 },
+    { name: 'gst', maxCount: 1 },
+    { name: 'addressProof', maxCount: 1 },
+    { name: 'ProfilePic', maxCount: 1 }
+]),Protect, uploadDocuments);
+
 hotel_router.post('/delete-hotels', deleteHotelRoom)
 
 hotel_router.get('/find-near-by-hotels', getHotelsNearByMe)
@@ -31,8 +41,14 @@ hotel_router.post('/hotel-Room-toggle', toggleRoomStatus)
 
 // Booking routes
 hotel_router.post('/book-room', Protect, makeBookingOffline)
+hotel_router.post('/book-room-user', Protect, UserMakesBooking)
 hotel_router.post('/verify-booking', Protect, verifyOtpForBooking)
 hotel_router.post('/resend-otp-booking', Protect, resendOtpForBookingConfirm)
+hotel_router.post('/update-booking', Protect, UpdateBooking)
+hotel_router.get('/get-bookings', Protect, getMyBookingAll)
+hotel_router.post('/mark-check-in-booking', Protect, markCheckIn)
+hotel_router.post('/mark-check-out-booking', Protect, markCheckOut)
+hotel_router.get('/get-guests', Protect, getAllUniqueGuestAndBookingAndHerAmount)
 
 
 module.exports = hotel_router;

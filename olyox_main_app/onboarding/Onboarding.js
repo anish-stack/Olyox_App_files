@@ -2,14 +2,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, Animated, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { tokenCache } from '../Auth/cache';
 import { createUserRegister, verify_otp } from '../utils/helpers';
 import { initializeSocket } from '../services/socketService';
 import { styles } from './onboarding.styles';
 import AuthModal from './AuthModal';
+import * as SecureStore from 'expo-secure-store';
+
 import OtpModal from './OtpModal';
 import OnboardingSlide from './OnboardingSlide';
 import { slidesFetch } from './onboarding-slides'
+import { tokenCache } from '../Auth/cache';
 const { width } = Dimensions.get('screen')
 export default function Onboarding() {
     const navigation = useNavigation();
@@ -25,6 +27,11 @@ export default function Onboarding() {
     });
 
     const handleRegisterWithPhone = async () => {
+        if (!phoneNumber || !/^\d{10}$/.test(phoneNumber.trim())) {
+            Alert.alert("Error", "Please enter a valid 10-digit phone number.");
+            return;
+        }
+
         try {
             const formData = { number: phoneNumber };
             const response = await createUserRegister(formData);
@@ -49,21 +56,40 @@ export default function Onboarding() {
 
     const handleVerifyOtp = async () => {
         try {
+            if (!otp) {
+                Alert.alert("Error", "Please enter OTP");
+                return
+            }
             const formData = { number: phoneNumber, otp };
-            let userFromRes
+            let userFromRes;
+
             const response = await verify_otp(formData);
+            console.log("Response:", response); // Debug log
+
             if (response.User) {
-                userFromRes = response?.User?._id
+                userFromRes = response?.User?._id;
             }
 
-            if (response.status === 200) {
-                await tokenCache.saveToken('auth_token_db', response.token);
+            if (response.status === 200 && response.token) {  // Ensure status is 200
+                console.log("Token to Save:", response.token); // Debug log
 
-                // Initialize socket after successful verification
-                const data = await initializeSocket({
-                    userType: "user",
-                    userId: userFromRes
-                });
+                try {
+                    const dataToken = await tokenCache.saveToken('auth_token_db', response.token);
+                    console.log("Saved Token:", dataToken); // Should now correctly log the token
+
+                } catch (error) {
+                    console.error("Error saving token:", error);
+                }
+
+                try {
+                    const socketData = await initializeSocket({
+                        userType: "user",
+                        userId: userFromRes
+                    });
+                    console.log("Socket Initialized:", socketData);
+                } catch (error) {
+                    console.error("Socket Initialization Failed:", error);
+                }
 
                 Alert.alert(
                     'Success',
@@ -72,15 +98,17 @@ export default function Onboarding() {
                         text: 'OK', onPress: () => {
                             setShowOtpModal(false);
                             setOtp('');
-                            setPhoneNumber('');
-                            navigation.navigate('Home');
+                            navigation.reset({
+                                index: 0,
+                                routes: [{ name: 'Home' }]
+                            })
                         }
                     }]
                 );
             } else {
                 Alert.alert(
                     'Verification Failed',
-                    response?.data?.message || 'Invalid OTP',
+                    response?.message || 'Invalid OTP',  // Use response.message
                     [{ text: 'Close' }]
                 );
             }
@@ -92,6 +120,7 @@ export default function Onboarding() {
             );
         }
     };
+
     useEffect(() => {
         const fetchSlides = async () => {
             try {

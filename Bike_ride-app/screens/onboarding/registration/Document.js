@@ -31,7 +31,7 @@ const DOCUMENTS = [
   { id: 'pancard', title: 'pancard', icon: 'card-outline' }
 ];
 
-const API_URL = 'http://192.168.1.10:3000/api/v1/rider/rider-upload';
+const API_URL = 'http://192.168.1.3:3000/api/v1/rider/rider-upload';
 
 export default function Documents() {
   const [images, setImages] = useState({});
@@ -90,6 +90,19 @@ export default function Documents() {
       setLoading(prev => ({ ...prev, [type]: false }));
     }
   };
+
+  const onLogin = async () => {
+    try {
+      const token = await SecureStore.deleteItemAsync('auth_token_cab');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Onboarding' }],
+      })
+      console.log("logout done ✔️")
+    } catch (error) {
+      console.log("logout Error ✔️",error)
+    }
+  }
 
   const handleSubmit = async () => {
     if (!isAllUploaded) return;
@@ -168,6 +181,9 @@ export default function Documents() {
         <Text style={styles.subtitle}>
           Please upload clear photos of your documents
         </Text>
+        <TouchableOpacity onPress={()=>onLogin()}>
+          <Text>Login</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>

@@ -56,8 +56,11 @@ const Header = () => {
   }
 
   const findCurrent = async () => {
+    if (!location?.coords) {
+      return
+    }
     try {
-      const { data } = await axios.post(`http://192.168.1.10:3000/Fetch-Current-Location`, {
+      const { data } = await axios.post(`http://192.168.1.3:3000/Fetch-Current-Location`, {
         lat: location?.coords?.latitude,
         lng: location?.coords?.longitude,
       })
@@ -69,8 +72,9 @@ const Header = () => {
 
   const handleLogout = async () => {
     try {
-      await signOut()
-      await tokenCache.deleteToken("auth_token_db")
+      // await signOut()
+      const data = await tokenCache.deleteToken("auth_token_db")
+      console.log("data delete", data)
       navigation.reset({
         index: 0,
         routes: [{ name: "Onboarding" }],
@@ -139,7 +143,7 @@ const Header = () => {
               },
             ]}
           >
-            <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+            <TouchableOpacity activeOpacity={1} onPress={() => { }}>
               <View style={styles.sidebarHeader}>
                 <Text style={styles.sidebarTitle}>Menu</Text>
                 <TouchableOpacity onPress={hideSidebar} style={styles.closeButton}>

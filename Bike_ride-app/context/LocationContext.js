@@ -33,7 +33,7 @@ export const LocationProvider = ({ children }) => {
     }
   }, [driverLocation]);
 
-//   console.log("driverLocation", driverLocation);
+  console.log("driverLocation", driverLocation);
 
   return (
     <LocationContext.Provider value={{ driverLocation, updateLocation: setDriverLocation }}>

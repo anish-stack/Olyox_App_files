@@ -7,12 +7,16 @@ import {
     TouchableOpacity,
     ScrollView,
     Platform,
-    TextInput
+    TextInput,
+    Alert
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import styles from './BookingModel.style';
+import axios from 'axios'
+import { tokenCache } from '../../Auth/cache';
 
 export default function BookingModal({ visible, onClose, roomData }) {
     const [checkInDate, setCheckInDate] = useState(new Date());
@@ -20,19 +24,16 @@ export default function BookingModal({ visible, onClose, roomData }) {
     const [showCheckIn, setShowCheckIn] = useState(false);
     const [showCheckOut, setShowCheckOut] = useState(false);
     const [males, setMales] = useState(1);
+    const [loading, setLoading] = useState(false)
     const [showSuccess, setShowSuccess] = useState(false);
     const [females, setFemales] = useState(0);
     const [step, setStep] = useState(1);
-    const [guestInfo, setGuestInfo] = useState({
-        name: '',
-        email: '',
-        phone: ''
-    });
+    const [guests, setGuests] = useState([{ guestName: "", guestAge: "", guestPhone: "" }]);
     const [paymentMethod, setPaymentMethod] = useState('online');
     const navigation = useNavigation()
     const totalGuests = males + females;
     const isValidGuests = totalGuests <= roomData.allowed_person;
-    const isValidGuestInfo = guestInfo.name && guestInfo.email && guestInfo.phone;
+    const isValidGuestInfo = guests[0].guestName && guests[0].guestAge && guests[0].guestPhone;
 
     const handleDateChange = (event, selectedDate, type) => {
         if (Platform.OS === 'android') {
@@ -49,35 +50,143 @@ export default function BookingModal({ visible, onClose, roomData }) {
         }
     };
 
-    const handleSubmit = () => {
-        // Handle booking submission
-        console.log({
-            checkInDate,
-            checkOutDate,
-            males,
-            females,
-            guestInfo,
-            paymentMethod
-        });
+    const addGuest = () => {
+        if (guests.length < roomData.allowed_person) {
+            setGuests([...guests, { guestName: "", guestAge: "" }])
+        }
+    }
 
-        // Show success message and close modal
-        alert('Booking successful!');
-        onClose();
-        setStep(1);
-        setShowSuccess(true);
-        navigation.navigate('Booking_hotel_success', {
-            data: {
+    const removeGuest = (index) => {
+        const newGuests = [...guests]
+        newGuests.splice(index, 1)
+        setGuests(newGuests)
+    }
+
+    const updateGuest = (index, field, value) => {
+        const newGuests = [...guests]
+        newGuests[index][field] = value
+
+        setGuests(newGuests)
+    }
+
+    const handleSubmit = async () => {
+        try {
+            // Fetch token from cache
+            const token = await tokenCache.getToken('auth_token_db');
+
+            if (!token) {
+                Alert.alert(
+                    "Session Expired",
+                    "Your session has expired. Please log in again to continue.",
+                    [{ text: "OK", onPress: () => navigation.navigate("Onboarding") }]
+                );
+                return;
+            }
+
+            // Validate required fields
+            if (!guests || guests.length === 0) {
+                Alert.alert("Missing Information", "Please add at least one guest before booking.");
+                return;
+            }
+            if (!checkInDate) {
+                Alert.alert("Missing Date", "Please select a check-in date.");
+                return;
+            }
+            if (!checkOutDate) {
+                Alert.alert("Missing Date", "Please select a check-out date.");
+                return;
+            }
+            if (!roomData?._id) {
+                Alert.alert("Room Not Found", "Something went wrong. Please select a valid room.");
+                return;
+            }
+            if (!roomData?.hotel_user?._id) {
+                Alert.alert("Hotel Not Found", "Unable to find hotel details. Please try again.");
+                return;
+            }
+            if (!paymentMethod) {
+                Alert.alert("Payment Method Required", "Please choose a payment method.");
+                return;
+            }
+
+            // Validate date logic
+            const today = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+            if (new Date(checkInDate) < new Date(today)) {
+                Alert.alert("Invalid Date", "Check-in date cannot be in the past. Please select a future date.");
+                return;
+            }
+            if (new Date(checkOutDate) <= new Date(checkInDate)) {
+                Alert.alert("Invalid Date", "Check-out date must be later than check-in date.");
+                return;
+            }
+
+            const dataToBeSend = {
+                guestInformation: guests,
                 checkInDate,
                 checkOutDate,
-                males,
-                roomData,
-                females,
-                guestInfo,
-                paymentMethod
-            }
-        })
-       
+                listing_id: roomData?._id,
+                hotel_id: roomData?.hotel_user?._id,
+                paymentMethod,
+                booking_payment_done: false,
+                modeOfBooking: "Online",
+                paymentMode: paymentMethod
+            };
 
+            setLoading(true);
+
+            // Make API call
+            const { data } = await axios.post(
+                `http://192.168.1.3:3000/api/v1/hotels/book-room-user`,
+                dataToBeSend,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                }
+            );
+
+            const bookingData = data.booking;
+
+            // Success Alert
+            Alert.alert(
+                "Booking Confirmed 🎉",
+                "Your booking has been successfully confirmed!",
+                [{ text: "OK", onPress: () => onClose() }]
+            );
+
+            setStep(1);
+            setShowSuccess(true);
+            navigation.navigate('Booking_hotel_success', {
+                data: {
+                    checkInDate,
+                    checkOutDate,
+                    males,
+                    roomData,
+                    females,
+                    guestInfo:bookingData.guestInformation,
+                    paymentMethod,
+                    Bookingid: bookingData.bookingId
+                }
+            });
+
+        } catch (error) {
+            console.error("Booking Error:", error.response?.data || error.message);
+
+            let errorMessage = "Something went wrong. Please try again.";
+
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.response?.status === 500) {
+                errorMessage = "Server error. Please try again later.";
+            } else if (error.response?.status === 400) {
+                errorMessage = "Invalid booking details. Please check your inputs.";
+            }
+
+            Alert.alert("Booking Failed ❌", errorMessage);
+        } finally {
+            setLoading(false);
+        }
     };
 
 
@@ -181,39 +290,49 @@ export default function BookingModal({ visible, onClose, roomData }) {
             case 3:
                 return (
                     <View>
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>Full Name</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={guestInfo.name}
-                                onChangeText={(text) => setGuestInfo({ ...guestInfo, name: text })}
-                                placeholder="Enter your full name"
-                            />
-                        </View>
+                        <Text style={styles.guestInfo}>Maximum {roomData.allowed_person} guests allowed</Text>
 
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>Email</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={guestInfo.email}
-                                onChangeText={(text) => setGuestInfo({ ...guestInfo, email: text })}
-                                placeholder="Enter your email"
-                                keyboardType="email-address"
-                            />
-                        </View>
+                        {guests.map((guest, index) => (
+                            <View key={index} style={styles.guestItem}>
+                                <View style={styles.guestInputContainer}>
+                                    <TextInput
+                                        style={styles.guestInput}
+                                        value={guest.guestName}
+                                        onChangeText={(text) => updateGuest(index, "guestName", text)}
+                                        placeholder="Guest Name"
+                                    />
+                                    <TextInput
+                                        style={styles.guestInput}
+                                        value={guest.guestPhone}
+                                        onChangeText={(text) => updateGuest(index, "guestPhone", text)}
+                                        placeholder="Contact Details"
+                                        keyboardType="numeric"
+                                    />
+                                    <TextInput
+                                        style={styles.guestInput}
+                                        value={guest.guestAge}
+                                        onChangeText={(text) => updateGuest(index, "guestAge", text)}
+                                        placeholder="guest Age"
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                                {index > 0 && (
+                                    <TouchableOpacity onPress={() => removeGuest(index)}>
+                                        <Icon name="close" size={24} color="#de423e" />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        ))}
 
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>Phone Number</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={guestInfo.phone}
-                                onChangeText={(text) => setGuestInfo({ ...guestInfo, phone: text })}
-                                placeholder="Enter your phone number"
-                                keyboardType="phone-pad"
-                            />
-                        </View>
+                        {guests.length < roomData.allowed_person && (
+                            <TouchableOpacity style={styles.addGuestButton} onPress={addGuest}>
+                                <Icon name="plus" size={24} color="#de423e" />
+                                <Text style={styles.addGuestText}>Add Guest</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
-                );
+                )
+
             case 4:
                 return (
                     <View>
@@ -328,7 +447,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
                                     style={styles.submitButton}
                                     onPress={handleSubmit}
                                 >
-                                    <Text style={styles.buttonText}>Confirm Booking</Text>
+                                    <Text style={styles.buttonText}>{loading ? 'Please wait' : 'Confirm Booking'}</Text>
                                 </TouchableOpacity>
                             </View>
                         )}
@@ -356,156 +475,3 @@ export default function BookingModal({ visible, onClose, roomData }) {
     );
 }
 
-const styles = StyleSheet.create({
-    modalContainer: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        maxHeight: '90%',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#1a1a1a',
-    },
-    modalBody: {
-        padding: 16,
-    },
-    dateButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#f5f5f5',
-        borderRadius: 12,
-        marginBottom: 16,
-    },
-    dateTextContainer: {
-        marginLeft: 12,
-    },
-    dateLabel: {
-        fontSize: 12,
-        color: '#666',
-    },
-    dateValue: {
-        fontSize: 16,
-        fontWeight: '500',
-        color: '#1a1a1a',
-    },
-    guestInfo: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 16,
-    },
-    guestPicker: {
-        marginBottom: 16,
-    },
-    pickerLabel: {
-        fontSize: 14,
-        color: '#1a1a1a',
-        marginBottom: 8,
-    },
-    picker: {
-        backgroundColor: '#f5f5f5',
-        borderRadius: 12,
-    },
-    errorText: {
-        color: '#EF4444',
-        fontSize: 14,
-        marginTop: 8,
-    },
-    inputContainer: {
-        marginBottom: 16,
-    },
-    inputLabel: {
-        fontSize: 14,
-        color: '#1a1a1a',
-        marginBottom: 8,
-    },
-    input: {
-        backgroundColor: '#f5f5f5',
-        borderRadius: 12,
-        padding: 16,
-        fontSize: 16,
-    },
-    paymentTitle: {
-        fontSize: 16,
-        fontWeight: '500',
-        color: '#1a1a1a',
-        marginBottom: 16,
-    },
-    paymentOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#f5f5f5',
-        borderRadius: 12,
-        marginBottom: 12,
-    },
-    selectedPayment: {
-        backgroundColor: '#FFE4E8',
-    },
-    paymentText: {
-        marginLeft: 12,
-        fontSize: 16,
-        color: '#666',
-    },
-    selectedPaymentText: {
-        color: '#de423e',
-    },
-    modalFooter: {
-        padding: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#eee',
-    },
-    footerButtons: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    nextButton: {
-        backgroundColor: '#de423e',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-    backButton: {
-        flex: 1,
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#de423e',
-    },
-    submitButton: {
-        flex: 2,
-        backgroundColor: '#de423e',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-    disabledButton: {
-        backgroundColor: '#ccc',
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    backButtonText: {
-        color: '#de423e',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-});

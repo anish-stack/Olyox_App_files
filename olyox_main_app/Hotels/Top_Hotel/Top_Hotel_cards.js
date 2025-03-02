@@ -9,28 +9,28 @@ export default function HotelCard({ hotel, onPress }) {
     const amenities = Object.keys(hotel.amenities).filter(key => hotel.amenities[key]);
     const navigation = useNavigation()
     return (
-        <TouchableOpacity activeOpacity={0.7} style={styles.card} onPress={() => navigation.navigate('hotels-details', { item: hotel?._id })}>
+        <TouchableOpacity activeOpacity={0.7} style={styles.card} onPress={() => navigation.navigate('hotels-details', { item: hotel?.hotel_user?._id })}>
             <View style={styles.imageContainer}>
                 <Image
-                    source={{ uri: hotel.hotel_main_show_image }}
+                    source={{ uri: hotel.main_image?.url }}
                     style={styles.image}
                     resizeMode="cover"
                 />
                 <View style={styles.ratingBadge}>
                     <Icon name="star" size={12} color="#FFFFFF" />
-                    <Text style={styles.ratingText}>4.0</Text>
+                    <Text style={styles.ratingText}>{hotel?.rating_number || "1"}</Text>
                 </View>
             </View>
 
             <View style={styles.content}>
-                <Text style={styles.name} numberOfLines={1}>{hotel.hotel_name}</Text>
+                <Text style={styles.name} numberOfLines={1}>{hotel?.hotel_user?.hotel_name}</Text>
                 <View style={styles.locationContainer}>
                     <Icon name="map-marker" size={14} color="#666666" />
-                    <Text style={styles.location} numberOfLines={1}>{hotel.hotel_address}</Text>
+                    <Text style={styles.location} numberOfLines={1}>{hotel?.hotel_user?.hotel_address}</Text>
                 </View>
 
                 <View style={styles.amenitiesContainer}>
-                    
+
                     {amenities.slice(0, 2).map((amenity, index) => (
                         <View key={index} style={styles.amenityBadge}>
                             <Text style={styles.amenityText}>{amenity}</Text>
@@ -42,7 +42,7 @@ export default function HotelCard({ hotel, onPress }) {
 
                 <View style={styles.bottomRow}>
                     <View style={styles.priceContainer}>
-                        <Text style={styles.price}> ₹900</Text>
+                        <Text style={styles.price}> ₹{hotel?.book_price}</Text>
                         <Text style={styles.perNight}>/night</Text>
                     </View>
                     <TouchableOpacity

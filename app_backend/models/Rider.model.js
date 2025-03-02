@@ -17,7 +17,7 @@ const RiderSchema = new Schema({
         },
         PricePerKm: {
             type: Number
-                
+
         },
         VehicleNumber: {
             type: String,
@@ -25,6 +25,10 @@ const RiderSchema = new Schema({
         },
         VehicleImage: [String]
 
+    },
+    isProfileComplete: {
+        type: Boolean,
+        default: false
     },
     isDocumentUpload: {
         type: Boolean,
@@ -54,22 +58,22 @@ const RiderSchema = new Schema({
         insurance: {
             type: String,
         },
-        aadharBack:{
+        aadharBack: {
             type: String
         },
-        aadharFront:{
+        aadharFront: {
             type: String
         },
-        pancard:{
+        pancard: {
             type: String
         }
 
     },
-    isPaid:{
+    isPaid: {
         type: Boolean,
         default: false
     },
-    
+
     Bh: {
         type: String
     },
@@ -155,6 +159,9 @@ const RiderSchema = new Schema({
         type: String,
         default: null
 
+    },
+    JsonData: {
+        type: Object
     }
 });
 

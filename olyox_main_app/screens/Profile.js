@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated,Image, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Image, Dimensions, ActivityIndicator } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useNavigation } from '@react-navigation/native';
@@ -30,10 +30,10 @@ export default function UserProfile() {
         try {
             const user = await find_me();
             setUserData(user.user);
-                  const gmail_token = await tokenCache.getToken('auth_token');
-                    const db_token = await tokenCache.getToken('auth_token_db');
+            const gmail_token = await tokenCache.getToken('auth_token');
+            const db_token = await tokenCache.getToken('auth_token_db');
             const token = db_token || gmail_token
-            const response = await axios.get('http://192.168.1.10:3000/api/v1/user/find-Orders-details', {
+            const response = await axios.get('http://192.168.1.3:3000/api/v1/user/find-Orders-details', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setOrderData(response.data.data);
@@ -53,7 +53,7 @@ export default function UserProfile() {
 
     const renderOrderCard = (order) => (
         <AnimatedTouchableOpacity
-       
+
             style={styles.orderCard}
             onPress={() => setExpandedOrder(expandedOrder === order._id ? null : order._id)}
         >
@@ -102,7 +102,7 @@ export default function UserProfile() {
 
     const renderRideCard = (ride) => (
         <AnimatedTouchableOpacity
-        
+
             style={styles.orderCard}
             onPress={() => setExpandedOrder(expandedOrder === ride._id ? null : ride._id)}
         >
@@ -121,7 +121,7 @@ export default function UserProfile() {
             </View>
 
             {expandedOrder === ride._id && (
-                <Animated.View  style={styles.orderDetails}>
+                <Animated.View style={styles.orderDetails}>
                     <View style={styles.rideDetails}>
                         <View style={styles.locationInfo}>
                             <Ionicons name="location" size={20} color="#6366f1" />
@@ -143,7 +143,7 @@ export default function UserProfile() {
 
     const renderParcelCard = (parcel) => (
         <AnimatedTouchableOpacity
-        
+
             style={styles.orderCard}
             onPress={() => setExpandedOrder(expandedOrder === parcel._id ? null : parcel._id)}
         >
@@ -162,7 +162,7 @@ export default function UserProfile() {
             </View>
 
             {expandedOrder === parcel._id && (
-                <Animated.View  style={styles.orderDetails}>
+                <Animated.View style={styles.orderDetails}>
                     <View style={styles.parcelDetails}>
                         <View style={styles.locationInfo}>
                             <Ionicons name="location" size={20} color="#6366f1" />
@@ -186,6 +186,45 @@ export default function UserProfile() {
         </AnimatedTouchableOpacity>
     );
 
+    const renderHotelCards = (hotelData) => (
+        <AnimatedTouchableOpacity
+
+            style={styles.orderCard}
+            onPress={() => setExpandedOrder(expandedOrder === hotelData._id ? null : hotelData._id)}
+        >
+            <View style={styles.orderHeader}>
+                <Text>{hotelData?.HotelUserId?.hotel_name}</Text>
+                <Text>View Details</Text>
+            </View>
+            {expandedOrder === hotelData._id && (
+                <Animated.View style={styles.orderDetails}>
+                    <View style={styles.hotelDataDetails}>
+                        <View style={styles.checkInDateInfo}>
+                            <Ionicons name="calendar" size={20} color="#6366f1" />
+                            <Text style={styles.checkInDate}>{new Date(hotelData.checkInDate).toLocaleDateString('en-GB')}</Text>
+                        </View>
+                        <View style={styles.checkInDateInfo}>
+                            <Ionicons name="calendar" size={20} color="#ef4444" />
+                            <Text style={styles.checkOutDate}>{new Date(hotelData.checkOutDate).toLocaleDateString('en-GB')}</Text>
+                        </View>
+                        <View style={styles.checkInDateInfo}>
+                            <Ionicons name="calendar" size={20} color="#ef4444" />
+                            <Text style={styles.paymentMode}>{hotelData.paymentMode}</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                            <Text style={styles.numberOfGuests}>
+                                No Of Guests: {hotelData.numberOfGuests} kg
+                            </Text>
+                            <Text style={styles.statItem}>
+                                status: {hotelData.status}
+                            </Text>
+                        </View>
+                    </View>
+                </Animated.View>
+            )}
+        </AnimatedTouchableOpacity>
+    );
+
     const renderContent = () => {
         switch (activeTab) {
             case 'Orders':
@@ -195,12 +234,7 @@ export default function UserProfile() {
             case 'Parcels':
                 return orderData?.Parcel.map(parcel => renderParcelCard(parcel));
             case 'Hotels':
-                return (
-                    <View style={styles.emptyState}>
-                        <MaterialCommunityIcons name="hotel" size={64} color="#94a3b8" />
-                        <Text style={styles.emptyStateText}>No hotel bookings yet</Text>
-                    </View>
-                );
+                return orderData?.Hotel.map(Hotel => renderHotelCards(Hotel));
             default:
                 return null;
         }
@@ -225,8 +259,8 @@ export default function UserProfile() {
                         source={{ uri: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400' }}
                         style={styles.avatar}
                     />
-                    <Text style={styles.name}>{userData?.name}</Text>
-                    <Text style={styles.email}>{userData?.email}</Text>
+                    <Text style={styles.name}>{userData?.number}</Text>
+                    <Text style={styles.email}>{userData?.isOtpVerify ? 'Verified User' : ''}</Text>
                 </View>
             </LinearGradient>
 
@@ -457,4 +491,49 @@ const styles = StyleSheet.create({
         color: '#94a3b8',
         textAlign: 'center',
     },
+    hotelDataDetails: {
+        flexDirection: 'column',
+        gap: 8,
+    },
+    checkInDateInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#e0e7ff',
+        padding: 8,
+        borderRadius: 5,
+    },
+    checkInDate: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#4f46e5',
+    },
+    checkOutDate: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#dc2626',
+    },
+    paymentMode: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#ef4444',
+    },
+    statItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        backgroundColor: '#f3f4f6',
+        padding: 10,
+        borderRadius: 5,
+        marginTop: 5,
+    },
+    numberOfGuests: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#374151',
+    },
+    status: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#10b981',
+    }
 });

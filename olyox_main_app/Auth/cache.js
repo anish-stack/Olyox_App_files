@@ -1,5 +1,4 @@
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 
 // Create a token cache utility
 const createTokenCache = () => {
@@ -16,15 +15,26 @@ const createTokenCache = () => {
                 return item;
             } catch (error) {
                 console.error('Secure store get item error: ', error);
-                // Delete the item if there was an error
-                await SecureStore.deleteItemAsync(key);
                 return null;
             }
         },
 
         // Save a token to Secure Store
-        saveToken: (key, token) => {
-            return SecureStore.setItemAsync(key, token);
+        saveToken: async (key, token) => {
+            try {
+                console.log("save key:", key);
+                console.log("save token:", token);
+                
+                await SecureStore.setItemAsync(key, token);
+                
+                console.log("Token successfully saved! 🔐");
+
+                
+                return token; // Explicitly return the token
+            } catch (error) {
+                console.error("Error saving token:", error);
+                return null;
+            }
         },
 
         // Delete a token from Secure Store
@@ -40,4 +50,4 @@ const createTokenCache = () => {
 };
 
 // Only use SecureStore for non-web platforms
-export const tokenCache = Platform.OS !== 'web' ? createTokenCache() : undefined;
+export const tokenCache = createTokenCache();

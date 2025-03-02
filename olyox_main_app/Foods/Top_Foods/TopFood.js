@@ -23,7 +23,7 @@ export default function TopFood({ show = false }) {
             console.log(latitude, longitude)
 
             setLoading(true);
-            const response = await axios.get(`http://192.168.1.10:3000/api/v1/tiffin/find_RestaurantTop`, {
+            const response = await axios.get(`http://192.168.1.3:3000/api/v1/tiffin/find_RestaurantTop`, {
                 params: {
                     lat: latitude,
                     lng: longitude
@@ -31,7 +31,7 @@ export default function TopFood({ show = false }) {
             });
 
             if (response.data) {
-                console.log("hey",response.data.data[0])
+                // console.log("hey",response.data.data[0])
                 setFoodData(response.data.data);
             } else {
                 Alert.alert('Error', 'No top restaurants found.');

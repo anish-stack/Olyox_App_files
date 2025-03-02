@@ -52,7 +52,7 @@ const HomeScreen = () => {
                 {/* <ShowMap /> Uncomment if needed */}
                 <Categories />
                 <BookARide />
-                {/* <Top_Hotel /> */}
+                <Top_Hotel />
                 <Food_Cats />
                 <TopFood />
 

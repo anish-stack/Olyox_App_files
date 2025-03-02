@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons"
 import axios from "axios"
 import { LinearGradient } from "expo-linear-gradient"
 import { SafeAreaView } from 'react-native-safe-area-context'
-const BASE_URL = `http://192.168.1.10:3000/api/v1/tiffin/find_Restaurant_Packages`
+const BASE_URL = `http://192.168.1.3:3000/api/v1/tiffin/find_Restaurant_Packages`
 const { width } = Dimensions.get("window")
 
 export default function TiffinsPage() {
@@ -50,7 +50,7 @@ export default function TiffinsPage() {
     }
 
     const handleCall = (phoneNumber) => {
-        console.log("restaurant_phone", phoneNumber)
+        // console.log("restaurant_phone", phoneNumber)
         Linking.openURL(`tel:${phoneNumber}`)
     }
 

@@ -63,7 +63,7 @@ export default function RideCome() {
         if (!token) return;
 
         try {
-            const response = await fetch('https://demoapi.olyox.com/webhook/cab-receive-location', {
+            const response = await fetch('http://192.168.1.3:3000/webhook/cab-receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -81,13 +81,14 @@ export default function RideCome() {
     const checkRider = async () => {
         try {
             const token = await SecureStore.getItemAsync('auth_token_cab');
+            console.log("rider tokens ",token)
             if (!token) {
                 console.warn("No auth token found");
                 return;
             }
 
             const response = await axios.get(
-                'https://demoapi.olyox.com/api/v1/rider/user-details',
+                'http://192.168.1.3:3000/api/v1/rider/user-details',
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 

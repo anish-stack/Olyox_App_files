@@ -3,7 +3,7 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 
 const { width } = Dimensions.get("window")
 
-const OnboardingWelcome = ({ onRegister, onLogin }) => (
+const OnboardingWelcome = ({ onRegister, onLogin, onComplete }) => (
   <View style={styles.container}>
     <Image
       source={{
@@ -16,11 +16,15 @@ const OnboardingWelcome = ({ onRegister, onLogin }) => (
     <Text style={styles.subtitle}>Start your journey as a delivery partner</Text>
     <TouchableOpacity style={styles.button} onPress={onRegister}>
       <Icon name="account-plus" size={24} color="#fff" style={styles.icon} />
-      <Text style={styles.buttonText}>Register</Text>
+      <Text style={styles.buttonText}>New Register</Text>
     </TouchableOpacity>
     <TouchableOpacity style={[styles.button, styles.loginButton]} onPress={onLogin}>
       <Icon name="login" size={24} color="#e51e25" style={styles.icon} />
       <Text style={[styles.buttonText, styles.loginButtonText]}>Login</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={[styles.button, styles.loginButton]} onPress={onComplete}>
+      <Icon name="login" size={24} color="#e51e25" style={styles.icon} />
+      <Text style={[styles.buttonText, styles.loginButtonText]}>Complete Profile</Text>
     </TouchableOpacity>
   </View>
 )

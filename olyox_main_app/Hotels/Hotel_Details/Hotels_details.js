@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, ActivityIndicator, StyleSheet, RefreshControl } from 'react-native';
+import { View, ScrollView, Text,ActivityIndicator, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Layout from '../../components/Layout/_layout';
 import { findHotelsDetailsAndList } from '../utils/Hotel.data';

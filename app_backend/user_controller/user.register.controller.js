@@ -9,7 +9,7 @@ const SendWhatsAppMessage = require("../utils/whatsapp_send");
 
 exports.createUser = async (req, res) => {
     try {
-        console.log(req.body)
+
         const { number, email, isGoogle, name } = req.body;
         const otp = crypto.randomInt(100000, 999999).toString();
         const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
@@ -27,7 +27,7 @@ exports.createUser = async (req, res) => {
 
                 const token = jwt.sign(
                     { user: email_user },
-                    process.env.JWT_SECRET_KEY,
+                    "dfhdhfuehfuierrheuirheuiryueiryuiewyrshddjidshfuidhduih",
                     { expiresIn: '30d' }
                 );
 
@@ -137,14 +137,17 @@ exports.verify_user = async (req, res) => {
             });
         }
 
+        console.log("JWT_SECRET_KEY", "dfhdhfuehfuierrheuirheuiryueiryuiewyrshddjidshfuidhduih")
         if (user.isOtpVerify) {
             if (user.tryLogin === true) {
                 if (otp === user.otp) {
                     const token = jwt.sign(
                         { user },
-                        process.env.JWT_SECRET_KEY,
+                        'dfhdhfuehfuierrheuirheuiryueiryuiewyrshddjidshfuidhduih',
                         { expiresIn: '30d' }
                     );
+                    console.log("token login", token)
+                    console.log("token user", user)
                     user.tryLogin = false;
                     user.otp = null;
                     user.otpExpiresAt = null;
@@ -152,7 +155,7 @@ exports.verify_user = async (req, res) => {
                     return res.status(200).json({
                         status: 200,
                         token,
-                        User:user,
+                        User: user,
                         tryLogin: user.tryLogin
                     });
                 }
@@ -170,7 +173,7 @@ exports.verify_user = async (req, res) => {
         if (otp === user.otp) {
             const token = jwt.sign(
                 { user },
-                process.env.JWT_SECRET_KEY,
+                "dfhdhfuehfuierrheuirheuiryueiryuiewyrshddjidshfuidhduih",
                 { expiresIn: '30d' }
             );
             user.isOtpVerify = true;
@@ -181,7 +184,7 @@ exports.verify_user = async (req, res) => {
             return res.status(200).json({
                 message: "Congratulations! Your OTP has been verified successfully. Welcome to Olyox, your ultimate companion for rides, food, and more.",
                 status: 200,
-                user:user,
+                user: user,
                 token
             });
         } else {
@@ -250,7 +253,7 @@ exports.fine_me = async (req, res) => {
         // Check if userData is an array or an object
         const userData = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
 
-        console.log("User found in:", req.user?.user);
+        console.log("User found in:", req.user);
 
         // Validate that userData exists before proceeding
         if (!userData || !userData._id) {
@@ -312,7 +315,7 @@ exports.login = async (req, res) => {
 
             const token = jwt.sign(
                 { user },
-                process.env.JWT_SECRET_KEY,
+                "dfhdhfuehfuierrheuirheuiryueiryuiewyrshddjidshfuidhduih",
                 { expiresIn: '30d' }
             );
 
@@ -327,7 +330,7 @@ exports.login = async (req, res) => {
         // Standard email login
         const token = jwt.sign(
             { user },
-            process.env.JWT_SECRET_KEY,
+            "dfhdhfuehfuierrheuirheuiryueiryuiewyrshddjidshfuidhduih",
             { expiresIn: '30d' }
         );
 
@@ -352,7 +355,7 @@ exports.login = async (req, res) => {
 exports.findAllOrders = async (req, res) => {
     try {
         const userData = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
-        console.log("userd",userData)
+        console.log("userd", userData)
         if (!userData?._id) {
             return res.status(400).json({
                 success: false,
@@ -362,12 +365,12 @@ exports.findAllOrders = async (req, res) => {
 
         // Fetch and sort all orders by latest (-1)
         const OrderFood = await OrderSchema.find({ user: userData._id })
-        .populate({ path: "items.foodItem_id" })  // Correct way to populate nested field inside an array
-        .sort({ createdAt: -1 });
+            .populate({ path: "items.foodItem_id" })  // Correct way to populate nested field inside an array
+            .sort({ createdAt: -1 });
 
-            const RideData = await RideRequestSchema.find({ user: userData._id }).sort({ createdAt: -1 });
+        const RideData = await RideRequestSchema.find({ user: userData._id }).sort({ createdAt: -1 });
         const Parcel = await ParcelBooks.find({ customerId: userData._id }).sort({ createdAt: -1 });
-        const Hotel = await HotelBookings.find({ guest_id: userData._id }).sort({ createdAt: -1 });
+        const Hotel = await HotelBookings.find({ guest_id: userData._id }).populate('HotelUserId').sort({ createdAt: -1 });
 
         // Count each type of order
         const orderCounts = {

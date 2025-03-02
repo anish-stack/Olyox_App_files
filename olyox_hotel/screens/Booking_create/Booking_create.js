@@ -212,7 +212,7 @@ export default function BookingCreate() {
       setSuccess('Booking verified successfully!');
       setShowOtpField(false);
 
-      navigation.navigate("AllBookings")
+      navigation.navigate("Bookings")
     } catch (error) {
       console.error('Verification error:', error.response.data);
       setError(error.response?.data?.message || 'OTP verification failed. Please try again.');

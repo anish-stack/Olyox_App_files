@@ -98,7 +98,7 @@ export default function Map({ origin, destination }) {
                         }}
                         onReady={(result) => {
                             setLoading(false);
-                            console.log("Directions ready:", result);
+                            // console.log("Directions ready:", result);
                         }}
                         onError={handleDirectionsError}
                     />

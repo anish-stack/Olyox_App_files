@@ -46,19 +46,19 @@ export default function HotelAmenities({ amenities }) {
           </View>
         ))}
       </View>
-      
+
       {amenitiesList.length > 6 && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.showMoreButton}
           onPress={() => setShowAll(!showAll)}
         >
           <Text style={styles.showMoreText}>
             {showAll ? 'Show Less' : 'Show More'}
           </Text>
-          <Icon 
-            name={showAll ? 'chevron-up' : 'chevron-down'} 
-            size={20} 
-            color="#E41D57" 
+          <Icon
+            name={showAll ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color="#E41D57"
           />
         </TouchableOpacity>
       )}

@@ -10,8 +10,8 @@ const LoginForm = ({ onLogin }) => {
     const handleLogin = async () => {
         try {
             // Make the Axios request to the login endpoint
-            const response = await axios.post('http://192.168.1.10:3000/api/v1/rider/rider-login', { number: phone });
-            console.log("response", response.data)
+            const response = await axios.post('http://192.168.1.3:3000/api/v1/rider/rider-login', { number: phone });
+     
             if (response.data.success) {
                 console.log("Login successful", response.data);
                 onLogin(phone)

@@ -16,20 +16,25 @@ import Login from './screens/Login/Login';
 import AllRoom from './screens/Room/AllRoom';
 import SingleDetailsPage from './screens/Room/SingleDetailsPage';
 import Booking_create from './screens/Booking_create/Booking_create';
+import AllBookings from './screens/AllBookings/AllBookings';
+import AllGuests from './screens/Guests/AllGuests';
+import Profile from './screens/Profile/Profile';
+import Upload_Documents from './screens/Profile/Upload_Documents';
+import Recharge from './screens/Recharge/Recharge';
 
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
-  const { isLoggedIn } = useToken();
 
+  const { isLoggedIn, loading } = useToken(); 
 
-  if (!isLoggedIn) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+  //       <ActivityIndicator size="large" color="#0000ff" />
+  //     </View>
+  //   );
+  // }
 
   return (
     <NavigationContainer>
@@ -51,6 +56,17 @@ const AppNavigator = () => {
 
         {/* Booking */}
         <Stack.Screen name="Booking-create" options={{ headerShown: false }} component={Booking_create} />
+        <Stack.Screen name="Bookings" options={{ headerShown: false }} component={AllBookings} />
+
+        {/* Guests */}
+        <Stack.Screen name="Guests" options={{ headerShown: false }} component={AllGuests} />
+
+        {/* Profile */}
+
+        <Stack.Screen name="Profile" options={{ headerShown: false }} component={Profile} />
+        <Stack.Screen name="upload_Documents" options={{ headerShown: false }} component={Upload_Documents} />
+        <Stack.Screen name="Recharge" options={{ headerShown: false }} component={Recharge} />
+
 
       </Stack.Navigator>
     </NavigationContainer>

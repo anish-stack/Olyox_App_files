@@ -63,12 +63,11 @@ export default function Layout({ data, children, title = 'Hotel Management', pro
 
   // Menu items for sidebar
   const menuItems = [
-    { id: 'home', label: 'Dashboard', icon: 'dashboard' },
+    { id: 'home', label: 'Home', icon: 'dashboard' },
     { id: 'rooms', label: 'Rooms', icon: 'hotel' },
     { id: 'bookings', label: 'Bookings', icon: 'book-online' },
     { id: 'guests', label: 'Guests', icon: 'people' },
-    { id: 'payments', label: 'Payments', icon: 'payment' },
-    { id: 'reports', label: 'Reports', icon: 'bar-chart' },
+    { id: 'recharge', label: 'Recharge', icon: 'payment' },
     { id: 'settings', label: 'Settings', icon: 'settings' },
   ];
 

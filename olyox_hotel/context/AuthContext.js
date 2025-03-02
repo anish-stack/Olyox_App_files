@@ -6,17 +6,25 @@ const TokenContext = createContext();
 export const TokenProvider = ({ children }) => {
     const [token, setToken] = useState(null);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         const loadToken = async () => {
+            setLoading(true)
+            // await SecureStore.deleteItemAsync('userToken');
             try {
                 const storedToken = await SecureStore.getItemAsync('userToken');
+                console.log(storedToken)
                 if (storedToken) {
                     setToken(storedToken);
                     setIsLoggedIn(true);
                 }
+                setLoading(false)
+
             } catch (error) {
                 console.error('Failed to load token:', error);
+                setLoading(false)
+
             }
         };
 
@@ -24,11 +32,17 @@ export const TokenProvider = ({ children }) => {
     }, []);
 
     const updateToken = async (newToken) => {
+        setLoading(false)
+
         try {
             await SecureStore.setItemAsync('userToken', newToken);
             setToken(newToken);
             setIsLoggedIn(true);
+            setLoading(true)
+
         } catch (error) {
+            setLoading(false)
+
             console.error('Failed to save token:', error);
         }
     };
@@ -44,7 +58,7 @@ export const TokenProvider = ({ children }) => {
     };
 
     return (
-        <TokenContext.Provider value={{ token, isLoggedIn, updateToken, logout }}>
+        <TokenContext.Provider value={{ token,loading, isLoggedIn, updateToken, logout }}>
             {children}
         </TokenContext.Provider>
     );

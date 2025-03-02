@@ -12,9 +12,11 @@ export const SocketProvider = ({ children }) => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
+        console.log("connecting")
         const loadUserAndInitializeSocket = async () => {
             try {
                 const user = await fetchUserData();
+                console.log(user)
                 if (!user || !user._id) throw new Error("Invalid user data");
 
                 setUserData(user);

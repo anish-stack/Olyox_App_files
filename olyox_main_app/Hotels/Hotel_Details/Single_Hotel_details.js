@@ -1,77 +1,104 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Layout from '../../components/Layout/_layout';
-import { useRoute } from '@react-navigation/native';
-import { findHotelsDetails } from '../utils/Hotel.data';
-import BookingModal from './BookingModal';
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+import {
+    View,
+    Text,
+    ScrollView,
+    Image,
+    TouchableOpacity,
+    ActivityIndicator,
+    RefreshControl,
+    Linking,
+} from "react-native"
+import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import Layout from "../../components/Layout/_layout"
+import { useRoute } from "@react-navigation/native"
+import { findHotelsDetails } from "../utils/Hotel.data"
+import BookingModal from "./BookingModal"
+import styles from "./SingleHotelDetails.style"
+
 const getAmenityIcon = (amenity) => {
     const iconMap = {
-        AC: 'air-conditioner',
-        freeWifi: 'wifi',
-        kitchen: 'kitchen',
-        TV: 'television',
-        powerBackup: 'power-plug',
-        geyser: 'water-boiler',
-        parkingFacility: 'parking',
-        elevator: 'elevator',
-        cctvCameras: 'cctv',
-        diningArea: 'table-furniture',
-        privateEntrance: 'door',
-        reception: 'desk',
-        caretaker: 'account-tie',
-        security: 'shield-check',
-        checkIn24_7: 'clock-24',
-        dailyHousekeeping: 'broom',
-        fireExtinguisher: 'fire-extinguisher',
-        firstAidKit: 'medical-bag',
-        buzzerDoorBell: 'bell',
-        attachedBathroom: 'shower'
-    };
-    return iconMap[amenity] || 'checkbox-marked-circle';
-};
+        AC: "air-conditioner",
+        freeWifi: "wifi",
+        kitchen: "food",
+        TV: "television",
+        powerBackup: "power-plug",
+        geyser: "water-boiler",
+        parkingFacility: "parking",
+        elevator: "elevator",
+        cctvCameras: "cctv",
+        diningArea: "table-furniture",
+        privateEntrance: "door",
+        reception: "desk",
+        caretaker: "account-tie",
+        security: "shield-check",
+        checkIn24_7: "hours-24",
+        dailyHousekeeping: "broom",
+        fireExtinguisher: "fire-extinguisher",
+        firstAidKit: "medical-bag",
+        buzzerDoorBell: "bell",
+        attachedBathroom: "shower",
+    }
+    return iconMap[amenity] || "checkbox-marked-circle"
+}
 
-// Helper function to format amenity names
 const formatAmenityName = (amenity) => {
     return amenity
-        .replace(/([A-Z])/g, ' $1') // Add space before capital letters
-        .replace(/_/g, ' ') // Replace underscores with spaces
-        .replace(/^./, (str) => str.toUpperCase()) // Capitalize first letter
-        .trim();
-};
+        .replace(/([A-Z])/g, " $1")
+        .replace(/_/g, " ")
+        .replace(/^./, (str) => str.toUpperCase())
+        .trim()
+}
 
-export default function Single_Hotel_details() {
-    const route = useRoute();
-    const { id } = route.params || {};
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [refreshing, setRefreshing] = useState(false);
-    const [showModal, setShowModal] = useState(false);
-    const [showAllAmenities, setShowAllAmenities] = useState(false);
+export default function SingleHotelDetails() {
+    const route = useRoute()
+    const { id } = route.params || {}
+    const [data, setData] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+    const [refreshing, setRefreshing] = useState(false)
+    const [showModal, setShowModal] = useState(false)
+    const [showAllAmenities, setShowAllAmenities] = useState(false)
 
-    const fetchData = async (showLoader = true) => {
-        try {
-            if (showLoader) setLoading(true);
-            const response = await findHotelsDetails(id);
-            if (response.data) {
-                setData(response.data);
-                setError(null);
-            } else {
-                setError('No hotel data found');
+    const fetchData = useCallback(
+        async (showLoader = true) => {
+            try {
+                if (showLoader) setLoading(true)
+                const response = await findHotelsDetails(id)
+                if (response.data) {
+                    setData(response.data)
+                    setError(null)
+                } else {
+                    setError("No hotel data found")
+                }
+            } catch (error) {
+                setError("Failed to fetch hotel details")
+                console.error(error)
+            } finally {
+                setLoading(false)
+                setRefreshing(false)
             }
-        } catch (error) {
-            setError('Failed to fetch hotel details');
-            console.log(error);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    };
+        },
+        [id],
+    )
 
     useEffect(() => {
-        fetchData();
-    }, [id]);
+        fetchData()
+    }, [fetchData])
+
+    const handleRefresh = useCallback(() => {
+        setRefreshing(true)
+        fetchData(false)
+    }, [fetchData])
+
+    const handleCall = useCallback(() => {
+        const phoneNumber = data?.hotel_user?.hotel_phone
+        if (phoneNumber) {
+            Linking.openURL(`tel:${phoneNumber}`)
+        }
+    }, [data])
 
     if (loading) {
         return (
@@ -80,7 +107,7 @@ export default function Single_Hotel_details() {
                     <ActivityIndicator size="large" color="#E41D57" />
                 </View>
             </Layout>
-        );
+        )
     }
 
     if (error) {
@@ -93,92 +120,84 @@ export default function Single_Hotel_details() {
                     </TouchableOpacity>
                 </View>
             </Layout>
-        );
+        )
     }
 
-    const activeAmenities = Object.entries(data.amenities)
+    const activeAmenities = Object.entries(data?.hotel_user?.amenities || {})
         .filter(([_, value]) => value)
-        .map(([key]) => key);
+        .map(([key]) => key)
 
-    const displayedAmenities = showAllAmenities ? activeAmenities : activeAmenities.slice(0, 6);
+    const displayedAmenities = showAllAmenities ? activeAmenities : activeAmenities.slice(0, 6)
 
     return (
         <Layout>
-            <ScrollView style={styles.container}>
-                {/* Main Image */}
-                <Image
-                    source={{ uri: data.main_image.url }}
-                    style={styles.mainImage}
-                    resizeMode="cover"
-                />
+            <ScrollView
+                style={styles.container}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+            >
+                <Image source={{ uri: data?.main_image?.url }} style={styles.mainImage} resizeMode="cover" />
 
-                {/* Rating Badge */}
                 <View style={styles.ratingBadge}>
                     <Icon name="star" size={16} color="#FFD700" />
-                    <Text style={styles.ratingText}>{data.rating_number}</Text>
-                    <Text style={styles.reviewCount}>({data.number_of_rating_done} reviews)</Text>
+                    <Text style={styles.ratingText}>{data?.rating_number}</Text>
+                    <Text style={styles.reviewCount}>({data?.number_of_rating_done} reviews)</Text>
                 </View>
 
-                {/* Room Details */}
                 <View style={styles.contentContainer}>
-                    <Text style={styles.roomType}>{data.room_type}</Text>
+                    <Text style={styles.hotelName}>{data?.hotel_user?.hotel_name}</Text>
+                    <Text style={styles.hotelAddress}>{data?.hotel_user?.hotel_address}</Text>
+                    <Text style={styles.roomType}>{data?.room_type}</Text>
+                    {data?.hotel_user?.isVerifiedTag && (
+                        <View style={styles.verifiedBadge}>
+                            <Icon name="check-decagram" size={16} color="#22C55E" />
+                            <Text style={styles.verifiedText}>Olyox Verified Hotel</Text>
+                        </View>
+                    )}
 
-                    {/* Tags */}
                     <View style={styles.tagsContainer}>
-                        {data.has_tag.map((tag) => (
+                        {data?.has_tag?.map((tag) => (
                             <View key={tag} style={styles.tag}>
-                                <Text style={styles.tagText}>{tag.replace('_', ' ')}</Text>
+                                <Text style={styles.tagText}>{tag.replace("_", " ")}</Text>
                             </View>
                         ))}
                     </View>
 
-                    {/* Price Section */}
                     <View style={styles.priceSection}>
                         <View>
-                            <Text style={styles.cutPrice}>₹{data.cut_price}</Text>
-                            <Text style={styles.price}>₹{data.book_price}</Text>
+                            <Text style={styles.cutPrice}>₹{data?.cut_price}</Text>
+                            <Text style={styles.price}>₹{data?.book_price}</Text>
                         </View>
                         <View style={styles.discountBadge}>
-                            <Text style={styles.discountText}>{data.discount_percentage}% OFF</Text>
+                            <Text style={styles.discountText}>{data?.discount_percentage}% OFF</Text>
                         </View>
                     </View>
 
-                    {/* Amenities */}
+                    <View style={styles.infoSection}>
+                        <View style={styles.infoItem}>
+                            <Icon name="account-group" size={24} color="#666" />
+                            <Text style={styles.infoText}>Allowed Guests: {data?.allowed_person}</Text>
+                        </View>
+                    </View>
+
                     <View style={styles.amenitiesSection}>
                         <Text style={styles.sectionTitle}>Amenities</Text>
                         <View style={styles.amenitiesGrid}>
                             {displayedAmenities.map((amenity) => (
                                 <View key={amenity} style={styles.amenityItem}>
-                                    <Icon 
-                                        name={getAmenityIcon(amenity)} 
-                                        size={24} 
-                                        color="#E41D57" 
-                                    />
-                                    <Text style={styles.amenityText}>
-                                        {formatAmenityName(amenity)}
-                                    </Text>
+                                    <Icon name={getAmenityIcon(amenity)} size={24} color="#E41D57" />
+                                    <Text style={styles.amenityText}>{formatAmenityName(amenity)}</Text>
                                 </View>
                             ))}
                         </View>
                         {activeAmenities.length > 6 && (
-                            <TouchableOpacity 
-                                style={styles.showMoreButton}
-                                onPress={() => setShowAllAmenities(!showAllAmenities)}
-                            >
-                                <Text style={styles.showMoreText}>
-                                    {showAllAmenities ? 'Show Less' : 'Show More'}
-                                </Text>
-                                <Icon 
-                                    name={showAllAmenities ? 'chevron-up' : 'chevron-down'} 
-                                    size={20} 
-                                    color="#E41D57" 
-                                />
+                            <TouchableOpacity style={styles.showMoreButton} onPress={() => setShowAllAmenities(!showAllAmenities)}>
+                                <Text style={styles.showMoreText}>{showAllAmenities ? "Show Less" : "Show More"}</Text>
+                                <Icon name={showAllAmenities ? "chevron-up" : "chevron-down"} size={20} color="#E41D57" />
                             </TouchableOpacity>
                         )}
                     </View>
 
-                    {/* Cancellation Policy */}
-                    {data.cancellation_policy && (
+                    {data?.cancellation_policy && (
                         <View style={styles.policySection}>
                             <Text style={styles.sectionTitle}>Cancellation Policy</Text>
                             {data.cancellation_policy.map((policy, index) => (
@@ -190,185 +209,32 @@ export default function Single_Hotel_details() {
                         </View>
                     )}
 
-                    {/* Book Now Button */}
-                    <TouchableOpacity 
-                        style={styles.bookButton}
-                        onPress={() => setShowModal(true)}
-                    >
-                        <Text style={styles.bookButtonText}>Book Now</Text>
-                    </TouchableOpacity>
+                    {data?.isPackage && data?.package_add_ons && (
+                        <View style={styles.policySection}>
+                            <Text style={styles.sectionTitle}>Package Add-ons</Text>
+                            {data.package_add_ons.map((addon, index) => (
+                                <View key={index} style={styles.policyItem}>
+                                    <Icon name="package-variant" size={20} color="#666" />
+                                    <Text style={styles.policyText}>{addon}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
                 </View>
             </ScrollView>
 
-            <BookingModal 
-                visible={showModal}
-                onClose={() => setShowModal(false)}
-                roomData={data}
-            />
+            <View style={styles.footer}>
+                <TouchableOpacity style={styles.callButton} onPress={handleCall}>
+                    <Icon name="phone" size={24} color="#fff" />
+                    <Text style={styles.callButtonText}>Call Hotel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.bookButton} onPress={() => setShowModal(true)}>
+                    <Text style={styles.bookButtonText}>Book Now</Text>
+                </TouchableOpacity>
+            </View>
+
+            <BookingModal visible={showModal} allowed_person={data?.allowed_person} onClose={() => setShowModal(false)} roomData={data} />
         </Layout>
-    );
+    )
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    centerContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    mainImage: {
-        width: '100%',
-        height: 300,
-    },
-    ratingBadge: {
-        position: 'absolute',
-        top: 16,
-        right: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.7)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 16,
-    },
-    ratingText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: 'bold',
-        marginLeft: 4,
-    },
-    reviewCount: {
-        color: '#fff',
-        fontSize: 12,
-        marginLeft: 4,
-    },
-    contentContainer: {
-        padding: 16,
-    },
-    roomType: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#1a1a1a',
-        marginBottom: 12,
-    },
-    tagsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginBottom: 16,
-    },
-    tag: {
-        backgroundColor: '#f0f0f0',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-    },
-    tagText: {
-        color: '#666',
-        fontSize: 14,
-    },
-    priceSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 24,
-    },
-    cutPrice: {
-        fontSize: 16,
-        color: '#666',
-        textDecorationLine: 'line-through',
-    },
-    price: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#E41D57',
-    },
-    discountBadge: {
-        backgroundColor: '#E8F5E9',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-    },
-    discountText: {
-        color: '#22C55E',
-        fontWeight: '600',
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#1a1a1a',
-        marginBottom: 16,
-    },
-    amenitiesGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 16,
-    },
-    amenityItem: {
-        width: '30%',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    amenityText: {
-        marginTop: 4,
-        fontSize: 12,
-        color: '#666',
-        textAlign: 'center',
-    },
-    showMoreButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 8,
-        padding: 8,
-    },
-    showMoreText: {
-        color: '#E41D57',
-        marginRight: 4,
-        fontWeight: '500',
-    },
-    policySection: {
-        marginTop: 24,
-        marginBottom: 24,
-    },
-    policyItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    policyText: {
-        marginLeft: 8,
-        color: '#666',
-        flex: 1,
-    },
-    bookButton: {
-        backgroundColor: '#E41D57',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-    bookButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    errorText: {
-        color: '#EF4444',
-        fontSize: 16,
-        textAlign: 'center',
-        marginBottom: 16,
-    },
-    retryButton: {
-        backgroundColor: '#E41D57',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 8,
-    },
-    retryButtonText: {
-        color: '#fff',
-        fontWeight: '600',
-    },
-});
