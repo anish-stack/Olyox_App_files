@@ -11,7 +11,7 @@ export default function Ride_Rating() {
     const route = useRoute()
     const { data } = route.params || {};
     const [submitted, setSubmitted] = useState(false);
-    const socket = useSocket();
+    const {socket} = useSocket();
     const handleRating = (rate) => {
         if (!submitted) {
             setRating(rate);

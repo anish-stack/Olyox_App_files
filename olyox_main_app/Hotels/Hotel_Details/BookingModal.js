@@ -26,13 +26,14 @@ export default function BookingModal({ visible, onClose, roomData }) {
     const [males, setMales] = useState(1);
     const [loading, setLoading] = useState(false)
     const [showSuccess, setShowSuccess] = useState(false);
+    const [numberOfRooms, setNumberRooms] = useState(1)
     const [females, setFemales] = useState(0);
     const [step, setStep] = useState(1);
     const [guests, setGuests] = useState([{ guestName: "", guestAge: "", guestPhone: "" }]);
     const [paymentMethod, setPaymentMethod] = useState('online');
     const navigation = useNavigation()
     const totalGuests = males + females;
-    const isValidGuests = totalGuests <= roomData.allowed_person;
+    const isValidGuests = totalGuests <= numberOfRooms * roomData.allowed_person;
     const isValidGuestInfo = guests[0].guestName && guests[0].guestAge && guests[0].guestPhone;
 
     const handleDateChange = (event, selectedDate, type) => {
@@ -123,6 +124,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
             const dataToBeSend = {
                 guestInformation: guests,
                 checkInDate,
+                numberOfRooms,
                 checkOutDate,
                 listing_id: roomData?._id,
                 hotel_id: roomData?.hotel_user?._id,
@@ -136,7 +138,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
 
             // Make API call
             const { data } = await axios.post(
-                `http://192.168.1.3:3000/api/v1/hotels/book-room-user`,
+                `http://192.168.1.2:3000/api/v1/hotels/book-room-user`,
                 dataToBeSend,
                 {
                     headers: {
@@ -164,7 +166,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
                     males,
                     roomData,
                     females,
-                    guestInfo:bookingData.guestInformation,
+                    guestInfo: bookingData.guestInformation,
                     paymentMethod,
                     Bookingid: bookingData.bookingId
                 }
@@ -243,7 +245,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
                 return (
                     <View>
                         <Text style={styles.guestInfo}>
-                            Maximum {roomData.allowed_person} guests allowed
+                            Maximum {roomData.allowed_person * numberOfRooms} guests allowed
                         </Text>
 
                         <View style={styles.guestPicker}>
@@ -279,12 +281,43 @@ export default function BookingModal({ visible, onClose, roomData }) {
                                 ))}
                             </Picker>
                         </View>
-
-                        {!isValidGuests && (
-                            <Text style={styles.errorText}>
-                                Total guests cannot exceed {roomData.allowed_person}
+                        <View>
+                            <Text style={styles.guestInfo}>
+                                No of Rooms : {numberOfRooms}
                             </Text>
+                        </View>
+                        {!isValidGuests && (
+                            <View style={{ flexDirection: "col", alignItems: "center", marginTop: 10 }}>
+                                <Text style={{ color: "red", fontSize: 14, marginBottom: 5 }}>
+                                    Total guests cannot exceed {roomData.allowed_person} Book one More Room
+                                </Text>
+
+                                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 10 }}>
+
+
+                                    <TouchableOpacity
+                                        onPress={() => setNumberRooms((prev) => Math.max(1, prev - 1))}
+                                        style={{ padding: 10, flex: 1, textAlign: 'center', backgroundColor: "#d64444", borderRadius: 5, marginHorizontal: 5 }}
+                                    >
+                                        <Text style={{ color: "white", textAlign: 'center', fontSize: 16, fontWeight: "bold" }}>-</Text>
+                                    </TouchableOpacity>
+                                    <Text style={{ fontSize: 16, flex: 1, textAlign: 'center', fontWeight: "bold", marginHorizontal: 10 }}>{numberOfRooms}</Text>
+
+                                    <TouchableOpacity
+                                        onPress={() => setNumberRooms((prev) => Math.max(1, prev + 1))}
+                                        style={{ padding: 10, flex: 1, textAlign: 'center', backgroundColor: "#0d6efd", borderRadius: 5, marginHorizontal: 5 }}
+                                    >
+                                        <Text style={{ color: "white", fontSize: 16, textAlign: 'center', fontWeight: "bold" }}>+</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
                         )}
+                        <TouchableOpacity
+                            style={styles.backButton}
+                            onPress={() => setStep(step - 1)}
+                        >
+                            <Text style={styles.backButtonText}>Back</Text>
+                        </TouchableOpacity>
                     </View>
                 );
             case 3:
@@ -321,15 +354,22 @@ export default function BookingModal({ visible, onClose, roomData }) {
                                         <Icon name="close" size={24} color="#de423e" />
                                     </TouchableOpacity>
                                 )}
+
                             </View>
                         ))}
 
-                        {guests.length < roomData.allowed_person && (
+                        {guests.length < roomData.allowed_person * numberOfRooms && (
                             <TouchableOpacity style={styles.addGuestButton} onPress={addGuest}>
                                 <Icon name="plus" size={24} color="#de423e" />
                                 <Text style={styles.addGuestText}>Add Guest</Text>
                             </TouchableOpacity>
                         )}
+                        <TouchableOpacity
+                            style={styles.backButton}
+                            onPress={() => setStep(step - 1)}
+                        >
+                            <Text style={styles.backButtonText}>Back</Text>
+                        </TouchableOpacity>
                     </View>
                 )
 

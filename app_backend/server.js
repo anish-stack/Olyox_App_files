@@ -19,6 +19,7 @@ const { update_parcel_request, mark_reached, mark_pick, mark_deliver, mark_cance
 require('dotenv').config();
 const multer = require('multer');
 const admin = require('./routes/Admin/admin.routes');
+const Settings = require('./models/Admin/Settings');
 const storage = multer.memoryStorage()
 
 const upload = multer({ storage: storage });
@@ -545,7 +546,7 @@ app.get('/rider', async (req, res) => {
     }
 });
 
-app.get('/',(req,res)=>{
+app.get('/', (req, res) => {
     res.status(201).json({
         message: 'Welcome to the API',
     })
@@ -695,8 +696,10 @@ app.post("/geo-code-distance", async (req, res) => {
             return res.status(400).json({ message: "Invalid distance calculation" });
         }
 
+        const settings = await Settings.findOne()
+
         const distanceInKm = distanceInfo.distance.value / 1000; // Convert meters to kilometers
-        const price = distanceInKm * 70; // ₹70 per km
+        const price = distanceInKm * settings.foodDeliveryPrice; // ₹20 per km
 
         return res.status(200).json({
             pickupLocation: pickupData,

@@ -41,20 +41,20 @@ const ParcelRequestSchema = new Schema({
     parcelDetails: {
         weight: {
             type: Number,
-            required: true
+            // required: true
         },
         dimensions: {
             length: {
                 type: Number,
-                required: true
+                // required: true
             },
             width: {
                 type: Number,
-                required: true
+                // required: true
             },
             height: {
                 type: Number,
-                required: true
+                // required: true
             }
         },
         description: {
@@ -109,25 +109,25 @@ const ParcelRequestSchema = new Schema({
         type: String,
 
     },
-    is_parcel_delivered:{
-        type:Boolean,
-        default:false
+    is_parcel_delivered: {
+        type: Boolean,
+        default: false
     },
-    is_driver_reached:{
-        type:Boolean,
+    is_driver_reached: {
+        type: Boolean,
     },
-    is_driver_reached_time:{
-        type:Date,
+    is_driver_reached_time: {
+        type: Date,
     },
-    is_driver_reached_at_deliver_place:{
-        type:Boolean,
+    is_driver_reached_at_deliver_place: {
+        type: Boolean,
     },
-    is_driver_reached_at_deliver_place_time:{
-        type:Date,
+    is_driver_reached_at_deliver_place_time: {
+        type: Date,
     },
-    is_parcel_picked:{
-        type:Boolean,
-        default:false
+    is_parcel_picked: {
+        type: Boolean,
+        default: false
     },
     updatedAt: {
         type: Date,

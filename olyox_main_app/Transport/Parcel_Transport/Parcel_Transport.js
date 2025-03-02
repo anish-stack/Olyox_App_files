@@ -20,20 +20,20 @@ export default function Parcel_Transport() {
                         />
                     </View>
                     <View style={styles.textContainer}>
-                        <Text style={styles.title}>Swift Parcel Delivery at Your Fingertips!</Text>
+                        <Text style={styles.title}>Swift Food Delivery at Your Fingertips!</Text>
                         <Text style={styles.subtitle}>
                             Experience lightning-fast, secure deliveries with Olyox Premium Service
                         </Text>
                         <View style={styles.highlightContainer}>
-                            <Text style={styles.highlight}>✓ Same-day delivery</Text>
+                            <Text style={styles.highlight}>✓ Fast delivery</Text>
                             <Text style={styles.highlight}>✓ Real-time tracking</Text>
-                            <Text style={styles.highlight}>✓ Insured shipments</Text>
+                           
                         </View>
-                        <Text style={styles.pricing}>Starting at just ₹70/km</Text>
+                        {/* <Text style={styles.pricing}>Starting at just ₹70/km</Text> */}
                         <View style={{ alignItems: 'center', justifyContent: 'center', alignContent: 'center', width: '100%' }}>
                             <TouchableOpacity onPress={() => navigation.navigate('Book-Parcel')} style={styles.button}>
                                 <Text style={styles.buttonText}>
-                                    Send Parcel Now
+                                    Send Order Now
                                 </Text>
                             </TouchableOpacity>
                         </View>

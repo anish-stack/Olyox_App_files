@@ -22,8 +22,9 @@ export default function FloatingRide() {
                 setIsRideActive(false);
                 return;
             }
-            const { data } = await axios.get(`http://192.168.1.3:3000/api/v1/rides/find-ride_details?id=${rideId}`);
+            const { data } = await axios.get(`http://192.168.1.2:3000/api/v1/rides/find-ride_details?id=${rideId}`);
             if (data?.data?.is_ride_paid === false) {
+                // console.log(data)
                 setIsRideActive(data.data?.ride_is_started || false);
             } else (
                 setIsRideActive(false)
@@ -93,7 +94,9 @@ export default function FloatingRide() {
                         colors={isRideActive ? ['#6a11cb', '#2575fc'] : ['#ff416c', '#ff4b2b']}
                         style={styles.buttonInner}
                     >
-
+                        <Text style={styles.buttonText}>
+                            Text
+                        </Text>
                         <Text style={styles.buttonText}>
                             {isRideActive ? 'Start Ride' : 'Book'}
                         </Text>
@@ -106,9 +109,7 @@ export default function FloatingRide() {
 
 const styles = StyleSheet.create({
     container: {
-        ...StyleSheet.absoluteFillObject,
-        justifyContent: 'flex-end',
-        alignItems: 'flex-end',
+        flex: 1
     },
     floatingButton: {
         width: 80,

@@ -8,14 +8,13 @@ const { driverSocketMap } = require("../server");
 exports.request_of_parcel = async (req, res) => {
     try {
         const userData = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
-        const { customerName, customerPhone, dropoff, height, length, pickup, weight, width } = req.body || {};
+        const { customerName, customerPhone, dropoff,  } = req.body || {};
+        // const { customerName, customerPhone, dropoff,request_of_parcel  } = req.body || {};
 
         if (!dropoff || !pickup) {
             return res.status(400).json({ message: "Dropoff and Pickup are required" });
         }
-        if (!height || !length || !width || !weight) {
-            return res.status(400).json({ message: "Height, Length, Width, and Weight are required" });
-        }
+      
 
         const pickupData = await axios.get(`https://api.srtutorsbureau.com/geocode?address=${encodeURIComponent(pickup)}`);
         const dropOffData = await axios.get(`https://api.srtutorsbureau.com/geocode?address=${encodeURIComponent(dropoff)}`);
@@ -43,7 +42,7 @@ exports.request_of_parcel = async (req, res) => {
             location: {
                 $near: {
                     $geometry: GeoPickUp,
-                    $maxDistance: 3000,
+                    $maxDistance: 6000,
                 },
             },
         }).populate("riderId", "_id");
@@ -100,11 +99,7 @@ exports.request_of_parcel = async (req, res) => {
             customerPhone,
             pickupLocation: pickup,
             dropoffLocation: dropoff,
-            parcelDetails: {
-                height,
-                weight,
-                dimensions: { length, width, height },
-            },
+            
             totalKm: distanceInKm,
             pickupGeo: GeoPickUp,
             droppOffGeo: GeoDrop,
@@ -117,7 +112,7 @@ exports.request_of_parcel = async (req, res) => {
         // Check delivery boys' online status
         const availableBoys = [];
         const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
-        console.log("tofay date")
+        // console.log("tofay date")
 
         for (const boy of findBoysNearPickup) {
             const checkStatus = await Parcel_User_Login_Status.findOne({
@@ -160,12 +155,7 @@ exports.request_of_parcel = async (req, res) => {
                 io.to(riderSocketId).emit('new_parcel_request', {
                     pickupLocation: pickup,
                     dropoffLocation: dropoff,
-                    parcelDetails: {
-                        height,
-                        length,
-                        width,
-                        weight
-                    },
+                   
                     price: price.toFixed(2),
                     customerId: userData._id,
                     customerName,

@@ -7,12 +7,13 @@ const SocketContext = createContext(null);
 export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
   const [user, setUser] = useState(null);
-  console.log("Use r",user)
+  const [isConnected, setIsConnected] = useState(false);
+  const [lastConnectedAt, setLastConnectedAt] = useState(null);
+
   // Fetch user data
   useEffect(() => {
     const fetchUser = async () => {
       const data = await find_me();
-      console.log("Use r",data)
 
       if (data?.user?._id) {
         setUser(data.user._id);
@@ -27,35 +28,66 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     if (user && !socketRef.current) {
       console.log("🚀 Initializing socket for user:", user);
-      socketRef.current = initializeSocket({ userId: user });
+      const socket = initializeSocket({ userId: user });
+      socketRef.current = socket;
+
+      // Set up event listeners for connection state
+      socket.on('connect', () => {
+        console.log("🔌 Socket connected");
+        setIsConnected(true);
+        setLastConnectedAt(new Date());
+      });
+
+      socket.on('disconnect', () => {
+        console.log("❌ Socket disconnected");
+        setIsConnected(false);
+      });
+
+      socket.on('connect_error', (err) => {
+        console.error("🚨 Socket connection error:", err);
+        setIsConnected(false);
+      });
     }
 
     return () => {
       if (socketRef.current) {
         console.log("🛑 Cleaning up socket on unmount...");
         cleanupSocket();
+        socketRef.current = null;
+        setIsConnected(false);
       }
     };
   }, [user]);
 
-  // Reconnect if socket disconnects
+  // More frequent reconnection checks
   useEffect(() => {
     const checkAndReconnect = () => {
-      if (socketRef.current && !socketRef.current.connected) {
+      if (user && (!socketRef.current || !isConnected)) {
         console.warn("🔄 Socket disconnected. Reconnecting...");
-        cleanupSocket();
+        if (socketRef.current) {
+          cleanupSocket();
+          socketRef.current = null;
+        }
         socketRef.current = initializeSocket({ userId: user });
       }
     };
 
     if (user) {
-      const interval = setInterval(checkAndReconnect, 60000); // Check every 60 seconds
+      // Check more frequently - every 10 seconds
+      const interval = setInterval(checkAndReconnect, 10000);
       return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, isConnected]);
 
   return (
-    <SocketContext.Provider value={socketRef.current}>
+    <SocketContext.Provider
+      value={{
+        socket: socketRef.current,
+        isConnected,
+        lastConnectedAt,
+        userId: user
+      }}
+    >
       {children}
     </SocketContext.Provider>
   );

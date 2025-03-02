@@ -41,6 +41,10 @@ const SettingsSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    foodDeliveryPrice:{
+        type:Number,
+        default:0
+    },
     openMapApiKey: {
         type: String,
         default: ''

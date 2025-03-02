@@ -8,10 +8,7 @@ import {
   X,
   Home,
   User,
-  ShoppingBag,
-  MapPinned,
-  Settings,
-  HelpCircle,
+
   Briefcase,
 } from "lucide-react-native"
 
@@ -60,7 +57,7 @@ const Header = () => {
       return
     }
     try {
-      const { data } = await axios.post(`http://192.168.1.3:3000/Fetch-Current-Location`, {
+      const { data } = await axios.post(`http://192.168.1.2:3000/Fetch-Current-Location`, {
         lat: location?.coords?.latitude,
         lng: location?.coords?.longitude,
       })
@@ -117,7 +114,7 @@ const Header = () => {
           </View>
         </View>
 
-        <View style={styles.searchContainer}>
+        {/* <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
             placeholder="Search What you Want To Eat, Ride, and Shift ...."
@@ -126,7 +123,7 @@ const Header = () => {
           <TouchableOpacity style={styles.searchIcon}>
             <Search size={20} color={COLORS.text} />
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         <TouchableOpacity style={styles.menuButton} onPress={toggleSidebar}>
           <Menu size={30} color={COLORS.white} />
@@ -191,7 +188,6 @@ const styles = StyleSheet.create({
   locationContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
   },
   locationTextContainer: {
     flex: 1,

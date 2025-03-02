@@ -30,6 +30,8 @@ exports.FindWeather = async (lat, lon) => {
 
 
 exports.CheckTolls = async (origin, destination) => {
+    console.log(origin)
+    console.log(origin)
     if (!origin || !destination) {
         throw new Error('Origin and destination are required');
     }
@@ -46,8 +48,11 @@ exports.CheckTolls = async (origin, destination) => {
             origin: { location: { latLng: origin } },
             destination: { location: { latLng: destination } },
             travelMode: "DRIVE",
-            extraComputations: ["TOLLS"]
+            extraComputations: ["TOLLS"],
+            regionCode: "IN",
+            computeAlternativeRoutes: true
         };
+     
 
         const { data } = await axios.post(
             `https://routes.googleapis.com/directions/v2:computeRoutes?key=${apiKey}`,
@@ -59,7 +64,8 @@ exports.CheckTolls = async (origin, destination) => {
             }
         );
 
-        return data.routes[0] || {};
+        console.log(data.routes)
+        return data.routes[1] || data || {}
     } catch (error) {
         console.error('Routes API Error:', error.message);
         throw new Error(error.message);

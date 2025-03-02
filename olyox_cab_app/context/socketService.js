@@ -2,7 +2,7 @@ import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-const SOCKET_URL = "http://192.168.1.3:3000";
+const SOCKET_URL = "http://192.168.1.2:3000";
 let socket = null;
 
 export const fetchUserData = async () => {
@@ -14,7 +14,7 @@ export const fetchUserData = async () => {
         }
 
         const response = await axios.get(
-            "http://192.168.1.3:3000/api/v1/parcel/user-details",
+            "http://192.168.1.2:3000/api/v1/parcel/user-details",
             {
                 headers: { Authorization: `Bearer ${token}` },
             }

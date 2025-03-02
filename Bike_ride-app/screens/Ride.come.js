@@ -63,7 +63,7 @@ export default function RideCome() {
         if (!token) return;
 
         try {
-            const response = await fetch('http://192.168.1.3:3000/webhook/cab-receive-location', {
+            const response = await fetch('http://192.168.1.2:3000/webhook/cab-receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -81,14 +81,14 @@ export default function RideCome() {
     const checkRider = async () => {
         try {
             const token = await SecureStore.getItemAsync('auth_token_cab');
-            console.log("rider tokens ",token)
+            console.log("rider tokens ", token)
             if (!token) {
                 console.warn("No auth token found");
                 return;
             }
 
             const response = await axios.get(
-                'http://192.168.1.3:3000/api/v1/rider/user-details',
+                'http://192.168.1.2:3000/api/v1/rider/user-details',
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
@@ -298,7 +298,12 @@ export default function RideCome() {
                                 <Text style={styles.detailValue}>₹{matchedRider?.price}</Text>
                             </View>
                         </View>
-
+                        <View style={{ padding: 10, backgroundColor: '#f8f9fa', borderRadius: 5 }}>
+                            <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#d9534f' }}>
+                                Note: <Text style={{ color: '#212529' }}>Road tax, state tax, and highway tolls are included.</Text>
+                                <Text style={{ color: '#d9534f' }}>(MCD tolls are not included.)</Text>
+                            </Text>
+                        </View>
                         <View style={styles.buttonContainer}>
                             <Button
                                 mode="contained"

@@ -33,7 +33,7 @@ export default function UserProfile() {
             const gmail_token = await tokenCache.getToken('auth_token');
             const db_token = await tokenCache.getToken('auth_token_db');
             const token = db_token || gmail_token
-            const response = await axios.get('http://192.168.1.3:3000/api/v1/user/find-Orders-details', {
+            const response = await axios.get('http://192.168.1.2:3000/api/v1/user/find-Orders-details', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setOrderData(response.data.data);
@@ -100,46 +100,54 @@ export default function UserProfile() {
         </AnimatedTouchableOpacity>
     );
 
-    const renderRideCard = (ride) => (
+    const renderRideCard = (ride) => {
+        console.log(ride)
+        
+        return (
         <AnimatedTouchableOpacity
 
-            style={styles.orderCard}
-            onPress={() => setExpandedOrder(expandedOrder === ride._id ? null : ride._id)}
-        >
-            <View style={styles.orderHeader}>
-                <View style={styles.orderInfo}>
-                    <Text style={styles.orderId}>{ride.vehicleType} Ride</Text>
-                    <Text style={styles.orderDate}>
-                        {new Date(ride.createdAt).toLocaleDateString()}
-                    </Text>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: '#dcfce7' }]}>
-                    <Text style={[styles.statusText, { color: '#166534' }]}>
-                        {ride.rideStatus}
-                    </Text>
-                </View>
+        style={styles.orderCard}
+        onPress={() => setExpandedOrder(expandedOrder === ride._id ? null : ride._id)}
+    >
+        <View style={styles.orderHeader}>
+            <View style={styles.orderInfo}>
+                <Text style={styles.orderId}>{ride.vehicleType} Ride</Text>
+                <Text style={styles.orderDate}>
+                    {new Date(ride.createdAt).toLocaleDateString()}
+                </Text>
             </View>
+            <View style={[styles.statusBadge, { backgroundColor: '#dcfce7' }]}>
+                <Text style={[styles.statusText, { color: '#166534' }]}>
+                    {ride.rideStatus}
+                </Text>
+            </View>
+        </View>
 
-            {expandedOrder === ride._id && (
-                <Animated.View style={styles.orderDetails}>
-                    <View style={styles.rideDetails}>
-                        <View style={styles.locationInfo}>
-                            <Ionicons name="location" size={20} color="#6366f1" />
-                            <Text style={styles.locationText}>{ride.pickup_desc}</Text>
-                        </View>
-                        <View style={styles.locationInfo}>
-                            <Ionicons name="location" size={20} color="#ef4444" />
-                            <Text style={styles.locationText}>{ride.drop_desc}</Text>
-                        </View>
-                        <View style={styles.rideStats}>
-                            <Text style={styles.statItem}>Distance: {ride.kmOfRide} km</Text>
-                            <Text style={styles.statItem}>ETA: {ride.EtaOfRide}</Text>
-                        </View>
+        {expandedOrder === ride._id && (
+            <Animated.View style={styles.orderDetails}>
+                <View style={styles.rideDetails}>
+                    <View style={styles.locationInfo}>
+                        <Ionicons name="location" size={20} color="#6366f1" />
+                        <Text style={styles.locationText}>{ride.pickup_desc}</Text>
                     </View>
-                </Animated.View>
-            )}
-        </AnimatedTouchableOpacity>
-    );
+                    <View style={styles.locationInfo}>
+                        <Ionicons name="location" size={20} color="#ef4444" />
+                        <Text style={styles.locationText}>{ride.drop_desc}</Text>
+                    </View>
+                    <View style={styles.rideStats}>
+                        <Text style={styles.statItem}>Distance: {ride.kmOfRide} km</Text>
+                        <Text style={styles.statItem}>ETA: {ride.EtaOfRide}</Text>
+                    </View>
+                    <TouchableOpacity onPress={()=>  navigation.navigate('RideStarted', { driver: ride?.rider, ride: ride })}>
+                        <Text>
+                            See Ride
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </Animated.View>
+        )}
+    </AnimatedTouchableOpacity>
+    )}
 
     const renderParcelCard = (parcel) => (
         <AnimatedTouchableOpacity

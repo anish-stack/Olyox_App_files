@@ -359,6 +359,8 @@ export default function Collect_Data() {
                     provider={PROVIDER_GOOGLE}
                     style={styles.map}
                     region={region}
+                    showsUserLocation
+                    showsMyLocationButton
                     onRegionChangeComplete={setRegion}
                 >
                     <Marker
@@ -417,7 +419,7 @@ export default function Collect_Data() {
 
                 <View style={styles.mapFooter}>
                     <Text style={styles.mapAddressText}>
-                        {mapType === 'pickup' ? pickup : dropoff || 'Move the pin to select location'}
+                        {mapType === 'pickup' ? pickup : dropoff || 'Move the pin to and tap on marker location'}
                     </Text>
                     <TouchableOpacity
                         style={styles.confirmButton}

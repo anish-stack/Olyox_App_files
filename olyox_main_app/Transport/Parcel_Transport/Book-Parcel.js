@@ -36,7 +36,7 @@ const ParcelBooking = () => {
   const [error, setError] = useState("");
   const [riderFound, setRiderFound] = useState(false);
   const navigation = useNavigation();
-  const socket = useSocket();
+  const {socket} = useSocket();
 
   useSocketInitialization(socket, () => {
     console.log('🟢 Socket initialization complete, setting up listeners');
@@ -94,7 +94,7 @@ const ParcelBooking = () => {
     setLoading(true);
     try {
       console.log('🔵 Calculating distance and ETA');
-      const { data } = await axios.post("http://192.168.1.3:3000/geo-code-distance", {
+      const { data } = await axios.post("http://192.168.1.2:3000/geo-code-distance", {
         pickup,
         dropOff: dropoff,
       });
@@ -120,7 +120,7 @@ const ParcelBooking = () => {
 
   const validateInputs = () => {
     console.log('🔵 Validating inputs');
-    if (!pickup || !dropoff || !weight || !length || !width || !height || !customerName || !customerPhone) {
+    if (!pickup || !dropoff || !customerName || !customerPhone) {
       setError("Please fill in all fields");
       return false;
     }
@@ -147,14 +147,14 @@ const ParcelBooking = () => {
       const token = await tokenCache.getToken("auth_token_db") || await tokenCache.getToken("auth_token");
 
       const { data } = await axios.post(
-        "http://192.168.1.3:3000/api/v1/parcel/request_of_parcel",
+        "http://192.168.1.2:3000/api/v1/parcel/request_of_parcel",
         {
           pickup,
           dropoff,
-          weight,
-          length,
-          width,
-          height,
+          // weight,
+          // length,
+          // width,
+          // height,
           customerName,
           customerPhone,
         },
@@ -226,8 +226,8 @@ console.log("🟢 sockett",socket)
       />
 
       <View style={styles.formCard}>
-        <Text style={styles.title}>Booking a</Text>
-        <Text style={styles.subtitle}>Pickup & Drop service</Text>
+        <Text style={styles.title}>Deliver Your Food </Text>
+        <Text style={styles.subtitle}>To Customer With Olyox</Text>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -268,7 +268,7 @@ console.log("🟢 sockett",socket)
           </View>
         )}
 
-        <ParcelDetails
+        {/* <ParcelDetails
           weight={weight}
           setWeight={setWeight}
           length={length}
@@ -277,7 +277,7 @@ console.log("🟢 sockett",socket)
           setWidth={setWidth}
           height={height}
           setHeight={setHeight}
-        />
+        /> */}
 
         <Text style={styles.sectionTitle}>Receiver Details</Text>
 

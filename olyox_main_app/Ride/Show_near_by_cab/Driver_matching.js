@@ -18,7 +18,7 @@ import { useSocket } from '../../context/SocketContext';
 const { width } = Dimensions.get('window');
 
 export function DriverMatching({ navigation }) {
-    const socket = useSocket();
+    const { socket, isConnected } = useSocket();
     const [matchingState, setMatchingState] = useState('found');
     const [timeLeft, setTimeLeft] = useState(2);
     const route = useRoute();
@@ -56,7 +56,7 @@ export function DriverMatching({ navigation }) {
             });
         }
         setTimeout(() => {
-            navigation.navigate('RideStarted', { driver: selectedDriver,ride:ride });
+            navigation.navigate('RideStarted', { driver: selectedDriver, ride: ride });
         }, 1500);
 
 

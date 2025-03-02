@@ -368,7 +368,7 @@ exports.findAllOrders = async (req, res) => {
             .populate({ path: "items.foodItem_id" })  // Correct way to populate nested field inside an array
             .sort({ createdAt: -1 });
 
-        const RideData = await RideRequestSchema.find({ user: userData._id }).sort({ createdAt: -1 });
+        const RideData = await RideRequestSchema.find({ user: userData._id }).populate('rider').sort({ createdAt: -1 });
         const Parcel = await ParcelBooks.find({ customerId: userData._id }).sort({ createdAt: -1 });
         const Hotel = await HotelBookings.find({ guest_id: userData._id }).populate('HotelUserId').sort({ createdAt: -1 });
 

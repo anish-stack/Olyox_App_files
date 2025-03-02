@@ -22,6 +22,7 @@ exports.makeBookingOffline = async (req, res) => {
             checkInDate,
             checkOutDate,
             listing_id,
+            NumberOfRoomBooks,
             numberOfGuests,
             booking_payment_done,
             modeOfBooking = "Offline",
@@ -64,6 +65,7 @@ exports.makeBookingOffline = async (req, res) => {
             modeOfBooking,
             bookingAmount,
             paymentMode,
+            NumberOfRoomBooks,
             HotelUserId: userId,
             Booking_id: bookingId,
             BookingOtp: bookingOtp,
@@ -395,6 +397,7 @@ exports.UserMakesBooking = async (req, res) => {
             checkInDate,
             checkOutDate,
             listing_id,
+            NumberOfRoomBooks = 1,
             hotel_id,
             paymentMethod,
             booking_payment_done,
@@ -421,7 +424,7 @@ exports.UserMakesBooking = async (req, res) => {
         // Validate Dates
         const today = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
         console.log(today);
-        
+
         if (new Date(checkInDate) < today) {
             return res.status(400).json({ success: false, message: "Check-in date cannot be in the past." });
         }
@@ -445,7 +448,6 @@ exports.UserMakesBooking = async (req, res) => {
         const listingAvailable = await HotelListing.findById({
             _id: listing_id,
             HotelUserId: hotel_id,
-
         });
 
         if (!listingAvailable.isRoomAvailable) {
@@ -473,6 +475,7 @@ exports.UserMakesBooking = async (req, res) => {
             booking_payment_done,
             modeOfBooking,
             bookingAmount,
+            NumberOfRoomBooks,
             paymentMode: mode,
             guest_id: userId,
             HotelUserId: hotel_id,
@@ -488,7 +491,7 @@ exports.UserMakesBooking = async (req, res) => {
         // Send Confirmation via WhatsApp to Guest
         const guestPhone = guestInformation[0]?.guestPhone;
         if (guestPhone) {
-            const guestMessage = `🌟 *Booking Confirmation* 🌟
+            const guestMessage = `🌟*Booking Confirmation* 🌟
                                                 
                                     🆔 Booking ID: *${bookingId}*
                                     🔑 OTP: *${bookingOtp}*

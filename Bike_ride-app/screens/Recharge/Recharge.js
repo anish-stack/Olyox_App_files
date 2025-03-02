@@ -34,7 +34,7 @@ import {
       try {
         const token = await SecureStore.getItemAsync('auth_token_cab');
         if (token) {
-          const response = await axios.get('http://192.168.1.3:3000/api/v1/rider/user-details', {
+          const response = await axios.get('http://192.168.1.2:3000/api/v1/rider/user-details', {
             headers: { Authorization: `Bearer ${token}` },
           });
           setUserData(response.data.partner);
@@ -93,7 +93,7 @@ import {
         console.log(userData)
         const token = await SecureStore.getItemAsync('auth_token_cab');
         const { data } = await axios.post(
-          `http://192.168.1.3:7000/api/v1/do-recharge?_id=${userData?.BH}`,
+          `http://192.168.1.2:7000/api/v1/do-recharge?_id=${userData?.BH}`,
           {
             userId:userData?._id,
             plan_id: selectedMemberId,

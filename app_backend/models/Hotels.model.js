@@ -102,6 +102,10 @@ const hotelRoomListing = new Schema({
     package_add_ons: [
         String
     ],
+    NumberOfRoomBooks:{
+        type:Number,
+        default:1
+    },
     isRoomAvailable: {
         type: Boolean,
         default: false

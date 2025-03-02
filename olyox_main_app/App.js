@@ -189,7 +189,7 @@ const App = () => {
 
                           <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={Onboarding} />
                         </Stack.Navigator>
-                        <FloatingRide />
+                   
                       </NavigationContainer>
                     </ErrorBoundaryWrapper>
                   </ClerkLoaded>

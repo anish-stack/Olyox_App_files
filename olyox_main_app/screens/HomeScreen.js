@@ -14,6 +14,7 @@ import ShowMap from '../Ride/Show_near_by_cab/ShowMap';
 import { useUser } from '@clerk/clerk-expo';
 import Floatingride from '../Ride/Floating_ride/Floating.ride';
 import Food_Cats from '../Foods/Food_Cats/Food_Cats';
+import FloatingRide from '../Ride/Floating_ride/Floating.ride';
 
 const HomeScreen = () => {
     const { user, isLoaded, isSignedIn } = useUser();
@@ -55,7 +56,7 @@ const HomeScreen = () => {
                 <Top_Hotel />
                 <Food_Cats />
                 <TopFood />
-
+                <FloatingRide />
             </ScrollView>
         </Layout>
     );
