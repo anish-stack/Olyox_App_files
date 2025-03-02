@@ -394,8 +394,6 @@ exports.AddRating = async (data, rate) => {
         ride_id.RatingOfRide = rate
         await ride_id.save()
 
-
-
         return {
             success: true,
             driverId: ride_id.rider,

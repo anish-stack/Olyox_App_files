@@ -407,6 +407,97 @@ exports.uploadDocuments = async (req, res) => {
     }
 };
 
+exports.updateHotelUserDetail = async (req, res) => {
+    try {
+        const { hotelId } = req.params;
+        const updateData = req.body;
+
+        // Find the hotel by ID
+        let hotel = await HotelUser.findById(hotelId);
+        if (!hotel) {
+            return res.status(404).json({
+                success: false,
+                message: "Hotel not found"
+            });
+        }
+
+        // Handle file uploads for documents
+        const documentFields = ['aadhar_front', 'aadhar_Back', 'panCard', 'gst', 'addressProof', 'ProfilePic'];
+        let documents = [...hotel.Documents];
+
+        const uploadImage = async (file) => {
+            if (!file) return null;
+            const result = await cloudinary.uploader.upload(file.path, {
+                folder: "hotel_listings_documents"
+            });
+            return { d_url: result.secure_url, d_public_id: result.public_id };
+        };
+
+        for (const field of documentFields) {
+            if (req.files && req.files[field]) {
+                const uploadedImage = await uploadImage(req.files[field][0]);
+                if (uploadedImage) {
+                    // Check if the document type already exists
+                    const existingDocIndex = documents.findIndex(doc => doc.d_type === field);
+                    if (existingDocIndex !== -1) {
+                        // Replace existing document
+                        documents[existingDocIndex] = {
+                            d_type: field,
+                            d_url: uploadedImage.d_url,
+                            d_public_id: uploadedImage.d_public_id
+                        };
+                    } else {
+                        // Add new document
+                        documents.push({
+                            d_type: field,
+                            d_url: uploadedImage.d_url,
+                            d_public_id: uploadedImage.d_public_id
+                        });
+                    }
+                }
+            }
+        }
+
+        // If new documents were uploaded, update them
+        if (documents.length > 0) {
+            updateData.Documents = documents;
+        }
+
+        // Update amenities if provided
+        if (updateData.amenities) {
+            updateData.amenities = {
+                ...hotel.amenities,
+                ...updateData.amenities
+            };
+        }
+
+        // Update geolocation if provided
+        if (updateData.hotel_geo_location && updateData.hotel_geo_location.coordinates) {
+            updateData.hotel_geo_location = {
+                type: "Point",
+                coordinates: updateData.hotel_geo_location.coordinates
+            };
+        }
+
+        // Update all fields
+        const updatedHotel = await HotelUser.findByIdAndUpdate(hotelId, updateData, { new: true });
+
+        return res.status(200).json({
+            success: true,
+            message: "Hotel details updated successfully",
+            data: updatedHotel
+        });
+
+    } catch (error) {
+        console.error("Internal server error", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+};
+
 exports.toggleHotelStatus = async (req, res) => {
     try {
         const { status } = req.body;
@@ -470,9 +561,6 @@ exports.toggleHotelStatus = async (req, res) => {
         });
     }
 };
-
-
-
 
 exports.add_hotel_listing = async (req, res) => {
     try {
@@ -619,11 +707,6 @@ exports.deleteHotelRoom = async (req, res) => {
     }
 };
 
-
-
-
-
-
 exports.getHotelsNearByMe = async (req, res) => {
     try {
         const { lat, lng } = req.query;
@@ -694,6 +777,49 @@ exports.getHotelsDetails = async (req, res) => {
     }
 };
 
+exports.getSingleHotelDetails = async (req,res) => {
+    try {
+        const {id} = req.params;
+        console.log("id",id)
+        const hotelData = await HotelUser.findById(id);
+        if (!hotelData) {
+            return res.status(404).json({ success: false, message: "Hotel not found." })
+        }
+        res.status(200).json({
+            success: true,
+            message: 'Hotel fetched successfully',
+            data: hotelData
+        })
+    } catch (error) {
+        console.log("Internal server error",error)
+    }
+}
+
+exports.updateHotelBlock = async(req,res) => {
+    try {
+        const {id} = req.params;
+        const {isBlockByAdmin} = req.body;
+        const hotelData = await HotelUser.findById(id);
+        if (!hotelData) {
+            return res.status(404).json({ success: false, message: "Hotel not found." })
+        }
+        hotelData.isBlockByAdmin = isBlockByAdmin;
+        await hotelData.save();
+        res.status(200).json({
+            success: true,
+            message: 'Hotel block status updated successfully',
+            data: hotelData
+        })
+    } catch (error) {
+        console.log("Internal server error",error)
+        res.status(500).json({
+            success: false,
+            message: "Something went wrong while updating the hotel block status",
+            error: error.message
+        })
+    }
+}
+
 
 exports.getHotelsListingDetails = async (req, res) => {
     try {
@@ -752,3 +878,65 @@ exports.toggleRoomStatus = async (req, res) => {
         return res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
+
+exports.getAllHotel = async (req, res) => {
+    try {
+        const hotel_listing = await HotelUser.find();
+        if (!hotel_listing) {
+            return res.status(404).json({
+                success: false,
+                message: "No hotel found"
+            });
+        }
+        res.status(200).json({ success: true, message: 'Hotels fetched successfully', data: hotel_listing });
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
+
+exports.verifyDocuments = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { DocumentUploadedVerified } = req.body
+        const user = await HotelUser.findById(id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "No user found"
+            });
+        }
+        user.DocumentUploadedVerified = DocumentUploadedVerified
+        await user.save()
+        return res.status(200).json({
+            success: true,
+            message: "Documents verified successfully"
+        })
+
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
+
+exports.updateHotelUserDetail = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {hotel_name,hotel_zone,hotel_address,hotel_owner,hotel_phone,amenities,} = req.body;
+    } catch (error) {
+        console.log("Internal server error",error)
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}

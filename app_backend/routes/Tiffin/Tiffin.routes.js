@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
-const { register_restaurant, register_restaurant_fake, add_food_listing, get_all_listing, get_All_tiffin_id, login, verify_otp, getSingleTiffinProfile, delete_food_listing, updateIsWorking, update_available_status, passwordChange, resend_otp, getFoodListingById, getCustomTiffinListingById, updateLogo, updateResturant } = require('../../Tiffins/Create_Restaurant');
-const { find_Restaurant, find_Restaurant_foods, find_Restaurant_And_Her_foods, find_RestaurantTop, getPackages } = require('../../Tiffins/Get_resturant');
+const { register_restaurant, register_restaurant_fake, add_food_listing, get_all_listing, get_All_tiffin_id, login, verify_otp, getSingleTiffinProfile, delete_food_listing, updateIsWorking, update_available_status, passwordChange, resend_otp, getFoodListingById, getCustomTiffinListingById, updateLogo, updateResturant, updateTiffinDocumentVerify } = require('../../Tiffins/Create_Restaurant');
+const { find_Restaurant, find_Restaurant_foods, find_Restaurant_And_Her_foods, find_RestaurantTop, getPackages, find_RestaurantbyId, update_Restaurant_status } = require('../../Tiffins/Get_resturant');
 const { create_order_of_food, cancel_order, admin_cancel_order, get_my_latest_order, get_order_by_id, get_orders_by_restaurant, change_order_status } = require('../../Tiffins/Food_Order');
 const { createCustomTiffin, getAllTiffinPlans, getTiffinPlanById, updateTiffinPlan, deleteTiffinPlan, tryhit, updateAvailableTiffinPlans } = require('../../Tiffins/CustomTiffine_controller');
 const Protect = require('../../middleware/Auth');
@@ -28,6 +28,7 @@ tiffin.post('/resend-otp', resend_otp);
 tiffin.post('/verify_otp', verify_otp)
 tiffin.get('/get_single_tiffin_profile', Protect, getSingleTiffinProfile)
 tiffin.put('/update_password/:id', passwordChange)
+tiffin.put('/verify_tiffin_document/:id', updateTiffinDocumentVerify)
 tiffin.get('/get_food_by_resutrant_id', Protect, getFoodListingById)
 tiffin.get('/get_custom_tiffin_by_resutrant_id', Protect, getCustomTiffinListingById)
 
@@ -43,6 +44,8 @@ tiffin.put('/update_restaurant_details/:id',
 
 // get tiffins
 tiffin.get('/get_restaurant', find_Restaurant)
+tiffin.get('/get_single_restaurant/:id', find_RestaurantbyId)
+tiffin.put('/update_restaurant_status/:id', update_Restaurant_status)
 tiffin.get('/find_Restaurant_foods', find_Restaurant_foods)
 tiffin.get('/find_Restaurant_And_Her_foods', find_Restaurant_And_Her_foods)
 tiffin.post('/create_order_of_food', Protect, create_order_of_food)

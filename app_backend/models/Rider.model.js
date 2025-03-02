@@ -162,6 +162,10 @@ const RiderSchema = new Schema({
     },
     JsonData: {
         type: Object
+    },
+    isBlockByAdmin: {
+        type: Boolean,
+        default: false
     }
 });
 
