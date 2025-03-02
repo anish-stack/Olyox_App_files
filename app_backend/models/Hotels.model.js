@@ -112,6 +112,10 @@ const hotelRoomListing = new Schema({
             ref: 'Review',
         }
     ],
+    status: {
+        type: Boolean,
+        default: false
+    }
 }, {
     timestamps: true,
 });

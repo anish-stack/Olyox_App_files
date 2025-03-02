@@ -38,7 +38,56 @@ exports.find_Restaurant = async (req, res) => {
     }
 };
 
+exports.update_Restaurant_status = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        const updatedRestaurant = await Restaurant.findByIdAndUpdate(id, { status }, { new: true });
+        if (!updatedRestaurant) {
+            return res.status(404).json({
+                success: false,
+                message: "Restaurant not found.",
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            message: "Restaurant status updated successfully.",
+            data: updatedRestaurant,
+        });
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
 
+exports.find_RestaurantbyId = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const restaurant = await Restaurant.findById(id);
+        if (!restaurant) {
+            return res.status(404).json({
+                success: false,
+                message: "Restaurant not found.",
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            message: "Restaurant found successfully.",
+            data: restaurant,
+        });
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
 
 
 
@@ -213,7 +262,7 @@ exports.getPackages = async (req, res) => {
         if (!lat || !lng) {
             AllNearByRestaurant = await Restaurant.find({});
         }
-        console.log("AllNearByRestaurant",AllNearByRestaurant)
+        console.log("AllNearByRestaurant", AllNearByRestaurant)
 
 
         if (AllNearByRestaurant.length === 0) {

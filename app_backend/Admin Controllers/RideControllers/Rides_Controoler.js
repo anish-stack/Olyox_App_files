@@ -80,3 +80,23 @@ exports.deleteSuggestion = async (req, res) => {
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };
+
+exports.updateStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        const updatedSuggestion = await RidesSuggestion.findByIdAndUpdate(id, { status }, { new: true });
+        res.status(200).json({
+            success: true,
+            message: 'Status updated successfully',
+            data: updatedSuggestion
+        })
+    } catch (error) {
+        console.log("Internal server error", error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error. Please try again later.',
+            error: error.message
+        })
+    }
+}

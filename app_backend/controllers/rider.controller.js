@@ -91,6 +91,19 @@ exports.registerRider = async (req, res) => {
   }
 };
 
+exports.getSingleRider = async (req,res) => {
+  try {
+    
+  } catch (error) {
+    console.log("Internal server error",error)
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    })
+  }
+}
+
 exports.login = async (req, res) => {
   try {
     const { number } = req.body;
@@ -292,6 +305,30 @@ exports.getAllRiders = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch riders' });
   }
 };
+
+exports.riderDocumentsVerify = async (req, res) => {
+  try {
+    const {id} = req.params;
+    const {DocumentVerify} = req.body;
+    const rider = await Rider.findById(id);
+    if (!rider) {
+      return res.status(404).json({ success: false,message: "Rider not found" });
+    }
+    rider.DocumentVerify = DocumentVerify;
+    await rider.save();
+    res.status(200).json({
+      success: true,
+      message: "Documents verified successfully",
+    })
+  } catch (error) {
+    console.log("Internal server error",error)
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    })
+  }
+}
 
 // Change location of a rider
 exports.changeLocation = async (req, res) => {
@@ -653,3 +690,25 @@ Welcome aboard! 🚖💨`;
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+exports.updateBlockStatus = async (req, res) => {
+  try{
+    const {id} = req.params;
+    const {isBlockByAdmin} = req.body;
+    const riderData = await Rider.findById(id);
+    if (!riderData) {
+      return res.status(404).json({ success: false, message: "Rider not found." });
+    }
+
+    riderData.isBlockByAdmin = isBlockByAdmin;
+    const result = await riderData.save();
+    return res.status(200).json({ success: true, message: "Block status updated successfully", data: result });
+  }catch(error){
+    console.error("Error updating block status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message
+    })
+  }
+}

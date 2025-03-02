@@ -250,7 +250,6 @@ exports.updateResturant = async (req, res) => {
 
 exports.updateLogo = async (req, res) => {
     try {
-        console.log("i am hit");
         const { id } = req.params;
         const restaurant = await Restaurant.findById(id);
 
@@ -328,6 +327,35 @@ exports.updateIsWorking = async (req, res) => {
             message: "Restaurant isWorking updated successfully"
         })
     } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
+
+exports.updateTiffinDocumentVerify = async (req,res) => {
+    try{
+        const { id } = req.params;
+        const { documentVerify } = req.body;
+        const restaurant = await Restaurant.findById(id);
+
+        if (!restaurant) {
+            return res.status(404).json({
+                success: false,
+                message: "Restaurant not found"
+            })
+        }
+
+        restaurant.documentVerify = documentVerify;
+        await restaurant.save();
+        return res.status(200).json({
+            success: true,
+            message: "Document Verification updated successfully"
+        })
+    }catch(error){
         console.log("Internal server error", error)
         res.status(500).json({
             success: false,
