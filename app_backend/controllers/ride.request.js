@@ -333,7 +333,10 @@ exports.rideEnd = async (data) => {
         }
 
         ride_id.ride_end_time = new Date()
-        ride_id?.rideStatus = "completed"
+        if (ride_id) {
+            ride_id.rideStatus = "completed";
+        }
+        
         await ride_id.save()
 
         const findRider = await Riders.findById(ride_id?.rider)
