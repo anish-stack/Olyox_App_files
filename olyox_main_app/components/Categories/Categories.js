@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import axios from 'axios';
-import { COLORS } from '../../constants/colors';
+;
 import { useNavigation, useRoute } from '@react-navigation/native';
 const { width } = Dimensions.get('screen');
 const ITEM_WIDTH = (width - 75) / 4;
@@ -33,7 +33,7 @@ export default function Categories() {
         if (screen === 'Cab Service') {
             navigation.navigate('Start_Booking_Ride')
         } else if(screen === "Transport"){
-            navigation.navigate('delivery_parcel')
+            navigation.navigate('Transport')
             
         }else {
             navigation.navigate(screen)

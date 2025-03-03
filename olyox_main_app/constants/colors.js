@@ -9,6 +9,7 @@ export const COLORS = {
     error: '#de423e',
     zom:'#F05654',
     success: '#34C759',
+    lightGrey:'#CCCCCC'
   };
   
   

@@ -7,14 +7,15 @@ const { driverSocketMap } = require("../server");
 
 exports.request_of_parcel = async (req, res) => {
     try {
+        console.log("req.body", req.body)
         const userData = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
-        const { customerName, customerPhone, dropoff,  } = req.body || {};
+        const { customerName, customerPhone, dropoff, pickup } = req.body || {};
         // const { customerName, customerPhone, dropoff,request_of_parcel  } = req.body || {};
 
         if (!dropoff || !pickup) {
             return res.status(400).json({ message: "Dropoff and Pickup are required" });
         }
-      
+
 
         const pickupData = await axios.get(`https://api.srtutorsbureau.com/geocode?address=${encodeURIComponent(pickup)}`);
         const dropOffData = await axios.get(`https://api.srtutorsbureau.com/geocode?address=${encodeURIComponent(dropoff)}`);
@@ -52,7 +53,7 @@ exports.request_of_parcel = async (req, res) => {
         }
 
         const pickupResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
-            params: { address: pickup, key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34' },
+            params: { address: pickup, key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8' },
         });
 
         if (pickupResponse.data.status !== "OK") {
@@ -62,7 +63,7 @@ exports.request_of_parcel = async (req, res) => {
 
         // Geocode Dropoff Location
         const dropOffResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
-            params: { address: dropoff, key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34' },
+            params: { address: dropoff, key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8' },
         });
 
         if (dropOffResponse.data.status !== "OK") {
@@ -75,7 +76,7 @@ exports.request_of_parcel = async (req, res) => {
             params: {
                 origins: `${pickupDatatwo.lat},${pickupDatatwo.lng}`,
                 destinations: `${dropOffDatatwo.lat},${dropOffDatatwo.lng}`,
-                key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34',
+                key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8',
             },
         });
 
@@ -99,7 +100,7 @@ exports.request_of_parcel = async (req, res) => {
             customerPhone,
             pickupLocation: pickup,
             dropoffLocation: dropoff,
-            
+
             totalKm: distanceInKm,
             pickupGeo: GeoPickUp,
             droppOffGeo: GeoDrop,
@@ -155,7 +156,7 @@ exports.request_of_parcel = async (req, res) => {
                 io.to(riderSocketId).emit('new_parcel_request', {
                     pickupLocation: pickup,
                     dropoffLocation: dropoff,
-                   
+
                     price: price.toFixed(2),
                     customerId: userData._id,
                     customerName,
@@ -237,7 +238,7 @@ exports.my_parcel_driver = async (req, res) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const todayOrders = parcels.filter(parcel => 
+        const todayOrders = parcels.filter(parcel =>
             new Date(parcel.createdAt).setHours(0, 0, 0, 0) === today.getTime()
         ).length;
 
@@ -256,7 +257,7 @@ exports.my_parcel_driver = async (req, res) => {
             summary: {
                 todayOrders,
                 totalOrders,
-                rating:4.3,
+                rating: 4.3,
                 totalDeliveredEarnings
             }
         });
@@ -313,11 +314,11 @@ exports.single_my_parcels = async (req, res) => {
     try {
         const { id } = req.query
         console.log("sss", id)
-   
+
 
         // Find parcels related to the user
         const find = await Parcel_Request.findOne({
-         
+
             _id: id
         })
             .populate('driverId')

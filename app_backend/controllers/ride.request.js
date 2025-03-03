@@ -4,15 +4,16 @@ const axios = require('axios');
 const Crypto = require('crypto');
 const { FindWeather, CheckTolls } = require('../utils/Api.utils');
 const Settings = require('../models/Admin/Settings');
+const RidesSuggestionModel = require('../models/Admin/RidesSuggestion.model');
 exports.createRequest = async (req, res) => {
     try {
 
 
         const user = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
-        console.log("shshsh", user)
+
 
         const { vehicleType, pickupLocation, dropLocation, currentLocation, pick_desc, drop_desc } = req.body;
-
+        console.log(req.body)
         // Check if all required fields are provided
         if (!pickupLocation || !dropLocation || !pick_desc || !drop_desc) {
             console.log("pickupLocation:", pickupLocation);
@@ -58,7 +59,7 @@ exports.createRequest = async (req, res) => {
 
 
         await newRideRequest.save();
-        console.log("ride save 0", newRideRequest)
+        // console.log("ride save 0", newRideRequest)
 
         res.status(201).json({
             message: 'Ride request created successfully',
@@ -90,7 +91,7 @@ exports.findRider = async (id, io) => {
         }
 
         const [longitude, latitude] = pickupLocation.coordinates;
-        console.log(vehicleType)
+
         const riders = await Riders.aggregate([
             {
                 $geoNear: {
@@ -124,7 +125,7 @@ exports.findRider = async (id, io) => {
             params: {
                 origin: origin,
                 destination: destination,
-                key: "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34",
+                key: "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8",
                 traffic_model: "best_guess",
                 departure_time: "now",
             },
@@ -134,13 +135,22 @@ exports.findRider = async (id, io) => {
         const distance = route.legs[0].distance.value / 1000;
         const duration = route.legs[0].duration.value / 60;
         const trafficDuration = route.legs[0].duration_in_traffic.value / 60;
-
-        // Calculate pricing
-        let totalPrice = 70; // Basic fare for up to 2 km
-        if (distance > 2) {
-            totalPrice += (distance - 2) * 15; // 15 rs per km after 2 km
+        const VehiclePrice = await RidesSuggestionModel.findOne({
+            name: vehicleType,
+        })
+        const ratePerKm = VehiclePrice.priceRange
+        const waitingTimeInMinutes = 0
+        // origin, destination, waitingTimeInMinutes = 0, ratePerKm 
+        const dataSend = {
+            pickupLocation,
+            dropLocation,
+            waitingTimeInMinutes,
+            ratePerKm
         }
-        totalPrice += trafficDuration * 2; // 2 rs per minute in traffic
+        console.log("dataSend", dataSend)
+        const data = await calculateRidePriceForConfirmRide(dataSend)
+
+        console.log("data of price", data)
 
         const eta = Math.round(trafficDuration);
 
@@ -160,8 +170,12 @@ exports.findRider = async (id, io) => {
                 pricePerKm: rider.rideVehicleInfo.PricePerKm,
                 vehicleType: rider.rideVehicleInfo.vehicleType,
                 distance: rider.distance,
-                price: totalPrice.toFixed(2),
+                price: data?.totalPrice.toFixed(2),
                 eta: eta,
+                rain: data?.rain,
+                tollPrice: data?.tollPrice,
+                tolls: data.tolls === undefined ? false : true
+
             })),
             user,
             pickup_desc,
@@ -192,7 +206,7 @@ exports.findRider = async (id, io) => {
 
 exports.ChangeRideRequestByRider = async (io, data) => {
     try {
-
+        console.log("data of change", data)
         if (!data || !data.ride_request_id || !data.rider_id) {
             throw new Error('Invalid data: rideRequestId and driverId are required');
         }
@@ -239,7 +253,7 @@ exports.ChangeRideRequestByRider = async (io, data) => {
                 params: {
                     origin: origin,
                     destination: destination,
-                    key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34',
+                    key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8',
                     traffic_model: 'best_guess',
                     departure_time: 'now',
                 },
@@ -407,6 +421,80 @@ exports.AddRating = async (data, rate) => {
     }
 }
 
+
+exports.cancelRideByAnyOne = async (cancelBy, rideData, reason) => {
+    try {
+        if (!rideData || !rideData._id) {
+            return {
+                success: false,
+                message: "Invalid ride data",
+            };
+        }
+
+        const ride = await RideRequest.findById(rideData._id);
+        if (!ride) {
+            return {
+                success: false,
+                message: "Ride not found",
+            };
+        }
+
+        // Prevent re-canceling a ride that is already cancelled or completed
+        if (ride.rideStatus === "cancelled") {
+            return {
+                success: false,
+                message: "Ride is already cancelled",
+            };
+        }
+        if (ride.rideStatus === "completed") {
+            return {
+                success: false,
+                message: "Cannot cancel a completed ride",
+            };
+        }
+
+        // Update ride details
+        ride.rideCancelBy = cancelBy;
+        ride.rideCancelReason = reason;
+        ride.rideStatus = "cancelled";
+        ride.rideCancelTime = new Date();
+
+        const foundRider = await Riders.findById(ride.rider?._id)
+        if (!foundRider) {
+            return {
+                success: false,
+                message: "Rider not found",
+            }
+        }
+        // Ensure the rider exists before modifying availability
+        if (foundRider !== undefined) {
+            foundRider.isAvailable = true;
+        }
+
+        await ride.save(); // Save updated ride data
+        if (foundRider) {
+            await foundRider.save(); // Save updated rider details
+        }
+
+        return {
+            success: true,
+            message: "Ride cancelled successfully",
+            ride,
+        };
+    } catch (error) {
+        console.error("❌ Error in cancelRideByAnyOne:", error);
+        return {
+            success: false,
+            message: "Something went wrong while canceling the ride",
+            error: error.message,
+        };
+    }
+};
+
+
+
+
+
 exports.complete_Details_ofRide = async (req, res) => {
     try {
         const { id } = req.query;
@@ -454,7 +542,7 @@ const calculateRidePrice = async (origin, destination, waitingTimeInMinutes, rat
             params: {
                 origin: origin,
                 destination: destination,
-                key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34',
+                key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8',
                 traffic_model: 'best_guess',
                 departure_time: 'now',
             },
@@ -509,7 +597,7 @@ exports.calculateRidePriceForUser = async (req, res) => {
             params: {
                 origin: formattedOrigin,
                 destination: formattedDestination,
-                key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34',
+                key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8',
                 traffic_model: "best_guess",
                 departure_time: Math.floor(Date.now() / 1000),
             },
@@ -595,5 +683,91 @@ exports.calculateRidePriceForUser = async (req, res) => {
             success: false,
             message: "Failed to calculate the ride price",
         });
+    }
+};
+
+
+const calculateRidePriceForConfirmRide = async (data) => {
+    try {
+        console.log("Request data:", data);
+
+        // Extract pickup and drop coordinates correctly
+        if (!data?.pickupLocation?.coordinates || !data?.dropLocation?.coordinates) {
+            throw new Error("Invalid pickup or drop location data");
+        }
+
+        const [pickupLng, pickupLat] = data.pickupLocation.coordinates;
+        const [dropLng, dropLat] = data.dropLocation.coordinates;
+
+        const pickupLocation = { latitude: pickupLat, longitude: pickupLng };
+        const dropLocation = { latitude: dropLat, longitude: dropLng };
+
+        // Destructure and provide default values
+        const { waitingTimeInMinutes = 0, ratePerKm = "15" } = data;
+
+        // Convert ratePerKm to a valid number
+        const perKmRate = Number(ratePerKm?.match(/\d+/)?.[0]) || 15;
+
+        // Format coordinates for API request
+        const formattedOrigin = `${pickupLocation.latitude},${pickupLocation.longitude}`;
+        const formattedDestination = `${dropLocation.latitude},${dropLocation.longitude}`;
+
+        // Fetch route details from Google Maps Directions API
+        const response = await axios.get("https://maps.googleapis.com/maps/api/directions/json", {
+            params: {
+                origin: formattedOrigin,
+                destination: formattedDestination,
+                key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8',
+                traffic_model: "best_guess",
+                departure_time: Math.floor(Date.now() / 1000),
+            },
+        });
+
+        if (!response.data.routes?.length) {
+            return { success: false, message: "Unable to fetch directions from Google Maps API" };
+        }
+
+        const route = response.data.routes[0];
+        const distance = route.legs[0].distance.value / 1000; // Convert meters to km
+        const duration = route.legs[0].duration.value / 60; // Convert seconds to minutes
+        const trafficDuration = route.legs[0].duration_in_traffic?.value / 60 || duration;
+
+        // Check weather conditions
+        const checkWeather = await FindWeather(pickupLocation.latitude, pickupLocation.longitude);
+        const rain = checkWeather?.[0]?.main === 'Rain';
+
+        // Check for tolls on the route
+        const checkTolls = await CheckTolls(pickupLocation, dropLocation);
+        console.log("Travel Advisory Data:", checkTolls?.travelAdvisory);
+
+        const tolls = checkTolls?.travelAdvisory?.tollInfo && Object.keys(checkTolls.travelAdvisory.tollInfo).length > 0;
+        let tollPrice = tolls ? checkTolls.travelAdvisory.tollInfo?.estimatedPrice?.[0]?.units || 0 : 0;
+
+        // Retrieve fare settings from the database
+        const settingData = await Settings.findOne();
+        const baseFare = settingData?.BasicFare || 94;
+        const trafficDurationPricePerMinute = settingData?.trafficDurationPricePerMinute || 0;
+        const rainModeFare = settingData?.RainModeFareOnEveryThreeKm || 0;
+        const waitingTimeCost = waitingTimeInMinutes * (settingData?.waitingTimeInMinutes || 0);
+
+        // Calculate total fare
+        let totalPrice = baseFare + (trafficDuration * trafficDurationPricePerMinute) + waitingTimeCost;
+        if (rain) totalPrice += rainModeFare;
+        if (tolls) totalPrice += Number(tollPrice) / 2;
+        totalPrice += distance * perKmRate;
+
+        console.log("Total Price Calculation:", {
+            totalPrice, distance, rain, tolls, tollPrice, trafficDuration, waitingTimeCost, baseFare
+        });
+
+        return {
+            success: true,
+            message: "Ride price calculated successfully",
+            totalPrice, distanceInKm: distance, rain, RainFare: rainModeFare,
+            tolls, tollPrice, durationInMinutes: trafficDuration, waitingTimeCost, totalBaseFare: baseFare
+        };
+    } catch (error) {
+        console.error("Error calculating ride price:", error);
+        return { success: false, message: "Failed to calculate the ride price" };
     }
 };

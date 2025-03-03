@@ -5,7 +5,7 @@ import axios from "axios"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 
 export default function AddOn({ restaurant_id }) {
-    console.log("v",restaurant_id)
+  console.log("v", restaurant_id)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [details, setDetails] = useState(null)
@@ -40,14 +40,17 @@ export default function AddOn({ restaurant_id }) {
     setLoading(true)
     try {
       const { data } = await axios.get(
-        `http://192.168.1.2:3000/api/v1/tiffin/find_Restaurant_And_Her_foods?restaurant_id=${restaurant_id?._id}`,
+        `http://192.168.1.3:3000/api/v1/tiffin/find_Restaurant_And_Her_foods?restaurant_id=${restaurant_id?._id}`,
       )
       if (data.details) {
         setDetails(data.details)
         setFoods(data.food)
       }
     } catch (error) {
-      setError("Unable to fetch add-ons. Please try again.")
+      setFoods([])
+      console.log("erro", error.response.data)
+
+      // setError("Unable to fetch add-ons. Please try again.")
     } finally {
       setLoading(false)
     }

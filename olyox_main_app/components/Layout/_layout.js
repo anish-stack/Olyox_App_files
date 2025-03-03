@@ -1,7 +1,7 @@
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Header from './Top/Header';
 import BottomNav from './Bottom/Bottom.nav';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import {  StyleSheet, View } from 'react-native';
 import { useState } from 'react';
 import HeaderWithBack from './Top/HeaderWithBack';
 

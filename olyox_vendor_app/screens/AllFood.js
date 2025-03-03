@@ -29,7 +29,7 @@ const AllFood = () => {
         return;
       }
       const { data } = await axios.get(
-        'http://192.168.1.2:3000/api/v1/tiffin/get_food_by_resutrant_id', {
+        'http://192.168.1.3:3000/api/v1/tiffin/get_food_by_resutrant_id', {
         headers: {
           'Authorization': `Bearer ${storedToken}`
         }
@@ -63,7 +63,7 @@ const AllFood = () => {
           onPress: async () => {
             try {
               // Replace with your actual delete API endpoint
-              await axios.delete(`http://192.168.1.2:3000/api/v1/tiffin/delete_tiffin_listing/${id}`);
+              await axios.delete(`http://192.168.1.3:3000/api/v1/tiffin/delete_tiffin_listing/${id}`);
               handleFetchFood(); // Refresh the list
               Alert.alert('Success', 'Food item deleted successfully');
             } catch (error) {
@@ -84,7 +84,7 @@ const AllFood = () => {
   const handleUpdateFoodAvailableStatus = async (id, food_availability) => {
     try {
       const updatedStatus = !food_availability;
-      const res = await axios.put(`http://192.168.1.2:3000/api/v1/tiffin/update_available_food_status/${id}`, { food_availability: updatedStatus });
+      const res = await axios.put(`http://192.168.1.3:3000/api/v1/tiffin/update_available_food_status/${id}`, { food_availability: updatedStatus });
       if (res.data.success) {
         Alert.alert('Success', 'Food item availability updated successfully');
         handleFetchFood();

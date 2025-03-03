@@ -23,10 +23,7 @@ import { useNavigation } from "@react-navigation/native";
 const ParcelBooking = () => {
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
-  const [weight, setWeight] = useState("");
-  const [length, setLength] = useState("");
-  const [width, setWidth] = useState("");
-  const [height, setHeight] = useState("");
+
   const [etaData, setEtaData] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
   const [customerName, setCustomerName] = useState("");
@@ -36,18 +33,18 @@ const ParcelBooking = () => {
   const [error, setError] = useState("");
   const [riderFound, setRiderFound] = useState(false);
   const navigation = useNavigation();
-  const {socket} = useSocket();
+  const { socket } = useSocket();
 
-  useSocketInitialization(socket, () => {
+  useSocketInitialization(socket(), () => {
     console.log('🟢 Socket initialization complete, setting up listeners');
     setupSocketListeners();
   });
 
   const setupSocketListeners = useCallback(() => {
-    if (!socket) return;
+    if (!socket()) return;
 
     console.log('🔵 Setting up socket listeners');
-    socket.on("order_accepted_by_rider", (data) => {
+    socket().on("order_accepted_by_rider", (data) => {
       console.log("🟢 Order accepted by rider:", data);
       setLoading(false);
       setRiderFound(true);
@@ -55,10 +52,10 @@ const ParcelBooking = () => {
     });
 
     return () => {
-      console.log('🔵 Cleaning up socket listeners');
-      socket.off("order_accepted_by_rider");
+      console.log('🔵 Cleaning up () listeners');
+      socket().off("order_accepted_by_rider");
     };
-  }, [socket]);
+  }, [socket()]);
 
   const fetchSuggestions = useCallback(async (input) => {
     if (!input) {
@@ -94,7 +91,7 @@ const ParcelBooking = () => {
     setLoading(true);
     try {
       console.log('🔵 Calculating distance and ETA');
-      const { data } = await axios.post("http://192.168.1.2:3000/geo-code-distance", {
+      const { data } = await axios.post("http://192.168.1.3:3000/geo-code-distance", {
         pickup,
         dropOff: dropoff,
       });
@@ -147,14 +144,11 @@ const ParcelBooking = () => {
       const token = await tokenCache.getToken("auth_token_db") || await tokenCache.getToken("auth_token");
 
       const { data } = await axios.post(
-        "http://192.168.1.2:3000/api/v1/parcel/request_of_parcel",
+        "http://192.168.1.3:3000/api/v1/parcel/request_of_parcel",
         {
           pickup,
           dropoff,
-          // weight,
-          // length,
-          // width,
-          // height,
+         
           customerName,
           customerPhone,
         },
@@ -179,9 +173,9 @@ const ParcelBooking = () => {
       setLoading(false);
     }
   };
-console.log("🟢 sockett",socket)
+
   useEffect(() => {
-    if (socket) {
+    if (socket()) {
       const handleOrderAccepted = (data) => {
         console.log("🟢 Order accepted by rider:", data);
         setLoading(false);
@@ -189,10 +183,10 @@ console.log("🟢 sockett",socket)
         navigation.navigate("Parcel");
       };
 
-      socket.on("order_accepted_by_rider", handleOrderAccepted);
+      socket().on("order_accepted_by_rider", handleOrderAccepted);
 
       return () => {
-        socket.off("order_accepted_by_rider", handleOrderAccepted); // Cleanup
+        socket().off("order_accepted_by_rider", handleOrderAccepted); // Cleanup
       };
     } else {
       // Alert.alert("No Free Riders Available", "Sorry, please try again later.", [
@@ -200,7 +194,7 @@ console.log("🟢 sockett",socket)
       // ]);
       console.error("🔴 Socket is undefined");
     }
-  }, [socket]);
+  }, [socket()]);
 
   if (loading) {
     return (

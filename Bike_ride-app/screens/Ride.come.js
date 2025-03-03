@@ -63,7 +63,7 @@ export default function RideCome() {
         if (!token) return;
 
         try {
-            const response = await fetch('http://192.168.1.2:3000/webhook/cab-receive-location', {
+            const response = await fetch('http://192.168.1.3:3000/webhook/cab-receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -72,7 +72,7 @@ export default function RideCome() {
                 body: JSON.stringify({ latitude, longitude }),
             });
             const data = await response.json();
-            console.log('Location data sent to server:', data);
+            // console.log('Location data sent to server:', data);
         } catch (error) {
             console.error('Error sending location:', error);
         }
@@ -81,14 +81,14 @@ export default function RideCome() {
     const checkRider = async () => {
         try {
             const token = await SecureStore.getItemAsync('auth_token_cab');
-            console.log("rider tokens ", token)
+
             if (!token) {
                 console.warn("No auth token found");
                 return;
             }
 
             const response = await axios.get(
-                'http://192.168.1.2:3000/api/v1/rider/user-details',
+                'http://192.168.1.3:3000/api/v1/rider/user-details',
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
@@ -108,7 +108,7 @@ export default function RideCome() {
     useEffect(() => {
         if (isSocketReady && socket) {
             socket.on('ride_come', (data) => {
-                console.log('Received ride data:', data);
+                // console.log('Received ride data:', data);
                 setRideData(data);
                 setShowRideModal(true);
                 setTimeLeft(RIDE_REQUEST_TIMEOUT);

@@ -253,7 +253,7 @@ exports.fine_me = async (req, res) => {
         // Check if userData is an array or an object
         const userData = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
 
-        console.log("User found in:", req.user);
+        // console.log("User found in:", req.user);
 
         // Validate that userData exists before proceeding
         if (!userData || !userData._id) {
@@ -401,3 +401,6 @@ exports.findAllOrders = async (req, res) => {
         });
     }
 };
+
+
+

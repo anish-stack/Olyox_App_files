@@ -3,13 +3,13 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+
   Image,
   TouchableOpacity,
   ActivityIndicator,
   Linking,
   StatusBar,
-  FlatList,
+ 
   Animated,
 } from "react-native"
 import { useRoute, useNavigation } from "@react-navigation/native"
@@ -40,7 +40,7 @@ export default function Restaurant() {
     setLoading(true)
     try {
       const { data } = await axios.get(
-        `http://192.168.1.2:3000/api/v1/tiffin/find_Restaurant_And_Her_foods?restaurant_id=${item}`,
+        `http://192.168.1.3:3000/api/v1/tiffin/find_Restaurant_And_Her_foods?restaurant_id=${item}`,
       )
       if (data.details) {
         setDetails(data.details)
@@ -179,12 +179,12 @@ export default function Restaurant() {
   const renderFoodList = () => (
     <View style={styles.foodListContainer}>
       <Text style={styles.sectionTitle}>Menu</Text>
-      <FlatList
-        data={foods}
-        renderItem={({ item }) => <Food_Card isAddAble={details?.isWorking} item={item} />}
-        keyExtractor={(item) => item._id}
-        showsVerticalScrollIndicator={false}
-      />
+      <View>
+    {foods.map((item) => (
+        <Food_Card key={item._id} isAddAble={details?.isWorking} item={item} />
+    ))}
+</View>
+
     </View>
   )
 

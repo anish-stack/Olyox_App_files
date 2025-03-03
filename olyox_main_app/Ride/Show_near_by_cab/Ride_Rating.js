@@ -3,15 +3,15 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons'; // Make sure to install `expo/vector-icons` or `react-native-vector-icons`
 import { COLORS } from '../../constants/colors';
 import { useSocket } from '../../context/SocketContext';
-import { useRoute ,useNavigation} from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 
 export default function Ride_Rating() {
     const [rating, setRating] = useState(0);
-    const navigationD= useNavigation()
+    const navigationD = useNavigation()
     const route = useRoute()
     const { data } = route.params || {};
     const [submitted, setSubmitted] = useState(false);
-    const {socket} = useSocket();
+    const { socket } = useSocket();
     const handleRating = (rate) => {
         if (!submitted) {
             setRating(rate);
@@ -22,8 +22,8 @@ export default function Ride_Rating() {
     const submitRating = () => {
         setSubmitted(true);
         // Submit the rating to the backend or handle as needed
-        if (socket) {
-            socket.emit('rating', { rating: rating, ride: data.rideDetails?.ride });
+        if (socket()) {
+            socket().emit('rating', { rating: rating, ride: data.rideDetails?.ride });
         }
         navigationD.reset({
             index: 0,

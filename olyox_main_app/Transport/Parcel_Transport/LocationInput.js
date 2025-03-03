@@ -1,10 +1,10 @@
 import React, { memo } from 'react';
-import { View, TextInput, TouchableOpacity, Text, FlatList } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text } from 'react-native';
 import Icon from "react-native-vector-icons/FontAwesome5";
 import { styles } from './LocationInput.styles';
 
 const SuggestionItem = memo(({ description, onPress }) => (
-  <TouchableOpacity 
+  <TouchableOpacity
     onPress={onPress}
     style={styles.suggestionItem}
   >
@@ -16,13 +16,13 @@ const SuggestionItem = memo(({ description, onPress }) => (
   </TouchableOpacity>
 ));
 
-export const LocationInput = ({ 
-  icon, 
-  placeholder, 
-  value, 
-  onChangeText, 
-  suggestions = [], 
-  showSuggestions, 
+export const LocationInput = ({
+  icon,
+  placeholder,
+  value,
+  onChangeText,
+  suggestions = [],
+  showSuggestions,
   onSelectLocation,
   inputRef,
 }) => {
@@ -46,7 +46,7 @@ export const LocationInput = ({
           placeholderTextColor="#9CA3AF"
         />
         {value.length > 0 && (
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => onChangeText('')}
             style={styles.clearButton}
           >
@@ -54,20 +54,16 @@ export const LocationInput = ({
           </TouchableOpacity>
         )}
       </View>
-      
+
       {showSuggestions && suggestions.length > 0 && (
         <View style={styles.suggestionsContainer}>
-          <FlatList
-            data={suggestions}
-            renderItem={renderSuggestion}
-            keyExtractor={item => item.place_id}
-            style={styles.suggestionList}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            ListHeaderComponent={
-              <Text style={styles.suggestionsHeader}>Suggestions</Text>
-            }
-          />
+          <View style={styles.suggestionList}>
+            <Text style={styles.suggestionsHeader}>Suggestions</Text>
+            {suggestions.map((item) => (
+              <View key={item.place_id}>{renderSuggestion({ item })}</View>
+            ))}
+          </View>
+
         </View>
       )}
     </View>

@@ -8,12 +8,21 @@ export default function TopFoodCard({ restaurant, onPress }) {
     return (
         <TouchableOpacity style={styles.foodCard} onPress={onPress}>
             <View style={styles.imageContainer}>
-                <Image
-                    source={require('./pngwing.com (6).png')}
-                    style={styles.foodImage}
-                    resizeMode="cover"
-                />
-                
+                {restaurant?.logo?.url ? (
+                    <Image
+                        source={{ uri: restaurant?.logo?.url }}
+                        style={styles.foodImage}
+                        resizeMode="cover"
+                    />
+                ) : (
+
+                    <Image
+                        source={require('./pngwing.com (6).png')}
+                        style={styles.foodImage}
+                        resizeMode="cover"
+                    />
+                )}
+
             </View>
 
             <View style={styles.content}>
@@ -28,7 +37,7 @@ export default function TopFoodCard({ restaurant, onPress }) {
                 </View>
 
 
-               
+
             </View>
         </TouchableOpacity>
     );

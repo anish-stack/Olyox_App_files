@@ -6,12 +6,12 @@ import Icon from "react-native-vector-icons/FontAwesome5"; // Ensure you have Fo
 const VehicleDetails = ({ formData, onInputChange }) => {
   const [modalVisible, setModalVisible] = React.useState(false);
   const [selectedVehicleType, setSelectedVehicleType] = React.useState(formData.vehicleType || "");
-  
+
   const vehicleTypes = ["CAB", "Parcel", "Heavy Transport"];
 
   const handleVehicleTypeSelect = (type) => {
     setSelectedVehicleType(type);
-    
+
     onInputChange("vehicleType", type); // Pass the selected value to parent
     setModalVisible(false);
   };
@@ -56,15 +56,18 @@ const VehicleDetails = ({ formData, onInputChange }) => {
       >
         <TouchableOpacity style={styles.modalBackground} onPress={() => setModalVisible(false)}>
           <View style={styles.modalContent}>
-            <FlatList
-              data={vehicleTypes}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => handleVehicleTypeSelect(item)} style={styles.modalItem}>
+            <View>
+              {vehicleTypes && vehicleTypes.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  onPress={() => handleVehicleTypeSelect(item)}
+                  style={styles.modalItem}
+                >
                   <Text style={styles.modalItemText}>{item}</Text>
                 </TouchableOpacity>
-              )}
-            />
+              ))}
+            </View>
+
           </View>
         </TouchableOpacity>
       </Modal>

@@ -27,6 +27,7 @@ import { useSocket } from '../../context/SocketContext';
 
 const { width, height } = Dimensions.get('window');
 
+
 export function RideConfirmed() {
     const route = useRoute();
     const navigation = useNavigation();
@@ -45,6 +46,9 @@ export function RideConfirmed() {
     const [currentLocation, setCurrentLocation] = useState(null);
     const [driverLocation, setDriverLocation] = useState(null);
     const [locationPermission, setLocationPermission] = useState(null);
+    const [cancelReason, setCancelReason] = useState([])
+    const [cancelModel, setCancelModel] = useState(false)
+    const [selectedReason, setSelectedReason] = useState(null)
     const [locationUpdateInterval, setLocationUpdateInterval] = useState(null);
 
     const [rideDetails, setRideDetails] = useState({
@@ -58,75 +62,46 @@ export function RideConfirmed() {
         dropoff: driver?.drop_desc || 'Drop Location',
     });
 
-    // Request location permissions
+
+
+    const fetchReason = async () => {
+        try {
+            const { data } = await axios.get(`http://192.168.1.3:3000/api/v1/admin/cancel-reasons?active=active`)
+
+            if (data.data) {
+                setCancelReason(data.data)
+            } else {
+                setCancelReason([])
+            }
+        } catch (error) {
+            console.log("Error Fetching in Reasons", error?.response?.data?.message)
+            setCancelReason([])
+        }
+    }
     useEffect(() => {
-        (async () => {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            console.log("status",status)
-            setLocationPermission(status === 'granted');
+        const socketInstance = socket();
 
-            if (status === 'granted') {
-                startLocationTracking();
-            }
-        })();
+        if (socketInstance) {
+            const handleRideCancelled = (data) => {
+                console.log("Ride Cancelled Message", data);
 
-        return () => {
-            if (locationUpdateInterval) {
-                clearInterval(locationUpdateInterval);
-            }
-        };
+                Alert.alert(
+                    "Ride Cancelled",
+                    data.message || "Your ride has been cancelled by the driver.",
+                    [{ text: "OK", onPress: () => navigation.navigate("Home") }]
+                );
+            };
+
+            // Listen for ride cancellation event
+            socketInstance.on("ride_cancelled_message", handleRideCancelled);
+
+            // Cleanup function to remove event listener when component unmounts
+            return () => {
+                socketInstance.off("ride_cancelled_message", handleRideCancelled);
+            };
+        }
     }, []);
 
-    // Start tracking location
-    const startLocationTracking = async () => {
-        try {
-            const location = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.High,
-            });
-            console.log("location",location)
-
-            setCurrentLocation({
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-            });
-
-            // Simulate driver location (in real app, this would come from the socket)
-            setDriverLocation({
-                latitude: location.coords.latitude + 0.002,
-                longitude: location.coords.longitude - 0.001,
-            });
-
-            // Update location every 10 seconds
-            const interval = setInterval(async () => {
-                const updatedLocation = await Location.getCurrentPositionAsync({
-                    accuracy: Location.Accuracy.High,
-                });
-
-                console.log("updatedLocation",updatedLocation)
-
-                setCurrentLocation({
-                    latitude: updatedLocation.coords.latitude,
-                    longitude: updatedLocation.coords.longitude,
-                });
-
-                // In a real app, driver location would be updated from socket
-                // Here we're just simulating movement
-                setDriverLocation(prev => {
-                    if (!prev) return null;
-                    return {
-                        latitude: prev.latitude + (Math.random() * 0.0002 - 0.0001),
-                        longitude: prev.longitude + (Math.random() * 0.0002 - 0.0001),
-                    };
-                });
-
-                console.log("I am Update location")
-            }, 10000);
-
-            setLocationUpdateInterval(interval);
-        } catch (error) {
-            console.error('Error getting location:', error);
-        }
-    };
 
     // Save ride ID in AsyncStorage
     useEffect(() => {
@@ -142,6 +117,9 @@ export function RideConfirmed() {
         storeRideId();
     }, [ride]);
 
+    useEffect(() => {
+        fetchReason()
+    }, [])
     // Fetch ride details from database
     const fetchRideDetailsFromDb = async () => {
         try {
@@ -151,7 +129,7 @@ export function RideConfirmed() {
                 return;
             }
 
-            const { data } = await axios.get(`http://192.168.1.2:3000/api/v1/rides/find-ride_details?id=${rideId}`);
+            const { data } = await axios.get(`http://192.168.1.3:3000/api/v1/rides/find-ride_details?id=${rideId}`);
             if (data.data) {
                 setRideData(data.data);
                 setRideDetails(prev => ({
@@ -177,8 +155,8 @@ export function RideConfirmed() {
     const handleEndRide = async () => {
         setIsLoading(true);
         try {
-            if (socket) {
-                socket.emit('endRide', { rideDetails, ride: rideData });
+            if (socket()) {
+                socket().emit('endRide', { rideDetails, ride: rideData });
             } else {
                 Alert.alert('Connection Error', 'Unable to connect to server. Please try again.');
             }
@@ -189,10 +167,33 @@ export function RideConfirmed() {
             setIsLoading(false);
         }
     };
+    useEffect(() => {
+        (async () => {
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Location permission is required for live tracking.');
+                return;
+            }
+
+            // Track location in real-time
+            await Location.watchPositionAsync(
+                {
+                    accuracy: Location.Accuracy.High,
+                    timeInterval: 5000, // Update every 5 seconds
+                    distanceInterval: 10, // Update every 10 meters
+                },
+                (location) => {
+                    setCurrentLocation(location.coords);
+
+                }
+            );
+        })();
+    }, []);
 
     // Share current location
     const shareLocation = async () => {
         try {
+
             if (!currentLocation) {
                 Alert.alert('Location not available', 'Please wait while we get your location.');
                 return;
@@ -240,12 +241,59 @@ export function RideConfirmed() {
         }
     }, [driver]);
 
+
+    const handleCancelRide = async () => {
+        try {
+            if (!selectedReason) {
+                Alert.alert("Cancel Ride", "Please select a reason to cancel.");
+                return;
+            }
+
+            const data = {
+                cancelBy: "user",
+                rideData,
+                reason: selectedReason
+            };
+
+            const activeSocket = socket(); // Get the socket instance
+            if (!activeSocket) {
+                console.error("❌ Socket connection not established");
+                Alert.alert("Error", "Unable to cancel ride due to connection issues.");
+                return;
+            }
+
+            activeSocket.emit("ride-cancel-by-user", data, (response) => {
+                console.log("🚗 Ride cancel event sent:", response);
+
+            });
+            if (activeSocket) {
+                Alert.alert(
+                    "Cancel",
+                    "Your pickup has been canceled. Thank you for choosing Olyox!",
+                    [{ text: "OK", onPress: () => resetToHome() }]
+                );
+            }
+        } catch (error) {
+            console.error("⚠️ Error in handleCancelRide:", error);
+            Alert.alert("Error", "Something went wrong while canceling the ride.");
+        }
+    };
+
+    // Helper function to reset navigation
+    const resetToHome = () => {
+        navigation.reset({
+            index: 0,
+            routes: [{ name: "Home" }]
+        });
+    };
+
+
     // Listen for socket events
     useEffect(() => {
         fetchRideDetailsFromDb();
 
-        if (socket) {
-            socket.on('ride_user_start', async (data) => {
+        if (socket()) {
+            socket().on('ride_user_start', async (data) => {
                 console.log('ride_user_start', data);
                 setRideStart(true);
 
@@ -256,18 +304,20 @@ export function RideConfirmed() {
                 }
             });
 
-            socket.on('give-rate', (data) => {
+
+
+            socket().on('give-rate', (data) => {
                 console.log('isPay data come');
                 navigation.navigate('Rate_Your_ride', { data });
             });
 
             // Cleanup listeners
             return () => {
-                socket.off('ride_user_start');
-                socket.off('give-rate');
+                socket().off('ride_user_start');
+                socket().off('give-rate');
             };
         }
-    }, [socket]);
+    }, [socket()]);
 
     // Navigate to home if ride is done
     useEffect(() => {
@@ -476,7 +526,7 @@ export function RideConfirmed() {
                     <Text style={styles.mapPermissionText}>Location permission denied</Text>
                     <TouchableOpacity
                         style={styles.mapPermissionButton}
-                        onPress={startLocationTracking}
+                    // onPress={()=>startLocationTracking()}
                     >
                         <Text style={styles.mapPermissionButtonText}>Enable Location</Text>
                     </TouchableOpacity>
@@ -511,7 +561,7 @@ export function RideConfirmed() {
                             onPress={() => callEmergency('police')}
                         >
                             <View style={[styles.emergencyIconContainer, { backgroundColor: '#3B82F6' }]}>
-                                <MaterialCommunityIcons name="police-badge" size={32} color="#fff" />
+                                <MaterialCommunityIcons name="police-badge" size={28} color="#fff" />
                             </View>
                             <Text style={styles.emergencyText}>Call Police</Text>
                         </TouchableOpacity>
@@ -521,7 +571,7 @@ export function RideConfirmed() {
                             onPress={() => callEmergency('ambulance')}
                         >
                             <View style={[styles.emergencyIconContainer, { backgroundColor: '#EF4444' }]}>
-                                <FontAwesome5 name="ambulance" size={32} color="#fff" />
+                                <FontAwesome5 name="ambulance" size={28} color="#fff" />
                             </View>
                             <Text style={styles.emergencyText}>Call Ambulance</Text>
                         </TouchableOpacity>
@@ -531,9 +581,18 @@ export function RideConfirmed() {
                             onPress={() => callEmergency('support')}
                         >
                             <View style={[styles.emergencyIconContainer, { backgroundColor: '#10B981' }]}>
-                                <MaterialCommunityIcons name="headphones" size={32} color="#fff" />
+                                <MaterialCommunityIcons name="headphones" size={28} color="#fff" />
                             </View>
                             <Text style={styles.emergencyText}>Call Support</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.emergencyOption}
+                            onPress={() => setCancelModel(true)}
+                        >
+                            <View style={[styles.emergencyIconContainer, { backgroundColor: '#EF4444' }]}>
+                                <MaterialCommunityIcons name="close" size={28} color="#fff" />
+                            </View>
+                            <Text style={styles.emergencyText}>Cancel Ride</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -571,6 +630,60 @@ export function RideConfirmed() {
         </Modal>
     );
 
+
+    const CancelReasonsModel = () => (
+        <Modal
+            animationType="slide"
+            transparent={true}
+            visible={cancelModel}
+            onRequestClose={() => setCancelModel(false)}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Cancel Reason</Text>
+                        <TouchableOpacity
+                            style={styles.modalCloseButton}
+                            onPress={() => setCancelModel(false)}
+                        >
+                            <MaterialCommunityIcons name="close" size={24} color="#111827" />
+                        </TouchableOpacity>
+                    </View>
+                    {cancelReason && cancelReason.map((item) => (
+                        <TouchableOpacity
+                            key={item._id}
+                            style={[
+                                styles.cancelReasonItem,
+                                selectedReason === item._id && styles.selectedReason
+                            ]}
+                            onPress={() => setSelectedReason(item._id)}
+                        >
+                            <View>
+                                <Text style={styles.cancelReasonLabel}>{item.name}</Text>
+                                <Text style={styles.cancelReasonDescription}>{item.description}</Text>
+                            </View>
+                            <View>
+                                {selectedReason === item._id && (
+                                    <MaterialCommunityIcons name="check" size={24} color="green" />
+                                )}
+                            </View>
+                        </TouchableOpacity>
+                    ))}
+
+                    <TouchableOpacity
+                        style={styles.cancelRideButton}
+                        onPress={() => handleCancelRide(selectedReason)}
+                        disabled={!selectedReason} // Disable button if no reason selected
+                    >
+                        <MaterialCommunityIcons name="cancel" size={20} color="#fff" />
+                        <Text style={styles.cancelRideText}>Cancel Ride</Text>
+                    </TouchableOpacity>
+
+                </View>
+            </View>
+        </Modal>
+    )
+
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
@@ -586,7 +699,7 @@ export function RideConfirmed() {
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                 {rideStart ? null : <OtpCard />}
                 <DriverCard />
-                <LiveMap />
+                {/* <LiveMap /> */}
                 <LocationCard />
                 <PriceCard />
 
@@ -622,6 +735,7 @@ export function RideConfirmed() {
             )}
 
             <SupportModal />
+            <CancelReasonsModel />
             <LoadingOverlay />
         </SafeAreaView>
     );
@@ -1193,11 +1307,11 @@ const styles = StyleSheet.create({
     },
     emergencyOption: {
         alignItems: 'center',
-        width: '30%',
+        width: '25%',
     },
     emergencyIconContainer: {
-        width: 64,
-        height: 64,
+        width: 54,
+        height: 54,
         borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
@@ -1215,7 +1329,7 @@ const styles = StyleSheet.create({
         }),
     },
     emergencyText: {
-        fontSize: 14,
+        fontSize: 10,
         fontWeight: '600',
         color: '#111827',
         textAlign: 'center',
@@ -1272,5 +1386,39 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#111827',
         fontWeight: '400',
+    },
+    cancelReasonItem: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "start",
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: "#ddd",
+    },
+    selectedReason: {
+        backgroundColor: "#e3f2fd",
+        borderRadius: 5,
+    },
+    cancelReasonLabel: {
+        fontSize: 16,
+        color: "#111827",
+    },
+    cancelReasonDescription: {
+        fontSize: 14,
+        color: "#6b7280",
+    },
+    cancelRideButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#d64444",
+        paddingVertical: 12,
+        borderRadius: 5,
+        marginTop: 20,
+    },
+    cancelRideText: {
+        fontSize: 16,
+        color: "#fff",
+        marginLeft: 10,
     },
 });

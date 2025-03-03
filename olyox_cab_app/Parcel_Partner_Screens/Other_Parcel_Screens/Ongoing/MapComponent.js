@@ -5,7 +5,7 @@ import MapViewDirections from "react-native-maps-directions";
 import { Ionicons } from "@expo/vector-icons";
 import styles from "./Styles";
 
-const GOOGLE_MAPS_APIKEY = "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34";
+const GOOGLE_MAPS_APIKEY = "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8";
 
 const LocationButton = ({ onPress, icon, color, tooltip }) => {
   const [showTooltip, setShowTooltip] = useState(false);

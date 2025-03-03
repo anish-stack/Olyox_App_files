@@ -2,7 +2,7 @@ import io from "socket.io-client";
 import axios from "axios";
 import * as SecureStore from 'expo-secure-store';
 
-const SOCKET_URL = "http://192.168.1.2:3000";
+const SOCKET_URL = "http://192.168.1.3:3000";
 let socket = null;
 
 // Fetch user details
@@ -15,7 +15,7 @@ export const fetchUserData = async () => {
         }
 
         const response = await axios.get(
-            "http://192.168.1.2:3000/api/v1/rider/user-details",
+            "http://192.168.1.3:3000/api/v1/rider/user-details",
             {
                 headers: { Authorization: `Bearer ${token}` },
             }
@@ -29,12 +29,10 @@ export const fetchUserData = async () => {
 
 // Initialize socket connection
 export const initializeSocket = async ({ userType = "driver", userId }) => {
-    console.log("userId",userId)
     if (!userId) {
         console.error("User ID is required to initialize socket");
         return null;
     }
-    console.log("I am connecting ✔️")
 
     if (!socket) {
         socket = io(SOCKET_URL, {
@@ -48,42 +46,27 @@ export const initializeSocket = async ({ userType = "driver", userId }) => {
         socket.userType = userType;
         socket.userId = userId;
 
-        socket.on("connect", () => {
-            console.log("Socket connected:", socket.id);
-            socket.emit("driver_connect", { userType, userId });
-        });
+        return new Promise((resolve, reject) => {
+            socket.on("connect", () => {
+                console.log("Socket connected:", socket.id);
+                socket.emit("driver_connect", { userType, userId });
+                resolve(socket);
+            });
 
-        socket.on("disconnect", (reason) => {
-            console.warn("Socket disconnected:", reason);
-            if (reason === "io server disconnect") {
-                socket.connect();
-            }
-        });
+            socket.on("connect_error", (error) => {
+                console.error("Connection error:", error.message);
+                reject(error);
+            });
 
-        socket.on("reconnect_attempt", (attempt) => {
-            console.log(`Reconnection attempt #${attempt}`);
-        });
-
-        socket.on("reconnect", () => {
-            console.log("Socket reconnected:", socket.id);
-            socket.emit("driver_connect", { userType, userId });
-        });
-
-        socket.on("reconnect_failed", () => {
-            console.error("Reconnection failed. Check network.");
-        });
-
-        socket.on("connect_error", (error) => {
-            console.error("Connection error:", error.message);
-        });
-
-        socket.on("connect_timeout", () => {
-            console.warn("Connection timed out. Retrying...");
+            socket.on("disconnect", (reason) => {
+                console.warn("Socket disconnected:", reason);
+            });
         });
     }
 
     return socket;
 };
+
 
 // Get socket instance
 export const getSocket = () => {

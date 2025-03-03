@@ -24,7 +24,7 @@ export function BookingConfirmation() {
     const route = useRoute();
     const navigation = useNavigation();
     const { location } = useLocation();
-    const { socket, isConnected } = useSocket();
+    const { isConnected, socket, userId } = useSocket();
 
     // State variables
     const [fareDetails, setFareDetails] = useState(null);
@@ -72,7 +72,7 @@ export function BookingConfirmation() {
 
     // Check socket connection
     useEffect(() => {
-        if (socket) {
+        if (socket()) {
             setSocketConnected(socket.connected);
 
             const handleConnect = () => {
@@ -93,14 +93,14 @@ export function BookingConfirmation() {
                 console.error('Socket connection error:', err);
             };
 
-            socket.on('connect', handleConnect);
-            socket.on('disconnect', handleDisconnect);
-            socket.on('connect_error', handleConnectError);
+            socket().on('connect', handleConnect);
+            socket().on('disconnect', handleDisconnect);
+            socket().on('connect_error', handleConnectError);
 
             return () => {
-                socket.off('connect', handleConnect);
-                socket.off('disconnect', handleDisconnect);
-                socket.off('connect_error', handleConnectError);
+                socket().off('connect', handleConnect);
+                socket().off('disconnect', handleDisconnect);
+                socket().off('connect_error', handleConnectError);
             };
         }
     }, [socket, loading]);
@@ -150,7 +150,7 @@ export function BookingConfirmation() {
                 }
 
                 const response = await axios.post(
-                    'http://192.168.1.2:3000/api/v1/rider/get-fare-info',
+                    'http://192.168.1.3:3000/api/v1/rider/get-fare-info',
                     {
                         origin,
                         destination,
@@ -207,7 +207,7 @@ export function BookingConfirmation() {
 
     // Socket event listener for ride confirmation
     useEffect(() => {
-        if (socket) {
+        if (socket()) {
             const handleRideConfirm = (data) => {
                 try {
                     console.log('Ride confirmation received:', data);
@@ -288,14 +288,14 @@ export function BookingConfirmation() {
                 setTimeoutActive(false);
             };
 
-            socket.on('ride_accepted_message', handleRideConfirm);
-            socket.on('ride_rejected_message', handleRideRejected);
-            socket.on('error', handleSocketError);
+            socket().on('ride_accepted_message', handleRideConfirm);
+            socket().on('ride_rejected_message', handleRideRejected);
+            socket().on('error', handleSocketError);
 
             return () => {
-                socket.off('ride_accepted_message', handleRideConfirm);
-                socket.off('ride_rejected_message', handleRideRejected);
-                socket.off('error', handleSocketError);
+                socket().off('ride_accepted_message', handleRideConfirm);
+                socket().off('ride_rejected_message', handleRideRejected);
+                socket().off('error', handleSocketError);
             };
         }
     }, [socket, navigation, origin, destination]);
@@ -311,7 +311,7 @@ export function BookingConfirmation() {
             setTimeRemaining(120);
 
             // Check if socket is connected
-            if (!socket) {
+            if (!socket()) {
                 setError('Not connected to server. Please check your internet connection and try again.');
                 setLoading(false);
                 setTimeoutActive(false);
@@ -338,7 +338,7 @@ export function BookingConfirmation() {
 
             // Create ride request
             const response = await axios.post(
-                'http://192.168.1.2:3000/api/v1/rides/create-ride',
+                'http://192.168.1.3:3000/api/v1/rides/create-ride',
                 {
                     currentLocation,
                     pickupLocation: origin,
@@ -392,9 +392,9 @@ export function BookingConfirmation() {
                 // Emit socket event to find drivers
                 setTimeout(() => {
                     console.log("i am emit 🟢")
-                    if (socket) {
+                    if (socket()) {
 
-                        const data = socket.emit('send_message', {
+                        const data = socket().emit('send_message', {
                             message: 'ride-save-find-riders',
                             data: request,
                         });
@@ -600,37 +600,56 @@ export function BookingConfirmation() {
                 <View style={styles.fareDetails}>
                     <Text style={styles.fareTitle}>Fare Breakdown</Text>
 
-                    {!fareDetails?.rain && (
+                    {/* Extra Charge Due to Rain */}
+                    {fareDetails?.rain && (
                         <View style={styles.fareItem}>
-                            <Text style={styles.fareItemText}>
-                                Extra Charge Due To Rain
-                            </Text>
-                            <Text style={styles.fareItemValue}>
-                                ₹{fareDetails?.rain || 5}
-                            </Text>
+                            <Text style={styles.fareItemText}>Extra Charge Due To Rain</Text>
+                            <Text style={styles.fareItemValue}>₹{fareDetails.rain || 5}</Text>
                         </View>
                     )}
+
+                    {/* Price for Distance */}
                     <View style={styles.fareItem}>
                         <Text style={styles.fareItemText}>
-                            Price For  Distance ({fareDetails?.distanceInKm?.toFixed(2) || '0'} km)
+                            Price for Distance ({fareDetails?.distanceInKm?.toFixed(2) || '0'} km)
+                        </Text>
+                        <Text style={styles.fareItemValue}>
+                            ₹{fareDetails?.totalPrice ? (fareDetails.totalPrice * 1.1).toFixed(0) : '0'}
+                        </Text>
+                    </View>
+
+                    {/* Olyox Discount */}
+                    <View style={styles.fareItem}>
+                        <Text style={styles.fareItemText}>Olyox Discount</Text>
+                        <Text style={styles.fareItemValue}>10% Off</Text>
+                    </View>
+
+                    {/* Discounted Price */}
+                    <View style={styles.fareItem}>
+                        <Text style={styles.fareItemText}>
+                            Discounted Price ({fareDetails?.distanceInKm?.toFixed(2) || '0'} km)
                         </Text>
                         <Text style={styles.fareItemValue}>
                             ₹{fareDetails?.totalPrice?.toFixed(0) || '0'}
                         </Text>
                     </View>
+
+                    {/* Total Price */}
                     <View style={[styles.fareItem, styles.fareTotal]}>
                         <Text style={styles.totalText}>Total</Text>
                         <Text style={styles.totalAmount}>
                             ₹{fareDetails?.totalPrice?.toFixed(0) || '0'}
                         </Text>
                     </View>
-                    <View style={{ padding: 10, backgroundColor: '#f8f9fa', borderRadius: 5 }}>
-                        <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#d9534f' }}>
-                            Note: <Text style={{ color: '#212529' }}>Road tax, state tax, and highway tolls are included.</Text>
-                            <Text style={{ color: '#d9534f' }}>(MCD tolls are not included.)</Text>
+
+                    {/* Fare Note */}
+                    <View style={styles.fareNote}>
+                        <Text style={styles.fareNoteText}>
+                            <Text style={styles.noteHighlight}>Note: </Text>
+                            Road tax, state tax, and highway tolls are included.
+                            <Text style={styles.noteHighlight}> (MCD tolls are not included.)</Text>
                         </Text>
                     </View>
-
                 </View>
             ) : (
                 <View style={styles.loadingFare}>
@@ -638,6 +657,7 @@ export function BookingConfirmation() {
                     <Text style={styles.loadingFareText}>Calculating fare...</Text>
                 </View>
             )}
+
         </View>
     );
 
@@ -657,9 +677,27 @@ export function BookingConfirmation() {
     return (
         <SafeAreaView style={styles.container}>
             <Header />
-            <View>
-                <Text>Connection status: {isConnected ? "Connected 🟢" : "Disconnected 🔴"}</Text>
+            <View
+                style={{
+                    padding: 10,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: isConnected ? "#D4EDDA" : "#F8D7DA",
+
+                }}
+            >
+                <Text
+                    style={{
+                        fontSize: 12,
+                        fontWeight: "bold",
+                        color: isConnected ? "#155724" : "#721C24",
+                    }}
+                >
+                    {isConnected ? "You're online! 🚖✅" : "You're offline. Please check your connection. ❌"}
+                </Text>
             </View>
+
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 <View style={styles.mapContainer}>
                     <Map origin={origin} destination={destination} />

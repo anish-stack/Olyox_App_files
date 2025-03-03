@@ -16,11 +16,6 @@ const OnboardingScreen = () => {
 const navigation = useNavigation()
 
  
-
-
-
-  
-
   const handleNextStep = async () => {
     if (validateStep(registrationStep)) {
       if (registrationStep < 2) {

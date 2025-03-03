@@ -21,9 +21,10 @@ import RideCome from "./Ride.come";
 import Report from "./Report/Report";
 import { useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { initializeSocket } from "../context/socketService";
 
 const HomeScreen = () => {
-  const { isSocketReady, socket } = useSocket();
+  const { isSocketReady, socket ,isReconnecting} = useSocket();
   const [menuVisible, setMenuVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
@@ -35,6 +36,7 @@ const HomeScreen = () => {
     setRefreshing(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
+      await fetchUserDetails()
     } catch (error) {
       console.error('Refresh failed:', error);
     } finally {
@@ -58,6 +60,8 @@ const HomeScreen = () => {
     setMenuVisible(false);
   }, [navigation]);
 
+ 
+
   
   const fetchUserDetails = async () => {
     setLoading(true);
@@ -65,11 +69,14 @@ const HomeScreen = () => {
         const token = await SecureStore.getItemAsync('auth_token_cab');
         if (token) {
             const response = await axios.get(
-                'http://192.168.1.2:3000/api/v1/rider/user-details',
+                'http://192.168.1.3:3000/api/v1/rider/user-details',
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             if (response.data.partner) {
               setUserData(response.data.partner);
+              await initializeSocket({
+                userId:response?.data?.partner?._id
+              })
             }
           }
     } catch (error) {
@@ -83,18 +90,19 @@ useEffect(()=>{
   fetchUserDetails()
 },[])
 
+
   const toggleOnlineStatus = async () => {
     setLoading(true);
     try {
       const token = await SecureStore.getItemAsync("auth_token_cab");
       const response = await axios.post(
-        "http://192.168.1.2:3000/api/v1/rider/toggleWorkStatusOfRider",
+        "http://192.168.1.3:3000/api/v1/rider/toggleWorkStatusOfRider",
         { status: !isOnline },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const response_two = await axios.get(
-        "http://192.168.1.2:3000/api/v1/rider/user-details",
+        "http://192.168.1.3:3000/api/v1/rider/user-details",
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -117,7 +125,8 @@ useEffect(()=>{
       setLoading(false);
     }
   };
-  console.log("user_data",socket)
+  // console.log("user_data",socket)
+  // console.log("isReconnecting",isReconnecting)
 
   const ConnectionStatus = () => (
     <View style={[

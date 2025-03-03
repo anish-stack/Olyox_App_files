@@ -1,22 +1,23 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { ChevronLeft, User } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
-import { COLORS } from '../../../constants/colors';
+import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { MaterialIcons } from "@expo/vector-icons"; // Import Expo Vector Icons
+import { COLORS } from "../../../constants/colors";
 
 const HeaderWithBack = ({ title }) => {
     const navigation = useNavigation();
+
     return (
         <View style={styles.header}>
-           
+            {/* Back Button */}
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                <ChevronLeft size={24} color={COLORS.text} />
-                <Text style={styles.title}>{title || 'Header'}</Text>
+                <MaterialIcons name="arrow-back" size={24} color={COLORS.text} />
+                <Text style={styles.title}>{title || "Header"}</Text>
             </TouchableOpacity>
 
             {/* User Icon */}
             <TouchableOpacity>
-                <User size={24} color={COLORS.text} />
+                <MaterialIcons name="person-outline" size={24} color={COLORS.text} />
             </TouchableOpacity>
         </View>
     );
@@ -28,10 +29,9 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.background,
         paddingVertical: 16,
         paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
         borderBottomColor: COLORS.shadow,
         shadowColor: COLORS.shadow,
         shadowOffset: { width: 0, height: 1 },
@@ -40,12 +40,12 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     backButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: "row",
+        alignItems: "center",
     },
     title: {
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: "bold",
         color: COLORS.text,
         marginLeft: 8, // Space between the icon and text
     },

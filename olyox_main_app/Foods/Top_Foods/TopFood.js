@@ -1,44 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, Text, ScrollView, Alert } from 'react-native';
 import axios from 'axios';
+import * as Location from 'expo-location';
+import { useNavigation } from "@react-navigation/native";
 
 import TopFoodCard from './TopFoodCard';
 import { styles } from './FoodStyles';
-import { useLocation } from '../../context/LocationContext';
-import { useNavigation } from "@react-navigation/native"
 
 export default function TopFood({ show = false }) {
-    const { location } = useLocation()
+    const isMounted = useRef(false); // Prevent re-fetching after mount
     const [foodData, setFoodData] = useState([]);
     const [showAll, setShowAll] = useState(show);
-    const [loading, setLoading] = useState(false);
-    const displayedRestaurants = showAll ? foodData : foodData.slice(0, 4);
-    const navigation = useNavigation()
+    const [loading, setLoading] = useState(true); // Start with loading state
+    const [error, setError] = useState('');
+    const navigation = useNavigation();
 
     // Function to get location and fetch data
     const fetchRestaurants = async () => {
         try {
+            // Prevent multiple fetch calls
+            if (isMounted.current) return;
+            isMounted.current = true;
 
-            const { latitude, longitude } = location.coords || {};
-            console.log(latitude, longitude)
+            // Request location permission
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                setError('Location permission denied. Enable it in settings.');
+                setLoading(false);
+                return;
+            }
 
-            setLoading(true);
-            const response = await axios.get(`http://192.168.1.2:3000/api/v1/tiffin/find_RestaurantTop`, {
+            // Fetch user location
+            const location = await Location.getCurrentPositionAsync({});
+            if (!location || !location.coords) {
+                setError('Unable to fetch location.');
+                setLoading(false);
+                return;
+            }
+
+            const { latitude, longitude } = location.coords;
+            console.log("User Location:", latitude, longitude);
+
+            // Fetch restaurants based on location
+            const response = await axios.get(`http://192.168.1.3:3000/api/v1/tiffin/find_RestaurantTop`, {
                 params: {
                     lat: latitude,
                     lng: longitude
                 }
             });
 
-            if (response.data) {
-                // console.log("hey",response.data.data[0])
+            if (response.data?.data?.length > 0) {
                 setFoodData(response.data.data);
             } else {
-                Alert.alert('Error', 'No top restaurants found.');
+                setError('No top restaurants found.');
             }
         } catch (error) {
-            console.error(error);
-            Alert.alert('Error', 'Something went wrong while fetching the restaurants.');
+            console.error("Food Error:", error.response?.data?.message || error.message);
+            setError('Something went wrong while fetching the restaurants.');
         } finally {
             setLoading(false);
         }
@@ -47,16 +65,15 @@ export default function TopFood({ show = false }) {
     // Fetch data when component mounts
     useEffect(() => {
         fetchRestaurants();
-    }, [location]);
+    }, []); // Run only once when component mounts
+
+    const displayedRestaurants = showAll ? foodData : foodData.slice(0, 4);
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>Top Restaurants</Text>
-                <TouchableOpacity
-                    style={styles.viewAllButton}
-                    onPress={() => setShowAll(!showAll)}
-                >
+                <TouchableOpacity style={styles.viewAllButton} onPress={() => setShowAll(!showAll)}>
                     <Text style={styles.viewAllText}>
                         {showAll ? 'Show Less' : 'View All'}
                     </Text>
@@ -65,6 +82,8 @@ export default function TopFood({ show = false }) {
 
             {loading ? (
                 <Text>Loading...</Text>
+            ) : error ? (
+                <Text style={styles.errorText}>{error}</Text>
             ) : (
                 <ScrollView showsVerticalScrollIndicator={false}>
                     <View style={styles.cardsContainer}>

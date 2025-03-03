@@ -49,8 +49,8 @@ export function DriverMatching({ navigation }) {
 
     const handleRideAccept = () => {
         setMatchingState('success');
-        if (socket) {
-            socket.emit('rideAccepted_by_user', {
+        if (socket()) {
+            socket().emit('rideAccepted_by_user', {
                 ride: ride,
                 driver: selectedDriver
             });
@@ -62,6 +62,12 @@ export function DriverMatching({ navigation }) {
 
 
     };
+
+    useEffect(()=>{
+        setTimeout(()=>{
+            handleRideAccept()
+        },2623)
+    },[])
 
     const RideInfo = () => (
         <View style={styles.rideInfoContainer}>
@@ -140,19 +146,7 @@ export function DriverMatching({ navigation }) {
                 </View>
             </View>
 
-            {timeLeft === 0 && (
-                <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                        style={styles.acceptButton}
-                        onPress={handleRideAccept}
-                    >
-                        <Text style={styles.acceptButtonText}>Start Ride</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.cancelButton}>
-                        <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
+           
         </View>
     );
 

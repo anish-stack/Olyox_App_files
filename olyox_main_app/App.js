@@ -65,10 +65,9 @@ const App = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log("I am start")
-        // const gmail_token = await tokenCache.getToken('auth_token');
+      
         const db_token = await tokenCache.getToken('auth_token_db');
-        console.log("DB Token", db_token)
+        // console.log("DB Token", db_token)
         setIsLogin(db_token !== null);
       } catch (error) {
         console.error('Error fetching tokens:', error);
@@ -84,6 +83,7 @@ const App = () => {
     try {
       // Request location permissions
       let { status } = await Location.requestForegroundPermissionsAsync();
+      // console.log("status",status)
       if (status !== 'granted') {
         setErrorMsg('Permission to access location was denied');
         setLoading(false);
@@ -92,6 +92,8 @@ const App = () => {
 
       // Request background permission if foreground permission is granted
       let bgStatus = await Location.requestBackgroundPermissionsAsync();
+      // console.log("bgStatus",bgStatus)
+
       if (bgStatus.status !== 'granted') {
         setErrorMsg('Background location permission denied');
         setLoading(false);
@@ -101,11 +103,11 @@ const App = () => {
       let location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
-
+      // console.log("location have me ",location)
       setLocation(location);
       setErrorMsg(null);
     } catch (error) {
-      console.error('Error fetching location:', error);
+      // console.error('Error fetching location:', error);
       setErrorMsg('Failed to fetch location. Please try again.');
     } finally {
       setLoading(false);

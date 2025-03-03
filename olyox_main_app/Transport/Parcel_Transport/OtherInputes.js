@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TextInput, TouchableOpacity, Text, FlatList } from 'react-native';
+import { View, TextInput } from 'react-native';
 import Icon from "react-native-vector-icons/FontAwesome5";
 import { styles } from './parcel-booking.styles';
 export const OtherInput = ({ 

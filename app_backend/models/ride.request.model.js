@@ -36,71 +36,81 @@ const RideRequestSchema = new Schema({
             required: true
         }
     },
-    priceOfRide:{
+    priceOfRide: {
         type: Number,
     },
-    waitTingTime:{
+    waitTingTime: {
         type: Number,
     },
-    rideStart:{
+    rideStart: {
         type: Date,
     },
-    RideOtp:{
+    RideOtp: {
         type: String,
     },
-    RideEnd:{
+    RideEnd: {
         type: Date,
     },
-    isPaymentDone:{
-        type:Boolean,
+    isPaymentDone: {
+        type: Boolean,
     },
-    kmOfRide:{
-        type:String,
+    kmOfRide: {
+        type: String,
     },
-    EtaOfRide:{
-        type:String,
+    EtaOfRide: {
+        type: String,
     },
-    RatingOfRide:{
-        type:Number,
+    RatingOfRide: {
+        type: Number,
     },
-    vehicleType:{
-        type:String,
+    vehicleType: {
+        type: String,
     },
     rideStatus: {
         type: String,
         enum: ['pending', 'accepted', 'in_progress', 'completed', 'cancelled'],
         default: 'pending'
     },
-    pickup_desc:{
-        type:String,
+    rideCancelBy: {
+        type: String,
     },
-    drop_desc:{
-        type:String,
+    rideCancelTime: {
+        type: Date,
+    },
+    rideCancelReason: {
+        type: Schema.Types.ObjectId,
+        ref: 'Settings',
+    },
+    pickup_desc: {
+        type: String,
+    },
+    drop_desc: {
+        type: String,
     },
     createdAt: {
         type: Date,
         default: Date.now
     },
-    user:{
+    user: {
         type: Schema.Types.ObjectId,
         ref: 'User',
     },
-    ride_is_started:{
-        type:Boolean,
-        default:false
+    ride_is_started: {
+        type: Boolean,
+        default: false
     },
-    ride_start_time:{
-        type:Date,
+    ride_start_time: {
+        type: Date,
     },
-    is_ride_paid:{
-        type:Boolean,
-        default:false
+    is_ride_paid: {
+        type: Boolean,
+        default: false
     },
-    ride_end_time:{
-        type:Date,
+    ride_end_time: {
+        type: Date,
 
     },
-    rider:{
+    rider: {
         type: Schema.Types.ObjectId,
         ref: 'Rider',
     },
@@ -116,7 +126,7 @@ RideRequestSchema.index({ dropLocation: '2dsphere' });
 RideRequestSchema.index({ currentLocation: '2dsphere' });
 
 // Update the updatedAt field before saving
-RideRequestSchema.pre('save', function(next) {
+RideRequestSchema.pre('save', function (next) {
     this.updatedAt = Date.now();
     next();
 });

@@ -6,6 +6,7 @@ import {
     Dimensions,
     Text,
     Animated,
+    ScrollView,
 } from 'react-native';
 
 const { width } = Dimensions.get('screen');
@@ -39,54 +40,56 @@ export default function OfferBanner() {
     ];
 
     const scrollX = useRef(new Animated.Value(0)).current;
-    const flatListRef = useRef(null);
+    const scrollViewRef = useRef(null);
     const [currentIndex, setCurrentIndex] = useState(0);
 
     useEffect(() => {
         const interval = setInterval(() => {
             const nextIndex = (currentIndex + 1) % banners.length;
-            flatListRef.current?.scrollToIndex({
-                index: nextIndex,
-                animated: true,
-            });
+            if (scrollViewRef.current) {
+                scrollViewRef.current.scrollTo({
+                    x: nextIndex * width,
+                    animated: true,
+                });
+            }
             setCurrentIndex(nextIndex);
         }, 3000);
 
         return () => clearInterval(interval);
     }, [currentIndex, banners.length]);
 
+    const handleScroll = Animated.event(
+        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+        { useNativeDriver: false }
+    );
+
+    const handleScrollEnd = (event) => {
+        const position = event.nativeEvent.contentOffset.x;
+        const index = Math.round(position / width);
+        setCurrentIndex(index);
+    };
+
     return (
         <View style={styles.container}>
-         <Animated.FlatList
-    ref={flatListRef}
-    data={banners}
-    keyExtractor={(item) => item.id.toString()}
-    horizontal
-    pagingEnabled
-    showsHorizontalScrollIndicator={false}
-    onScroll={Animated.event(
-        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-        { useNativeDriver: true }
-    )}
-    renderItem={({ item }) => (
-        <View style={styles.bannerContainer}>
-            <Image
-                source={{ uri: item.imageUrl }}
-                style={styles.image}
-            />
-            {/* <View style={styles.textOverlay}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.description}>{item.description}</Text>
-            </View> */}
-        </View>
-    )}
-    getItemLayout={(data, index) => ({
-        length: width,
-        offset: width * index,
-        index,
-    })}
-/>
-
+            <ScrollView
+                ref={scrollViewRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleScroll}
+                onMomentumScrollEnd={handleScrollEnd}
+                scrollEventThrottle={16}
+            >
+                {banners.map((item, index) => (
+                    <View key={item.id} style={styles.bannerContainer}>
+                        <Image source={{ uri: item.imageUrl }} style={styles.image} />
+                        {/* <View style={styles.textOverlay}>
+                            <Text style={styles.title}>{item.title}</Text>
+                            <Text style={styles.description}>{item.description}</Text>
+                        </View> */}
+                    </View>
+                ))}
+            </ScrollView>
 
             {/* Pagination Dots */}
             <View style={styles.pagination}>
@@ -132,6 +135,7 @@ const styles = StyleSheet.create({
     bannerContainer: {
         width: width,
         paddingHorizontal: 20,
+        position: 'relative',
     },
     image: {
         width: width - 40,
@@ -146,8 +150,8 @@ const styles = StyleSheet.create({
         right: 20,
         backgroundColor: 'rgba(222,62,66,0.6)',
         padding: 8,
-        borderBottomLeftRadius: 15,
-        borderBottomRightRadius: 15,
+        borderBottomLeftRadius: 10,
+        borderBottomRightRadius: 10,
     },
     title: {
         color: 'white',

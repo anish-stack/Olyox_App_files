@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text,  TouchableOpacity, ActivityIndicator, StyleSheet, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { tokenCache } from '../../../Auth/cache';
 import axios from 'axios';
@@ -27,7 +27,7 @@ export default function Parcel_Orders() {
         }
 
         try {
-            const response = await axios.get("http://192.168.1.2:3000/api/v1/parcel/my_parcel_user-details", {
+            const response = await axios.get("http://192.168.1.3:3000/api/v1/parcel/my_parcel_user-details", {
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
@@ -48,7 +48,7 @@ export default function Parcel_Orders() {
     }, []);
 
     const renderItem = ({ item }) => (
-        <TouchableOpacity 
+        <TouchableOpacity
             style={styles.card}
             onPress={() => navigation.navigate('OrderDetails', { order: item })}
         >
@@ -70,7 +70,7 @@ export default function Parcel_Orders() {
             </View>
             <View style={styles.cardFooter}>
                 <Text style={styles.price}>₹{item.price.toFixed(2)}</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.button}
                     onPress={() => navigation.navigate('OrderDetails', { order: item })}
                 >
@@ -95,15 +95,17 @@ export default function Parcel_Orders() {
     return (
         <Layout>
             <View style={styles.container}>
-                <FlatList
-                    data={data}
-                    keyExtractor={(item) => item._id}
-                    renderItem={renderItem}
+                <ScrollView
                     contentContainerStyle={styles.listContainer}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={fetchData} colors={["#00aaa9"]} />
                     }
-                />
+                >
+                    {data.map((item) => (
+                        <View key={item._id}>{renderItem({ item })}</View>
+                    ))}
+                </ScrollView>
+
             </View>
         </Layout>
     );

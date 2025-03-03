@@ -1,5 +1,5 @@
-export const api = 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34';
-export const API_URL_V1 = 'http://192.168.1.2:7000/api/v1';
+export const api = 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8';
+export const API_URL_V1 = 'http://192.168.1.3:7000/api/v1';
 
 
 

@@ -1,78 +1,78 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { COLORS } from '../constants/colors';
-import PaperExample from '../components/PaperExample';
-import ExampleComponent from '../components/ExampleComponent';
 import Layout from '../components/Layout/_layout';
 import OfferBanner from '../components/OfferBanner/OfferBanner';
 import Categories from '../components/Categories/Categories';
 import Top_Hotel from '../Hotels/Top_Hotel/Top_Hotel';
 import TopFood from '../Foods/Top_Foods/TopFood';
 import BookARide from '../components/Book_A_Ride/BookARide';
-import ShowMap from '../Ride/Show_near_by_cab/ShowMap';
-import { useUser } from '@clerk/clerk-expo';
-import Floatingride from '../Ride/Floating_ride/Floating.ride';
 import Food_Cats from '../Foods/Food_Cats/Food_Cats';
-import FloatingRide from '../Ride/Floating_ride/Floating.ride';
+import SkeletonLoader from './SkeletonLoader';
 
 const HomeScreen = () => {
-    const { user, isLoaded, isSignedIn } = useUser();
+    const isMounted = useRef(false); // Prevent multiple fetch calls
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
-    // Handle loading and user session state
-    useEffect(() => {
-        if (isLoaded) {
-            setLoading(false); // Set loading to false once user data is loaded
-            if (isSignedIn) {
+    // Function to simulate data fetching
+    const fetchData = async () => {
+        try {
+            if (isMounted.current) return;
+            isMounted.current = true;
 
-                // console.log("User is signed in", user.externalAccounts);
-            } else {
-                console.log("User is not signed in");
-            }
+            setLoading(true);
+            // Simulate API call delay
+            await new Promise((resolve) => setTimeout(resolve, 3200));
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        } finally {
+            setLoading(false);
         }
-    }, [isLoaded, isSignedIn, user]); // Runs when `isLoaded` or `isSignedIn` changes
+    };
 
-    // Show a loading screen while user data is being fetched
+    // Fetch data on component mount
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    // Refresh function
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        fetchData().then(() => setRefreshing(false));
+    }, []);
+
+    // Show skeleton loader while loading
     if (loading) {
         return (
             <Layout>
-                <View style={styles.container}>
-                    <Text style={styles.text}>Loading...</Text>
-                </View>
+                <ScrollView contentContainerStyle={styles.scrollViewContent}>
+                    <SkeletonLoader />
+                </ScrollView>
             </Layout>
         );
     }
 
-    // Main content after the user data is loaded
     return (
         <Layout>
-            <ScrollView contentContainerStyle={styles.scrollViewContent}>
+            <ScrollView
+                contentContainerStyle={styles.scrollViewContent}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
+            >
                 <OfferBanner />
-                {/* {user.fullName} */}
-                {/* <ShowMap /> Uncomment if needed */}
                 <Categories />
                 <BookARide />
-                <Top_Hotel />
+                <Top_Hotel onRefresh={onRefresh} refreshing={refreshing} />
                 <Food_Cats />
-                <TopFood />
-                <FloatingRide />
+                <TopFood onRefresh={onRefresh} refreshing={refreshing} />
             </ScrollView>
         </Layout>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: COLORS.background,
-    },
-    text: {
-        color: COLORS.text,
-        fontSize: 18,
-    },
     scrollViewContent: {
         paddingBottom: 16, // Optional, for scroll padding at the bottom
     },

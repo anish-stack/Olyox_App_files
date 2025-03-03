@@ -1,11 +1,10 @@
 import React, { useCallback, useState, useEffect } from "react"
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Image, TouchableOpacity } from "react-native"
+import { View, Text, StyleSheet, ActivityIndicator, Image, TouchableOpacity } from "react-native"
 import { useRoute } from "@react-navigation/native"
 import axios from "axios"
 import Food_Card from "../Food_Card/Food_Card"
 import FoodsHeader from "../FoodsHeader"
 import { useFood } from "../../context/Food_Context/Food_context"
-import SuperFicial from "../../SuperFicial/SuperFicial"
 
 export default function Food_Display_Page() {
     const route = useRoute()
@@ -20,7 +19,7 @@ export default function Food_Display_Page() {
         setLoading(true)
         try {
             const { data } = await axios.get(
-                `http://192.168.1.2:3000/api/v1/tiffin/find_Restaurant_foods?food_category=${title}`,
+                `http://192.168.1.3:3000/api/v1/tiffin/find_Restaurant_foods?food_category=${title}`,
             )
             if (data.data) {
                 console.log(data.data[0])
@@ -45,24 +44,24 @@ export default function Food_Display_Page() {
     }
 
     const filteredFoodData = foodData
-    .filter((item) => {
-        console.log(item.restaurant_id?.rating)
-        if (searchQuery === "Top Rated") {
-        return item.restaurant_id?.rating !== undefined;
-      }
-      return (
-        item.food_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    })
-    .sort((a, b) => {
-      if (searchQuery === "Top Rated") {
-       
-        return (b.restaurant_id?.rating || 0) - (a.restaurant_id?.rating || 0);
-      }
-      return 0; // No sorting for normal search
-    });
-  
+        .filter((item) => {
+            console.log(item.restaurant_id?.rating)
+            if (searchQuery === "Top Rated") {
+                return item.restaurant_id?.rating !== undefined;
+            }
+            return (
+                item.food_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                item.description.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+        })
+        .sort((a, b) => {
+            if (searchQuery === "Top Rated") {
+
+                return (b.restaurant_id?.rating || 0) - (a.restaurant_id?.rating || 0);
+            }
+            return 0; // No sorting for normal search
+        });
+
 
     const renderFood = ({ item }) => (
         <Food_Card
@@ -94,13 +93,18 @@ export default function Food_Display_Page() {
                     </TouchableOpacity>
                 </View>
             ) : (
-                <FlatList
-                    data={filteredFoodData}
-                    renderItem={renderFood}
-                    keyExtractor={(item) => item._id}
-                    contentContainerStyle={styles.listContent}
-                    ListEmptyComponent={ListEmptyComponent}
-                />
+                <View style={styles.listContent}>
+                    {filteredFoodData.length > 0 ? (
+                        filteredFoodData.map((item) => (
+                            <View key={item._id} style={styles.foodItem}>
+                                {renderFood({ item })}
+                            </View>
+                        ))
+                    ) : (
+                        <ListEmptyComponent />
+                    )}
+                </View>
+
             )}
 
         </View>

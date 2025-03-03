@@ -23,8 +23,7 @@ const BottomNav = () => {
     const { cart } = useFood()
     const tabs = [
         { name: 'Home', icon: '🏠', route: 'Home' },
-        // { name: 'Hotels', icon: '🏩', route: 'Hotels' },
-        // { name: 'Active Rides', icon: '🚘', route: 'Active Rides' }, 
+      
         { name: 'Active Order', icon: '🍕', route: 'Order_Process' },
         { name: 'Cart', icon: '🛒', route: 'Checkout', numValue: cart.length || '' },
         { name: 'Profile', icon: '👤', route: 'Profile' },

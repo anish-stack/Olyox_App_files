@@ -18,7 +18,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import axios from 'axios'
 import * as Location from 'expo-location';
 import * as IntentLauncher from 'expo-intent-launcher';
 import {
@@ -29,22 +29,28 @@ import {
 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSocket } from "../context/SocketContext"
-const GOOGLE_MAPS_APIKEY = "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34";
+const GOOGLE_MAPS_APIKEY = "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8";
 const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
+import { Audio } from 'expo-av';
 
 export default function RideDetailsScreen() {
     // Refs
     const mapRef = useRef(null);
     const carIconAnimation = useRef(new Animated.Value(0)).current;
+    const soundLoopRef = useRef(null);
+
+    //expo av imports 
+    const [sound, setSound] = useState();
+
 
     // Navigation and route
     const route = useRoute();
     const navigation = useNavigation();
     const { params } = route.params || {};
-    console.log(params?.rideDetails)
+  
     // Socket context
     const { socket } = useSocket()
 
@@ -61,6 +67,9 @@ export default function RideDetailsScreen() {
     const [timeToPickup, setTimeToPickup] = useState(null);
     const [showDirectionsType, setShowDirectionsType] = useState('driver_to_pickup'); // driver_to_pickup, pickup_to_drop
     const [errorMsg, setErrorMsg] = useState(null);
+    const [cancelReason, setCancelReason] = useState([])
+    const [cancelModel, setCancelModel] = useState(false)
+    const [selectedReason, setSelectedReason] = useState(null)
 
     // Extract ride details
     const {
@@ -177,12 +186,154 @@ export default function RideDetailsScreen() {
         };
     }, [rideStarted, mapReady]);
 
-    // Socket event listeners
+
+
+    const fetchReason = async () => {
+   
+        try {
+            const { data } = await axios.get(`http://192.168.1.3:3000/api/v1/admin/cancel-reasons?active=active`)
+      
+            if (data.data) {
+                setCancelReason(data.data)
+            } else {
+                setCancelReason([])
+            }
+        } catch (error) {
+            console.log("Error Fetching in Reasons", error)
+            setCancelReason([])
+        }
+    }
+
+
+    useEffect(() => {
+        fetchReason()
+    }, [])
+
+    const handleCancelRide = async () => {
+        try {
+            if (!selectedReason) {
+                Alert.alert("Cancel Ride", "Please select a reason to cancel.");
+                return;
+            }
+
+            const data = {
+                cancelBy: "driver",
+                rideData:params?.rideDetails || {},
+                reason: selectedReason
+            };
+
+            const activeSocket = socket; // Get the socket instance
+            if (!activeSocket) {
+                console.error("❌ Socket connection not established");
+                Alert.alert("Error", "Unable to cancel ride due to connection issues.");
+                return;
+            }
+
+            activeSocket.emit("ride-cancel-by-user", data, (response) => {
+                console.log("🚗 Ride cancel event sent:", response);
+
+            });
+            if (activeSocket) {
+                Alert.alert(
+                    "Cancel",
+                    "Your pickup has been canceled. Thank you for Giving your time",
+                    [{ text: "OK", onPress: () => resetToHome() }]
+                );
+            }
+        } catch (error) {
+            console.error("⚠️ Error in handleCancelRide:", error);
+            Alert.alert("Error", "Something went wrong while canceling the ride.");
+        }
+    };
+
+
+    const CancelReasonsModel = () => (
+        <Modal
+            animationType="slide"
+            transparent={true}
+            visible={cancelModel}
+            onRequestClose={() => setCancelModel(false)}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContents}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Cancel Reason</Text>
+                        <TouchableOpacity
+                            style={styles.modalCloseButton}
+                            onPress={() => setCancelModel(false)}
+                        >
+                            <MaterialCommunityIcons name="close" size={24} color="#111827" />
+                        </TouchableOpacity>
+                    </View>
+                    {cancelReason && cancelReason.map((item) => (
+                        <TouchableOpacity
+                            key={item._id}
+                            style={[
+                                styles.cancelReasonItem,
+                                selectedReason === item._id && styles.selectedReason
+                            ]}
+                            onPress={() => setSelectedReason(item._id)}
+                        >
+                            <View>
+                                <Text style={styles.cancelReasonLabel}>{item.name}</Text>
+                                <Text style={styles.cancelReasonDescription}>{item.description}</Text>
+                            </View>
+                            <View>
+                                {selectedReason === item._id && (
+                                    <MaterialCommunityIcons name="check" size={24} color="green" />
+                                )}
+                            </View>
+                        </TouchableOpacity>
+                    ))}
+
+                    <TouchableOpacity
+                        style={styles.cancelRideButton}
+                        onPress={() => handleCancelRide(selectedReason)}
+                        disabled={!selectedReason} // Disable button if no reason selected
+                    >
+                        <MaterialCommunityIcons name="cancel" size={20} color="#fff" />
+                        <Text style={styles.cancelRideText}>Cancel Ride</Text>
+                    </TouchableOpacity>
+
+                </View>
+            </View>
+        </Modal>
+    )
+
+    // Helper function to reset navigation
+    const resetToHome = () => {
+        navigation.reset({
+            index: 0,
+            routes: [{ name: "Home" }]
+        });
+    };
+
+
+    const startSound = async () => {
+        try {
+            const { sound } = await Audio.Sound.createAsync(
+                require('./cancel.mp3'),
+                {
+                    shouldPlay: true,
+                    isLooping: true
+                }
+            );
+            setSound(sound);
+            soundLoopRef.current = sound;
+        } catch (error) {
+            console.error("Error playing sound:", error);
+        }
+    };
+
     useEffect(() => {
         if (socket && socket.on) {
+            console.log("✅ Socket listeners attached");
+
             // Listen for ride end event
             socket.on('ride_end', (data) => {
+                console.log("🎉 Ride Completed:", data);
                 setRideCompleted(true);
+
                 Alert.alert(
                     "Ride Completed",
                     "The ride has been completed successfully!",
@@ -197,21 +348,34 @@ export default function RideDetailsScreen() {
 
             // Listen for ride cancellation
             socket.on('ride_cancelled', (data) => {
+                console.log("🚨 Ride Cancelled:", data);
+                startSound();
+
                 Alert.alert(
                     "Ride Cancelled",
                     "The ride has been cancelled by the customer.",
-                    [{ text: "OK", onPress: () => navigation.goBack() }]
+                    [{
+                        text: "OK",
+                        onPress: () => {
+                            if (soundLoopRef.current) {
+                                soundLoopRef.current.stopAsync();
+                            }
+                            navigation.goBack();
+                        }
+                    }]
                 );
             });
         }
 
         return () => {
             if (socket && socket.off) {
+                console.log("🔌 Removing socket listeners...");
                 socket.off('ride_end');
                 socket.off('ride_cancelled');
             }
         };
     }, [socket, navigation]);
+
 
     // Calculate distance and time to pickup
     useEffect(() => {
@@ -369,309 +533,327 @@ export default function RideDetailsScreen() {
     }
 
     return (
-      <SafeAreaView style={{flex:1}}>
-          <View style={styles.container}>
-            {/* Map View */}
-            <View style={styles.mapContainer}>
-                <MapView
-                    ref={mapRef}
-                    provider={PROVIDER_GOOGLE}
-                    style={styles.map}
-                    initialRegion={{
-                        latitude: currentLocation?.latitude || driverCoordinates.latitude,
-                        longitude: currentLocation?.longitude || driverCoordinates.longitude,
-                        latitudeDelta: LATITUDE_DELTA,
-                        longitudeDelta: LONGITUDE_DELTA,
-                    }}
-                    showsUserLocation={true}
-                    showsMyLocationButton={true}
-                    followsUserLocation={true}
-                
-                    showsCompass
-                  
-                    showsTraffic
-                    onMapReady={handleMapReady}
-                >
-                    {/* Driver Marker */}
-                    {currentLocation && (
-                        <Marker
-                            coordinate={currentLocation}
-                            title="Your Location"
-                            description="You are here"
-                        >
-                            <Animated.View
-                                style={{
-                                    transform: [{
-                                        scale: carIconAnimation.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [1, 1.1]
-                                        })
-                                    }]
-                                }}
+        <SafeAreaView style={{ flex: 1 }}>
+            <View style={styles.container}>
+                {/* Map View */}
+                <View style={styles.mapContainer}>
+                    <MapView
+                        ref={mapRef}
+                        provider={PROVIDER_GOOGLE}
+                        style={styles.map}
+                        initialRegion={{
+                            latitude: currentLocation?.latitude || driverCoordinates.latitude,
+                            longitude: currentLocation?.longitude || driverCoordinates.longitude,
+                            latitudeDelta: LATITUDE_DELTA,
+                            longitudeDelta: LONGITUDE_DELTA,
+                        }}
+                        showsUserLocation={true}
+                        showsMyLocationButton={true}
+                        followsUserLocation={true}
+
+                        showsCompass
+
+                        showsTraffic
+                        onMapReady={handleMapReady}
+                    >
+                        {/* Driver Marker */}
+                        {currentLocation && (
+                            <Marker
+                                coordinate={currentLocation}
+                                title="Your Location"
+                                description="You are here"
                             >
-                                <MaterialCommunityIcons
-                                    name="car"
-                                    size={36}
-                                    color="#FF3B30"
-                                />
-                            </Animated.View>
-                        </Marker>
-                    )}
-
-                    {/* Pickup Marker */}
-                    <Marker
-                        coordinate={pickupCoordinates}
-                        title="Pickup Location"
-                        description={pickup_desc}
-                    >
-                        <View style={styles.markerContainer}>
-                            <MaterialIcons name="person-pin-circle" size={40} color="#4CAF50" />
-                            <View style={styles.markerLabelContainer}>
-                                <Text style={styles.markerLabel}>Pickup</Text>
-                            </View>
-                        </View>
-                    </Marker>
-
-                    {/* Drop Marker */}
-                    <Marker
-                        coordinate={dropCoordinates}
-                        title="Drop Location"
-                        description={drop_desc}
-                    >
-                        <View style={styles.markerContainer}>
-                            <MaterialIcons name="place" size={40} color="#FF9500" />
-                            <View style={styles.markerLabelContainer}>
-                                <Text style={styles.markerLabel}>Drop</Text>
-                            </View>
-                        </View>
-                    </Marker>
-
-                    {/* Directions */}
-                    {showDirectionsType === 'driver_to_pickup' && currentLocation && (
-                        <MapViewDirections
-                            origin={currentLocation}
-                            destination={pickupCoordinates}
-                            apikey={GOOGLE_MAPS_APIKEY}
-                            strokeWidth={4}
-                            strokeColor="#4CAF50"
-                            lineDashPattern={[1]}
-                        />
-                    )}
-
-                    {showDirectionsType === 'pickup_to_drop' && (
-                        <MapViewDirections
-                            origin={pickupCoordinates}
-                            destination={dropCoordinates}
-                            apikey={GOOGLE_MAPS_APIKEY}
-                            strokeWidth={4}
-                            strokeColor="#FF9500"
-                        />
-                    )}
-                </MapView>
-
-                {/* Map Overlay Controls */}
-                <View style={styles.mapOverlayContainer}>
-                    {/* Navigation Button */}
-                    <TouchableOpacity
-                        style={styles.navigationButton}
-                        onPress={openGoogleMapsDirections}
-                    >
-                        <MaterialIcons name="directions" size={24} color="#FFFFFF" />
-                        <Text style={styles.navigationButtonText}>Navigate</Text>
-                    </TouchableOpacity>
-
-                    {/* Distance Info */}
-                    {!rideStarted && distanceToPickup && (
-                        <View style={styles.distanceInfoContainer}>
-                            <Text style={styles.distanceInfoText}>
-                                {distanceToPickup} km • {timeToPickup} min to pickup
-                            </Text>
-                        </View>
-                    )}
-                </View>
-            </View>
-
-            {/* Ride Info Section */}
-            <ScrollView style={styles.scrollView} bounces={false}>
-                {/* Status Bar */}
-                <View style={styles.statusBarContainer}>
-                    <View style={styles.statusBar}>
-                        <View style={[
-                            styles.statusStep,
-                            styles.statusStepActive
-                        ]}>
-                            <MaterialIcons name="check-circle" size={24} color="#4CAF50" />
-                            <Text style={styles.statusStepText}>Accepted</Text>
-                        </View>
-                        <View style={[
-                            styles.statusConnector,
-                            rideStarted && styles.statusConnectorActive
-                        ]} />
-                        <View style={[
-                            styles.statusStep,
-                            rideStarted && styles.statusStepActive
-                        ]}>
-                            <MaterialIcons
-                                name={rideStarted ? "check-circle" : "radio-button-unchecked"}
-                                size={24}
-                                color={rideStarted ? "#4CAF50" : "#BBBBBB"}
-                            />
-                            <Text style={styles.statusStepText}>Picked Up</Text>
-                        </View>
-                        <View style={[
-                            styles.statusConnector,
-                            rideCompleted && styles.statusConnectorActive
-                        ]} />
-                        <View style={[
-                            styles.statusStep,
-                            rideCompleted && styles.statusStepActive
-                        ]}>
-                            <MaterialIcons
-                                name={rideCompleted ? "check-circle" : "radio-button-unchecked"}
-                                size={24}
-                                color={rideCompleted ? "#4CAF50" : "#BBBBBB"}
-                            />
-                            <Text style={styles.statusStepText}>Completed</Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Ride Details Card */}
-                <View style={styles.rideInfoCard}>
-                    <View style={styles.rideInfoHeader}>
-                        <Text style={styles.rideInfoTitle}>Ride Details</Text>
-                        <View style={styles.rideStatusBadge}>
-                            <Text style={styles.rideStatusText}>
-                                {rideCompleted ? "Completed" : rideStarted ? "In Progress" : "Upcoming"}
-                            </Text>
-                        </View>
-                    </View>
-
-                    <Divider style={styles.divider} />
-
-                    {/* Locations */}
-                    <View style={styles.locationsContainer}>
-                        <View style={styles.locationItem}>
-                            <View style={styles.locationIconContainer}>
-                                <MaterialIcons name="my-location" size={20} color="#4CAF50" />
-                            </View>
-
-                            <View style={styles.locationTextContainer}>
-                                <Text style={styles.locationLabel}>PICKUP</Text>
-                                <Text style={styles.locationText} numberOfLines={2}>{pickup_desc}</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.locationConnector} />
-
-                        <View style={styles.locationItem}>
-                            <View style={styles.locationIconContainer}>
-                                <MaterialIcons name="place" size={20} color="#FF9500" />
-                            </View>
-                            <View style={styles.locationTextContainer}>
-                                <Text style={styles.locationLabel}>DROP-OFF</Text>
-                                <Text style={styles.locationText} numberOfLines={2}>{drop_desc}</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    <Divider style={styles.divider} />
-
-                    {/* Ride Info Rows */}
-                    <View style={styles.infoGrid}>
-                        <View style={styles.infoGridItem}>
-                            <MaterialCommunityIcons name="car" size={20} color="#666" />
-                            <Text style={styles.infoGridLabel}>Vehicle</Text>
-                            <Text style={styles.infoGridValue}>{vehicleType || "Standard"}</Text>
-                        </View>
-
-                        <View style={styles.infoGridItem}>
-                            <MaterialCommunityIcons name="clock-outline" size={20} color="#666" />
-                            <Text style={styles.infoGridLabel}>ETA</Text>
-                            <Text style={styles.infoGridValue}>{eta || "25 min"}</Text>
-                        </View>
-
-                        <View style={styles.infoGridItem}>
-                            <MaterialCommunityIcons name="map-marker-distance" size={20} color="#666" />
-                            <Text style={styles.infoGridLabel}>Distance</Text>
-                            <Text style={styles.infoGridValue}>{kmOfRide ? `${kmOfRide} km` : "N/A"}</Text>
-                        </View>
-
-                        <View style={styles.infoGridItem}>
-                            <FontAwesome5 name="rupee-sign" size={20} color="#666" />
-                            <Text style={styles.infoGridLabel}>Fare</Text>
-                            <Text style={styles.infoGridValue}>₹{kmOfRide || "0"}</Text>
-                        </View>
-                    </View>
-
-                    {rider && (
-                        <>
-                            <Divider style={styles.divider} />
-
-                            {/* Rider Info */}
-                            <View style={styles.riderInfoContainer}>
-                                <View style={styles.riderAvatarContainer}>
-                                    <Image
-                                        source={{
-                                            uri: rider.profileImage ||
-                                                'https://images.unsplash.com/photo-1633332755192-727a05c4013d?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80'
-                                        }}
-                                        style={styles.riderAvatar}
-                                    />
-                                </View>
-                                <View style={styles.riderDetails}>
-                                    <Text style={styles.riderName}>{rider.name || "Passenger"}</Text>
-                                    <Text style={styles.riderPhone}>{rider.phone || "N/A"}</Text>
-                                </View>
-                                <TouchableOpacity
-                                    style={styles.callButton}
-                                    onPress={() => {
-                                        if (rider.phone) {
-                                            Linking.openURL(`tel:${rider.phone}`);
-                                        }
+                                <Animated.View
+                                    style={{
+                                        transform: [{
+                                            scale: carIconAnimation.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: [1, 1.1]
+                                            })
+                                        }]
                                     }}
                                 >
-                                    <Ionicons name="call" size={20} color="#FFFFFF" />
-                                </TouchableOpacity>
+                                    <MaterialCommunityIcons
+                                        name="car"
+                                        size={36}
+                                        color="#FF3B30"
+                                    />
+                                </Animated.View>
+                            </Marker>
+                        )}
+
+                        {/* Pickup Marker */}
+                        <Marker
+                            coordinate={pickupCoordinates}
+                            title="Pickup Location"
+                            description={pickup_desc}
+                        >
+                            <View style={styles.markerContainer}>
+                                <MaterialIcons name="person-pin-circle" size={40} color="#4CAF50" />
+                                <View style={styles.markerLabelContainer}>
+                                    <Text style={styles.markerLabel}>Pickup</Text>
+                                </View>
                             </View>
-                        </>
+                        </Marker>
+
+                        {/* Drop Marker */}
+                        <Marker
+                            coordinate={dropCoordinates}
+                            title="Drop Location"
+                            description={drop_desc}
+                        >
+                            <View style={styles.markerContainer}>
+                                <MaterialIcons name="place" size={40} color="#FF9500" />
+                                <View style={styles.markerLabelContainer}>
+                                    <Text style={styles.markerLabel}>Drop</Text>
+                                </View>
+                            </View>
+                        </Marker>
+
+                        {/* Directions */}
+                        {showDirectionsType === 'driver_to_pickup' && currentLocation && (
+                            <MapViewDirections
+                                origin={currentLocation}
+                                destination={pickupCoordinates}
+                                apikey={GOOGLE_MAPS_APIKEY}
+                                strokeWidth={4}
+                                strokeColor="#4CAF50"
+                                lineDashPattern={[1]}
+                            />
+                        )}
+
+                        {showDirectionsType === 'pickup_to_drop' && (
+                            <MapViewDirections
+                                origin={pickupCoordinates}
+                                destination={dropCoordinates}
+                                apikey={GOOGLE_MAPS_APIKEY}
+                                strokeWidth={4}
+                                strokeColor="#FF9500"
+                            />
+                        )}
+                    </MapView>
+
+                    {/* Map Overlay Controls */}
+                    <View style={styles.mapOverlayContainer}>
+                        {/* Navigation Button */}
+                        <TouchableOpacity
+                            style={styles.navigationButton}
+                            onPress={openGoogleMapsDirections}
+                        >
+                            <MaterialIcons name="directions" size={24} color="#FFFFFF" />
+                            <Text style={styles.navigationButtonText}>Navigate</Text>
+                        </TouchableOpacity>
+
+                        {/* Distance Info */}
+                        {!rideStarted && distanceToPickup && (
+                            <View style={styles.distanceInfoContainer}>
+                                <Text style={styles.distanceInfoText}>
+                                    {distanceToPickup} km • {timeToPickup} min to pickup
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                </View>
+
+                {/* Ride Info Section */}
+                <ScrollView style={styles.scrollView} bounces={false}>
+                    {/* Status Bar */}
+                    <View style={styles.statusBarContainer}>
+                        <View style={styles.statusBar}>
+                            <View style={[
+                                styles.statusStep,
+                                styles.statusStepActive
+                            ]}>
+                                <MaterialIcons name="check-circle" size={24} color="#4CAF50" />
+                                <Text style={styles.statusStepText}>Accepted</Text>
+                            </View>
+                            <View style={[
+                                styles.statusConnector,
+                                rideStarted && styles.statusConnectorActive
+                            ]} />
+                            <View style={[
+                                styles.statusStep,
+                                rideStarted && styles.statusStepActive
+                            ]}>
+                                <MaterialIcons
+                                    name={rideStarted ? "check-circle" : "radio-button-unchecked"}
+                                    size={24}
+                                    color={rideStarted ? "#4CAF50" : "#BBBBBB"}
+                                />
+                                <Text style={styles.statusStepText}>Picked Up</Text>
+                            </View>
+                            <View style={[
+                                styles.statusConnector,
+                                rideCompleted && styles.statusConnectorActive
+                            ]} />
+                            <View style={[
+                                styles.statusStep,
+                                rideCompleted && styles.statusStepActive
+                            ]}>
+                                <MaterialIcons
+                                    name={rideCompleted ? "check-circle" : "radio-button-unchecked"}
+                                    size={24}
+                                    color={rideCompleted ? "#4CAF50" : "#BBBBBB"}
+                                />
+                                <Text style={styles.statusStepText}>Completed</Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Ride Details Card */}
+                    <View style={styles.rideInfoCard}>
+                        <View style={styles.rideInfoHeader}>
+                            <Text style={styles.rideInfoTitle}>Ride Details</Text>
+                            <View style={styles.rideStatusBadge}>
+                                <Text style={styles.rideStatusText}>
+                                    {rideCompleted ? "Completed" : rideStarted ? "In Progress" : "Upcoming"}
+                                </Text>
+                            </View>
+                        </View>
+
+                        <Divider style={styles.divider} />
+
+                        {/* Locations */}
+                        <View style={styles.locationsContainer}>
+                            <View style={styles.locationItem}>
+                                <View style={styles.locationIconContainer}>
+                                    <MaterialIcons name="my-location" size={20} color="#4CAF50" />
+                                </View>
+
+                                <View style={styles.locationTextContainer}>
+                                    <Text style={styles.locationLabel}>PICKUP</Text>
+                                    <Text style={styles.locationText} numberOfLines={2}>{pickup_desc}</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.locationConnector} />
+
+                            <View style={styles.locationItem}>
+                                <View style={styles.locationIconContainer}>
+                                    <MaterialIcons name="place" size={20} color="#FF9500" />
+                                </View>
+                                <View style={styles.locationTextContainer}>
+                                    <Text style={styles.locationLabel}>DROP-OFF</Text>
+                                    <Text style={styles.locationText} numberOfLines={2}>{drop_desc}</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        <Divider style={styles.divider} />
+
+                        {/* Ride Info Rows */}
+                        <View style={styles.infoGrid}>
+                            <View style={styles.infoGridItem}>
+                                <MaterialCommunityIcons name="car" size={20} color="#666" />
+                                <Text style={styles.infoGridLabel}>Vehicle</Text>
+                                <Text style={styles.infoGridValue}>{vehicleType || "Standard"}</Text>
+                            </View>
+
+                            <View style={styles.infoGridItem}>
+                                <MaterialCommunityIcons name="clock-outline" size={20} color="#666" />
+                                <Text style={styles.infoGridLabel}>ETA</Text>
+                                <Text style={styles.infoGridValue}>{eta || "25 min"}</Text>
+                            </View>
+
+                            <View style={styles.infoGridItem}>
+                                <MaterialCommunityIcons name="map-marker-distance" size={20} color="#666" />
+                                <Text style={styles.infoGridLabel}>Distance</Text>
+                                <Text style={styles.infoGridValue}>{kmOfRide ? `${kmOfRide} km` : "N/A"}</Text>
+                            </View>
+
+                            <View style={styles.infoGridItem}>
+                                <FontAwesome5 name="rupee-sign" size={20} color="#666" />
+                                <Text style={styles.infoGridLabel}>Fare</Text>
+                                <Text style={styles.infoGridValue}>₹{kmOfRide || "0"}</Text>
+                            </View>
+                        </View>
+
+                        {rider && (
+                            <>
+                                <Divider style={styles.divider} />
+
+                                {/* Rider Info */}
+                                <View style={styles.riderInfoContainer}>
+                                    <View style={styles.riderAvatarContainer}>
+                                        <Image
+                                            source={{
+                                                uri: rider.profileImage ||
+                                                    'https://images.unsplash.com/photo-1633332755192-727a05c4013d?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80'
+                                            }}
+                                            style={styles.riderAvatar}
+                                        />
+                                    </View>
+                                    <View style={styles.riderDetails}>
+                                        <Text style={styles.riderName}>{rider.name || "Passenger"}</Text>
+                                        <Text style={styles.riderPhone}>{rider.phone || "N/A"}</Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={styles.callButton}
+                                        onPress={() => {
+                                            if (rider.phone) {
+                                                Linking.openURL(`tel:${rider.phone}`);
+                                            }
+                                        }}
+                                    >
+                                        <Ionicons name="call" size={20} color="#FFFFFF" />
+                                    </TouchableOpacity>
+                                </View>
+                            </>
+                        )}
+                    </View>
+                </ScrollView>
+
+                {/* Action Buttons */}
+                <View style={styles.actionButtonsContainer}>
+                    {!rideStarted ? (
+                        <LinearGradient
+                            colors={['#FF3B30', '#FF5E3A']}
+                            style={styles.actionButton}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                        >
+                            <TouchableOpacity
+                                style={styles.actionButtonTouchable}
+                                onPress={() => setShowOtpModal(true)}
+                            >
+                                <MaterialIcons name="verified-user" size={24} color="#FFFFFF" />
+                                <Text style={styles.actionButtonText}>I've Arrived - Enter OTP</Text>
+                            </TouchableOpacity>
+                        </LinearGradient>
+                    ) : !rideCompleted ? (
+                        <LinearGradient
+                            colors={['#4CAF50', '#45a049']}
+                            style={styles.actionButton}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                        >
+                            <TouchableOpacity
+                                style={styles.actionButtonTouchable}
+                                onPress={handleCompleteRide}
+                            >
+                                <MaterialIcons name="check-circle" size={24} color="#FFFFFF" />
+                                <Text style={styles.actionButtonText}>Complete Ride</Text>
+                            </TouchableOpacity>
+                        </LinearGradient>
+                    ) : (
+                        <LinearGradient
+                            colors={['#FF9500', '#F57C00']}
+                            style={styles.actionButton}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                        >
+                            <TouchableOpacity
+                                style={styles.actionButtonTouchable}
+                                onPress={() => navigation.navigate('collect_money', { data: params?.rideDetails })}
+                            >
+                                <FontAwesome5 name="money-bill-wave" size={24} color="#FFFFFF" />
+                                <Text style={styles.actionButtonText}>Collect Payment</Text>
+                            </TouchableOpacity>
+                        </LinearGradient>
                     )}
                 </View>
-            </ScrollView>
 
-            {/* Action Buttons */}
-            <View style={styles.actionButtonsContainer}>
-                {!rideStarted ? (
-                    <LinearGradient
-                        colors={['#FF3B30', '#FF5E3A']}
-                        style={styles.actionButton}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                    >
-                        <TouchableOpacity
-                            style={styles.actionButtonTouchable}
-                            onPress={() => setShowOtpModal(true)}
-                        >
-                            <MaterialIcons name="verified-user" size={24} color="#FFFFFF" />
-                            <Text style={styles.actionButtonText}>I've Arrived - Enter OTP</Text>
-                        </TouchableOpacity>
-                    </LinearGradient>
-                ) : !rideCompleted ? (
-                    <LinearGradient
-                        colors={['#4CAF50', '#45a049']}
-                        style={styles.actionButton}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                    >
-                        <TouchableOpacity
-                            style={styles.actionButtonTouchable}
-                            onPress={handleCompleteRide}
-                        >
-                            <MaterialIcons name="check-circle" size={24} color="#FFFFFF" />
-                            <Text style={styles.actionButtonText}>Complete Ride</Text>
-                        </TouchableOpacity>
-                    </LinearGradient>
-                ) : (
+                {!rideStarted || !rideCompleted ? (
                     <LinearGradient
                         colors={['#FF9500', '#F57C00']}
                         style={styles.actionButton}
@@ -680,63 +862,63 @@ export default function RideDetailsScreen() {
                     >
                         <TouchableOpacity
                             style={styles.actionButtonTouchable}
-                            onPress={() => navigation.navigate('collect_money', { data: params?.rideDetails })}
+                            onPress={() => setCancelModel(true)}
                         >
                             <FontAwesome5 name="money-bill-wave" size={24} color="#FFFFFF" />
-                            <Text style={styles.actionButtonText}>Collect Payment</Text>
+                            <Text style={styles.actionButtonText}>Cancel Ride</Text>
                         </TouchableOpacity>
                     </LinearGradient>
-                )}
-            </View>
+                ) : null}
 
-            {/* OTP Modal */}
-            <Modal visible={showOtpModal} transparent={true} animationType="slide">
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Enter Passenger's OTP</Text>
-                            <TouchableOpacity
-                                style={styles.modalCloseButton}
-                                onPress={() => setShowOtpModal(false)}
+                <CancelReasonsModel />
+                {/* OTP Modal */}
+                <Modal visible={showOtpModal} transparent={true} animationType="slide">
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>Enter Passenger's OTP</Text>
+                                <TouchableOpacity
+                                    style={styles.modalCloseButton}
+                                    onPress={() => setShowOtpModal(false)}
+                                >
+                                    <Ionicons name="close" size={24} color="#666" />
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.otpInputContainer}>
+                                <TextInput
+                                    style={styles.otpInput}
+                                    value={otp}
+                                    onChangeText={setOtp}
+                                    keyboardType="numeric"
+                                    maxLength={4}
+                                    placeholder="Enter 4-digit OTP"
+                                    placeholderTextColor="#999"
+                                />
+                            </View>
+
+                            <Text style={styles.otpInstructions}>
+                                Ask the passenger for the 4-digit OTP sent to their phone
+                            </Text>
+
+                            <LinearGradient
+                                colors={['#FF3B30', '#FF5E3A']}
+                                style={styles.otpSubmitButton}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
                             >
-                                <Ionicons name="close" size={24} color="#666" />
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.otpSubmitButtonTouchable}
+                                    onPress={handleOtpSubmit}
+                                >
+                                    <Text style={styles.otpSubmitButtonText}>Verify & Start Ride</Text>
+                                </TouchableOpacity>
+                            </LinearGradient>
                         </View>
-
-                        <View style={styles.otpInputContainer}>
-                            <TextInput
-                                style={styles.otpInput}
-                                value={otp}
-                                onChangeText={setOtp}
-                                keyboardType="numeric"
-                                maxLength={4}
-                                placeholder="Enter 4-digit OTP"
-                                placeholderTextColor="#999"
-                            />
-                        </View>
-
-                        <Text style={styles.otpInstructions}>
-                            Ask the passenger for the 4-digit OTP sent to their phone
-                        </Text>
-
-                        <LinearGradient
-                            colors={['#FF3B30', '#FF5E3A']}
-                            style={styles.otpSubmitButton}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                        >
-                            <TouchableOpacity
-                                style={styles.otpSubmitButtonTouchable}
-                                onPress={handleOtpSubmit}
-                            >
-                                <Text style={styles.otpSubmitButtonText}>Verify & Start Ride</Text>
-                            </TouchableOpacity>
-                        </LinearGradient>
                     </View>
-                </View>
-            </Modal>
-        </View>
-      </SafeAreaView>
+                </Modal>
+            </View>
+        </SafeAreaView>
     );
 }
 
@@ -1091,5 +1273,72 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 10,
         fontWeight: 'bold',
+    },
+    
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContents: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 20,
+        maxHeight: height * 0.8,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    modalCloseButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#F3F4F6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    
+    cancelReasonItem: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "start",
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: "#ddd",
+    },
+    selectedReason: {
+        backgroundColor: "#e3f2fd",
+        borderRadius: 5,
+    },
+    cancelReasonLabel: {
+        fontSize: 16,
+        color: "#111827",
+    },
+    cancelReasonDescription: {
+        fontSize: 14,
+        color: "#6b7280",
+    },
+    cancelRideButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#d64444",
+        paddingVertical: 12,
+        borderRadius: 5,
+        marginTop: 20,
+    },
+    cancelRideText: {
+        fontSize: 16,
+        color: "#fff",
+        marginLeft: 10,
     },
 });

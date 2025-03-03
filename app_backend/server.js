@@ -1,288 +1,545 @@
+// Required Dependencies
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const connectDb = require('./database/db');
-const router = require('./routes/routes');
-const rides = require('./routes/rides.routes');
-const RiderModel = require('./models/Rider.model');
-const { ChangeRideRequestByRider, findRider, rideStart, rideEnd, collectCash, AddRating } = require('./controllers/ride.request');
-const hotel_router = require('./routes/Hotel.routes');
-const users = require('./routes/user_routes/user_routes');
 const cookies_parser = require('cookie-parser');
 const axios = require('axios');
+const multer = require('multer');
+require('dotenv').config();
+
+// Routes
+const router = require('./routes/routes');
+const rides = require('./routes/rides.routes');
+const hotel_router = require('./routes/Hotel.routes');
+const users = require('./routes/user_routes/user_routes');
 const tiffin = require('./routes/Tiffin/Tiffin.routes');
 const parcel = require('./routes/Parcel/Parcel.routes');
-const Parcel_boy_Location = require('./models/Parcel_Models/Parcel_Boys_Location');
-const Protect = require('./middleware/Auth');
-const { update_parcel_request, mark_reached, mark_pick, mark_deliver, mark_cancel } = require('./driver');
-require('dotenv').config();
-const multer = require('multer');
 const admin = require('./routes/Admin/admin.routes');
-const Settings = require('./models/Admin/Settings');
-const storage = multer.memoryStorage()
 
+// Models
+const RiderModel = require('./models/Rider.model');
+const Parcel_boy_Location = require('./models/Parcel_Models/Parcel_Boys_Location');
+const Settings = require('./models/Admin/Settings');
+
+// Controllers & Middleware
+const {
+    ChangeRideRequestByRider,
+    findRider,
+    rideStart,
+    rideEnd,
+    collectCash,
+    AddRating,
+    cancelRideByAnyOne
+} = require('./controllers/ride.request');
+const {
+    update_parcel_request,
+    mark_reached,
+    mark_pick,
+    mark_deliver,
+    mark_cancel
+} = require('./driver');
+const Protect = require('./middleware/Auth');
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+
+// Initialize Express app and HTTP server
 const app = express();
 const server = http.createServer(app);
 
-// Initialize Socket.IO with a ping interval of 6000ms
+// Initialize Socket.IO with appropriate CORS and ping settings
 const io = socketIo(server, {
     cors: {
         origin: '*',
         methods: ['GET', 'POST']
     },
-    pingInterval: 6000,  // Add ping interval for connection health
+    pingInterval: 6000,  // Add ping interval for connection health monitoring
 });
 
 // Connect to the database
 connectDb();
+console.log('Attempting database connection...');
+
+// Set socket.io instance to be accessible by routes
 app.set("socketio", io);
 
+// Middleware Setup
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({
-    extended: true
-}));
+app.use(express.urlencoded({ extended: true }));
 app.use(cookies_parser());
 
-const userSocketMap = new Map();
-const driverSocketMap = new Map();
-const tiffin_partnerMap = new Map();
+/**
+ * Socket connection maps to track active connections
+ * These maps store userId/driverId -> socketId mappings
+ */
+const userSocketMap = new Map();     // Regular users
+const driverSocketMap = new Map();   // Drivers
+const tiffinPartnerMap = new Map();  // Tiffin service partners
 
-console.log("driverSocketMap-5", driverSocketMap)
+// Make driverSocketMap available to the entire application
+app.set('driverSocketMap', driverSocketMap);
 
-app.set('driverSocketMap', driverSocketMap)
+// Socket.IO connection handling
 io.on('connection', (socket) => {
-    console.log('New client connected');
+    console.log(`[${new Date().toISOString()}] New client connected: ${socket.id}`);
 
-    // Handle user connections
+    /**
+     * Handle user connections
+     * Maps a user's ID to their socket ID for targeted communications
+     */
     socket.on('user_connect', (data) => {
-        if (!data.userId || !data.userType) {
-            console.error('Invalid user connect data:', data);
+        if (!data || !data.userId || !data.userType) {
+            console.error(`[${new Date().toISOString()}] Invalid user connect data:`, data);
             return;
         }
+
         // Store the user's socket ID
         userSocketMap.set(data.userId, socket.id);
-        console.log(`User ${data.userId} connected with socket ID: ${socket.id}`);
+        console.log(`[${new Date().toISOString()}] User ${data.userId} connected with socket ID: ${socket.id}`);
     });
 
-    // Handle driver connections
+    /**
+     * Handle driver connections
+     * Maps a driver's ID to their socket ID for targeted communications
+     */
     socket.on('driver_connect', (data) => {
-        if (!data.userId) {
-            console.error('Invalid driver connect data:', data);
+        if (!data || !data.userId) {
+            console.error(`[${new Date().toISOString()}] Invalid driver connect data:`, data);
             return;
         }
+
         // Store the driver's socket ID
         driverSocketMap.set(data.userId, socket.id);
-        console.log(`Driver ${data.userId} connected with socket ID: ${socket.id}`);
+        console.log(`[${new Date().toISOString()}] Driver ${data.userId} connected with socket ID: ${socket.id}`);
+        console.log(`[${new Date().toISOString()}] Current driver connections:`, Array.from(driverSocketMap.entries()));
     });
 
-
+    /**
+     * Handle tiffin partner connections
+     * Maps a tiffin partner's ID to their socket ID for targeted communications
+     */
     socket.on('tiffin_partner', (data) => {
-        console.log(data)
-        if (!data.userId) {
-            console.error('Invalid tiffin_partner connect data:', data);
+        if (!data || !data.userId) {
+            console.error(`[${new Date().toISOString()}] Invalid tiffin_partner connect data:`, data);
             return;
         }
 
-        tiffin_partnerMap.set(data.userId, socket.id);
-        console.log(`tiffin_partner ${data.userId} connected with socket ID: ${socket.id}`);
+        // Store the tiffin partner's socket ID
+        tiffinPartnerMap.set(data.userId, socket.id);
+        console.log(`[${new Date().toISOString()}] Tiffin partner ${data.userId} connected with socket ID: ${socket.id}`);
     });
 
-
-
-
+    /**
+     * Broadcasts ride data to all connected drivers
+     * @param {Object} rideData - The ride data to be sent to drivers
+     */
     const emitRideToDrivers = (rideData) => {
+        console.log(`[${new Date().toISOString()}] Broadcasting ride to ${driverSocketMap.size} drivers`);
 
-        driverSocketMap.forEach((driverSocketId) => {
-            console.log('Emitting ride data to driver with socket ID:', driverSocketId);
+        let emittedCount = 0;
+        driverSocketMap.forEach((driverSocketId, driverId) => {
+            console.log(`[${new Date().toISOString()}] Sending ride data to driver ${driverId} (socket: ${driverSocketId})`);
             io.to(driverSocketId).emit('ride_come', rideData);
+            emittedCount++;
         });
 
-        console.log('Emitting ride data to drivers:', rideData);
+        console.log(`[${new Date().toISOString()}] Emitted ride data to ${emittedCount} drivers`);
     };
 
-
+    /**
+     * Handle ride acceptance by driver
+     * Processes a driver accepting a ride and notifies the user
+     */
     socket.on('ride_accepted', async (data) => {
         try {
-            // Process the data and change ride request
-            const dataof = await ChangeRideRequestByRider(io, data.data);
+            console.log(`[${new Date().toISOString()}] Ride acceptance request:`, data);
 
-            if (dataof.rideStatus === 'accepted') {
+            if (!data || !data.data) {
+                console.error(`[${new Date().toISOString()}] Invalid ride acceptance data`);
+                return;
+            }
+
+            // Process the data and change ride request status
+            const updatedRide = await ChangeRideRequestByRider(io, data.data);
+            console.log(`[${new Date().toISOString()}] Ride status updated:`, updatedRide.rideStatus);
+
+            if (updatedRide.rideStatus === 'accepted') {
                 // Get the socket ID of the user who made the ride request
-                console.log("debug-1", String(dataof.user));
+                const userId = String(updatedRide.user);
+                const userSocketId = userSocketMap.get(userId);
 
-                const userSocketId = userSocketMap.get(String(dataof.user));
-                console.log("debug-2-userSocketId", userSocketMap);
+                console.log(`[${new Date().toISOString()}] Notifying user ${userId}, socket found: ${Boolean(userSocketId)}`);
+
                 if (userSocketId) {
                     // Emit a message only to the specific user's socket ID
                     io.to(userSocketId).emit('ride_accepted_message', {
                         message: 'Your ride request has been accepted!',
-                        rideDetails: dataof,
+                        rideDetails: updatedRide,
                     });
-                    console.log(`Message sent to user: ${dataof.user}, socket ID: ${userSocketId}`);
+                    console.log(`[${new Date().toISOString()}] Acceptance notification sent to user: ${userId}`);
                 } else {
-                    console.log(`No active socket found for user: ${dataof.user}`);
+                    console.log(`[${new Date().toISOString()}] No active socket found for user: ${userId}`);
                 }
             }
         } catch (error) {
-            console.error('Error handling ride_accepted event:', error);
+            console.error(`[${new Date().toISOString()}] Error handling ride_accepted event:`, error);
+            // Consider sending an error notification back to the driver
+            socket.emit('ride_error', { message: 'Failed to process ride acceptance' });
+        }
+    });
+
+    /**
+     * Handle ride acceptance by user
+     * Notifies the driver that the user has accepted the ride
+     */
+    socket.on('rideAccepted_by_user', (data) => {
+        try {
+            const { driver, ride } = data;
+
+            if (!driver || !ride || !ride.rider) {
+                console.error(`[${new Date().toISOString()}] Invalid rideAccepted_by_user data:`, data);
+                return;
+            }
+
+            console.log(`[${new Date().toISOString()}] Ride accepted by user, notifying driver:`, ride.rider._id);
+
+            const driverSocketId = driverSocketMap.get(ride.rider._id);
+
+            if (driverSocketId) {
+                io.to(driverSocketId).emit('ride_accepted_message', {
+                    message: 'You can start this ride',
+                    rideDetails: ride,
+                    driver: driver,
+                });
+                console.log(`[${new Date().toISOString()}] Message sent to driver: ${ride.rider._id}`);
+            } else {
+                console.log(`[${new Date().toISOString()}] No active socket found for driver: ${ride.rider._id}`);
+            }
+        } catch (error) {
+            console.error(`[${new Date().toISOString()}] Error in rideAccepted_by_user:`, error);
+        }
+    });
+    /**
+         * Handle ride cancel by user or driver
+         * Notifies the driver that the user has cancel the ride same as user if rider cancel
+         */
+    socket.on('ride-cancel-by-user', async (data) => {
+        try {
+            console.log("🚀 Received ride cancellation request:", data);
+
+            const { cancelBy, rideData, reason } = data || {};
+
+            if (!cancelBy || !rideData || !reason) {
+                console.error("❌ Missing required fields in cancellation data.");
+                return;
+            }
+
+            console.log("🔍 Processing cancellation by:", cancelBy);
+
+            const dataOfRide = await cancelRideByAnyOne(cancelBy, rideData, reason);
+
+            console.log("✅ Ride cancellation processed:", dataOfRide);
+
+            if (dataOfRide.success) {
+                const { ride } = dataOfRide;
+
+                if (!ride) {
+                    console.error("❌ Ride data is missing after cancellation.");
+                    return;
+                }
+
+                console.log("🛑 Ride Status:", ride.rideStatus);
+                console.log("🕒 Ride Cancel Time:", ride.rideCancelTime);
+
+                if (cancelBy === "user") {
+                    console.log("📢 Notifying driver about cancellation...", driverSocketMap);
+
+                    const riderId = ride.rider?._id;
+
+
+                    if (!riderId) {
+                        console.error("❌ Rider ID is missing! Cannot find driver socket.");
+                    } else {
+                        const driverSocketId = driverSocketMap.get(String(riderId));
+                        console.log("📡 Found driver socket ID:", driverSocketId);
+
+                        if (driverSocketId) {
+                            io.to(driverSocketId).emit('ride_cancelled', {
+                                message: "🚖 Ride cancelled by user",
+                                rideDetails: rideData,
+                            });
+                            console.log("mesage send")
+                        } else {
+                            console.warn("⚠️ Driver socket ID not found in map.");
+                        }
+                    }
+
+                } else if (cancelBy === "driver") {
+                    console.log("📢 Notifying user about cancellation...");
+                    const userSocketId = userSocketMap.get(String(ride.user?._id));
+
+                    if (userSocketId) {
+                        console.log("📡 Sending cancel notification to user:", userSocketId);
+                        io.to(userSocketId).emit('ride_cancelled_message', {
+                            message: "🚕 Ride cancelled by driver",
+                            rideDetails: rideData,
+                        });
+
+                        console.log("mesage sen to user")
+                    } else {
+                        console.warn("⚠️ User socket ID not found. User might be offline.");
+                    }
+                }
+            } else {
+                console.error("❌ Ride cancellation failed:", dataOfRide.message);
+            }
+
+        } catch (error) {
+            console.error("❌ Error while canceling ride:", error);
         }
     });
 
 
-    socket.on('rideAccepted_by_user', (data) => {
-        const { driver, ride } = data;
-
-        console.log("debug-4", ride.rider)
-        console.log("debug-5", driverSocketMap)
-        const driverSocketId = driverSocketMap.get(ride?.rider._id);
-        console.log("debug-1-3,driverSocketId", driverSocketId);
-
-        if (driverSocketId) {
-
-            socket.to(driverSocketId).emit('ride_accepted_message', {
-                message: 'You can start this ride',
-                rideDetails: ride,
-                driver: driver,
-            });
-            console.log(`Message sent to Driver: ${driverSocketId}`);
-        } else {
-            console.log(`No active socket found for driver: ${driver._id}`);
-        }
-    });;
-
-    // ride save message
+    /**
+     * Handle new ride requests from users
+     * Processes a new ride request and broadcasts it to available drivers
+     */
     socket.on('send_message', async (data) => {
         try {
-            console.log("ride data via user", data);
+            console.log(`[${new Date().toISOString()}] New ride request received:`, data);
 
-            const passRideToFindFunction = async () => {
-                if (!data || !data.data || !data.data._id) {
-                    throw new Error("Invalid data: Missing ride _id.");
-                }
+            if (!data || !data.data || !data.data._id) {
+                console.error(`[${new Date().toISOString()}] Invalid ride data: Missing required fields`);
+                socket.emit('message_response', { success: false, error: "Invalid ride data" });
+                return;
+            }
 
-                const riderData = await findRider(data.data._id, io);
+            // Find rider information for the ride
+            const riderData = await findRider(data.data._id, io);
 
+            if (riderData) {
+                // Emit the ride details to all available drivers
+                emitRideToDrivers(riderData);
 
-                // Handle the retrieved rider data here
-                if (riderData) {
-                    // Emit the ride details to the drivers
-                    emitRideToDrivers(riderData);
-                    // Optionally emit a response back to the user
-                    socket.emit('message_response', { success: true, riderData });
-                } else {
-                    socket.emit('message_response', { success: false, error: "Rider not found." });
-                }
-            };
-
-            await passRideToFindFunction();
+                // Confirm receipt to the requesting user
+                socket.emit('message_response', {
+                    success: true,
+                    message: "Ride request sent to drivers",
+                    riderData
+                });
+            } else {
+                console.error(`[${new Date().toISOString()}] Rider not found for ID: ${data.data._id}`);
+                socket.emit('message_response', {
+                    success: false,
+                    error: "Rider not found"
+                });
+            }
         } catch (error) {
-            console.error("Error in send_message handler:", error);
+            console.error(`[${new Date().toISOString()}] Error processing ride request:`, error);
             socket.emit('message_response', {
                 success: false,
-                error: 'Failed to process the message.',
+                error: 'Failed to process the ride request',
             });
         }
     });
 
+    /**
+     * Handle ride start event
+     * Updates ride status to 'started' and notifies the user
+     */
     socket.on('ride_started', async (data) => {
+        try {
+            console.log(`[${new Date().toISOString()}] Ride start request:`, data);
 
-        const userSocketId = userSocketMap.get(String(data.user));
-        const ride_data_save = await rideStart(data)
-        if (ride_data_save.success) {
-
-            if (userSocketId) {
-                // Emit a message only to the specific user's socket ID
-                io.to(userSocketId).emit('ride_user_start', {
-                    message: 'Your ride request has been started!',
-                    rideDetails: data,
-                });
-                console.log(`Message sent to user: ${data.user}, socket ID: ${userSocketId}`);
-            } else {
-                console.log(`No active socket found for user: ${data.user}`);
+            if (!data || !data.user) {
+                console.error(`[${new Date().toISOString()}] Invalid ride_started data`);
+                return;
             }
 
-        } else {
-            console.log("Error in ride start")
-        }
-        // const userSocketId = userSocketMap.get(data.driverId);
-    })
+            const userSocketId = userSocketMap.get(String(data.user));
+            const rideStartResult = await rideStart(data);
 
+            if (rideStartResult.success) {
+                console.log(`[${new Date().toISOString()}] Ride started successfully for user ${data.user}`);
+
+                if (userSocketId) {
+                    // Notify the user that their ride has started
+                    io.to(userSocketId).emit('ride_user_start', {
+                        message: 'Your ride has started!',
+                        rideDetails: data,
+                    });
+                    console.log(`[${new Date().toISOString()}] Start notification sent to user: ${data.user}`);
+                } else {
+                    console.log(`[${new Date().toISOString()}] No active socket found for user: ${data.user}`);
+                }
+            } else {
+                console.error(`[${new Date().toISOString()}] Error starting ride:`, rideStartResult.error);
+                socket.emit('ride_error', { message: 'Failed to start ride' });
+            }
+        } catch (error) {
+            console.error(`[${new Date().toISOString()}] Error in ride_started:`, error);
+            socket.emit('ride_error', { message: 'Failed to process ride start' });
+        }
+    });
+
+    /**
+     * Handle ride end event
+     * Updates ride status to 'completed' and notifies the driver
+     */
     socket.on('endRide', async (data) => {
-        console.log("ride end", data);
-        const ride_end = await rideEnd(data?.ride)
-        console.log("ride ends", ride_end);
-        if (ride_end.success) {
-            const Stringid = String(ride_end?.driverId)
-            const driverSocketId = driverSocketMap.get(Stringid);
-            console.log("driverSocketId", driverSocketId);
-            io.to(driverSocketId).emit('ride_end', {
-                message: 'Your ride  has been complete please collect money.',
-                rideDetails: data,
-            })
-        } else {
-            console.log("Error in ride end")
+        try {
+            console.log(`[${new Date().toISOString()}] Ride end request:`, data);
+
+            if (!data || !data.ride) {
+                console.error(`[${new Date().toISOString()}] Invalid endRide data`);
+                return;
+            }
+
+            const rideEndResult = await rideEnd(data.ride);
+
+            if (rideEndResult.success) {
+                console.log(`[${new Date().toISOString()}] Ride ended successfully. Driver ID: ${rideEndResult.driverId}`);
+
+                const driverSocketId = driverSocketMap.get(String(rideEndResult.driverId));
+
+                if (driverSocketId) {
+                    io.to(driverSocketId).emit('ride_end', {
+                        message: 'Your ride has been completed. Please collect payment.',
+                        rideDetails: data,
+                    });
+                    console.log(`[${new Date().toISOString()}] End notification sent to driver: ${rideEndResult.driverId}`);
+                } else {
+                    console.log(`[${new Date().toISOString()}] No active socket found for driver: ${rideEndResult.driverId}`);
+                }
+            } else {
+                console.error(`[${new Date().toISOString()}] Error ending ride:`, rideEndResult.error);
+                socket.emit('ride_error', { message: 'Failed to end ride' });
+            }
+        } catch (error) {
+            console.error(`[${new Date().toISOString()}] Error in endRide:`, error);
+            socket.emit('ride_error', { message: 'Failed to process ride end' });
         }
-    })
+    });
 
-
+    /**
+     * Handle payment received event
+     * Updates ride payment status and prompts user for rating
+     */
     socket.on('isPay', async (data) => {
-        // console.log("isPay", data);
-        const collect = await collectCash(data?.ride)
-        console.log(collect)
-        if (collect.success) {
-            const userSocketId = userSocketMap.get(String(data?.ride?.user));
-            console.log(userSocketId)
-            io.to(userSocketId).emit('give-rate', {
-                message: 'Your ride has been paid.',
-                rideDetails: data,
-            })
-        } else {
-            console.log("Error in collect")
-        }
-    })
+        try {
+            console.log(`[${new Date().toISOString()}] Payment confirmation received:`, data);
 
+            if (!data || !data.ride || !data.ride.user) {
+                console.error(`[${new Date().toISOString()}] Invalid payment data`);
+                return;
+            }
+
+            const collectResult = await collectCash(data.ride);
+
+            if (collectResult.success) {
+                console.log(`[${new Date().toISOString()}] Payment recorded successfully for user: ${data.ride.user}`);
+
+                const userSocketId = userSocketMap.get(String(data.ride.user));
+
+                if (userSocketId) {
+                    io.to(userSocketId).emit('give-rate', {
+                        message: 'Your payment has been received. Please rate your ride.',
+                        rideDetails: data,
+                    });
+                    console.log(`[${new Date().toISOString()}] Rating request sent to user: ${data.ride.user}`);
+                } else {
+                    console.log(`[${new Date().toISOString()}] No active socket found for user: ${data.ride.user}`);
+                }
+            } else {
+                console.error(`[${new Date().toISOString()}] Error recording payment:`, collectResult.error);
+                socket.emit('payment_error', { message: 'Failed to process payment confirmation' });
+            }
+        } catch (error) {
+            console.error(`[${new Date().toISOString()}] Error in isPay:`, error);
+            socket.emit('payment_error', { message: 'Failed to process payment' });
+        }
+    });
+
+    /**
+     * Handle rating submission
+     * Records the user's rating and notifies the driver
+     */
     socket.on('rating', async (data) => {
-        const { rating, ride } = data
-        const ratingAdd = await AddRating(ride, rating)
-        if (ratingAdd.success) {
-            console.log("rating added")
-            const driverSocketId = driverSocketMap.get(String(ratingAdd.driverId));
-            console.log("driverSocketId", driverSocketId);
-            io.to(driverSocketId).emit('rating', {
-                message: 'Your ride has been rated.',
-                rating: rating,
-            })
+        try {
+            console.log(`[${new Date().toISOString()}] Rating submission received:`, data);
+
+            const { rating, ride } = data;
+
+            if (!rating || !ride) {
+                console.error(`[${new Date().toISOString()}] Invalid rating data`);
+                return;
+            }
+
+            const ratingResult = await AddRating(ride, rating);
+
+            if (ratingResult.success) {
+                console.log(`[${new Date().toISOString()}] Rating added successfully. Driver ID: ${ratingResult.driverId}`);
+
+                const driverSocketId = driverSocketMap.get(String(ratingResult.driverId));
+
+                if (driverSocketId) {
+                    io.to(driverSocketId).emit('rating', {
+                        message: 'You have received a rating for your ride.',
+                        rating: rating,
+                    });
+                    console.log(`[${new Date().toISOString()}] Rating notification sent to driver: ${ratingResult.driverId}`);
+                } else {
+                    console.log(`[${new Date().toISOString()}] No active socket found for driver: ${ratingResult.driverId}`);
+                }
+            } else {
+                console.error(`[${new Date().toISOString()}] Error adding rating:`, ratingResult.error);
+            }
+        } catch (error) {
+            console.error(`[${new Date().toISOString()}] Error in rating:`, error);
         }
-    })
+    });
 
-
-    // Parcel Io Connection
+    /**
+     * Handle parcel acceptance by driver
+     * Updates the parcel request and notifies relevant parties
+     */
     socket.on("driver_parcel_accept", async (data) => {
         try {
+            console.log(`[${new Date().toISOString()}] Parcel acceptance request:`, data);
+
             if (!data || !data.order_id || !data.driver_id) {
-                return console.log("Invalid data received:", data);
+                console.error(`[${new Date().toISOString()}] Invalid parcel acceptance data`);
+                return;
             }
 
             const response = await update_parcel_request(io, data, driverSocketMap, userSocketMap);
 
-            if (response.status === true) {
-                console.log(response.message);
+            if (response.status) {
+                console.log(`[${new Date().toISOString()}] Parcel accepted successfully:`, response.message);
 
-                const driverSocketId = driverSocketMap[data.driver_id];
+                // Find the driver's socket ID
+                const driverSocketId = driverSocketMap.get(data.driver_id);
+
                 if (driverSocketId) {
                     io.to(driverSocketId).emit("order_update_success", {
                         status: true,
                         message: "Order successfully accepted",
                         order_id: data.order_id,
                     });
+                    console.log(`[${new Date().toISOString()}] Acceptance confirmation sent to driver: ${data.driver_id}`);
+                } else {
+                    console.log(`[${new Date().toISOString()}] No active socket found for driver: ${data.driver_id}`);
                 }
             } else {
-                console.log(response.error);
+                console.error(`[${new Date().toISOString()}] Parcel acceptance failed:`, response.error);
+
                 // Send failure response back to driver
-                const driverSocketId = driverSocketMap[data.driver_id];
+                const driverSocketId = driverSocketMap.get(data.driver_id);
+
                 if (driverSocketId) {
                     io.to(driverSocketId).emit("order_update_failed", {
                         status: false,
@@ -291,224 +548,266 @@ io.on('connection', (socket) => {
                 }
             }
         } catch (error) {
-            console.error("Error processing driver_parcel_accept:", error.message);
+            console.error(`[${new Date().toISOString()}] Error in driver_parcel_accept:`, error);
         }
     });
 
+    /**
+     * Handle driver reached pickup location event
+     * Updates the parcel status and notifies relevant parties
+     */
     socket.on('driver_reached', async (data) => {
-        console.log("driver_reached", data)
         try {
+            console.log(`[${new Date().toISOString()}] Driver reached notification:`, data);
+
             if (!data || !data._id || !data.driverId) {
-                return console.log("Invalid data received:", data);
+                console.error(`[${new Date().toISOString()}] Invalid driver_reached data`);
+                return;
             }
 
             const response = await mark_reached(io, data, driverSocketMap, userSocketMap);
 
-            if (response.status === true) {
-                console.log(response.message);
-                // Send success response back to driver
-                const driverSocketId = driverSocketMap[data.driver_id];
+            if (response.status) {
+                console.log(`[${new Date().toISOString()}] Driver reached status updated:`, response.message);
+
+                // Notify driver of successful status update
+                const driverSocketId = driverSocketMap.get(data.driver_id);
+
                 if (driverSocketId) {
                     io.to(driverSocketId).emit("order_mark_success", {
                         status: true,
-                        message: "Order successfully accepted",
-                        order_id: data.order_id,
+                        message: "Location reached status updated",
+                        order_id: data._id,
                     });
                 }
             } else {
-                console.log(response.error);
-                // Send failure response back to driver
-                const driverSocketId = driverSocketMap[data.driver_id];
+                console.error(`[${new Date().toISOString()}] Driver reached status update failed:`, response.error);
+
+                // Notify driver of failed status update
+                const driverSocketId = driverSocketMap.get(data.driver_id);
+
                 if (driverSocketId) {
                     io.to(driverSocketId).emit("order_update_failed", {
                         status: false,
-                        message: response.message || "Failed to accept order",
+                        message: response.message || "Failed to update status",
                     });
                 }
             }
         } catch (error) {
-            console.error("Error processing driver_parcel_accept:", error.message);
+            console.error(`[${new Date().toISOString()}] Error in driver_reached:`, error);
         }
-    })
+    });
+
+    /**
+     * Handle pickup confirmation event
+     * Updates the parcel status to 'picked up' and notifies relevant parties
+     */
     socket.on('mark_pick', async (data) => {
-        console.log("mark_pick", data)
         try {
+            console.log(`[${new Date().toISOString()}] Parcel pickup notification:`, data);
+
             if (!data || !data._id || !data.driverId) {
-                return console.log("Invalid data received:", data);
+                console.error(`[${new Date().toISOString()}] Invalid mark_pick data`);
+                return;
             }
 
             const response = await mark_pick(io, data, driverSocketMap, userSocketMap);
 
-            if (response.status === true) {
-                console.log(response.message);
-                // Send success response back to driver
-                const driverSocketId = driverSocketMap[data.driver_id];
+            if (response.status) {
+                console.log(`[${new Date().toISOString()}] Parcel pickup status updated:`, response.message);
+
+                // Notify driver of successful pickup status update
+                const driverSocketId = driverSocketMap.get(data.driver_id);
+
                 if (driverSocketId) {
                     io.to(driverSocketId).emit("mark_pick_driver", {
                         status: true,
-                        message: "Order successfully accepted",
-                        order_id: data.order_id,
+                        message: "Pickup status updated successfully",
+                        order_id: data._id,
                     });
                 }
             } else {
-                console.log(response.error);
-                // Send failure response back to driver
-                const driverSocketId = driverSocketMap[data.driver_id];
+                console.error(`[${new Date().toISOString()}] Parcel pickup status update failed:`, response.error);
+
+                // Notify driver of failed pickup status update
+                const driverSocketId = driverSocketMap.get(data.driver_id);
+
                 if (driverSocketId) {
                     io.to(driverSocketId).emit("order_update_failed", {
                         status: false,
-                        message: response.message || "Failed to accept order",
+                        message: response.message || "Failed to update pickup status",
                     });
                 }
             }
         } catch (error) {
-            console.error("Error processing driver_parcel_accept:", error.message);
+            console.error(`[${new Date().toISOString()}] Error in mark_pick:`, error);
         }
-    })
+    });
+
+    /**
+     * Handle delivery confirmation event
+     * Updates the parcel status to 'delivered' and notifies relevant parties
+     */
     socket.on('mark_deliver', async (data, moneyWriteAble, mode) => {
-        console.log("mark_deliver", data)
         try {
+            console.log(`[${new Date().toISOString()}] Parcel delivery notification:`, data);
+
             if (!data || !data._id || !data.driverId) {
-                return console.log("Invalid data received:", data);
+                console.error(`[${new Date().toISOString()}] Invalid mark_deliver data`);
+                return;
             }
 
             const response = await mark_deliver(io, data, driverSocketMap, userSocketMap, moneyWriteAble, mode);
 
-            if (response.status === true) {
-                console.log(response.message);
-                // Send success response back to driver
-                const driverSocketId = driverSocketMap[data.driver_id];
+            if (response.status) {
+                console.log(`[${new Date().toISOString()}] Parcel delivery status updated:`, response.message);
+
+                // Notify driver of successful delivery status update
+                const driverSocketId = driverSocketMap.get(data.driver_id);
+
                 if (driverSocketId) {
                     io.to(driverSocketId).emit("mark_pick_driver", {
                         status: true,
-                        message: "Order successfully accepted",
-                        order_id: data.order_id,
+                        message: "Delivery status updated successfully",
+                        order_id: data._id,
                     });
                 }
             } else {
-                console.log(response.error);
-                // Send failure response back to driver
-                const driverSocketId = driverSocketMap[data.driver_id];
+                console.error(`[${new Date().toISOString()}] Parcel delivery status update failed:`, response.error);
+
+                // Notify driver of failed delivery status update
+                const driverSocketId = driverSocketMap.get(data.driver_id);
+
                 if (driverSocketId) {
                     io.to(driverSocketId).emit("order_update_failed", {
                         status: false,
-                        message: response.message || "Failed to accept order",
+                        message: response.message || "Failed to update delivery status",
                     });
                 }
             }
         } catch (error) {
-            console.error("Error processing driver_parcel_accept:", error.message);
+            console.error(`[${new Date().toISOString()}] Error in mark_deliver:`, error);
         }
-    })
+    });
 
-
+    /**
+     * Handle order cancellation event
+     * Updates the parcel status to 'cancelled' and notifies relevant parties
+     */
     socket.on('mark_cancel', async (data) => {
-
         try {
+            console.log(`[${new Date().toISOString()}] Order cancellation request:`, data);
+
             if (!data || !data._id || !data.driverId) {
-                return console.log("Invalid data received:", data);
+                console.error(`[${new Date().toISOString()}] Invalid mark_cancel data`);
+                return;
             }
 
             const response = await mark_cancel(io, data, driverSocketMap, userSocketMap);
 
-            if (response.status === true) {
-                console.log(response.message);
-                // Send success response back to driver
-                const driverSocketId = driverSocketMap[data.driver_id];
+            if (response.status) {
+                console.log(`[${new Date().toISOString()}] Order cancellation status updated:`, response.message);
+
+                // Notify driver of successful cancellation status update
+                const driverSocketId = driverSocketMap.get(data.driver_id);
+
                 if (driverSocketId) {
                     io.to(driverSocketId).emit("mark_pick_driver", {
                         status: true,
-                        message: "Order successfully accepted",
-                        order_id: data.order_id,
+                        message: "Cancellation status updated successfully",
+                        order_id: data._id,
                     });
                 }
             } else {
-                console.log(response.error);
-                // Send failure response back to driver
-                const driverSocketId = driverSocketMap[data.driver_id];
+                console.error(`[${new Date().toISOString()}] Order cancellation status update failed:`, response.error);
+
+                // Notify driver of failed cancellation status update
+                const driverSocketId = driverSocketMap.get(data.driver_id);
+
                 if (driverSocketId) {
                     io.to(driverSocketId).emit("order_update_failed", {
                         status: false,
-                        message: response.message || "Failed to accept order",
+                        message: response.message || "Failed to update cancellation status",
                     });
                 }
             }
         } catch (error) {
-            console.error("Error processing driver_parcel_accept:", error.message);
+            console.error(`[${new Date().toISOString()}] Error in mark_cancel:`, error);
         }
-    })
+    });
 
-
-
-
+    /**
+     * Handle client disconnections
+     * Removes the disconnected client from appropriate connection maps
+     */
     socket.on('disconnect', (reason) => {
-        console.log(`Client disconnected. Reason: ${reason}`);
+        console.log(`[${new Date().toISOString()}] Client disconnected. Socket ID: ${socket.id}, Reason: ${reason}`);
 
-        // Remove user or driver from respective maps when disconnected
-        userSocketMap.forEach((socketId, userId) => {
+        // Remove user from userSocketMap if found
+        for (const [userId, socketId] of userSocketMap.entries()) {
             if (socketId === socket.id) {
                 userSocketMap.delete(userId);
-                console.log(`User ${userId} disconnected`);
+                console.log(`[${new Date().toISOString()}] User ${userId} disconnected and removed from map`);
+                break;
             }
-        });
+        }
 
-        driverSocketMap.forEach((socketId, driverId) => {
+        // Remove driver from driverSocketMap if found
+        for (const [driverId, socketId] of driverSocketMap.entries()) {
             if (socketId === socket.id) {
                 driverSocketMap.delete(driverId);
-                console.log(`Driver ${driverId} disconnected`);
+                console.log(`[${new Date().toISOString()}] Driver ${driverId} disconnected and removed from map`);
+                break;
             }
-        });
+        }
+
+        // Remove tiffin partner from tiffinPartnerMap if found
+        for (const [partnerId, socketId] of tiffinPartnerMap.entries()) {
+            if (socketId === socket.id) {
+                tiffinPartnerMap.delete(partnerId);
+                console.log(`[${new Date().toISOString()}] Tiffin partner ${partnerId} disconnected and removed from map`);
+                break;
+            }
+        }
     });
 });
 
+// API Routes
+app.use('/api/v1/rider', router);
+app.use('/api/v1/rides', rides);
+app.use('/api/v1/hotels', hotel_router);
+app.use('/api/v1/user', users);
+app.use('/api/v1/tiffin', tiffin);
+app.use('/api/v1/parcel', parcel);
+app.use('/api/v1/admin', admin);
+
+/**
+ * Image upload endpoint
+ * Handles file uploads using multer
+ */
 app.post('/image-upload', upload.any(), async (req, res) => {
     try {
-        console.log(req.files)
+        console.log(`[${new Date().toISOString()}] Image upload request received`, {
+            filesCount: req.files ? req.files.length : 0
+        });
+
         return res.status(201).json({
             message: "Image uploaded successfully",
             data: req.files
-        })
+        });
     } catch (error) {
-        console.error(error.message);
-        return res.status(501).json({
-            message: "Image uploaded failed",
-            data: req.files
-        })
-    }
-})
-
-app.post('/webhook/receive-location', Protect, async (req, res) => {
-    const riderId = req.user.userId || {};
-    const { latitude, longitude } = req.body;
-    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
-        return res.status(400).json({ error: 'Invalid latitude or longitude' });
-    } try {
-        // Find or create rider document
-        const rider = await Parcel_boy_Location.findOneAndUpdate(
-            { riderId: riderId },
-            {
-                location: {
-                    type: 'Point',
-                    coordinates: [longitude, latitude]  // Store [longitude, latitude]
-                },
-
-            },
-            { upsert: true, new: true }
-        );
-
-        // console.log(rider);
-
-        // Emit the rider's location to the frontend via WebSocket (io.emit)
-        io.emit('rider-location', rider);
-
-        return res.status(200).json({ message: 'Location received successfully' });
-    } catch (error) {
-        console.error('Error updating location:', error);
-        return res.status(500).json({ error: 'Failed to update location' });
+        console.error(`[${new Date().toISOString()}] Image upload error:`, error.message);
+        return res.status(500).json({
+            message: "Image upload failed",
+            error: error.message
+        });
     }
 });
 
-
+/**
+ * Location webhook for parcel delivery personnel
+ * Updates the current location of a parcel delivery person
+ */
 app.post('/webhook/cab-receive-location', Protect, async (req, res) => {
     try {
         const { latitude, longitude } = req.body;
@@ -536,7 +835,8 @@ app.post('/webhook/cab-receive-location', Protect, async (req, res) => {
     }
 });
 
-// Define routes
+
+
 app.get('/rider', async (req, res) => {
     try {
         const riders = await RiderModel.find({ isAvailable: true });
@@ -552,26 +852,16 @@ app.get('/', (req, res) => {
     })
 })
 
-
-// Global error handler
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).send('Something broke!');
 });
 
-// API routes
-app.use('/api/v1/rider', router);
-app.use('/api/v1/rides', rides);
-app.use('/api/v1/hotels', hotel_router);
-app.use('/api/v1/user', users);
-app.use('/api/v1/tiffin', tiffin);
-app.use('/api/v1/parcel', parcel);
-app.use('/api/v1/admin', admin);
 
 
 app.post('/Fetch-Current-Location', async (req, res) => {
     const { lat, lng } = req.body;
-
+    console.log("body", req.body)
     // Check if latitude and longitude are provided
     if (!lat || !lng) {
         return res.status(400).json({
@@ -585,8 +875,11 @@ app.post('/Fetch-Current-Location', async (req, res) => {
 
         // Fetch address details using the provided latitude and longitude
         const addressResponse = await axios.get(
-            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34`
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8`
         );
+
+
+
 
         // Check if any results are returned
         if (addressResponse.data.results.length > 0) {
@@ -610,6 +903,7 @@ app.post('/Fetch-Current-Location', async (req, res) => {
                     district = component.long_name; // Get district
                 }
             });
+
 
             // Prepare the address details object
             const addressDetails = {
@@ -659,7 +953,7 @@ app.post("/geo-code-distance", async (req, res) => {
 
         // Geocode Pickup Location
         const pickupResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
-            params: { address: pickup, key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34' },
+            params: { address: pickup, key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8' },
         });
 
         if (pickupResponse.data.status !== "OK") {
@@ -669,7 +963,7 @@ app.post("/geo-code-distance", async (req, res) => {
 
         // Geocode Dropoff Location
         const dropOffResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
-            params: { address: dropOff, key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34' },
+            params: { address: dropOff, key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8' },
         });
 
         if (dropOffResponse.data.status !== "OK") {
@@ -682,7 +976,7 @@ app.post("/geo-code-distance", async (req, res) => {
             params: {
                 origins: `${pickupData.lat},${pickupData.lng}`,
                 destinations: `${dropOffData.lat},${dropOffData.lng}`,
-                key: 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34',
+                key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8',
             },
         });
 
@@ -716,7 +1010,7 @@ app.post("/geo-code-distance", async (req, res) => {
 
 
 // Start the server
-const PORT = 3100;
+const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

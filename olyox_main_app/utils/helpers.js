@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { tokenCache } from '../Auth/cache';
-const BACKEND_URL = 'http://192.168.1.2:3000/api/v1/user'
+const BACKEND_URL = 'http://192.168.1.3:3000/api/v1/user'
 export const formatDate = (date) => {
   // Example helper function
   return new Date(date).toLocaleDateString();
@@ -8,7 +8,7 @@ export const formatDate = (date) => {
 
 
 export const createUserRegister = async (formdata) => {
-  console.log("register",formdata)
+  console.log("register", formdata)
   try {
     const data = await axios.post(`${BACKEND_URL}/register`, formdata)
     console.log(data.data)
@@ -45,9 +45,9 @@ export const resend_otp = async (formdata) => {
 
 export const find_me = async () => {
   try {
-    const token  = await tokenCache.getToken('auth_token_db')
-    console.log("sssss toke ",token)
-    const data = await axios.get(`http://192.168.1.2:3000/api/v1/user/find_me`,{
+    const token = await tokenCache.getToken('auth_token_db')
+    console.log("sssss toke ", token)
+    const data = await axios.get(`http://192.168.1.3:3000/api/v1/user/find_me`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -57,21 +57,30 @@ export const find_me = async () => {
     return data.data
 
   } catch (error) {
-    console.log("user error ",error.response.data.message)
-    throw new Error( error.response)
+    console.log("user error ", error.response.data.message)
+    throw new Error(error.response)
   }
 }
 
 export const login = async (formData) => {
   try {
-    console.log("login",formData)
+    console.log("login", formData)
 
-    const data = await axios.post(`${BACKEND_URL}/login`,formData)
+    const data = await axios.post(`${BACKEND_URL}/login`, formData)
 
     return data.data
 
   } catch (error) {
     // console.log(error)
     return error.response
+  }
+}
+
+export const findSettings = async () => {
+  try {
+    const response = await axios.get(`http://192.168.1.3:3000/api/v1/admin/get_Setting`)
+    return response.data
+  } catch (error) {
+    throw new Error(error.response.data.message || error.message)
   }
 }

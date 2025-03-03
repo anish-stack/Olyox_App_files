@@ -1,134 +1,221 @@
+import { useState, useRef, useEffect } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, Dimensions } from "react-native";
+import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { useNavigation } from "@react-navigation/native";
+import { useLocation } from "../../../context/LocationContext";
+import axios from "axios";
+import { tokenCache } from "../../../Auth/cache";
+import { COLORS } from "../../../constants/colors";
+import useSettings from "../../../hooks/Settings";
 
-import { useState, useRef, useEffect } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal, Animated, Dimensions } from "react-native"
-import {
-  Menu,
-  Search,
-  MapPin,
-  X,
-  Home,
-  User,
-
-  Briefcase,
-} from "lucide-react-native"
-
-
-import { useClerk } from "@clerk/clerk-expo"
-import { useNavigation } from "@react-navigation/native"
-import { useLocation } from "../../../context/LocationContext"
-import axios from "axios"
-import { tokenCache } from "../../../Auth/cache"
-import { COLORS } from "../../../constants/colors"
-const { width } = Dimensions.get("window")
+const { width } = Dimensions.get("window");
 
 const Header = () => {
-  const [sidebarVisible, setSidebarVisible] = useState(false)
-  const [address, setAddress] = useState({})
-  const { location } = useLocation()
-  const navigation = useNavigation()
-  const slideAnim = useRef(new Animated.Value(-width)).current
-  const { signOut } = useClerk()
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [address, setAddress] = useState({});
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(true);
+  const { location } = useLocation();
+  const { settings, loading } = useSettings();
+  const navigation = useNavigation();
+  const slideAnim = useRef(new Animated.Value(-width)).current;
+  const rainDrops = useRef([...Array(20)].map(() => ({
+    x: Math.random() * width,
+    y: -Math.random() * 100,
+    speed: 2 + Math.random() * 5,
+    opacity: 0.5 + Math.random() * 0.5,
+    size: 2 + Math.random() * 4
+  }))).current;
+
+  const rainAnimValues = useRef(rainDrops.map(() => new Animated.Value(0))).current;
 
   const toggleSidebar = () => {
     if (sidebarVisible) {
-      hideSidebar()
+      hideSidebar();
     } else {
-      showSidebar()
+      showSidebar();
     }
-  }
+  };
+
 
   const showSidebar = () => {
-    setSidebarVisible(true)
+    setSidebarVisible(true);
     Animated.spring(slideAnim, {
       toValue: 0,
       useNativeDriver: true,
-    }).start()
-  }
+    }).start();
+  };
 
   const hideSidebar = () => {
     Animated.spring(slideAnim, {
       toValue: -width,
       useNativeDriver: true,
-    }).start(() => setSidebarVisible(false))
-  }
+    }).start(() => setSidebarVisible(false));
+  };
 
   const findCurrent = async () => {
+    setLocationLoading(true);
     if (!location?.coords) {
-      return
+      setTimeout(() => {
+        if (!location?.coords) {
+          setLocationLoading(false);
+        }
+      }, 5000);
+      return;
     }
+    console.log("location?.coords?.latitude,",location?.coords?.latitude)
+    console.log("location?.coords?.longitude,",location?.coords?.longitude)
+
     try {
-      const { data } = await axios.post(`http://192.168.1.2:3000/Fetch-Current-Location`, {
+      const { data } = await axios.post(`http://192.168.1.3:3000/Fetch-Current-Location`, {
         lat: location?.coords?.latitude,
         lng: location?.coords?.longitude,
-      })
-      setAddress(data.data.address)
+      });
+      setAddress(data.data.address);
+      setLocationLoading(false);
     } catch (error) {
-      console.error("Error fetching location:", error)
+      console.error("Error fetching location:", error.response.data.message);
+      setLocationLoading(false);
     }
-  }
+  };
 
   const handleLogout = async () => {
     try {
-      // await signOut()
-      const data = await tokenCache.deleteToken("auth_token_db")
-      console.log("data delete", data)
+      const data = await tokenCache.deleteToken("auth_token_db");
+      console.log("data delete", data);
+      setIsAuthenticated(false);
       navigation.reset({
         index: 0,
         routes: [{ name: "Onboarding" }],
-      })
+      });
     } catch (error) {
-      console.error("Error during logout:", error)
+      console.error("Error during logout:", error);
     }
-  }
+  };
+
+  const handleLogin = () => {
+    navigation.navigate("Login");
+    hideSidebar();
+  };
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = await tokenCache.getToken("auth_token_db");
+      setIsAuthenticated(!!token);
+    } catch (error) {
+      console.error("Error checking auth status:", error);
+      setIsAuthenticated(false);
+    }
+  };
+
+  const startRainAnimation = () => {
+    rainAnimValues.forEach((anim, index) => {
+      Animated.loop(
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 1500 + Math.random() * 2500,
+          useNativeDriver: true,
+          isInteraction: false,
+        })
+      ).start();
+    });
+  };
 
   const menuItems = [
-    { title: "Home", icon: Home },
-    { title: "Profile", icon: User },
-    // { title: "Orders", icon: ShoppingBag },
-    { title: "Parcel", icon: Briefcase },
-    // { title: "Addresses", icon: MapPinned },
-    // { title: "Settings", icon: Settings },
-    // { title: "Help", icon: HelpCircle },
-  ]
+    { title: "Home", icon: "home", iconType: "Ionicons" },
+    { title: "Profile", icon: "person", iconType: "Ionicons" },
+    { title: "Parcel", icon: "briefcase", iconType: "FontAwesome5" },
+  ];
 
   const handleMenuClick = (title) => {
-    navigation.navigate(title)
-    hideSidebar()
-  }
+    navigation.navigate(title);
+    hideSidebar();
+  };
 
   useEffect(() => {
-    findCurrent()
-  }, [location, findCurrent]) // Added findCurrent to dependencies
+    findCurrent();
+    checkAuthStatus();
+
+    if (settings?.RainModeOn) {
+      startRainAnimation();
+    }
+  }, [location, settings?.RainModeOn]);
+
+  const renderIcon = (item) => {
+    if (item.iconType === "Ionicons") {
+      return <Ionicons name={item.icon} size={20} color={COLORS.text} />;
+    } else if (item.iconType === "FontAwesome5") {
+      return <FontAwesome5 name={item.icon} size={20} color={COLORS.text} />;
+    }
+    return <MaterialCommunityIcons name={item.icon} size={20} color={COLORS.text} />;
+  };
+
+  const renderRaindrops = () => {
+    if (!settings?.RainModeOn) return null;
+
+    return rainDrops.map((drop, index) => {
+      const translateY = rainAnimValues[index].interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 300]
+      });
+
+      return (
+        <Animated.View
+          key={index}
+          style={[
+            styles.raindrop,
+            {
+              left: drop.x,
+              top: drop.y,
+              opacity: drop.opacity,
+              width: drop.size,
+              height: drop.size * 5,
+              transform: [{ translateY }]
+            }
+          ]}
+        />
+      );
+    });
+  };
 
   return (
     <View>
       <View style={styles.header}>
         <View style={styles.locationContainer}>
-          <MapPin size={20} color={COLORS.white} />
+          <MaterialCommunityIcons name="map-marker" size={20} color={COLORS.white} />
           <View style={styles.locationTextContainer}>
             <Text style={styles.locationLabel}>Location</Text>
-            <Text numberOfLines={1} style={styles.locationDetails}>
-              {address?.completeAddress}
-            </Text>
-            <Text style={styles.locationDetails}>{address?.district}</Text>
+            {locationLoading ? (
+              <Text style={styles.locationDetails}>Olyox App</Text>
+            ) : (
+              <>
+                <Text numberOfLines={1} style={styles.locationDetails}>
+                  {address?.completeAddress || "Location unavailable"}
+                </Text>
+                <Text style={styles.locationDetails}>{address?.district || ""}</Text>
+              </>
+            )}
           </View>
         </View>
 
-        {/* <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search What you Want To Eat, Ride, and Shift ...."
-            placeholderTextColor={COLORS.text}
-          />
-          <TouchableOpacity style={styles.searchIcon}>
-            <Search size={20} color={COLORS.text} />
-          </TouchableOpacity>
-        </View> */}
+        {settings?.RainModeOn && (
+          <View style={styles.rainModeContainer}>
+            <MaterialCommunityIcons name="weather-pouring" size={24} color={COLORS.white} />
+            <Text style={styles.rainModeText}>Some Rain is Happens</Text>
+          </View>
+        )}
 
         <TouchableOpacity style={styles.menuButton} onPress={toggleSidebar}>
-          <Menu size={30} color={COLORS.white} />
+          <MaterialCommunityIcons name="menu" size={30} color={COLORS.white} />
         </TouchableOpacity>
       </View>
+
+      {/* Rain animation overlay */}
+      {settings?.RainModeOn && (
+        <View style={styles.rainContainer}>
+          {renderRaindrops()}
+        </View>
+      )}
 
       <Modal visible={sidebarVisible} transparent={true} onRequestClose={hideSidebar} animationType="none">
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={hideSidebar}>
@@ -144,17 +231,25 @@ const Header = () => {
               <View style={styles.sidebarHeader}>
                 <Text style={styles.sidebarTitle}>Menu</Text>
                 <TouchableOpacity onPress={hideSidebar} style={styles.closeButton}>
-                  <X size={24} color={COLORS.text} />
+                  <MaterialCommunityIcons name="close" size={24} color={COLORS.text} />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.authButtons}>
-                <TouchableOpacity style={styles.loginButton}>
-                  <Text style={styles.loginButtonText}>Login</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleLogout} style={styles.registerButton}>
-                  <Text style={styles.registerButtonText}>Logout</Text>
-                </TouchableOpacity>
+                {isAuthenticated ? (
+                  <TouchableOpacity onPress={handleLogout} style={styles.registerButton}>
+                    <Text style={styles.registerButtonText}>Logout</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <>
+                    <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+                      <Text style={styles.loginButtonText}>Login</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.registerButton}>
+                      <Text style={styles.registerButtonText}>Register</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
 
               <View style={styles.menuItems}>
@@ -164,7 +259,7 @@ const Header = () => {
                     style={styles.menuItem}
                     onPress={() => handleMenuClick(item.title)}
                   >
-                    <item.icon size={20} color={COLORS.text} />
+                    {renderIcon(item)}
                     <Text style={styles.menuText}>{item.title}</Text>
                   </TouchableOpacity>
                 ))}
@@ -174,8 +269,8 @@ const Header = () => {
         </TouchableOpacity>
       </Modal>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   header: {
@@ -203,23 +298,18 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 12,
   },
-  searchContainer: {
-    backgroundColor: COLORS.white,
+  rainModeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderColor: COLORS.error,
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 4,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    padding: 8,
+    borderRadius: 20,
+    marginTop: 10,
   },
-  searchInput: {
-    flex: 1,
-    height: 35,
-    color: COLORS.error,
-    fontSize: 12,
-  },
-  searchIcon: {
+  rainModeText: {
+    color: COLORS.white,
     marginLeft: 8,
+    fontWeight: "bold",
   },
   menuButton: {
     position: "absolute",
@@ -306,7 +396,19 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginLeft: 16,
   },
-})
+  rainContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'none',
+  },
+  raindrop: {
+    position: 'absolute',
+    backgroundColor: '#A4D4FF',
+    borderRadius: 10,
+  }
+});
 
-export default Header
-
+export default Header;

@@ -8,7 +8,7 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import Slider from "@react-native-community/slider"
 import { useSocket } from "../context/SocketContext"
 
-const GOOGLE_MAPS_APIKEY = "AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34"
+const GOOGLE_MAPS_APIKEY = "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8"
 
 export default function RideDetailsScreen() {
     const route = useRoute()

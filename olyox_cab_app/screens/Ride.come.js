@@ -7,7 +7,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
-const GOOGLE_MAPS_APIKEY = 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34';
+const GOOGLE_MAPS_APIKEY = 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8';
 
 export default function RideCome() {
     const navigation = useNavigation();
@@ -20,7 +20,7 @@ export default function RideCome() {
     useEffect(() => {
         if (isSocketReady && socket) {
             socket.on('ride_come', (data) => {
-                console.log('Received ride data:', data);
+                // console.log('Received ride data:', data);
                 setRideData(data); // Set received ride data
                 playSound(); // Play sound notification
             });

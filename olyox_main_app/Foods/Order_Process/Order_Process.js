@@ -24,7 +24,7 @@ import { OrderItems } from './OrderItems';
 import { BillDetails } from './BillDetails';
 import MapViewDirections from 'react-native-maps-directions';
 
-const GOOGLE_MAPS_APIKEY = 'AIzaSyC6lYO3fncTxdGNn9toDof96dqBDfYzr34';
+const GOOGLE_MAPS_APIKEY = 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8';
 const { width, height } = Dimensions.get('window');
 
 const OrderStatusScreen = ({ status, onBackPress }) => {
@@ -60,14 +60,14 @@ const OrderStatusScreen = ({ status, onBackPress }) => {
                 <Text style={styles.headerTitle}>Order Status</Text>
                 <View style={styles.headerButton} />
             </View>
-            
+
             <View style={styles.statusContent}>
                 <Icon name={content.icon} size={80} color={content.color} />
                 <Text style={[styles.statusTitle, { color: content.color }]}>
                     {content.title}
                 </Text>
                 <Text style={styles.statusMessage}>{content.message}</Text>
-                
+
                 <View style={styles.orderSummaryCard}>
                     <Text style={styles.summaryTitle}>Order Summary</Text>
                     <View style={styles.summaryItem}>
@@ -123,7 +123,7 @@ const OrderTracking = () => {
         try {
             if (!order_id) {
                 const ongoingOrder = JSON.parse(await SecureStore.getItemAsync('ongoing_order'));
-                console.log('Ongoing Order:', ongoingOrder);
+
                 setOrderId(ongoingOrder);
             } else {
                 setOrderId(order_id);
@@ -139,10 +139,11 @@ const OrderTracking = () => {
         setError(null);
         try {
             const response = await axios.get(
-                `http://192.168.1.2:3000/api/v1/tiffin/get_order_by_id/${orderId}`
+                `http://192.168.1.3:3000/api/v1/tiffin/get_order_by_id/${orderId}`
             );
             if (response.data.success) {
                 setOrder(response.data.order);
+
                 setSuccess('Order details retrieved successfully');
             } else {
                 setError('Failed to fetch order details');
@@ -154,14 +155,14 @@ const OrderTracking = () => {
             setLoading(false);
         }
     };
-    console.log(order)
+
 
     useEffect(() => {
         if (order?.status === 'Cancelled' || order?.status === 'Delivered') {
             return (
-                <OrderStatusScreen 
-                    status={order.status} 
-                    onBackPress={() => navigation.goBack()} 
+                <OrderStatusScreen
+                    status={order.status}
+                    onBackPress={() => navigation.goBack()}
                 />
             );
         }
@@ -218,14 +219,14 @@ const OrderTracking = () => {
     return (
         <SafeAreaView style={styles.safeArea}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-            
+
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={reloadOrderDetails} style={styles.headerButton}>
                     <Icon name="arrow-left" size={24} color="#333" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Order Tracking</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.headerButton}
                     onPress={() => setShowOptions(true)}
                 >
@@ -239,6 +240,45 @@ const OrderTracking = () => {
                     <OrderStatusBar currentStatus={order.status} />
                     <Text style={styles.estimatedTime}>Estimated Delivery: 35-40 mins</Text>
                 </Animated.View>
+                {order.status === "Out for Delivery" ? (
+                    <View
+                        style={{
+                            backgroundColor: "#f8f9fa",
+                            padding: 12,
+                            borderRadius: 8,
+                            marginVertical: 10,
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.1,
+                            shadowRadius: 4,
+                            elevation: 3,
+                        }}
+                    >
+                        <Text
+                            style={{
+                                fontSize: 16,
+                                fontWeight: "bold",
+                                color: "#333",
+                                marginBottom: 5,
+                            }}
+                        >
+                            Delivery Rider Details 🚴‍♂️
+                        </Text>
+                        <Text style={{ fontSize: 14, color: "#555" }}>
+                            Name: <Text style={{ fontWeight: "bold" }}>{order?.deliveryBoyName}</Text>
+                        </Text>
+                        <Text style={{ fontSize: 14, color: "#555" }}>
+                            Phone:{" "}
+                            <Text style={{ fontWeight: "bold", color: "#007bff" }}>
+                                {order?.deliveryBoyPhone}
+                            </Text>
+                        </Text>
+                        <Text style={{ fontSize: 14, color: "#555" }}>
+                            Bike Number: <Text style={{ fontWeight: "bold" }}>{order?.deliveryBoyBikeNumber}</Text>
+                        </Text>
+                    </View>
+                ) : null}
+
 
                 {/* Map View */}
                 <View style={styles.mapContainer}>
@@ -298,26 +338,26 @@ const OrderTracking = () => {
                             </Text>
                         </View>
                     </View>
-                    <View style={styles.orderInfoContainer}>
+                    {/* <View style={styles.orderInfoContainer}>
                         <Text style={styles.orderID}>Order ID: #{order.Order_Id}</Text>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.supportButton}
                             onPress={() => handleOptionPress('help')}
                         >
                             <Icon name="headphones" size={16} color="#FC8019" />
                             <Text style={styles.supportButtonText}>Support</Text>
                         </TouchableOpacity>
-                    </View>
+                    </View> */}
                 </View>
 
                 {/* Order Items */}
                 {/* <View style={styles.sectionContainer}>
                     <Text style={styles.sectionTitle}>Order Details</Text>
                 </View> */}
-                    <OrderItems items={order.items} />
+                <OrderItems items={order.items} />
 
-            
-                    <BillDetails order={order} />
+
+                <BillDetails order={order} />
 
                 {/* Delivery Address */}
                 <View style={styles.addressCard}>
@@ -339,26 +379,26 @@ const OrderTracking = () => {
             </ScrollView>
 
             {/* Custom Options Modal */}
-            <Modal
+            {/* <Modal
                 visible={showOptions}
                 transparent={true}
                 animationType="fade"
                 onRequestClose={() => setShowOptions(false)}
             >
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.modalOverlay}
                     activeOpacity={1}
                     onPress={() => setShowOptions(false)}
                 >
                     <View style={styles.optionsContainer}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.optionItem}
                             onPress={() => handleOptionPress('help')}
                         >
                             <Icon name="help-circle" size={20} color="#666" />
                             <Text style={styles.optionText}>Need Help?</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.optionItem}
                             onPress={() => handleOptionPress('cancel')}
                         >
@@ -367,7 +407,7 @@ const OrderTracking = () => {
                         </TouchableOpacity>
                     </View>
                 </TouchableOpacity>
-            </Modal>
+            </Modal> */}
         </SafeAreaView>
     );
 };

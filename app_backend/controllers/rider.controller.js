@@ -91,11 +91,11 @@ exports.registerRider = async (req, res) => {
   }
 };
 
-exports.getSingleRider = async (req,res) => {
+exports.getSingleRider = async (req, res) => {
   try {
-    
+
   } catch (error) {
-    console.log("Internal server error",error)
+    console.log("Internal server error", error)
     res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -308,11 +308,11 @@ exports.getAllRiders = async (req, res) => {
 
 exports.riderDocumentsVerify = async (req, res) => {
   try {
-    const {id} = req.params;
-    const {DocumentVerify} = req.body;
+    const { id } = req.params;
+    const { DocumentVerify } = req.body;
     const rider = await Rider.findById(id);
     if (!rider) {
-      return res.status(404).json({ success: false,message: "Rider not found" });
+      return res.status(404).json({ success: false, message: "Rider not found" });
     }
     rider.DocumentVerify = DocumentVerify;
     await rider.save();
@@ -321,7 +321,7 @@ exports.riderDocumentsVerify = async (req, res) => {
       message: "Documents verified successfully",
     })
   } catch (error) {
-    console.log("Internal server error",error)
+    console.log("Internal server error", error)
     res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -468,7 +468,7 @@ exports.getMyAllDetails = async (req, res) => {
       return res.status(400).json({ message: "User ID is required" });
     }
 
-    const findRideDetails = await rideRequestModel.find({ rider: user_id });
+    const findRideDetails = await rideRequestModel.find({ rider: user_id, rideStatus: "completed" });
     console.log(findRideDetails[0])
 
     const totalRides = findRideDetails.length;
@@ -692,9 +692,9 @@ Welcome aboard! 🚖💨`;
 };
 
 exports.updateBlockStatus = async (req, res) => {
-  try{
-    const {id} = req.params;
-    const {isBlockByAdmin} = req.body;
+  try {
+    const { id } = req.params;
+    const { isBlockByAdmin } = req.body;
     const riderData = await Rider.findById(id);
     if (!riderData) {
       return res.status(404).json({ success: false, message: "Rider not found." });
@@ -703,7 +703,7 @@ exports.updateBlockStatus = async (req, res) => {
     riderData.isBlockByAdmin = isBlockByAdmin;
     const result = await riderData.save();
     return res.status(200).json({ success: true, message: "Block status updated successfully", data: result });
-  }catch(error){
+  } catch (error) {
     console.error("Error updating block status:", error);
     return res.status(500).json({
       success: false,
@@ -712,3 +712,6 @@ exports.updateBlockStatus = async (req, res) => {
     })
   }
 }
+
+
+

@@ -4,7 +4,7 @@ import { Audio } from "expo-av"
 
 const RIDE_REQUEST_TIMEOUT = 120000 // 2 minutes in milliseconds
 
-export default function useRideRequest(socket, riderDetails, navigation, sendPushNotification) {
+export default function useRideRequest(socket, riderDetails, navigation) {
   const [rideData, setRideData] = useState(null)
   const [timeLeft, setTimeLeft] = useState(RIDE_REQUEST_TIMEOUT)
   const [sound, setSound] = useState(null)
@@ -73,6 +73,7 @@ export default function useRideRequest(socket, riderDetails, navigation, sendPus
 
     if (socket && rideData) {
       const matchedRider = rideData.riders.find((rider) => rider.name === riderDetails?.name)
+      console.log("matchedRider", matchedRider)
       if (matchedRider) {
         socket.emit("ride_accepted", {
           data: {
@@ -83,6 +84,9 @@ export default function useRideRequest(socket, riderDetails, navigation, sendPus
             vehicleName: matchedRider.vehicleName,
             vehicleNumber: matchedRider.vehicleNumber,
             vehicleType: matchedRider.vehicleType,
+            rain: matchedRider?.rain,
+            tollPrice: matchedRider?.rain,
+            tolls: matchedRider?.tolls,
             price: matchedRider.price,
             eta: matchedRider.eta,
           },
@@ -97,19 +101,11 @@ export default function useRideRequest(socket, riderDetails, navigation, sendPus
   const startRideRequest = useCallback(() => {
     if (socket) {
       socket.on("ride_come", (data) => {
-        console.log("Received ride data:", data)
+        // console.log("Received ride data:", data)
         setRideData(data)
         setTimeLeft(RIDE_REQUEST_TIMEOUT)
         startSound()
         startTimeout()
-        // Send a notification when a new ride request comes in
-        if (riderDetails && riderDetails.expoPushToken) {
-          sendPushNotification(
-            riderDetails.expoPushToken,
-            "New Ride Request",
-            "You have a new ride request. Tap to view details.",
-          )
-        }
       })
 
       socket.on("ride_accepted_message", (data) => {
@@ -120,18 +116,12 @@ export default function useRideRequest(socket, riderDetails, navigation, sendPus
             params: { rideDetails, driver },
             index: 1,
           })
-          // Send a notification when the ride is accepted
-          if (riderDetails && riderDetails.expoPushToken) {
-            sendPushNotification(
-              riderDetails.expoPushToken,
-              "Ride Accepted",
-              "Your ride request has been accepted. Tap to view details.",
-            )
-          }
+
+
         }
       })
     }
-  }, [socket, navigation, startSound, startTimeout, riderDetails, sendPushNotification])
+  }, [socket, navigation, startSound, startTimeout, riderDetails])
 
   const stopRideRequest = useCallback(() => {
     if (socket) {
