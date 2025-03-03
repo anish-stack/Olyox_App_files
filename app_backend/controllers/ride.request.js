@@ -331,9 +331,9 @@ exports.rideEnd = async (data) => {
                 message: 'Ride not found'
             }
         }
-        ride_id.ride_is_started = true
 
         ride_id.ride_end_time = new Date()
+        ride_id?.rideStatus = "completed"
         await ride_id.save()
 
         const findRider = await Riders.findById(ride_id?.rider)

@@ -67,7 +67,7 @@ const Header = () => {
     console.log("location?.coords?.longitude,",location?.coords?.longitude)
 
     try {
-      const { data } = await axios.post(`http://192.168.1.3:3000/Fetch-Current-Location`, {
+      const { data } = await axios.post(`https://demoapi.olyox.com/Fetch-Current-Location`, {
         lat: location?.coords?.latitude,
         lng: location?.coords?.longitude,
       });

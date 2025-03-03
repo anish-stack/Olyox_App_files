@@ -39,7 +39,7 @@ export default function ShowMap({ data }) {
 
   const fetchRidesVehicle = async () => {
     try {
-      const { data } = await axios.get(`http://192.168.1.3:3000/api/v1/admin/getAllSuggestions`);
+      const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/admin/getAllSuggestions`);
       if (data) {
         setRides(data.data);
       } else {

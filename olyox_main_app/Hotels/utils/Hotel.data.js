@@ -3,7 +3,7 @@ import axios from 'axios'
 export const findMyNearHotels = async (lat, lng) => {
     console.log("I am start")
     try {
-        const response = await axios.get(`http://192.168.1.3:3000/api/v1/hotels/find-near-by-hotels?lat=${lat}&lng=${lng}`)
+        const response = await axios.get(`https://demoapi.olyox.com/api/v1/hotels/find-near-by-hotels?lat=${lat}&lng=${lng}`)
         console.log("I am End")
 
         return response.data.data
@@ -16,7 +16,7 @@ export const findMyNearHotels = async (lat, lng) => {
 export const findHotelsDetailsAndList = async (hotel_id) => {
     console.log(hotel_id)
     try {
-        const response = await axios.get(`http://192.168.1.3:3000/api/v1/hotels/find-hotel-details/${hotel_id}`)
+        const response = await axios.get(`https://demoapi.olyox.com/api/v1/hotels/find-hotel-details/${hotel_id}`)
         return response.data
     } catch (error) {
         console.log(error)
@@ -27,7 +27,7 @@ export const findHotelsDetailsAndList = async (hotel_id) => {
 
 export const findHotelsDetails = async (listing_id) => {
     try {
-        const response = await axios.get(`http://192.168.1.3:3000/api/v1/hotels/hotel-details/${listing_id}`)
+        const response = await axios.get(`https://demoapi.olyox.com/api/v1/hotels/hotel-details/${listing_id}`)
         return response.data
     } catch (error) {
         console.log(error)

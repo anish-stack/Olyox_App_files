@@ -191,7 +191,7 @@ export default function RideDetailsScreen() {
     const fetchReason = async () => {
    
         try {
-            const { data } = await axios.get(`http://192.168.1.3:3000/api/v1/admin/cancel-reasons?active=active`)
+            const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/admin/cancel-reasons?active=active`)
       
             if (data.data) {
                 setCancelReason(data.data)

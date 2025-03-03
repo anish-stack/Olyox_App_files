@@ -22,7 +22,7 @@ export default function MainTransport() {
 
     const handleFetch = async () => {
         try {
-            const { data } = await axios.get(`http://192.168.1.3:3000/api/v1/admin/get-heavy`)
+            const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/admin/get-heavy`)
             if (data.data) {
                 console.log(data.data)
                 setVehicle(data.data)

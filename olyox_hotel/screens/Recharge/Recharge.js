@@ -95,7 +95,7 @@ export default function Recharge() {
 
 
             const { data } = await axios.post(
-                `http://192.168.1.3:7000/api/v1/do-recharge?_id=${userData?.bh}`,
+                `https://api.olyox.com/api/v1/do-recharge?_id=${userData?.bh}`,
                 {
                     userId: userData?._id,
                     plan_id: selectedMemberId,
