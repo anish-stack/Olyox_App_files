@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { useRoute } from '@react-navigation/native';
+import { useRoute,useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { OrderStatusBar } from './OrderStatusBar';
@@ -98,6 +98,7 @@ const OrderTracking = () => {
     const [success, setSuccess] = useState(null);
     const [showOptions, setShowOptions] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const navigation = useNavigation()
 
     useEffect(() => {
         findOrderId();
@@ -170,7 +171,7 @@ const OrderTracking = () => {
 
 
     const reloadOrderDetails = () => {
-        findOrderDetails();
+        navigation.goBack()
     };
 
     const handleMenuOptionSelect = (option) => {

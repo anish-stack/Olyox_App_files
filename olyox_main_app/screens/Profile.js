@@ -101,7 +101,7 @@ export default function UserProfile() {
     );
 
     const renderRideCard = (ride) => {
-     
+
 
         return (
             <AnimatedTouchableOpacity
@@ -293,9 +293,9 @@ export default function UserProfile() {
             </LinearGradient>
 
             <View style={styles.statsContainer}>
-                {tabs.map((tab) => (
+                {tabs.map((tab, index) => (
                     <TouchableOpacity
-                        key={tab.name}
+                        key={index}
                         style={styles.statCard}
                         onPress={() => setActiveTab(tab.name)}
                     >

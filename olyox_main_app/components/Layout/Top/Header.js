@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, Dimensions } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, Dimensions, BackHandler } from "react-native";
 import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useNavigation } from "@react-navigation/native";
 import { useLocation } from "../../../context/LocationContext";
@@ -84,15 +84,21 @@ const Header = () => {
       const data = await tokenCache.deleteToken("auth_token_db");
       console.log("data delete", data);
       setIsAuthenticated(false);
+  
+      // Navigate to Onboarding screen
       navigation.reset({
         index: 0,
         routes: [{ name: "Onboarding" }],
       });
+  
+      // Delay before exiting to ensure navigation happens
+      setTimeout(() => {
+        BackHandler.exitApp();
+      }, 1000); // Adjust delay if needed
     } catch (error) {
       console.error("Error during logout:", error);
     }
   };
-
   const handleLogin = () => {
     navigation.navigate("Login");
     hideSidebar();
