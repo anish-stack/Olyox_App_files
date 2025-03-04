@@ -1,4 +1,4 @@
-package com.happy_coding.olyoxride
+package com.happy_coding.olyox
 
 import android.app.Application
 import android.content.res.Configuration

@@ -58,7 +58,7 @@ export const find_me = async () => {
 
   } catch (error) {
     console.log("user error ", error.response.data.message)
-    throw new Error(error.response)
+    throw new Error(error.response.data.message)
   }
 }
 

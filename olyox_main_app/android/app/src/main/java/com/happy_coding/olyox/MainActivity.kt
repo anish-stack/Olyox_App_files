@@ -1,4 +1,4 @@
-package com.happy_coding.olyoxride
+package com.happy_coding.olyox
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
