@@ -40,7 +40,7 @@ const OtpScreen = ({ onVerify, number }) => {
         if (data?.connected) {
           console.log('Socket connected successfully:', data);
           navigation.navigate('Home');
-          return; // Exit function if connected
+          return; 
         }
       } catch (error) {
         console.error(`Socket connection failed (Attempt ${attempts + 1}):`, error);

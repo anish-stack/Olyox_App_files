@@ -11,7 +11,8 @@ import {
     Platform,
     Alert,
     Image,
-    Animated
+    Animated,
+    AppState
 } from "react-native";
 import { Text, Button, Divider, ActivityIndicator } from "react-native-paper";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
@@ -35,13 +36,37 @@ const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 import { Audio } from 'expo-av';
+import * as Notifications from 'expo-notifications';
+
+
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+    }),
+});
+const sendNotification = async (message) => {
+    console.log(message)
+    await Notifications.scheduleNotificationAsync({
+        content: {
+            title: message.title,
+            body: message.body,
+            sound: 'default',
+            badge: 1,
+
+        },
+        trigger: null,
+    });
+};
+
 
 export default function RideDetailsScreen() {
     // Refs
     const mapRef = useRef(null);
     const carIconAnimation = useRef(new Animated.Value(0)).current;
     const soundLoopRef = useRef(null);
-
+    const appState = useRef(AppState.currentState())
     //expo av imports 
     const [sound, setSound] = useState();
 
@@ -50,7 +75,7 @@ export default function RideDetailsScreen() {
     const route = useRoute();
     const navigation = useNavigation();
     const { params } = route.params || {};
-  
+
     // Socket context
     const { socket } = useSocket()
 
@@ -189,10 +214,10 @@ export default function RideDetailsScreen() {
 
 
     const fetchReason = async () => {
-   
+
         try {
             const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/admin/cancel-reasons?active=active`)
-      
+
             if (data.data) {
                 setCancelReason(data.data)
             } else {
@@ -209,6 +234,27 @@ export default function RideDetailsScreen() {
         fetchReason()
     }, [])
 
+
+    const handleAppStateChange = (nextAppState) => {
+        console.log(`🔄 AppState changed: ${appState.current} ➡️ ${nextAppState}`);
+
+        if (appState.current.match(/inactive|background/) && nextAppState === "active") {
+            console.log("🟢 App is now active");
+
+            if (socket && !socket.connected) {
+                console.log("🔌 Reconnecting socket...");
+                socket.connect();
+            } else {
+                console.log("✅ Socket is already connected.");
+            }
+        }
+
+        appState.current = nextAppState;
+    };
+
+
+
+
     const handleCancelRide = async () => {
         try {
             if (!selectedReason) {
@@ -218,11 +264,11 @@ export default function RideDetailsScreen() {
 
             const data = {
                 cancelBy: "driver",
-                rideData:params?.rideDetails || {},
+                rideData: params?.rideDetails || {},
                 reason: selectedReason
             };
 
-            const activeSocket = socket; // Get the socket instance
+            const activeSocket = socket;
             if (!activeSocket) {
                 console.error("❌ Socket connection not established");
                 Alert.alert("Error", "Unable to cancel ride due to connection issues.");
@@ -231,9 +277,13 @@ export default function RideDetailsScreen() {
 
             activeSocket.emit("ride-cancel-by-user", data, (response) => {
                 console.log("🚗 Ride cancel event sent:", response);
-
             });
             if (activeSocket) {
+                const message = {
+                    title: "Canceled",
+                    body: "Your pickup has been canceled. Thank you for Giving your time",
+                }
+                sendNotification(message)
                 Alert.alert(
                     "Cancel",
                     "Your pickup has been canceled. Thank you for Giving your time",
@@ -350,7 +400,11 @@ export default function RideDetailsScreen() {
             socket.on('ride_cancelled', (data) => {
                 console.log("🚨 Ride Cancelled:", data);
                 startSound();
-
+                const message = {
+                    title: "🚨 Ride Cancelled",
+                    body: "The ride has been cancelled by the customer.",
+                }
+                sendNotification(message)
                 Alert.alert(
                     "Ride Cancelled",
                     "The ride has been cancelled by the customer.",
@@ -503,8 +557,7 @@ export default function RideDetailsScreen() {
             ]
         );
     };
-    // console.log("socket", socket)
-
+   
     // Loading screen
     if (loading) {
         return (
@@ -1274,7 +1327,7 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: 'bold',
     },
-    
+
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1306,7 +1359,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    
+
     cancelReasonItem: {
         flexDirection: "row",
         justifyContent: "space-between",

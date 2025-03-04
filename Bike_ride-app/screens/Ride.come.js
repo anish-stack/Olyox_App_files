@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, Dimensions, AppState } from 'react-native';
 import { useSocket } from '../context/SocketContext';
 import { Text, Button, Surface, Portal, Modal } from 'react-native-paper';
 import { Audio } from 'expo-av';
@@ -7,15 +7,38 @@ import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
+
 import axios from 'axios';
 import { useLocation } from '../context/LocationContext';
 
 const { width, height } = Dimensions.get('window');
-const RIDE_REQUEST_TIMEOUT = 120000; // 2 minutes in milliseconds
+const RIDE_REQUEST_TIMEOUT = 120000;
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+    }),
+});
+const sendRideNotification = async (data) => {
+    console.log(data)
+    await Notifications.scheduleNotificationAsync({
+        content: {
+            title: "🚖 New Ride Request!",
+            body: `Pickup: ${data.pickup_desc}\nDrop: ${data.drop_desc}\nPrice: ₹${data.riders[0].price}`,
+            sound: 'default',
+            badge: 1,
+            data: { rideId: data.riders[0].rideRequestId }
+        },
+        trigger: null,
+    });
+};
 
 export default function RideCome() {
     const navigation = useNavigation();
     const { driverLocation } = useLocation();
+    const appState = useRef(AppState.currentState);
     const { socket, isSocketReady } = useSocket();
     const [rideData, setRideData] = useState(null);
     const [riderDetails, setRiderDetails] = useState(null);
@@ -106,21 +129,51 @@ export default function RideCome() {
     }, []);
 
     useEffect(() => {
-        if (isSocketReady && socket) {
-            socket.on('ride_come', (data) => {
-                // console.log('Received ride data:', data);
-                setRideData(data);
-                setShowRideModal(true);
-                setTimeLeft(RIDE_REQUEST_TIMEOUT);
-                startSound();
-                startTimeout();
-            });
+        const handleRideRequest = (data) => {
+            console.log("🚖 New Ride Request:", data);
+            setRideData(data);
+            setShowRideModal(true);
+            setTimeLeft(RIDE_REQUEST_TIMEOUT);
+            startSound(); // 🔥 Play sound
+            sendRideNotification(data); // 🔥 Send local notification
+            startTimeout();
+        };
 
-            return () => {
-                socket.off('ride_come');
-            };
+
+        // Listen for `ride_come` when socket is ready
+        if (isSocketReady && socket) {
+            console.log("🎧 Listening for ride requests...");
+            socket.on("ride_come", handleRideRequest);
         }
+
+        const handleAppStateChange = (nextAppState) => {
+            console.log(`🔄 AppState changed: ${appState.current} ➡️ ${nextAppState}`);
+
+            if (appState.current.match(/inactive|background/) && nextAppState === "active") {
+                console.log("🟢 App is now active");
+
+                if (socket && !socket.connected) {
+                    console.log("🔌 Reconnecting socket...");
+                    socket.connect();
+                } else {
+                    console.log("✅ Socket is already connected.");
+                }
+            }
+
+            appState.current = nextAppState;
+        };
+
+        console.log("📡 Subscribing to AppState changes...");
+        const subscription = AppState.addEventListener("change", handleAppStateChange);
+
+        return () => {
+            console.log("🔄 Cleaning up event listeners...");
+            if (socket) socket.off("ride_come", handleRideRequest);
+            subscription.remove();
+        };
     }, [isSocketReady, socket]);
+
+
 
     const startTimeout = () => {
         // Clear any existing timeout
@@ -147,19 +200,33 @@ export default function RideCome() {
 
     const startSound = async () => {
         try {
+            console.log("🔊 Requesting audio focus...");
+
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: false,
+
+                shouldDuckAndroid: true,
+                staysActiveInBackground: true,
+                playThroughEarpieceAndroid: false,
+            });
+
+            console.log("🎵 Loading sound...");
             const { sound } = await Audio.Sound.createAsync(
                 require('./sound.mp3'),
-                {
-                    shouldPlay: true,
-                    // isLooping: true
-                }
+                { shouldPlay: true }
             );
+
             setSound(sound);
             soundLoopRef.current = sound;
+
+            console.log("▶️ Playing sound...");
+            await sound.playAsync(); // 🔥 Play the sound
+
         } catch (error) {
-            console.error("Error playing sound:", error);
+            console.error("❌ Error playing sound:", error);
         }
     };
+
 
     const stopSound = async () => {
         if (soundLoopRef.current) {

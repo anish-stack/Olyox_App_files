@@ -24,7 +24,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { initializeSocket } from "../context/socketService";
 
 const HomeScreen = () => {
-  const { isSocketReady, socket ,isReconnecting} = useSocket();
+  const { isSocketReady, socket, isReconnecting } = useSocket();
   const [menuVisible, setMenuVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
@@ -43,7 +43,7 @@ const HomeScreen = () => {
       setRefreshing(false);
     }
   }, []);
-
+  console.log("socket from server", socket)
   const handleLogout = useCallback(async () => {
     try {
       await SecureStore.deleteItemAsync('auth_token_cab');
@@ -60,35 +60,35 @@ const HomeScreen = () => {
     setMenuVisible(false);
   }, [navigation]);
 
- 
 
-  
+
+
   const fetchUserDetails = async () => {
     setLoading(true);
     try {
-        const token = await SecureStore.getItemAsync('auth_token_cab');
-        if (token) {
-            const response = await axios.get(
-                'https://demoapi.olyox.com/api/v1/rider/user-details',
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            if (response.data.partner) {
-              setUserData(response.data.partner);
-              await initializeSocket({
-                userId:response?.data?.partner?._id
-              })
-            }
-          }
+      const token = await SecureStore.getItemAsync('auth_token_cab');
+      if (token) {
+        const response = await axios.get(
+          'https://demoapi.olyox.com/api/v1/rider/user-details',
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (response.data.partner) {
+          setUserData(response.data.partner);
+          await initializeSocket({
+            userId: response?.data?.partner?._id
+          })
+        }
+      }
     } catch (error) {
-        console.error('Error fetching user details:', error?.response?.data?.message || error.message);
+      console.error('Error fetching user details:', error?.response?.data?.message || error.message);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-};
+  };
 
-useEffect(()=>{
-  fetchUserDetails()
-},[])
+  useEffect(() => {
+    fetchUserDetails()
+  }, [])
 
 
   const toggleOnlineStatus = async () => {
