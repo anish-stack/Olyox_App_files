@@ -22,10 +22,10 @@ const OnboardingWelcome = ({ onRegister, onLogin, onComplete }) => (
       <Icon name="login" size={24} color="#e51e25" style={styles.icon} />
       <Text style={[styles.buttonText, styles.loginButtonText]}>Login</Text>
     </TouchableOpacity>
-    <TouchableOpacity style={[styles.button, styles.loginButton]} onPress={onComplete}>
+    {/* <TouchableOpacity style={[styles.button, styles.loginButton]} onPress={onComplete}>
       <Icon name="login" size={24} color="#e51e25" style={styles.icon} />
       <Text style={[styles.buttonText, styles.loginButtonText]}>Complete Profile</Text>
-    </TouchableOpacity>
+    </TouchableOpacity> */}
   </View>
 )
 

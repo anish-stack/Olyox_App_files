@@ -34,6 +34,7 @@ export const initializeSocket = async ({ userType = "driver", userId }) => {
         return null;
     }
 
+
     if (!socket) {
         socket = io(SOCKET_URL, {
             transports: ["websocket"],

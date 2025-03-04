@@ -4,6 +4,7 @@ const Rider = require('../models/Rider.model');
 const generateOtp = require('../utils/Otp.Genreator');
 const send_token = require('../utils/send_token');
 const SendWhatsAppMessage = require('../utils/whatsapp_send');
+const axios = require('axios')
 const cloudinary = require('cloudinary').v2
 const fs = require('fs');
 cloudinary.config({
@@ -118,11 +119,33 @@ exports.login = async (req, res) => {
     const partner = await Rider.findOne({ phone: number });
 
     if (!partner) {
-      return res.status(400).json({
-        success: false,
-        message: "Phone number is not registered"
-      });
+      try {
+
+        const response = await axios.post(`https://api.olyox.com/api/v1/getProviderDetailsByNumber`, {
+          number: number
+        });
+        if (response.data.success) {
+
+          return res.status(403).json({
+            success: false,
+            message: "You are  registered with us on website But on vendor Complete Profile First !!",
+            redirect: 'complete-profile'
+          })
+        }
+        else {
+          console.log(response.data)
+        }
+
+      } catch (error) {
+        console.log(error.response.data)
+        return res.status(402).json({
+          success: false,
+          message: "Profile is not be found on website and app please register first !!! ",
+        })
+      }
     }
+
+
 
     // Check if the user is blocked for OTP
     if (partner.isOtpBlock) {

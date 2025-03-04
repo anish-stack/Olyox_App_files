@@ -28,14 +28,14 @@ const OtpScreen = ({ onVerify, number }) => {
 
   const initializeConnection = async (maxRetries = 4, retryDelay = 2000, userId) => {
     let attempts = 0;
-    console.log(userId)
+
     while (attempts < maxRetries) {
       try {
         const data = await initializeSocket({
           userType: 'driver',
           userId: userId
         });
-        console.log(data)
+        // console.log(data)
 
         if (data?.connected) {
           console.log('Socket connected successfully:', data);

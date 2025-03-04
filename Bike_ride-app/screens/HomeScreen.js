@@ -36,14 +36,15 @@ const HomeScreen = () => {
     setRefreshing(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      await fetchUserDetails()
+      const data = await fetchUserDetails()
+      // console.log("Data Of Rider", data)
     } catch (error) {
       console.error('Refresh failed:', error);
     } finally {
       setRefreshing(false);
     }
   }, []);
-  console.log("socket from server", socket)
+  // console.log("socket from server", socket)
   const handleLogout = useCallback(async () => {
     try {
       await SecureStore.deleteItemAsync('auth_token_cab');
@@ -67,16 +68,19 @@ const HomeScreen = () => {
     setLoading(true);
     try {
       const token = await SecureStore.getItemAsync('auth_token_cab');
+      console.log(token)
       if (token) {
         const response = await axios.get(
           'https://demoapi.olyox.com/api/v1/rider/user-details',
           { headers: { Authorization: `Bearer ${token}` } }
         );
+        // console.log("response.data.partner",response.data.partner)
         if (response.data.partner) {
           setUserData(response.data.partner);
           await initializeSocket({
             userId: response?.data?.partner?._id
           })
+          return response.data.partner;
         }
       }
     } catch (error) {

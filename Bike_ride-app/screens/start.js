@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import {
     View,
-    StyleSheet,
     ScrollView,
     Modal,
     TextInput,
@@ -12,14 +11,15 @@ import {
     Alert,
     Image,
     Animated,
-    AppState
+    AppState,
+    StyleSheet
 } from "react-native";
 import { Text, Button, Divider, ActivityIndicator } from "react-native-paper";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { SafeAreaView } from 'react-native-safe-area-context';
-import axios from 'axios'
+import axios from 'axios';
 import * as Location from 'expo-location';
 import * as IntentLauncher from 'expo-intent-launcher';
 import {
@@ -29,16 +29,19 @@ import {
     Ionicons
 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useSocket } from "../context/SocketContext"
+import { useSocket } from "../context/SocketContext";
+import { Audio } from 'expo-av';
+import * as Notifications from 'expo-notifications';
+
+// Constants
 const GOOGLE_MAPS_APIKEY = "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8";
 const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-import { Audio } from 'expo-av';
-import * as Notifications from 'expo-notifications';
+const API_BASE_URL = "https://demoapi.olyox.com/api/v1";
 
-
+// Configure notifications
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
@@ -46,57 +49,51 @@ Notifications.setNotificationHandler({
         shouldSetBadge: false,
     }),
 });
-const sendNotification = async (message) => {
-    console.log(message)
-    await Notifications.scheduleNotificationAsync({
-        content: {
-            title: message.title,
-            body: message.body,
-            sound: 'default',
-            badge: 1,
-
-        },
-        trigger: null,
-    });
-};
-
 
 export default function RideDetailsScreen() {
-    // Refs
+    // console.log('🟢 RideDetailsScreen: Component mounted');
+
+    // ===== REFS =====
     const mapRef = useRef(null);
     const carIconAnimation = useRef(new Animated.Value(0)).current;
-    const soundLoopRef = useRef(null);
-    const appState = useRef(AppState.currentState())
-    //expo av imports 
-    const [sound, setSound] = useState();
+    const soundRef = useRef(null);
+    const appStateRef = useRef(AppState.currentState);
+    const socketConnectionAttempts = useRef(0);
+    const locationWatchId = useRef(null);
 
-
-    // Navigation and route
+    // ===== NAVIGATION & ROUTE =====
     const route = useRoute();
     const navigation = useNavigation();
     const { params } = route.params || {};
 
-    // Socket context
-    const { socket } = useSocket()
+    // logDebug('Params Data',{params})
+        console.log('🟢 RideDetailsScreen: Component mounted',params);
 
-    // State variables
-    const [loading, setLoading] = useState(true);
-    const [showOtpModal, setShowOtpModal] = useState(false);
-    const [otp, setOtp] = useState("");
-    const [rideStarted, setRideStarted] = useState(false);
-    const [rideCompleted, setRideCompleted] = useState(false);
-    const [currentLocation, setCurrentLocation] = useState(null);
-    const [locationSubscription, setLocationSubscription] = useState(null);
-    const [mapReady, setMapReady] = useState(false);
-    const [distanceToPickup, setDistanceToPickup] = useState(null);
-    const [timeToPickup, setTimeToPickup] = useState(null);
-    const [showDirectionsType, setShowDirectionsType] = useState('driver_to_pickup'); // driver_to_pickup, pickup_to_drop
-    const [errorMsg, setErrorMsg] = useState(null);
-    const [cancelReason, setCancelReason] = useState([])
-    const [cancelModel, setCancelModel] = useState(false)
-    const [selectedReason, setSelectedReason] = useState(null)
+    // ===== SOCKET CONTEXT =====
+    const { socket } = useSocket();
 
-    // Extract ride details
+    // ===== STATE =====
+    const [appState, setAppState] = useState({
+        loading: true,
+        showOtpModal: false,
+        otp: "",
+        rideStarted: false,
+        rideCompleted: false,
+        currentLocation: null,
+        mapReady: false,
+        distanceToPickup: null,
+        timeToPickup: null,
+        showDirectionsType: 'driver_to_pickup', // driver_to_pickup, pickup_to_drop
+        errorMsg: null,
+        cancelReasons: [],
+        showCancelModal: false,
+        selectedReason: null,
+        sound: null,
+        socketConnected: socket?.connected || false
+    });
+
+    // ===== RIDE DETAILS =====
+    const rideDetails = params?.rideDetails || {};
     const {
         drop_desc,
         eta,
@@ -105,51 +102,262 @@ export default function RideDetailsScreen() {
         pickup_desc,
         kmOfRide,
         rideStatus,
-        vehicleType
-    } = params?.rideDetails || {};
+        vehicleType,
+        _id: rideId
+    } = rideDetails;
 
-    // Coordinates
-    const driverCoordinates = currentLocation ||
+    // ===== COORDINATES =====
+    const driverCoordinates = appState.currentLocation ||
         (rider?.location?.coordinates ? {
             latitude: rider.location.coordinates[1],
             longitude: rider.location.coordinates[0],
         } : { latitude: 28.7041, longitude: 77.1025 });
 
-    const pickupCoordinates = params?.rideDetails?.pickupLocation ? {
-        latitude: params.rideDetails.pickupLocation.coordinates[1],
-        longitude: params.rideDetails.pickupLocation.coordinates[0],
+    const pickupCoordinates = rideDetails?.pickupLocation ? {
+        latitude: rideDetails.pickupLocation.coordinates[1],
+        longitude: rideDetails.pickupLocation.coordinates[0],
     } : { latitude: 28.7041, longitude: 77.1025 };
 
-    const dropCoordinates = params?.rideDetails?.dropLocation ? {
-        latitude: params.rideDetails.dropLocation.coordinates[1],
-        longitude: params.rideDetails.dropLocation.coordinates[0],
+    const dropCoordinates = rideDetails?.dropLocation ? {
+        latitude: rideDetails.dropLocation.coordinates[1],
+        longitude: rideDetails.dropLocation.coordinates[0],
     } : { latitude: 28.6139, longitude: 77.2090 };
 
-    // Animation for car icon
-    useEffect(() => {
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(carIconAnimation, {
-                    toValue: 1,
-                    duration: 1000,
-                    useNativeDriver: true
-                }),
-                Animated.timing(carIconAnimation, {
-                    toValue: 0,
-                    duration: 1000,
-                    useNativeDriver: true
-                })
-            ])
-        ).start();
-    }, []);
+    // ===== HELPER FUNCTIONS =====
 
-    // Request location permissions and start tracking
-    useEffect(() => {
-        (async () => {
+    // State updater function
+    const updateState = (newState) => {
+        setAppState(prevState => ({ ...prevState, ...newState }));
+    };
+
+    // Debug logger
+    const logDebug = (message, data = null) => {
+        if (data) {
+            console.log(`✔️ ${message}`, data);
+        } else {
+            console.log(`✔️ ${message}`);
+        }
+    };
+
+    // Error logger
+    const logError = (message, error = null) => {
+        if (error) {
+            console.error(`❌ ${message}`, error);
+        } else {
+            console.error(`❌ ${message}`);
+        }
+    };
+
+    // Send notification
+    const sendNotification = async (message) => {
+        logDebug('Sending notification', message);
+        try {
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: message.title,
+                    body: message.body,
+                    sound: 'default',
+                    badge: 1,
+                },
+                trigger: null,
+            });
+            logDebug('Notification sent successfully');
+        } catch (error) {
+            logError('Failed to send notification', error);
+        }
+    };
+
+    // Reset navigation to home
+    const resetToHome = () => {
+        logDebug('Resetting navigation to Home');
+        navigation.reset({
+            index: 0,
+            routes: [{ name: "Home" }]
+        });
+    };
+
+    // Start notification sound
+    const startSound = async () => {
+        logDebug('Starting notification sound');
+        try {
+            if (soundRef.current) {
+                await soundRef.current.stopAsync();
+            }
+
+            const { sound } = await Audio.Sound.createAsync(
+                require('./cancel.mp3'),
+                {
+                    shouldPlay: true,
+                    isLooping: true
+                }
+            );
+
+            soundRef.current = sound;
+            updateState({ sound });
+            setTimeout(() => {
+
+                console.log("⚠️ Showing Alert.alert now!");
+                Alert.alert(
+                    "Ride Cancelled",
+                    "The ride has been cancelled by the customer.",
+                    [{
+                        text: "OK",
+                        onPress: () => {
+                            console.log("✅ Alert dismissed, navigating back.");
+                            stopSound();
+                            navigation.goBack();
+                        }
+                    }]
+                );
+
+            }, 100);
+            logDebug('Sound started successfully');
+        } catch (error) {
+            logError('Error playing sound', error);
+        }
+    };
+
+    // Stop sound
+    const stopSound = async () => {
+        if (soundRef.current) {
+            logDebug('Stopping sound');
+            try {
+                await soundRef.current.stopAsync();
+                soundRef.current = null;
+                logDebug('Sound stopped successfully');
+            } catch (error) {
+                logError('Error stopping sound', error);
+            }
+        }
+    };
+
+    // ===== SOCKET MANAGEMENT =====
+
+    const showAlert = ()=>{
+        Alert.alert(
+            "Ride Completed",
+            "The ride has been completed successfully!",
+            [
+                {
+                    text: "Collect Payment",
+                    onPress: () => navigation.navigate('collect_money', { data: data?.rideDetails })
+                }
+            ]
+        );
+    }
+    // Connect socket
+    const connectSocket = () => {
+        if (!socket) {
+            logError('Socket instance not available');
+            return false;
+        }
+
+        if (!socket.connected) {
+            logDebug('Connecting socket...');
+            socketConnectionAttempts.current += 1;
+            socket.connect();
+
+            // Check connection after a delay
+            setTimeout(() => {
+                if (socket.connected) {
+                    logDebug('Socket connected successfully');
+                    updateState({ socketConnected: true });
+                    setupSocketListeners();
+                } else {
+                    logError(`Socket connection failed (attempt ${socketConnectionAttempts.current})`);
+                    if (socketConnectionAttempts.current < 3) {
+                        connectSocket(); // Retry
+                    } else {
+                        Alert.alert(
+                            "Connection Error",
+                            "Unable to establish a connection. Please check your internet connection.",
+                            [{ text: "OK" }]
+                        );
+                    }
+                }
+            }, 2000);
+        } else {
+            logDebug('Socket already connected');
+            updateState({ socketConnected: true });
+            return true;
+        }
+    };
+
+    // Setup socket listeners
+    const setupSocketListeners = () => {
+        if (!socket) return;
+
+        logDebug('Setting up socket listeners');
+
+        // Remove existing listeners to prevent duplicates
+        socket.off('ride_end');
+        socket.off('ride_cancelled');
+
+        // Listen for ride end event
+        socket.on('ride_end', (data) => {
+            logDebug('Ride completed event received', data);
+            showAlert()
+            updateState({ rideCompleted: true });
+            navigation.navigate('collect_money',{ data: data?.rideDetails })
+            sendNotification({
+                title: "Ride Completed",
+                body: "The ride has been completed successfully!"
+            });
+
+            Alert.alert(
+                "Ride Completed",
+                "The ride has been completed successfully!",
+                [
+                    {
+                        text: "Collect Payment",
+                        onPress: () => navigation.navigate('collect_money', { data: data?.rideDetails })
+                    }
+                ]
+            );
+        });
+
+        // Listen for ride cancellation
+        socket.on('ride_cancelled', (data) => {
+            logDebug('Ride cancelled event received', data);
+            startSound();
+
+            sendNotification({
+                title: "🚨 Ride Cancelled",
+                body: "The ride has been cancelled by the customer."
+            });
+
+            Alert.alert(
+                "Ride Cancelled",
+                "The ride has been cancelled by the customer.",
+                [{
+                    text: "OK",
+                    onPress: () => {
+                        stopSound();
+                        navigation.goBack();
+                    }
+                }]
+            );
+        });
+
+        logDebug('Socket listeners setup complete');
+    };
+
+    // ===== LOCATION MANAGEMENT =====
+
+    useEffect(()=>{
+        setupSocketListeners()
+    },[socket])
+    // Start location tracking
+    const startLocationTracking = async () => {
+        logDebug('Starting location tracking');
+        try {
             let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                setErrorMsg('Permission to access location was denied');
-                setLoading(false);
+                logError('Location permission denied');
+                updateState({
+                    errorMsg: 'Permission to access location was denied',
+                    loading: false
+                });
                 return;
             }
 
@@ -163,10 +371,15 @@ export default function RideDetailsScreen() {
                 longitude: location.coords.longitude,
             };
 
-            setCurrentLocation(initialLocation);
+            updateState({
+                currentLocation: initialLocation,
+                loading: false
+            });
+
+            logDebug('Initial location obtained', initialLocation);
 
             // Start watching position
-            const subscription = await Location.watchPositionAsync(
+            const watchId = await Location.watchPositionAsync(
                 {
                     accuracy: Location.Accuracy.Highest,
                     distanceInterval: 10, // update every 10 meters
@@ -178,10 +391,10 @@ export default function RideDetailsScreen() {
                         longitude: newLocation.coords.longitude,
                     };
 
-                    setCurrentLocation(updatedLocation);
+                    updateState({ currentLocation: updatedLocation });
 
                     // If map is ready and ride started, animate to new location
-                    if (mapRef.current && mapReady) {
+                    if (mapRef.current && appState.mapReady) {
                         mapRef.current.animateToRegion({
                             ...updatedLocation,
                             latitudeDelta: LATITUDE_DELTA / 2,
@@ -190,279 +403,74 @@ export default function RideDetailsScreen() {
                     }
 
                     // If ride started, emit location to socket
-                    if (rideStarted && socket && socket.emit) {
+                    if (appState.rideStarted && socket && socket.connected) {
+                        logDebug('Emitting location update', { rideId, location: updatedLocation });
                         socket.emit("driver_location_update", {
-                            rideId: params?.rideDetails?._id,
+                            rideId: rideId,
                             location: updatedLocation
                         });
                     }
                 }
             );
 
-            setLocationSubscription(subscription);
-            setLoading(false);
-        })();
+            locationWatchId.current = watchId;
+            logDebug('Location tracking started successfully');
 
-        // Cleanup function
-        return () => {
-            if (locationSubscription) {
-                locationSubscription.remove();
-            }
-        };
-    }, [rideStarted, mapReady]);
+        } catch (error) {
+            logError('Error starting location tracking', error);
+            updateState({
+                errorMsg: 'Failed to get location: ' + error.message,
+                loading: false
+            });
+        }
+    };
 
+    // Stop location tracking
+    const stopLocationTracking = () => {
+        if (locationWatchId.current) {
+            logDebug('Stopping location tracking');
+            locationWatchId.current.remove();
+            locationWatchId.current = null;
+        }
+    };
 
+    // ===== RIDE ACTIONS =====
 
-    const fetchReason = async () => {
-
+    // Fetch cancel reasons
+    const fetchCancelReasons = async () => {
+        logDebug('Fetching cancel reasons');
         try {
-            const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/admin/cancel-reasons?active=active`)
+            const { data } = await axios.get(`${API_BASE_URL}/admin/cancel-reasons?active=active`);
 
             if (data.data) {
-                setCancelReason(data.data)
+                logDebug('Cancel reasons fetched successfully', data.data);
+                updateState({ cancelReasons: data.data });
             } else {
-                setCancelReason([])
+                logDebug('No cancel reasons found');
+                updateState({ cancelReasons: [] });
             }
         } catch (error) {
-            console.log("Error Fetching in Reasons", error)
-            setCancelReason([])
-        }
-    }
-
-
-    useEffect(() => {
-        fetchReason()
-    }, [])
-
-
-    const handleAppStateChange = (nextAppState) => {
-        console.log(`🔄 AppState changed: ${appState.current} ➡️ ${nextAppState}`);
-
-        if (appState.current.match(/inactive|background/) && nextAppState === "active") {
-            console.log("🟢 App is now active");
-
-            if (socket && !socket.connected) {
-                console.log("🔌 Reconnecting socket...");
-                socket.connect();
-            } else {
-                console.log("✅ Socket is already connected.");
-            }
-        }
-
-        appState.current = nextAppState;
-    };
-
-
-
-
-    const handleCancelRide = async () => {
-        try {
-            if (!selectedReason) {
-                Alert.alert("Cancel Ride", "Please select a reason to cancel.");
-                return;
-            }
-
-            const data = {
-                cancelBy: "driver",
-                rideData: params?.rideDetails || {},
-                reason: selectedReason
-            };
-
-            const activeSocket = socket;
-            if (!activeSocket) {
-                console.error("❌ Socket connection not established");
-                Alert.alert("Error", "Unable to cancel ride due to connection issues.");
-                return;
-            }
-
-            activeSocket.emit("ride-cancel-by-user", data, (response) => {
-                console.log("🚗 Ride cancel event sent:", response);
-            });
-            if (activeSocket) {
-                const message = {
-                    title: "Canceled",
-                    body: "Your pickup has been canceled. Thank you for Giving your time",
-                }
-                sendNotification(message)
-                Alert.alert(
-                    "Cancel",
-                    "Your pickup has been canceled. Thank you for Giving your time",
-                    [{ text: "OK", onPress: () => resetToHome() }]
-                );
-            }
-        } catch (error) {
-            console.error("⚠️ Error in handleCancelRide:", error);
-            Alert.alert("Error", "Something went wrong while canceling the ride.");
+            logError('Error fetching cancel reasons', error);
+            updateState({ cancelReasons: [] });
         }
     };
-
-
-    const CancelReasonsModel = () => (
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={cancelModel}
-            onRequestClose={() => setCancelModel(false)}
-        >
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContents}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Cancel Reason</Text>
-                        <TouchableOpacity
-                            style={styles.modalCloseButton}
-                            onPress={() => setCancelModel(false)}
-                        >
-                            <MaterialCommunityIcons name="close" size={24} color="#111827" />
-                        </TouchableOpacity>
-                    </View>
-                    {cancelReason && cancelReason.map((item) => (
-                        <TouchableOpacity
-                            key={item._id}
-                            style={[
-                                styles.cancelReasonItem,
-                                selectedReason === item._id && styles.selectedReason
-                            ]}
-                            onPress={() => setSelectedReason(item._id)}
-                        >
-                            <View>
-                                <Text style={styles.cancelReasonLabel}>{item.name}</Text>
-                                <Text style={styles.cancelReasonDescription}>{item.description}</Text>
-                            </View>
-                            <View>
-                                {selectedReason === item._id && (
-                                    <MaterialCommunityIcons name="check" size={24} color="green" />
-                                )}
-                            </View>
-                        </TouchableOpacity>
-                    ))}
-
-                    <TouchableOpacity
-                        style={styles.cancelRideButton}
-                        onPress={() => handleCancelRide(selectedReason)}
-                        disabled={!selectedReason} // Disable button if no reason selected
-                    >
-                        <MaterialCommunityIcons name="cancel" size={20} color="#fff" />
-                        <Text style={styles.cancelRideText}>Cancel Ride</Text>
-                    </TouchableOpacity>
-
-                </View>
-            </View>
-        </Modal>
-    )
-
-    // Helper function to reset navigation
-    const resetToHome = () => {
-        navigation.reset({
-            index: 0,
-            routes: [{ name: "Home" }]
-        });
-    };
-
-
-    const startSound = async () => {
-        try {
-            const { sound } = await Audio.Sound.createAsync(
-                require('./cancel.mp3'),
-                {
-                    shouldPlay: true,
-                    isLooping: true
-                }
-            );
-            setSound(sound);
-            soundLoopRef.current = sound;
-        } catch (error) {
-            console.error("Error playing sound:", error);
-        }
-    };
-
-    useEffect(() => {
-        if (socket && socket.on) {
-            console.log("✅ Socket listeners attached");
-
-            // Listen for ride end event
-            socket.on('ride_end', (data) => {
-                console.log("🎉 Ride Completed:", data);
-                setRideCompleted(true);
-
-                Alert.alert(
-                    "Ride Completed",
-                    "The ride has been completed successfully!",
-                    [
-                        {
-                            text: "Collect Payment",
-                            onPress: () => navigation.navigate('collect_money', { data: data?.rideDetails })
-                        }
-                    ]
-                );
-            });
-
-            // Listen for ride cancellation
-            socket.on('ride_cancelled', (data) => {
-                console.log("🚨 Ride Cancelled:", data);
-                startSound();
-                const message = {
-                    title: "🚨 Ride Cancelled",
-                    body: "The ride has been cancelled by the customer.",
-                }
-                sendNotification(message)
-                Alert.alert(
-                    "Ride Cancelled",
-                    "The ride has been cancelled by the customer.",
-                    [{
-                        text: "OK",
-                        onPress: () => {
-                            if (soundLoopRef.current) {
-                                soundLoopRef.current.stopAsync();
-                            }
-                            navigation.goBack();
-                        }
-                    }]
-                );
-            });
-        }
-
-        return () => {
-            if (socket && socket.off) {
-                console.log("🔌 Removing socket listeners...");
-                socket.off('ride_end');
-                socket.off('ride_cancelled');
-            }
-        };
-    }, [socket, navigation]);
-
-
-    // Calculate distance and time to pickup
-    useEffect(() => {
-        if (currentLocation && pickupCoordinates && !rideStarted) {
-            // Calculate straight-line distance (in km)
-            const R = 6371; // Earth's radius in km
-            const dLat = (pickupCoordinates.latitude - currentLocation.latitude) * Math.PI / 180;
-            const dLon = (pickupCoordinates.longitude - currentLocation.longitude) * Math.PI / 180;
-            const a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(currentLocation.latitude * Math.PI / 180) * Math.cos(pickupCoordinates.latitude * Math.PI / 180) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            const distance = R * c;
-
-            setDistanceToPickup(distance.toFixed(1));
-
-            // Estimate time (assuming average speed of 30 km/h)
-            const timeInMinutes = (distance / 30) * 60;
-            setTimeToPickup(Math.round(timeInMinutes));
-        }
-    }, [currentLocation, pickupCoordinates, rideStarted]);
 
     // Handle OTP submission
     const handleOtpSubmit = () => {
-        if (otp === RideOtp) {
-            setShowOtpModal(false);
-            setRideStarted(true);
-            setShowDirectionsType('pickup_to_drop');
+        logDebug('Submitting OTP', { entered: appState.otp, expected: RideOtp });
+
+        if (appState.otp === RideOtp) {
+            logDebug('OTP verified successfully');
+            updateState({
+                showOtpModal: false,
+                rideStarted: true,
+                showDirectionsType: 'pickup_to_drop'
+            });
 
             // Emit ride started event
-            if (socket && socket.emit) {
-                socket.emit("ride_started", params?.rideDetails);
+            if (socket && socket.connected) {
+                logDebug('Emitting ride_started event', rideDetails);
+                socket.emit("ride_started", rideDetails);
             }
 
             // Fit map to show pickup and drop locations
@@ -477,18 +485,107 @@ export default function RideDetailsScreen() {
                     );
                 }, 1000);
             }
+
+            sendNotification({
+                title: "Ride Started",
+                body: "You have started the ride. Drive safely!"
+            });
         } else {
+            logError('Incorrect OTP entered');
             Alert.alert("Incorrect OTP", "Please try again with the correct OTP.");
         }
     };
 
+    // Handle cancel ride
+    const handleCancelRide = async () => {
+        logDebug('Cancelling ride', { reason: appState.selectedReason });
+
+        try {
+            if (!appState.selectedReason) {
+                Alert.alert("Cancel Ride", "Please select a reason to cancel.");
+                return;
+            }
+
+            const data = {
+                cancelBy: "driver",
+                rideData: rideDetails,
+                reason: appState.selectedReason
+            };
+
+            if (!socket || !socket.connected) {
+                logError('Socket not connected for ride cancellation');
+                const connected = connectSocket();
+                if (!connected) {
+                    Alert.alert("Error", "Unable to cancel ride due to connection issues.");
+                    return;
+                }
+            }
+
+            logDebug('Emitting ride-cancel-by-user event', data);
+            socket.emit("ride-cancel-by-user", data, (response) => {
+                logDebug('Ride cancel response received', response);
+            });
+
+            sendNotification({
+                title: "Ride Canceled",
+                body: "Your pickup has been canceled. Thank you for your time."
+            });
+
+            Alert.alert(
+                "Cancel",
+                "Your pickup has been canceled. Thank you for your time.",
+                [{ text: "OK", onPress: () => resetToHome() }]
+            );
+
+            updateState({ showCancelModal: false });
+
+        } catch (error) {
+            logError('Error in handleCancelRide', error);
+            Alert.alert("Error", "Something went wrong while canceling the ride.");
+        }
+    };
+
+    // Complete ride
+    const handleCompleteRide = () => {
+        if (!rideDetails) {
+            logError('Ride details not found for completion');
+            Alert.alert("Error", "Ride details not found");
+            return;
+        }
+        console.log("Ride Details", params?.rideDetails)
+        console.log(params?.rideDetails?.ride)
+        Alert.alert(
+            "Complete Ride",
+            "Are you sure you want to complete this ride?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Complete",
+                    onPress: () => {
+                        if (socket && socket.connected) {
+                            logDebug('Emitting endRide event', { rideDetails });
+                            logDebug('Emitting endRide event 2', { ride:rideDetails?.ride });
+                            socket.emit('endRide', { rideDetails: params?.rideDetails, ride: params?.rideDetails?.ride });
+                            updateState({ rideCompleted: true });
+                        } else {
+                            logError('Socket not connected for ride completion');
+                            Alert.alert("Connection Error", "Please check your internet connection and try again.");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     // Open Google Maps for navigation
     const openGoogleMapsDirections = () => {
-        const destination = rideStarted ?
+        const destination = appState.rideStarted ?
             `${dropCoordinates.latitude},${dropCoordinates.longitude}` :
             `${pickupCoordinates.latitude},${pickupCoordinates.longitude}`;
 
         const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+
+        logDebug('Opening Google Maps with URL', url);
 
         Linking.canOpenURL(url).then(supported => {
             if (supported) {
@@ -500,26 +597,31 @@ export default function RideDetailsScreen() {
                         data: url,
                         flags: 268435456, // FLAG_ACTIVITY_NEW_TASK
                     }).catch(err => {
+                        logError('Error opening Google Maps with Intent Launcher', err);
                         Alert.alert("Error", "Could not open Google Maps");
                     });
                 } else {
+                    logError('Cannot open Google Maps URL');
                     Alert.alert("Error", "Could not open Google Maps");
                 }
             }
         });
     };
 
-    // Handle map ready event
+    // Handle map ready
     const handleMapReady = () => {
-        setMapReady(true);
+        logDebug('Map is ready');
+        updateState({ mapReady: true });
 
-        // Fit map to show current location and pickup
-        if (mapRef.current && currentLocation) {
+        // Fit map to show current location and pickup/drop
+        if (mapRef.current && appState.currentLocation) {
             setTimeout(() => {
                 const coordinates = [
-                    currentLocation,
-                    rideStarted ? dropCoordinates : pickupCoordinates
+                    appState.currentLocation,
+                    appState.rideStarted ? dropCoordinates : pickupCoordinates
                 ];
+
+                logDebug('Fitting map to coordinates', coordinates);
 
                 mapRef.current.fitToCoordinates(
                     coordinates,
@@ -532,52 +634,358 @@ export default function RideDetailsScreen() {
         }
     };
 
-    // Complete ride function
-    const handleCompleteRide = () => {
-        if (!params?.rideDetails) {
-            Alert.alert("Error", "Ride details not found");
-            return
+    // ===== EFFECTS =====
+
+    // Initialize component
+    useEffect(() => {
+        logDebug('Initializing component');
+
+        // Connect socket
+        connectSocket();
+
+        // Start location tracking
+        startLocationTracking();
+
+        // Fetch cancel reasons
+        fetchCancelReasons();
+
+        // Start car animation
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(carIconAnimation, {
+                    toValue: 1,
+                    duration: 1000,
+                    useNativeDriver: true
+                }),
+                Animated.timing(carIconAnimation, {
+                    toValue: 0,
+                    duration: 1000,
+                    useNativeDriver: true
+                })
+            ])
+        ).start();
+
+        // Setup app state change listener
+        const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+        // Cleanup function
+        return () => {
+            logDebug('Component unmounting, cleaning up resources');
+
+            // Remove app state listener
+            subscription.remove();
+
+            // Stop location tracking
+            stopLocationTracking();
+
+            // Stop sound
+            stopSound();
+
+            // Remove socket listeners
+            if (socket) {
+                socket.off('ride_end');
+                socket.off('ride_cancelled');
+            }
+        };
+    }, []);
+
+    // Calculate distance and time to pickup
+    useEffect(() => {
+        if (appState.currentLocation && pickupCoordinates && !appState.rideStarted) {
+            // logDebug('Calculating distance to pickup');
+
+            // Calculate straight-line distance (in km)
+            const R = 6371; // Earth's radius in km
+            const dLat = (pickupCoordinates.latitude - appState.currentLocation.latitude) * Math.PI / 180;
+            const dLon = (pickupCoordinates.longitude - appState.currentLocation.longitude) * Math.PI / 180;
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(appState.currentLocation.latitude * Math.PI / 180) * Math.cos(pickupCoordinates.latitude * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c;
+
+            const distanceFormatted = distance.toFixed(1);
+
+            // Estimate time (assuming average speed of 30 km/h)
+            const timeInMinutes = (distance / 30) * 60;
+            const timeFormatted = Math.round(timeInMinutes);
+
+            logDebug('Distance calculation complete', {
+                distance: distanceFormatted,
+                time: timeFormatted
+            });
+
+            updateState({
+                distanceToPickup: distanceFormatted,
+                timeToPickup: timeFormatted
+            });
         }
-        Alert.alert(
-            "Complete Ride",
-            "Are you sure you want to complete this ride?",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Complete",
-                    onPress: () => {
-                        if (socket && socket.emit) {
-                            console.log("socket")
-                            socket.emit('endRide', { rideDetails: params?.rideDetails, ride: params?.rideDetails?.ride });
-                            // socket.emit("ride_completed", params?.rideDetails);
-                            setRideCompleted(true);
-                        }
-                    }
-                }
-            ]
-        );
+    }, []);
+
+    const handleAppStateChange = (nextAppState) => {
+        logDebug(`AppState changed: ${appStateRef.current} → ${nextAppState}`);
+
+        if (appStateRef.current.match(/inactive|background/) && nextAppState === "active") {
+            logDebug('App is now active');
+
+            // Reconnect socket if disconnected
+            if (socket && !socket.connected) {
+                logDebug('Reconnecting socket after app became active');
+                connectSocket();
+            } else {
+                logDebug('Socket is already connected');
+                setupSocketListeners();
+            }
+
+            // Restart location tracking if needed
+            if (!locationWatchId.current) {
+                logDebug('Restarting location tracking after app became active');
+                startLocationTracking();
+            }
+        }
+
+        appStateRef.current = nextAppState;
     };
-   
+
+    // Function to handle ride cancellation with debugging
+    const handleCancelRideByUser = () => {
+        console.log("🚨 handleCancelRideByUser function executed.");
+
+        if (socket) {
+            socket.on('ride_cancelled', (data) => {
+                logDebug('✅ Ride cancelled event received', data);
+                startSound();
+
+                // Debugging before notification
+                logDebug("📢 Sending notification for ride cancellation.");
+                sendNotification({
+                    title: "🚨 Ride Cancelled",
+                    body: "The ride has been cancelled by the customer."
+                });
+
+                // Debugging before showing alert
+                logDebug("🛑 Attempting to show Alert.alert...");
+
+
+                // Delay added to ensure proper UI execution
+            });
+        } else {
+            logDebug("❌ Socket not available, cannot register 'ride_cancelled' event.");
+        }
+    };
+
+    // Listen to app state changes
+    useEffect(() => {
+        logDebug("🎧 useEffect running - Adding AppState listener and socket listener.");
+
+        const subscription = AppState.addEventListener("change", handleAppStateChange);
+        handleCancelRideByUser(); // Register ride cancel listener
+
+        return () => {
+            logDebug("🧹 Cleanup: Removing AppState listener and socket event.");
+            subscription.remove();
+            if (socket) {
+                socket.off('ride_cancelled'); // Remove event listener on cleanup
+            }
+        };
+    }, []);
+    // ===== RENDER COMPONENTS =====
+
+    // Cancel reasons modal
+    const CancelReasonsModal = () => (
+        <Modal
+            animationType="slide"
+            transparent={true}
+            visible={appState.showCancelModal}
+            onRequestClose={() => updateState({ showCancelModal: false })}
+        >
+            <View style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: 'rgba(0,0,0,0.5)'
+            }}>
+                <View style={{
+                    width: '90%',
+                    backgroundColor: 'white',
+                    borderRadius: 10,
+                    padding: 20,
+                    maxHeight: '80%'
+                }}>
+                    <View style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 15
+                    }}>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Cancel Reason</Text>
+                        <TouchableOpacity
+                            onPress={() => updateState({ showCancelModal: false })}
+                        >
+                            <MaterialCommunityIcons name="close" size={24} color="#111827" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView style={{ maxHeight: 300 }}>
+                        {appState.cancelReasons.map((item) => (
+                            <TouchableOpacity
+                                key={item._id}
+                                style={{
+                                    flexDirection: 'row',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: 15,
+                                    borderRadius: 8,
+                                    marginBottom: 10,
+                                    backgroundColor: appState.selectedReason === item._id ? '#f0f0f0' : 'transparent',
+                                    borderWidth: 1,
+                                    borderColor: appState.selectedReason === item._id ? '#FF3B30' : '#e0e0e0'
+                                }}
+                                onPress={() => updateState({ selectedReason: item._id })}
+                            >
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontWeight: 'bold' }}>{item.name}</Text>
+                                    <Text style={{ color: '#666', marginTop: 5 }}>{item.description}</Text>
+                                </View>
+                                <View>
+                                    {appState.selectedReason === item._id && (
+                                        <MaterialCommunityIcons name="check" size={24} color="green" />
+                                    )}
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+
+                    <TouchableOpacity
+                        style={{
+                            backgroundColor: appState.selectedReason ? '#FF3B30' : '#ccc',
+                            padding: 15,
+                            borderRadius: 8,
+                            flexDirection: 'row',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            marginTop: 15
+                        }}
+                        onPress={handleCancelRide}
+                        disabled={!appState.selectedReason}
+                    >
+                        <MaterialCommunityIcons name="cancel" size={20} color="#fff" style={{ marginRight: 10 }} />
+                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Cancel Ride</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+
+    // OTP Modal
+    const OtpModal = () => (
+        <Modal
+            animationType="slide"
+            transparent={true}
+            visible={appState.showOtpModal}
+            onRequestClose={() => updateState({ showOtpModal: false })}
+        >
+            <View style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: 'rgba(0,0,0,0.5)'
+            }}>
+                <View style={{
+                    width: '80%',
+                    backgroundColor: 'white',
+                    borderRadius: 10,
+                    padding: 20,
+                    alignItems: 'center'
+                }}>
+                    <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 20 }}>Enter OTP</Text>
+                    <Text style={{ textAlign: 'center', marginBottom: 20 }}>
+                        Please enter the OTP provided by the rider to start the trip
+                    </Text>
+
+                    <TextInput
+                        style={{
+                            width: '100%',
+                            height: 50,
+                            borderWidth: 1,
+                            borderColor: '#ccc',
+                            borderRadius: 8,
+                            marginBottom: 20,
+                            paddingHorizontal: 15,
+                            fontSize: 18,
+                            textAlign: 'center'
+                        }}
+                        placeholder="Enter OTP"
+                        keyboardType="number-pad"
+                        maxLength={6}
+                        value={appState.otp}
+                        onChangeText={(text) => updateState({ otp: text })}
+                    />
+
+                    <View style={{ flexDirection: 'row', width: '100%', justifyContent: 'space-between' }}>
+                        <TouchableOpacity
+                            style={{
+                                padding: 15,
+                                borderRadius: 8,
+                                backgroundColor: '#f0f0f0',
+                                width: '45%',
+                                alignItems: 'center'
+                            }}
+                            onPress={() => updateState({ showOtpModal: false })}
+                        >
+                            <Text>Cancel</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={{
+                                padding: 15,
+                                borderRadius: 8,
+                                backgroundColor: '#FF3B30',
+                                width: '45%',
+                                alignItems: 'center'
+                            }}
+                            onPress={handleOtpSubmit}
+                        >
+                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Verify</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+
     // Loading screen
-    if (loading) {
+    if (appState.loading) {
         return (
-            <View style={styles.loaderContainer}>
+            <View style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: '#fff'
+            }}>
                 <ActivityIndicator size="large" color="#FF3B30" />
-                <Text style={styles.loaderText}>Loading ride details...</Text>
+                <Text style={{ marginTop: 20, fontSize: 16 }}>Loading ride details...</Text>
             </View>
         );
     }
 
     // Error screen
-    if (errorMsg) {
+    if (appState.errorMsg) {
         return (
-            <View style={styles.errorContainer}>
+            <View style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                padding: 20,
+                backgroundColor: '#fff'
+            }}>
                 <MaterialIcons name="error" size={60} color="#FF3B30" />
-                <Text style={styles.errorText}>{errorMsg}</Text>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', marginTop: 20, textAlign: 'center' }}>{appState.errorMsg}</Text>
                 <Button
                     mode="contained"
                     onPress={() => navigation.goBack()}
-                    style={styles.errorButton}
+                    style={{ marginTop: 30, backgroundColor: '#FF3B30' }}
                 >
                     Go Back
                 </Button>
@@ -585,392 +993,278 @@ export default function RideDetailsScreen() {
         );
     }
 
+    // Main screen
     return (
-        <SafeAreaView style={{ flex: 1 }}>
-            <View style={styles.container}>
-                {/* Map View */}
-                <View style={styles.mapContainer}>
-                    <MapView
-                        ref={mapRef}
-                        provider={PROVIDER_GOOGLE}
-                        style={styles.map}
-                        initialRegion={{
-                            latitude: currentLocation?.latitude || driverCoordinates.latitude,
-                            longitude: currentLocation?.longitude || driverCoordinates.longitude,
-                            latitudeDelta: LATITUDE_DELTA,
-                            longitudeDelta: LONGITUDE_DELTA,
-                        }}
-                        showsUserLocation={true}
-                        showsMyLocationButton={true}
-                        followsUserLocation={true}
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+            {/* Map View */}
+            <View style={{ flex: 1 }}>
+                <MapView
+                    ref={mapRef}
+                    style={{ flex: 1 }}
+                    provider={PROVIDER_GOOGLE}
+                    initialRegion={{
+                        ...driverCoordinates,
+                        latitudeDelta: LATITUDE_DELTA,
+                        longitudeDelta: LONGITUDE_DELTA,
+                    }}
+                    onMapReady={handleMapReady}
+                >
+                    {/* Driver Marker */}
+                    {appState.currentLocation && (
+                        <Marker
+                            coordinate={appState.currentLocation}
+                            title="Your Location"
+                        >
+                            <Animated.View style={{
+                                transform: [{
+                                    scale: carIconAnimation.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [1, 1.1]
+                                    })
+                                }]
+                            }}>
+                                <FontAwesome5 name="car" size={24} color="#FF3B30" />
+                            </Animated.View>
+                        </Marker>
+                    )}
 
-                        showsCompass
-
-                        showsTraffic
-                        onMapReady={handleMapReady}
-                    >
-                        {/* Driver Marker */}
-                        {currentLocation && (
-                            <Marker
-                                coordinate={currentLocation}
-                                title="Your Location"
-                                description="You are here"
-                            >
-                                <Animated.View
-                                    style={{
-                                        transform: [{
-                                            scale: carIconAnimation.interpolate({
-                                                inputRange: [0, 1],
-                                                outputRange: [1, 1.1]
-                                            })
-                                        }]
-                                    }}
-                                >
-                                    <MaterialCommunityIcons
-                                        name="car"
-                                        size={36}
-                                        color="#FF3B30"
-                                    />
-                                </Animated.View>
-                            </Marker>
-                        )}
-
-                        {/* Pickup Marker */}
+                    {/* Pickup Marker */}
+                    {!appState.rideStarted && (
                         <Marker
                             coordinate={pickupCoordinates}
                             title="Pickup Location"
                             description={pickup_desc}
                         >
-                            <View style={styles.markerContainer}>
-                                <MaterialIcons name="person-pin-circle" size={40} color="#4CAF50" />
-                                <View style={styles.markerLabelContainer}>
-                                    <Text style={styles.markerLabel}>Pickup</Text>
-                                </View>
+                            <View style={{
+                                backgroundColor: '#4CAF50',
+                                padding: 5,
+                                borderRadius: 10
+                            }}>
+                                <MaterialIcons name="location-on" size={24} color="white" />
                             </View>
                         </Marker>
+                    )}
 
-                        {/* Drop Marker */}
-                        <Marker
-                            coordinate={dropCoordinates}
-                            title="Drop Location"
-                            description={drop_desc}
-                        >
-                            <View style={styles.markerContainer}>
-                                <MaterialIcons name="place" size={40} color="#FF9500" />
-                                <View style={styles.markerLabelContainer}>
-                                    <Text style={styles.markerLabel}>Drop</Text>
-                                </View>
-                            </View>
-                        </Marker>
+                    {/* Drop Marker */}
+                    <Marker
+                        coordinate={dropCoordinates}
+                        title="Drop Location"
+                        description={drop_desc}
+                    >
+                        <View style={{
+                            backgroundColor: '#F44336',
+                            padding: 5,
+                            borderRadius: 10
+                        }}>
+                            <MaterialIcons name="location-on" size={24} color="white" />
+                        </View>
+                    </Marker>
 
-                        {/* Directions */}
-                        {showDirectionsType === 'driver_to_pickup' && currentLocation && (
-                            <MapViewDirections
-                                origin={currentLocation}
-                                destination={pickupCoordinates}
-                                apikey={GOOGLE_MAPS_APIKEY}
-                                strokeWidth={4}
-                                strokeColor="#4CAF50"
-                                lineDashPattern={[1]}
-                            />
-                        )}
+                    {/* Directions */}
+                    {appState.mapReady && appState.currentLocation && (
+                        <MapViewDirections
+                            origin={appState.currentLocation}
+                            destination={appState.rideStarted ? dropCoordinates : pickupCoordinates}
+                            apikey={GOOGLE_MAPS_APIKEY}
+                            strokeWidth={4}
+                            strokeColor={appState.rideStarted ? "#FF3B30" : "#4CAF50"}
+                            onReady={(result) => {
+                                logDebug('Directions ready', {
+                                    distance: result.distance,
+                                    duration: result.duration
+                                });
 
-                        {showDirectionsType === 'pickup_to_drop' && (
-                            <MapViewDirections
-                                origin={pickupCoordinates}
-                                destination={dropCoordinates}
-                                apikey={GOOGLE_MAPS_APIKEY}
-                                strokeWidth={4}
-                                strokeColor="#FF9500"
-                            />
-                        )}
-                    </MapView>
+                                if (!appState.rideStarted) {
+                                    updateState({
+                                        distanceToPickup: result.distance.toFixed(1),
+                                        timeToPickup: Math.round(result.duration)
+                                    });
+                                }
+                            }}
+                        />
+                    )}
+                </MapView>
 
-                    {/* Map Overlay Controls */}
-                    <View style={styles.mapOverlayContainer}>
-                        {/* Navigation Button */}
-                        <TouchableOpacity
-                            style={styles.navigationButton}
-                            onPress={openGoogleMapsDirections}
-                        >
-                            <MaterialIcons name="directions" size={24} color="#FFFFFF" />
-                            <Text style={styles.navigationButtonText}>Navigate</Text>
-                        </TouchableOpacity>
+                {/* Socket Status Indicator */}
+                <View style={{
+                    position: 'absolute',
+                    top: 10,
+                    right: 10,
+                    backgroundColor: appState.socketConnected ? '#4CAF50' : '#F44336',
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                    borderRadius: 15,
+                    flexDirection: 'row',
+                    alignItems: 'center'
+                }}>
+                    <MaterialIcons
+                        name={appState.socketConnected ? "wifi" : "wifi-off"}
+                        size={16}
+                        color="white"
+                    />
+                    <Text style={{ color: 'white', marginLeft: 5, fontSize: 12 }}>
+                        {appState.socketConnected ? "Connected" : "Disconnected"}
+                    </Text>
+                </View>
 
-                        {/* Distance Info */}
-                        {!rideStarted && distanceToPickup && (
-                            <View style={styles.distanceInfoContainer}>
-                                <Text style={styles.distanceInfoText}>
-                                    {distanceToPickup} km • {timeToPickup} min to pickup
-                                </Text>
-                            </View>
-                        )}
+                {/* Navigation Button */}
+                <TouchableOpacity
+                    style={{
+                        position: 'absolute',
+                        top: 10,
+                        left: 10,
+                        backgroundColor: 'white',
+                        padding: 10,
+                        borderRadius: 50,
+                        elevation: 5,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.25,
+                        shadowRadius: 3.84
+                    }}
+                    onPress={openGoogleMapsDirections}
+                >
+                    <MaterialIcons name="directions" size={24} color="#FF3B30" />
+                </TouchableOpacity>
+            </View>
+
+            {/* Ride Info Panel */}
+            <View style={{
+                backgroundColor: 'white',
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                padding: 20,
+                elevation: 10,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: -3 },
+                shadowOpacity: 0.1,
+                shadowRadius: 3
+            }}>
+                {/* Ride Status */}
+                <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 15
+                }}>
+                    <View>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold' }}>
+                            {appState.rideStarted ? "Ride in Progress" : "Heading to Pickup"}
+                        </Text>
+                        <Text style={{ color: '#666', marginTop: 5 }}>
+                            {appState.rideStarted ? `${kmOfRide} km total ride` : `${appState.distanceToPickup || '0'} km to pickup`}
+                        </Text>
+                    </View>
+
+                    <View style={{
+                        backgroundColor: appState.rideStarted ? '#4CAF50' : '#FF9800',
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 15
+                    }}>
+                        <Text style={{ color: 'white', fontWeight: 'bold' }}>
+                            {appState.rideStarted ? "In Progress" : "Pickup"}
+                        </Text>
                     </View>
                 </View>
 
-                {/* Ride Info Section */}
-                <ScrollView style={styles.scrollView} bounces={false}>
-                    {/* Status Bar */}
-                    <View style={styles.statusBarContainer}>
-                        <View style={styles.statusBar}>
-                            <View style={[
-                                styles.statusStep,
-                                styles.statusStepActive
-                            ]}>
-                                <MaterialIcons name="check-circle" size={24} color="#4CAF50" />
-                                <Text style={styles.statusStepText}>Accepted</Text>
-                            </View>
-                            <View style={[
-                                styles.statusConnector,
-                                rideStarted && styles.statusConnectorActive
-                            ]} />
-                            <View style={[
-                                styles.statusStep,
-                                rideStarted && styles.statusStepActive
-                            ]}>
-                                <MaterialIcons
-                                    name={rideStarted ? "check-circle" : "radio-button-unchecked"}
-                                    size={24}
-                                    color={rideStarted ? "#4CAF50" : "#BBBBBB"}
-                                />
-                                <Text style={styles.statusStepText}>Picked Up</Text>
-                            </View>
-                            <View style={[
-                                styles.statusConnector,
-                                rideCompleted && styles.statusConnectorActive
-                            ]} />
-                            <View style={[
-                                styles.statusStep,
-                                rideCompleted && styles.statusStepActive
-                            ]}>
-                                <MaterialIcons
-                                    name={rideCompleted ? "check-circle" : "radio-button-unchecked"}
-                                    size={24}
-                                    color={rideCompleted ? "#4CAF50" : "#BBBBBB"}
-                                />
-                                <Text style={styles.statusStepText}>Completed</Text>
-                            </View>
-                        </View>
+                <Divider style={{ marginVertical: 10 }} />
+
+                {/* Location Details */}
+                <View style={{ marginBottom: 15 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                        <View style={{
+                            backgroundColor: '#4CAF50',
+                            width: 10,
+                            height: 10,
+                            borderRadius: 5,
+                            marginRight: 10
+                        }} />
+                        <Text style={{ flex: 1 }}>{pickup_desc}</Text>
                     </View>
 
-                    {/* Ride Details Card */}
-                    <View style={styles.rideInfoCard}>
-                        <View style={styles.rideInfoHeader}>
-                            <Text style={styles.rideInfoTitle}>Ride Details</Text>
-                            <View style={styles.rideStatusBadge}>
-                                <Text style={styles.rideStatusText}>
-                                    {rideCompleted ? "Completed" : rideStarted ? "In Progress" : "Upcoming"}
-                                </Text>
-                            </View>
-                        </View>
-
-                        <Divider style={styles.divider} />
-
-                        {/* Locations */}
-                        <View style={styles.locationsContainer}>
-                            <View style={styles.locationItem}>
-                                <View style={styles.locationIconContainer}>
-                                    <MaterialIcons name="my-location" size={20} color="#4CAF50" />
-                                </View>
-
-                                <View style={styles.locationTextContainer}>
-                                    <Text style={styles.locationLabel}>PICKUP</Text>
-                                    <Text style={styles.locationText} numberOfLines={2}>{pickup_desc}</Text>
-                                </View>
-                            </View>
-
-                            <View style={styles.locationConnector} />
-
-                            <View style={styles.locationItem}>
-                                <View style={styles.locationIconContainer}>
-                                    <MaterialIcons name="place" size={20} color="#FF9500" />
-                                </View>
-                                <View style={styles.locationTextContainer}>
-                                    <Text style={styles.locationLabel}>DROP-OFF</Text>
-                                    <Text style={styles.locationText} numberOfLines={2}>{drop_desc}</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        <Divider style={styles.divider} />
-
-                        {/* Ride Info Rows */}
-                        <View style={styles.infoGrid}>
-                            <View style={styles.infoGridItem}>
-                                <MaterialCommunityIcons name="car" size={20} color="#666" />
-                                <Text style={styles.infoGridLabel}>Vehicle</Text>
-                                <Text style={styles.infoGridValue}>{vehicleType || "Standard"}</Text>
-                            </View>
-
-                            <View style={styles.infoGridItem}>
-                                <MaterialCommunityIcons name="clock-outline" size={20} color="#666" />
-                                <Text style={styles.infoGridLabel}>ETA</Text>
-                                <Text style={styles.infoGridValue}>{eta || "25 min"}</Text>
-                            </View>
-
-                            <View style={styles.infoGridItem}>
-                                <MaterialCommunityIcons name="map-marker-distance" size={20} color="#666" />
-                                <Text style={styles.infoGridLabel}>Distance</Text>
-                                <Text style={styles.infoGridValue}>{kmOfRide ? `${kmOfRide} km` : "N/A"}</Text>
-                            </View>
-
-                            <View style={styles.infoGridItem}>
-                                <FontAwesome5 name="rupee-sign" size={20} color="#666" />
-                                <Text style={styles.infoGridLabel}>Fare</Text>
-                                <Text style={styles.infoGridValue}>₹{kmOfRide || "0"}</Text>
-                            </View>
-                        </View>
-
-                        {rider && (
-                            <>
-                                <Divider style={styles.divider} />
-
-                                {/* Rider Info */}
-                                <View style={styles.riderInfoContainer}>
-                                    <View style={styles.riderAvatarContainer}>
-                                        <Image
-                                            source={{
-                                                uri: rider.profileImage ||
-                                                    'https://images.unsplash.com/photo-1633332755192-727a05c4013d?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80'
-                                            }}
-                                            style={styles.riderAvatar}
-                                        />
-                                    </View>
-                                    <View style={styles.riderDetails}>
-                                        <Text style={styles.riderName}>{rider.name || "Passenger"}</Text>
-                                        <Text style={styles.riderPhone}>{rider.phone || "N/A"}</Text>
-                                    </View>
-                                    <TouchableOpacity
-                                        style={styles.callButton}
-                                        onPress={() => {
-                                            if (rider.phone) {
-                                                Linking.openURL(`tel:${rider.phone}`);
-                                            }
-                                        }}
-                                    >
-                                        <Ionicons name="call" size={20} color="#FFFFFF" />
-                                    </TouchableOpacity>
-                                </View>
-                            </>
-                        )}
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{
+                            backgroundColor: '#F44336',
+                            width: 10,
+                            height: 10,
+                            borderRadius: 5,
+                            marginRight: 10
+                        }} />
+                        <Text style={{ flex: 1 }}>{drop_desc}</Text>
                     </View>
-                </ScrollView>
+                </View>
+
+                {/* ETA Info */}
+                {!appState.rideStarted && (
+                    <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: '#f0f0f0',
+                        padding: 10,
+                        borderRadius: 8,
+                        marginBottom: 15
+                    }}>
+                        <MaterialIcons name="access-time" size={24} color="#FF3B30" style={{ marginRight: 10 }} />
+                        <Text>
+                            Estimated time to pickup: <Text style={{ fontWeight: 'bold' }}>
+                                {appState.timeToPickup || '0'} min
+                            </Text>
+                        </Text>
+                    </View>
+                )}
 
                 {/* Action Buttons */}
-                <View style={styles.actionButtonsContainer}>
-                    {!rideStarted ? (
-                        <LinearGradient
-                            colors={['#FF3B30', '#FF5E3A']}
-                            style={styles.actionButton}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                        >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    {!appState.rideStarted ? (
+                        <>
                             <TouchableOpacity
-                                style={styles.actionButtonTouchable}
-                                onPress={() => setShowOtpModal(true)}
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: '#f0f0f0',
+                                    padding: 15,
+                                    borderRadius: 8,
+                                    alignItems: 'center',
+                                    marginRight: 10
+                                }}
+                                onPress={() => updateState({ showCancelModal: true })}
                             >
-                                <MaterialIcons name="verified-user" size={24} color="#FFFFFF" />
-                                <Text style={styles.actionButtonText}>I've Arrived - Enter OTP</Text>
+                                <Text style={{ color: '#FF3B30', fontWeight: 'bold' }}>Cancel Ride</Text>
                             </TouchableOpacity>
-                        </LinearGradient>
-                    ) : !rideCompleted ? (
-                        <LinearGradient
-                            colors={['#4CAF50', '#45a049']}
-                            style={styles.actionButton}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                        >
+
                             <TouchableOpacity
-                                style={styles.actionButtonTouchable}
-                                onPress={handleCompleteRide}
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: '#FF3B30',
+                                    padding: 15,
+                                    borderRadius: 8,
+                                    alignItems: 'center'
+                                }}
+                                onPress={() => updateState({ showOtpModal: true })}
                             >
-                                <MaterialIcons name="check-circle" size={24} color="#FFFFFF" />
-                                <Text style={styles.actionButtonText}>Complete Ride</Text>
+                                <Text style={{ color: 'white', fontWeight: 'bold' }}>Enter OTP</Text>
                             </TouchableOpacity>
-                        </LinearGradient>
+                        </>
                     ) : (
-                        <LinearGradient
-                            colors={['#FF9500', '#F57C00']}
-                            style={styles.actionButton}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
+                        <TouchableOpacity
+                            style={{
+                                flex: 1,
+                                backgroundColor: '#4CAF50',
+                                padding: 15,
+                                borderRadius: 8,
+                                alignItems: 'center'
+                            }}
+                            onPress={handleCompleteRide}
                         >
-                            <TouchableOpacity
-                                style={styles.actionButtonTouchable}
-                                onPress={() => navigation.navigate('collect_money', { data: params?.rideDetails })}
-                            >
-                                <FontAwesome5 name="money-bill-wave" size={24} color="#FFFFFF" />
-                                <Text style={styles.actionButtonText}>Collect Payment</Text>
-                            </TouchableOpacity>
-                        </LinearGradient>
+                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Complete Ride</Text>
+                        </TouchableOpacity>
                     )}
                 </View>
-
-                {!rideStarted || !rideCompleted ? (
-                    <LinearGradient
-                        colors={['#FF9500', '#F57C00']}
-                        style={styles.actionButton}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                    >
-                        <TouchableOpacity
-                            style={styles.actionButtonTouchable}
-                            onPress={() => setCancelModel(true)}
-                        >
-                            <FontAwesome5 name="money-bill-wave" size={24} color="#FFFFFF" />
-                            <Text style={styles.actionButtonText}>Cancel Ride</Text>
-                        </TouchableOpacity>
-                    </LinearGradient>
-                ) : null}
-
-                <CancelReasonsModel />
-                {/* OTP Modal */}
-                <Modal visible={showOtpModal} transparent={true} animationType="slide">
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalContent}>
-                            <View style={styles.modalHeader}>
-                                <Text style={styles.modalTitle}>Enter Passenger's OTP</Text>
-                                <TouchableOpacity
-                                    style={styles.modalCloseButton}
-                                    onPress={() => setShowOtpModal(false)}
-                                >
-                                    <Ionicons name="close" size={24} color="#666" />
-                                </TouchableOpacity>
-                            </View>
-
-                            <View style={styles.otpInputContainer}>
-                                <TextInput
-                                    style={styles.otpInput}
-                                    value={otp}
-                                    onChangeText={setOtp}
-                                    keyboardType="numeric"
-                                    maxLength={4}
-                                    placeholder="Enter 4-digit OTP"
-                                    placeholderTextColor="#999"
-                                />
-                            </View>
-
-                            <Text style={styles.otpInstructions}>
-                                Ask the passenger for the 4-digit OTP sent to their phone
-                            </Text>
-
-                            <LinearGradient
-                                colors={['#FF3B30', '#FF5E3A']}
-                                style={styles.otpSubmitButton}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                            >
-                                <TouchableOpacity
-                                    style={styles.otpSubmitButtonTouchable}
-                                    onPress={handleOtpSubmit}
-                                >
-                                    <Text style={styles.otpSubmitButtonText}>Verify & Start Ride</Text>
-                                </TouchableOpacity>
-                            </LinearGradient>
-                        </View>
-                    </View>
-                </Modal>
             </View>
+
+            {/* Modals */}
+            <OtpModal />
+            <CancelReasonsModal />
         </SafeAreaView>
     );
 }

@@ -3,15 +3,16 @@ import { View, Text, StyleSheet, Alert } from "react-native";
 import Input from "../../../components/Input";
 import Button from "../../../components/Button";
 import axios from 'axios';
+import { useNavigation } from "@react-navigation/native";
 
 const LoginForm = ({ onLogin }) => {
-    const [phone, setPhone] = useState("");
-
+    const [phone, setPhone] = useState("9638547963");
+    const navigation = useNavigation()
     const handleLogin = async () => {
         try {
             // Make the Axios request to the login endpoint
             const response = await axios.post('https://demoapi.olyox.com/api/v1/rider/rider-login', { number: phone });
-     
+
             if (response.data.success) {
                 console.log("Login successful", response.data);
                 onLogin(phone)
@@ -20,8 +21,24 @@ const LoginForm = ({ onLogin }) => {
                 console.log("Login failed", response.data.message);
             }
         } catch (error) {
-            Alert.alert('Error', error?.response?.data?.message)
-            console.error("Error during login:", error);
+
+            if (error?.response?.status === 403) {
+
+                Alert.alert('Complete Profile', error?.response?.data?.message, [{
+                    text: 'OK',
+                    onPress: () => navigation.navigate('register')
+                }])
+
+            } else if (error?.response?.status === 402) {
+                Alert.alert('Profile Not Found', error?.response?.data?.message, [{
+                    text: 'OK',
+                    onPress: () => navigation.navigate('enter_bh')
+                }])
+
+            } else {
+                Alert.alert('Error', error?.response?.data?.message)
+            }
+            console.error("Error during login:", error?.response?.status);
         }
     };
 
