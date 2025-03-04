@@ -7,7 +7,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
-
+import { AppRegistry } from 'react-native';
+import { name as appName } from './app.json';
 import { store } from './redux/store';
 import { SocketProvider } from './context/SocketContext';
 import { LocationProvider } from './context/LocationContext';
@@ -32,10 +33,18 @@ import RechargeHistory from './screens/Profile/RechargeHistory';
 import WorkingData from './screens/WorkingData/WorkingData';
 import ReferalHistory from './screens/Profile/ReferalHistory';
 import Withdraw from './screens/Profile/Withdraw';
+import * as Sentry from '@sentry/react-native';
+import ErrorBoundaryWrapper  from './ErrorBoundary'
 
 const Stack = createNativeStackNavigator();
-
-export default function App() {
+Sentry.init({
+  dsn: 'https://cb37ba59c700e925974e3b36d10e8e5b@o4508691997261824.ingest.us.sentry.io/4508692015022080',
+  environment: 'production',
+  enableInExpoDevelopment: true,
+  debug: false,
+  tracesSampleRate: 1.0,
+});
+const App=()=> {
   const [userType, setUserType] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isDocumentUploaded, setIsDocumentUploaded] = useState(false);
@@ -132,3 +141,13 @@ export default function App() {
     </Provider>
   );
 }
+const WrappedApp = Sentry.wrap(App);
+const RootApp = ()=>(
+  <ErrorBoundaryWrapper>
+    <WrappedApp />
+</ErrorBoundaryWrapper>
+)
+
+AppRegistry.registerComponent(appName, () => RootApp);
+
+export default RootApp;

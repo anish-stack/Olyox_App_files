@@ -24,17 +24,14 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8"
         }
-      },
-      "package": "com.happy_coding.OlyoxDriverApp"
-
+      }
     },
     "web": {
       "favicon": "./assets/ic_launcher-web.png"
@@ -48,12 +45,13 @@
           "android": {
             "playInBackground": true
           }
-          
         }
       ]
     ],
     "extra": {
-     
+      "eas": {
+        "projectId": "d97b4df4-2696-43c4-914c-2445d1a33907"
+      }
     }
   }
 }

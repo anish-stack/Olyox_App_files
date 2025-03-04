@@ -1,5 +1,5 @@
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { View, StyleSheet, Text, ScrollView, ImageBackground, TouchableOpacity } from "react-native"
 import { TextInput, Button, Card, Title, Paragraph, ActivityIndicator, Snackbar, Menu } from "react-native-paper"
 import axios from "axios"
@@ -30,6 +30,7 @@ export default function RegistrationForm() {
   const [step, setStep] = useState(1);
   const [bhId, setBhId] = useState(bh ?? "BH");
   const [userData, setUserData] = useState(null)
+  const [alltypes, setAllTypes] = useState([])
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
   const [vehicleName, setVehicleName] = useState("")
@@ -42,7 +43,7 @@ export default function RegistrationForm() {
   const [vehicleTypeMenuVisible, setVehicleTypeMenuVisible] = useState(false)
   const [vehicleNameMenuVisible, setVehicleNameMenuVisible] = useState(false)
   const navigation = useNavigation()
-  console.log(bh)
+  // console.log(bh)
   const fetchUserDetails = async () => {
     if (!bhId) {
       setError("Please enter a BH ID")
@@ -68,6 +69,28 @@ export default function RegistrationForm() {
       setLoading(false)
     }
   }
+
+
+  const fetchTypes = async () => {
+    try {
+      const response = await axios.get(`https://demoapi.olyox.com/api/v1/admin/getAllSuggestions`)
+      if (response.data.success) {
+        setAllTypes(response.data.data)
+      }
+      else {
+        setAllTypes([])
+
+      }
+    } catch (error) {
+      Alert.alert('Vehicle type Found', 'Please Re try After Some Time', [{
+        text: 'OK',
+
+      }])
+    }
+  }
+  useEffect(() => {
+    fetchTypes()
+  }, [])
 
   const registerRider = async () => {
     if (!validateForm()) {
@@ -187,11 +210,7 @@ export default function RegistrationForm() {
         <Card.Content>
           <Title style={styles.cardTitle}>User Information</Title>
           <Paragraph style={styles.cardParagraph}>Name: {userData.name}</Paragraph>
-          <Paragraph style={styles.cardParagraph}>Email: {userData.email}</Paragraph>
-          <Paragraph style={styles.cardParagraph}>Plan: {userData?.member_id?.title || ""}</Paragraph>
-          <Paragraph style={styles.cardParagraph}>
-            Free Plan Active: {userData.isFreePlanActive ? "Yes" : "No"}
-          </Paragraph>
+        
           <Paragraph style={styles.cardParagraph}>Category: {userData.category.title}</Paragraph>
         </Card.Content>
       </Card>
@@ -247,14 +266,14 @@ export default function RegistrationForm() {
           </Button>
         }
       >
-        {vehicleTypes.map((type) => (
+        {alltypes && alltypes.map((type, index) => (
           <Menu.Item
-            key={type}
+            key={index}
             onPress={() => {
-              setVehicleType(type)
+              setVehicleType(type?.name)
               setVehicleTypeMenuVisible(false)
             }}
-            title={type}
+            title={type?.name || "Not-available"}
           />
         ))}
       </Menu>
