@@ -737,4 +737,89 @@ exports.updateBlockStatus = async (req, res) => {
 }
 
 
+exports.getSingleRider = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const rider = await Rider.findById(id);
+    if (!rider) {
+      return res.status(404).json({ success: false, message: "Rider not found" });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Rider found successfully",
+      data: rider
+    })
+  } catch (error) {
+    console.log("Internal server error", error)
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    })
+  }
+}
 
+exports.updateRiderDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, rideVehicleInfo } = req.body;
+
+    // Find the existing rider
+    const existingData = await Rider.findById(id);
+    if (!existingData) {
+      return res.status(404).json({ success: false, message: "Rider not found" });
+    }
+
+    console.log("Existing Rider Data:", existingData);
+
+    // Update basic details if provided
+    if (name) existingData.name = name;
+    if (phone) existingData.phone = phone;
+
+    // Update ride vehicle details if provided
+    if (rideVehicleInfo) {
+      existingData.rideVehicleInfo = {
+        ...existingData.rideVehicleInfo,
+        ...rideVehicleInfo, // Merge existing & new data
+      };
+    }
+
+    console.log("Received Files:", req.files);
+
+    // Handle document uploads if files are provided
+    if (req.files && req.files.length > 0) {
+      const uploadedDocs = { ...existingData.documents };
+
+      for (const file of req.files) {
+        // Upload file to Cloudinary
+        const uploadResponse = await cloudinary.uploader.upload(file.path, { folder: "rider_documents" });
+
+        console.log(`Uploading file: ${file.fieldname} -> ${uploadResponse.secure_url}`);
+
+        // Assign uploaded file URL dynamically based on fieldname
+        uploadedDocs[file.fieldname] = uploadResponse.secure_url;
+
+        // Delete the local file after upload
+        fs.unlinkSync(file.path);
+      }
+
+      // Merge updated documents with existing ones
+      existingData.documents = { ...existingData.documents, ...uploadedDocs };
+      existingData.markModified("documents"); // Ensure Mongoose detects the change
+    }
+
+    // Save the updated rider details
+    await existingData.save();
+
+    console.log("Updated Rider Data:", await Rider.findById(id));
+
+    res.status(200).json({ success: true, message: "Rider details updated successfully", data: existingData });
+  } catch (error) {
+    console.error("Internal server error", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
