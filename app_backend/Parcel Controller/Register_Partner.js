@@ -443,3 +443,28 @@ exports.partner_work_status = async (req, res) => {
         res.status(500).json({ message: 'An error occurred while fetching partner status' });
     }
 };
+
+
+exports.getAllParcelUser = async (req, res) => {
+    try {
+        const allParcelUser = await Parcel_Bike_Register.find()
+        if (!allParcelUser) {
+            return res.status(400).json({
+                success: false,
+                message: 'No parcel user found',
+            })
+        }
+        res.status(200).json({
+            success: true,
+            message: 'All parcel user fetched successfully',
+            data: allParcelUser
+        })
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        })
+    }
+}

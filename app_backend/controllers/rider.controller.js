@@ -758,7 +758,21 @@ exports.getSingleRider = async (req, res) => {
     })
   }
 }
-
+exports.updateRiderDocumentVerify = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { DocumentVerify } = req.body;
+    const rider = await Rider.findById(id);
+    if (!rider) {
+      return res.status(404).json({ success: false, message: "Rider not found" });
+    }
+    rider.DocumentVerify = DocumentVerify;
+    const result = await rider.save();
+    return res.status(200).json({ success: true, message: "Documents verified successfully", data: result });
+  } catch (error) {
+    console.log("Internal server error", error)
+  }
+}
 exports.updateRiderDetails = async (req, res) => {
   try {
     const { id } = req.params;

@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const Protect = require('../../middleware/Auth');
-const { register_parcel_partner, login, verifyOtp, resendOtp, details, partner_work_status, manage_offline_online, uploadDocuments } = require('../../Parcel Controller/Register_Partner');
+const { register_parcel_partner, login, verifyOtp, resendOtp, details, partner_work_status, manage_offline_online, uploadDocuments, getAllParcelUser } = require('../../Parcel Controller/Register_Partner');
 const { request_of_parcel, my_parcel, single_my_parcel, my_parcel_driver, single_my_parcels, get_all_parcel } = require('../../Parcel Controller/Order.Parcel');
 
 const parcel = express.Router();
@@ -34,6 +34,6 @@ parcel.get('/get_parcel_order',get_all_parcel)
 parcel.post('/request_of_parcel', Protect, request_of_parcel)
 
 
-
+parcel.get('/get_all_parcel_user',getAllParcelUser)
 
 module.exports = parcel
