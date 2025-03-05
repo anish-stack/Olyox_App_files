@@ -543,3 +543,48 @@ ${guestInformation.map(
         return res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
+
+
+
+
+
+exports.getAllHotelBooking = async (req, res) => {
+    try {
+        const allHotelBooking = await BookingRequestSchema.find().populate("listing_id").populate('HotelUserId').populate('guest_id');
+        if (!allHotelBooking) {
+            return res.status(400).json({
+                success: false,
+                message: "Internal server error"
+            })
+        }
+        return res.status(200).json({
+            success: true,
+            message: 'Hotel order founded',
+            data: allHotelBooking
+        })
+    } catch (error) {
+        console.log('Internal server error', error)
+        return res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+    }
+}
+
+exports.getSingleHotelBooking = async (req, res) => {
+    try {
+        const {id} = req.params;
+        const allHotelBooking = await BookingRequestSchema.findById(id).populate("listing_id").populate('HotelUserId').populate('guest_id');;
+        if (!allHotelBooking) {
+            return res.status(400).json({
+                success: false,
+                message: "Internal server error"
+            })
+        }
+        return res.status(200).json({
+            success: true,
+            message: 'Hotel order founded',
+            data: allHotelBooking
+        })
+    } catch (error) {
+        console.log('Internal server error', error)
+        return res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+    }
+}

@@ -774,3 +774,48 @@ const calculateRidePriceForConfirmRide = async (data) => {
         return { success: false, message: "Failed to calculate the ride price" };
     }
 };
+
+
+
+exports.getAllRides = async (req,res) => {
+    try {
+        const allRides = await RideRequest.find().populate('rider').populate('user')
+        if(!allRides){
+            return res.status(404).json({success:false,message:"No rides found"})
+        }
+        res.status(200).json({
+            success: true,
+            message: "All rides founded",
+            data: allRides
+        })
+    } catch (error) {
+        console.log("Internal server error",error)
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        })
+    }
+}
+
+exports.getSingleRides = async (req,res) => {
+    try {
+        const {id} = req.params;
+        const allRides = await RideRequest.findById(id).populate('rider').populate('user')
+        if(!allRides){
+            return res.status(404).json({success:false,message:"No rides found"})
+        }
+        res.status(200).json({
+            success: true,
+            message: "All rides founded",
+            data: allRides
+        })
+    } catch (error) {
+        console.log("Internal server error",error)
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        })
+    }
+}

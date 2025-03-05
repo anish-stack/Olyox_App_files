@@ -313,10 +313,7 @@ exports.single_my_parcel = async (req, res) => {
 exports.single_my_parcels = async (req, res) => {
     try {
         const { id } = req.query
-        console.log("sss", id)
 
-
-        // Find parcels related to the user
         const find = await Parcel_Request.findOne({
 
             _id: id
@@ -324,7 +321,6 @@ exports.single_my_parcels = async (req, res) => {
             .populate('driverId')
             .sort({ createdAt: -1 });
 
-        // Return the response
         return res.status(200).json({
             status: true,
             message: "Parcels fetched successfully",
@@ -340,3 +336,29 @@ exports.single_my_parcels = async (req, res) => {
         });
     }
 };
+
+
+exports.get_all_parcel = async (req,res) => {
+    try {
+        const allParcelOrder = await Parcel_Request.find().populate('driverId')
+        .sort({ createdAt: -1 });
+        if(!allParcelOrder){
+            return res.status(400).json({
+                success: false,
+                message: "Parcel order not found"
+            })
+        }
+        return res.status(200).json({
+            success: true,
+            message: "Parcel order founded",
+            data: allParcelOrder
+        })
+    } catch (error) {
+        console.log("Internal server error",error)
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        })
+    }
+}

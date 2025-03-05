@@ -31,7 +31,8 @@
         "googleMaps": {
           "apiKey": "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8"
         }
-      }
+      },
+      "package": "com.hbsdevelopersteam.OlyoxDriverApp"
     },
     "web": {
       "favicon": "./assets/ic_launcher-web.png"
@@ -50,7 +51,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "d97b4df4-2696-43c4-914c-2445d1a33907"
+        "projectId": "263fee06-f9eb-448b-8333-7b201326ba92"
       }
     }
   }

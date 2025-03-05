@@ -2,7 +2,7 @@ const express = require('express');
 const { register_hotel_user, add_hotel_listing,find_My_rooms, getHotelsNearByMe, getHotelsDetails, getHotelsListingDetails, verifyOtp, resendOtp, find_Hotel_Login, toggleHotelStatus, LoginHotel, toggleRoomStatus, deleteHotelRoom, uploadDocuments, getAllHotel, verifyDocuments, getSingleHotelDetails, updateHotelBlock, updateHotelUserDetail } = require('../hotel_controllers/hotel.user.controller');
 const Protect = require('../middleware/Auth');
 const upload = require('../middleware/multer');
-const { makeBookingOffline, verifyOtpForBooking, resendOtpForBookingConfirm, UpdateBooking, getMyBookingAll, markCheckIn, markCheckOut, getAllUniqueGuestAndBookingAndHerAmount, UserMakesBooking } = require('../hotel_controllers/BookingHotel');
+const { makeBookingOffline, verifyOtpForBooking, resendOtpForBookingConfirm, UpdateBooking, getMyBookingAll, markCheckIn, markCheckOut, getAllUniqueGuestAndBookingAndHerAmount, UserMakesBooking, getAllHotelBooking, getSingleHotelBooking } = require('../hotel_controllers/BookingHotel');
 const hotel_router = express.Router()
 const uploadFields = upload.fields([
     { name: 'aadhar_front', maxCount: 1 },
@@ -62,6 +62,7 @@ hotel_router.get('/get-bookings', Protect, getMyBookingAll)
 hotel_router.post('/mark-check-in-booking', Protect, markCheckIn)
 hotel_router.post('/mark-check-out-booking', Protect, markCheckOut)
 hotel_router.get('/get-guests', Protect, getAllUniqueGuestAndBookingAndHerAmount)
-
+hotel_router.get('/get_all_hotel_booking',getAllHotelBooking)
+hotel_router.get('/get_single_hotel_booking/:id',getSingleHotelBooking)
 
 module.exports = hotel_router;
