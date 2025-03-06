@@ -90,7 +90,7 @@ export default function ShowMap({ data }) {
         source={{ uri: 'https://images.unsplash.com/photo-1618005198919-d3d4b5a23cbb?q=80&w=1000&auto=format&fit=crop' }}
         style={styles.coinIcon}
       />
-      <Text style={styles.rewardText}>Get up to 8 OlaCoins with this booking</Text>
+      <Text style={styles.rewardText}>Get up to 8 OlyoxCoin with this booking</Text>
     </View>
   );
 
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    height:height,
+    height: height,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.8)",

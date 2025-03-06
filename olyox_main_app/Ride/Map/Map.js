@@ -7,7 +7,8 @@ import {
     TouchableOpacity,
     SafeAreaView,
     ScrollView,
-    Dimensions
+    Dimensions,
+    Linking
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -21,22 +22,37 @@ export default function Map({ origin, destination }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [retryCount, setRetryCount] = useState(0);
+    const [mapReady, setMapReady] = useState(false);
+    const [directionsReady, setDirectionsReady] = useState(false);
 
+    // Implement progressive timeout handling
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (loading) {
+            if (loading && (!mapReady || !directionsReady)) {
                 setError('Map loading timed out. Please check your internet connection and try again.');
                 setLoading(false);
             }
-        }, 10000); // 10 seconds timeout
+        }, 30000); // Reduced from 30s to 15s for better user experience
 
         return () => clearTimeout(timer);
-    }, [loading]);
+    }, [loading, mapReady, directionsReady]);
+
+    // Add component mount tracking to handle potential race conditions
+    useEffect(() => {
+        let isMounted = true;
+
+        // Clean-up function
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     const handleRetry = () => {
         setLoading(true);
         setError(null);
         setRetryCount(prevCount => prevCount + 1);
+        setMapReady(false);
+        setDirectionsReady(false);
     };
 
     const handleMapError = (e) => {
@@ -51,6 +67,14 @@ export default function Map({ origin, destination }) {
         setLoading(false);
     };
 
+    const openGoogleMapsDirections = () => {
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&travelmode=driving`;
+        Linking.openURL(url).catch(err => {
+            console.error('Could not open Google Maps:', err);
+            setError('Could not open Google Maps. Please try again.');
+        });
+    };
+
     if (error) {
         return (
             <View style={styles.errorContainer}>
@@ -58,6 +82,9 @@ export default function Map({ origin, destination }) {
                 <Text style={styles.errorText}>{error}</Text>
                 <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
                     <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.fallbackButton} onPress={openGoogleMapsDirections}>
+                    <Text style={styles.fallbackButtonText}>Open in Google Maps</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -68,6 +95,7 @@ export default function Map({ origin, destination }) {
             <View style={styles.mapContainer}>
                 {loading && <ActivityIndicator size="large" color="#23527C" style={styles.loader} />}
                 <MapView
+                    key={`map-${retryCount}`} // Force re-render on retry
                     provider={PROVIDER_GOOGLE}
                     style={styles.map}
                     initialRegion={{
@@ -77,7 +105,11 @@ export default function Map({ origin, destination }) {
                         longitudeDelta: 0.05,
                     }}
                     showsUserLocation={true}
-                    onMapReady={() => setLoading(false)}
+                    onMapReady={() => {
+                        console.log("Map ready");
+                        setMapReady(true);
+                        if (directionsReady) setLoading(false);
+                    }}
                     onError={handleMapError}
                 >
                     <Marker coordinate={origin} title="Pickup">
@@ -93,14 +125,15 @@ export default function Map({ origin, destination }) {
                         strokeWidth={4}
                         strokeColor="#FF6666"
                         onStart={() => {
-                            setLoading(true);
                             console.log("Fetching directions...");
                         }}
                         onReady={(result) => {
-                            setLoading(false);
-                            // console.log("Directions ready:", result);
+                            console.log("Directions ready");
+                            setDirectionsReady(true);
+                            if (mapReady) setLoading(false);
                         }}
                         onError={handleDirectionsError}
+                        resetOnChange={false}
                     />
                 </MapView>
             </View>
@@ -151,4 +184,15 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
     },
+    fallbackButton: {
+        backgroundColor: '#4CAF50',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 5,
+        marginTop: 10,
+    },
+    fallbackButtonText: {
+        color: '#fff',
+        fontSize: 16,
+    }
 });

@@ -312,7 +312,7 @@ export function BookingConfirmation() {
 
             // Check if socket is connected
             if (!socket()) {
-                setError('Not connected to server. Please check your internet connection and try again.');
+                // setError('Not connected to server. Please check your internet connection and try again.');
                 setLoading(false);
                 setTimeoutActive(false);
                 return;
