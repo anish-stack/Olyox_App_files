@@ -426,3 +426,28 @@ exports.admin_cancel_order = async (req, res) => {
         return res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
+
+exports.getAllTiffinOrder = async (req, res) => {
+    try {
+        const allOrder = await RestuarntOrderModel.find()
+            .sort({ createdAt: -1 })
+            .populate("items.foodItem_id")
+            .populate("user")
+            .populate("restaurant");
+            
+        if(!allOrder){
+            return res.status(400).json({
+                success: false,
+                message: "Order not found"
+            })
+        }
+        return res.status(200).json({ success: true, data: allOrder });
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: "Internal servere error",
+            error: error.message
+        })
+    }
+}

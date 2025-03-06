@@ -468,3 +468,119 @@ exports.getAllParcelUser = async (req, res) => {
         })
     }
 }
+
+exports.getSingleParcelUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const parcelUser = await Parcel_Bike_Register.findOne({ _id: id });
+        if (!parcelUser) {
+            return res.status(404).json({ success: false, message: "Parcel user not found" });
+        }
+        res.status(200).json({ success: true, message: "Parcel user fetched successfully", data: parcelUser });
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        })
+    }
+}
+
+exports.updateParcelIsBlockStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isBlockByAdmin } = req.body;
+        const parcelUser = await Parcel_Bike_Register.findOne({ _id: id });
+        if (!parcelUser) {
+            return res.status(404).json({ success: false, message: "Parcel user not found" });
+        }
+        parcelUser.isBlockByAdmin = isBlockByAdmin;
+        await parcelUser.save();
+        res.status(200).json({ success: true, message: "Parcel user updated successfully" });
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        })
+    }
+}
+
+exports.ParcelDocumentVerify = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { DocumentVerify } = req.body;
+        const parcelUser = await Parcel_Bike_Register.findOne({ _id: id });
+        if (!parcelUser) {
+            return res.status(404).json({ success: false, message: "Parcel user not found" });
+        }
+        parcelUser.DocumentVerify = DocumentVerify;
+        await parcelUser.save();
+        res.status(200).json({ success: true, message: "Parcel user updated successfully" });
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        })
+    }
+}
+
+exports.updateParcelDetail = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, phone, address, type, bikeDetails } = req.body;
+        // console.log("data", req.body);
+
+        const parcelUser = await Parcel_Bike_Register.findById(id);
+        if (!parcelUser) {
+            return res.status(404).json({ success: false, message: "Parcel user not found" });
+        }
+
+        // Update user fields
+        if (name) parcelUser.name = name;
+        if (phone) parcelUser.phone = phone;
+        if (address) parcelUser.address = address;
+        if (type) parcelUser.type = type;
+
+        // Update bike details properly
+        if (bikeDetails) {
+            parcelUser.bikeDetails = {
+                ...parcelUser.bikeDetails,
+                ...bikeDetails
+            };
+        }
+
+        // Handle file uploads
+        if (req.files && req.files.length > 0) {
+            const uploadedDocs = { ...parcelUser.documents };
+
+            for (const file of req.files) {
+                const uploadResponse = await cloudinary.uploader.upload(file.path, { folder: "parcel_documents" });
+                // console.log("uploadResponse", uploadResponse);
+
+                uploadedDocs[file.fieldname] = uploadResponse.secure_url;
+                fs.unlinkSync(file.path); // Remove local file
+            }
+
+            parcelUser.documents = { ...parcelUser.documents, ...uploadedDocs };
+            parcelUser.isDocumentUpload = true;
+
+            // Ensure mongoose detects document changes
+            parcelUser.markModified("documents");
+        }
+
+        await parcelUser.save();
+        res.status(200).json({ success: true, message: "Parcel user updated successfully", data: parcelUser });
+    } catch (error) {
+        console.error("Internal server error", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+};

@@ -927,16 +927,117 @@ exports.verifyDocuments = async (req, res) => {
     }
 }
 
-exports.updateHotelUserDetail = async (req, res) => {
+exports.updateHotelDetail = async (req, res) => {
     try {
         const { id } = req.params;
-        const {hotel_name,hotel_zone,hotel_address,hotel_owner,hotel_phone,amenities,} = req.body;
+        const { hotel_name, hotel_zone, hotel_owner, hotel_phone, amenities } = req.body;
+
+        // Parse the amenities if it's a string (because it's sent as JSON string from frontend)
+        let parsedAmenities = amenities;
+        if (typeof amenities === 'string') {
+            parsedAmenities = JSON.parse(amenities); // Parse the stringified JSON
+        }
+
+        // Find the hotel document by ID
+        const hotel = await HotelUser.findById(id);
+        if (!hotel) {
+            return res.status(404).json({
+                success: false,
+                message: "No hotel found"
+            });
+        }
+
+        // Array of document fields that might have images uploaded
+        const documentFields = ['aadhar_front', 'aadhar_Back', 'panCard', 'gst', 'addressProof', 'ProfilePic'];
+        const documents = [];
+
+        // Function to upload the image to Cloudinary
+        const uploadImage = async (file) => {
+            if (!file) return null;
+            const result = await cloudinary.uploader.upload(file.path, {
+                folder: "hotel_listings_documents"
+            });
+            return { url: result.secure_url, public_id: result.public_id };
+        };
+
+       // Loop through the document fields and handle image uploads and replacement
+for (const field of documentFields) {
+    if (req.files && req.files[field]) {
+        const uploadedImage = await uploadImage(req.files[field][0]);
+
+        if (uploadedImage) {
+            // Remove old image from Cloudinary if a new one is uploaded
+            const existingDocument = hotel.Documents.find(doc => doc.d_type === field);
+            if (existingDocument) {
+                await cloudinary.uploader.destroy(existingDocument.d_public_id);
+            }
+
+            // Add the new document to the list
+            documents.push({
+                d_type: field,
+                d_url: uploadedImage.url,
+                d_public_id: uploadedImage.public_id
+            });
+        }
+    } else {
+        // If no new file, keep the existing document if it exists
+        const existingDocument = hotel.Documents.find(doc => doc.d_type === field);
+        if (existingDocument) {
+            documents.push(existingDocument);
+        }
+    }
+}
+
+
+        // Update hotel details, including new documents array
+        hotel.Documents = documents;
+        hotel.hotel_name = hotel_name || hotel.hotel_name;
+        hotel.hotel_zone = hotel_zone || hotel.hotel_zone;
+        hotel.hotel_owner = hotel_owner || hotel.hotel_owner;
+        hotel.hotel_phone = hotel_phone || hotel.hotel_phone;
+
+        // Handle amenities update
+        if (parsedAmenities) {
+            hotel.amenities = {
+                AC: parsedAmenities.AC ?? hotel.amenities.AC,
+                freeWifi: parsedAmenities.freeWifi ?? hotel.amenities.freeWifi,
+                kitchen: parsedAmenities.kitchen ?? hotel.amenities.kitchen,
+                TV: parsedAmenities.TV ?? hotel.amenities.TV,
+                powerBackup: parsedAmenities.powerBackup ?? hotel.amenities.powerBackup,
+                geyser: parsedAmenities.geyser ?? hotel.amenities.geyser,
+                parkingFacility: parsedAmenities.parkingFacility ?? hotel.amenities.parkingFacility,
+                elevator: parsedAmenities.elevator ?? hotel.amenities.elevator,
+                cctvCameras: parsedAmenities.cctvCameras ?? hotel.amenities.cctvCameras,
+                diningArea: parsedAmenities.diningArea ?? hotel.amenities.diningArea,
+                privateEntrance: parsedAmenities.privateEntrance ?? hotel.amenities.privateEntrance,
+                reception: parsedAmenities.reception ?? hotel.amenities.reception,
+                caretaker: parsedAmenities.caretaker ?? hotel.amenities.caretaker,
+                security: parsedAmenities.security ?? hotel.amenities.security,
+                checkIn24_7: parsedAmenities.checkIn24_7 ?? hotel.amenities.checkIn24_7,
+                dailyHousekeeping: parsedAmenities.dailyHousekeeping ?? hotel.amenities.dailyHousekeeping,
+                fireExtinguisher: parsedAmenities.fireExtinguisher ?? hotel.amenities.fireExtinguisher,
+                firstAidKit: parsedAmenities.firstAidKit ?? hotel.amenities.firstAidKit,
+                buzzerDoorBell: parsedAmenities.buzzerDoorBell ?? hotel.amenities.buzzerDoorBell,
+                attachedBathroom: parsedAmenities.attachedBathroom ?? hotel.amenities.attachedBathroom,
+            };
+        }
+
+        // Save the updated hotel details
+        await hotel.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Hotel details updated successfully",
+            hotel
+        });
+
+
     } catch (error) {
-        console.log("Internal server error",error)
+        console.log("Internal server error", error);
         res.status(500).json({
             success: false,
             message: "Internal server error",
             error: error.message
-        })
+        });
     }
-}
+};
