@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const { register_restaurant, register_restaurant_fake, add_food_listing, get_all_listing, get_All_tiffin_id, login, verify_otp, getSingleTiffinProfile, delete_food_listing, updateIsWorking, update_available_status, passwordChange, resend_otp, getFoodListingById, getCustomTiffinListingById, updateLogo, updateResturant, updateTiffinDocumentVerify } = require('../../Tiffins/Create_Restaurant');
 const { find_Restaurant, find_Restaurant_foods, find_Restaurant_And_Her_foods, find_RestaurantTop, getPackages, find_RestaurantbyId, update_Restaurant_status } = require('../../Tiffins/Get_resturant');
-const { create_order_of_food, cancel_order, admin_cancel_order, get_my_latest_order, get_order_by_id, get_orders_by_restaurant, change_order_status } = require('../../Tiffins/Food_Order');
+const { create_order_of_food, cancel_order, admin_cancel_order, get_my_latest_order, get_order_by_id, get_orders_by_restaurant, change_order_status, getAllTiffinOrder } = require('../../Tiffins/Food_Order');
 const { createCustomTiffin, getAllTiffinPlans, getTiffinPlanById, updateTiffinPlan, deleteTiffinPlan, tryhit, updateAvailableTiffinPlans } = require('../../Tiffins/CustomTiffine_controller');
 const Protect = require('../../middleware/Auth');
 
@@ -66,6 +66,8 @@ tiffin.get("/get_custom_tiffin_by_id/:id", getTiffinPlanById);
 tiffin.put("/update_custom_tiffin/:id", updateTiffinPlan);
 tiffin.delete("/delete_custom_tiffin/:id", deleteTiffinPlan);
 tiffin.put('/update_tiffin_availability/:id', updateAvailableTiffinPlans);
+
+tiffin.get('/get_all_orders',getAllTiffinOrder)
 
 // tiffin
 
