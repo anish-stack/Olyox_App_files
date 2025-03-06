@@ -9,8 +9,9 @@ const { createCancelReason,
     getAllCancelReasons,
     getSingleCancelReason,
     deleteCancelReason,
-    toggleCancelReason } = require('../../Admin Controllers/settings/cancelReason');
-const { createHeavyOption, getAllHeavyTransports, getHeavyTransportById, updateHeavyTransport, toggleActiveStatus } = require('../../Admin Controllers/settings/HeavyTransport');
+    toggleCancelReason, 
+    getAllCancelReasonsAdmin} = require('../../Admin Controllers/settings/cancelReason');
+const { createHeavyOption, getAllHeavyTransports, getHeavyTransportById, updateHeavyTransport, toggleActiveStatus, deleteHeavyTransport } = require('../../Admin Controllers/settings/HeavyTransport');
 
 const admin = express.Router();
 
@@ -31,18 +32,19 @@ admin.post('/updateSetting', updateSetting)
 
 //Cancel reason settings
 admin.post('/cancel-reasons', createCancelReason)
+admin.get('/get-All-Cancel-Reasons-Admin',getAllCancelReasonsAdmin)
 admin.put("/cancel-reasons/:id", updateCancelReason);
 admin.get("/cancel-reasons", getAllCancelReasons);
 admin.get("/cancel-reasons/:id", getSingleCancelReason);
 admin.delete("/cancel-reasons/:id", deleteCancelReason);
-admin.patch("/cancel-reasons/toggle/:id", toggleCancelReason);
+admin.put("/toggle-cancel-reasons/:id", toggleCancelReason);
 
 //admin heavy vehicle settings
 admin.post('/create-heavy', upload.single('image'),createHeavyOption);
-admin.post('/update-heavy/:id', upload.single('image'),updateHeavyTransport);
+admin.put('/update-heavy/:id', upload.single('image'),updateHeavyTransport);
 admin.get('/get-heavy',getAllHeavyTransports);
-admin.get('/get-single-heavy/::id',getHeavyTransportById);
-admin.delete('/delete-heavy',createHeavyOption);
+admin.get('/get-single-heavy/:id',getHeavyTransportById);
+admin.delete('/delete-heavy/:id',deleteHeavyTransport);
 admin.post('/toggle-status-heavy/id',toggleActiveStatus);
 
 admin.post('/createSuggestion', createSuggestion);

@@ -51,6 +51,18 @@ exports.getAllCancelReasons = async (req, res) => {
     }
 };
 
+exports.getAllCancelReasonsAdmin = async (req, res) => {
+    try{
+const allReason = await CancelReason.find({});
+if(!allReason){
+    return res.status(400).json({ message: "No cancel reason found" });
+}
+res.status(200).json({ success: true, message: "Cancel reasons fetched successfully", data: allReason });
+    }catch(error){
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+}
+
 // Get a single cancel reason by ID
 exports.getSingleCancelReason = async (req, res) => {
     try {
@@ -87,13 +99,16 @@ exports.deleteCancelReason = async (req, res) => {
 exports.toggleCancelReason = async (req, res) => {
     try {
         const { id } = req.params;
+        const { status } = req.body;
+        console.log('data',id)
         const cancelReason = await CancelReason.findById(id);
 
         if (!cancelReason) {
             return res.status(404).json({ message: "Cancel reason not found" });
         }
 
-        cancelReason.status = cancelReason.status === "active" ? "inactive" : "active";
+        // cancelReason.status = cancelReason.status === "active" ? "inactive" : "active";
+        cancelReason.status = status;
         await cancelReason.save();
 
         res.status(200).json({ message: "Cancel reason status updated", data: cancelReason });

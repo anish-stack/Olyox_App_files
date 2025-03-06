@@ -1041,3 +1041,33 @@ for (const field of documentFields) {
         });
     }
 };
+
+exports.geHotelListingByHotelUser = async (req, res) => {
+    try {
+        const { id } = req.params; // Get hotel user ID from request params
+        
+        // Find hotel listings by hotel_user ID
+        const hotelListings = await HotelListing.find({ hotel_user: id });
+
+        // If no hotel listings found for the given hotel user, return a 404 error
+        if (!hotelListings || hotelListings.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No hotel listings found for this hotel user",
+            });
+        }
+
+        // Return the hotel listings for the specific hotel user
+        res.status(200).json({
+            success: true,
+            data: hotelListings,
+        });
+    } catch (error) {
+        console.log("Internal server error", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+};
