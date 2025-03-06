@@ -19,6 +19,9 @@ const RiderSchema = new Schema({
             type: Number
 
         },
+        RcExpireDate: {
+            type: String
+        },
         VehicleNumber: {
             type: String,
             required: true,

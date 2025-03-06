@@ -5,6 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import { tokenCache } from '../Auth/cache';
 import { find_me } from '../utils/helpers';
 import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 
@@ -13,14 +15,14 @@ const { width } = Dimensions.get('window');
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 export default function UserProfile() {
-    const { isSignedIn } = useAuth();
-    const { user } = useUser();
+
     const navigation = useNavigation();
     const [activeTab, setActiveTab] = useState('Orders');
     const [userData, setUserData] = useState(null);
     const [orderData, setOrderData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [expandedOrder, setExpandedOrder] = useState(null);
+    const [image, setImage] = useState(null);
 
     useEffect(() => {
         fetchData();
@@ -43,6 +45,33 @@ export default function UserProfile() {
             setLoading(false);
         }
     };
+    useEffect(() => {
+        (async () => {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            console.log("status",status)
+            if (status !== 'granted') {
+                Alert.alert('Permission Required', 'Please grant permission to access the media library.');
+            }
+        })();
+    }, []);
+
+    const pickImage = async () => {
+        console.log("Opening image picker...");
+        
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images, // ✅ Fixed mediaTypes
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+        });
+
+        console.log(result);
+
+        if (!result.canceled && result.assets?.length > 0) { // ✅ Fixed check
+            setImage(result.assets[0].uri);
+        }
+    };
+
 
     const tabs = [
         { name: 'Orders', icon: 'restaurant-menu', count: orderData?.orderCounts?.foodOrders || 0 },
@@ -53,7 +82,7 @@ export default function UserProfile() {
 
     const renderOrderCard = (order) => (
         <AnimatedTouchableOpacity
-
+            key={order?._id.toString()}
             style={styles.orderCard}
             onPress={() => setExpandedOrder(expandedOrder === order._id ? null : order._id)}
         >
@@ -105,6 +134,7 @@ export default function UserProfile() {
 
         return (
             <AnimatedTouchableOpacity
+                key={ride?._id.toString()}
 
                 style={styles.orderCard}
                 onPress={() => setExpandedOrder(expandedOrder === ride._id ? null : ride._id)}
@@ -171,6 +201,7 @@ export default function UserProfile() {
 
     const renderParcelCard = (parcel) => (
         <AnimatedTouchableOpacity
+            key={parcel?._id.toString()}
 
             style={styles.orderCard}
             onPress={() => setExpandedOrder(expandedOrder === parcel._id ? null : parcel._id)}
@@ -216,6 +247,7 @@ export default function UserProfile() {
 
     const renderHotelCards = (hotelData) => (
         <AnimatedTouchableOpacity
+            key={hotelData?._id.toString()}
 
             style={styles.orderCard}
             onPress={() => setExpandedOrder(expandedOrder === hotelData._id ? null : hotelData._id)}
@@ -283,12 +315,29 @@ export default function UserProfile() {
                 style={styles.header}
             >
                 <View style={styles.profileSection}>
-                    <Image
-                        source={{ uri: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400' }}
-                        style={styles.avatar}
-                    />
-                    <Text style={styles.name}>{userData?.number}</Text>
-                    <Text style={styles.email}>{userData?.isOtpVerify ? 'Verified User' : ''}</Text>
+                <TouchableOpacity onPress={pickImage}>
+            <View style={{ position: 'relative' }}>
+                <Image
+                    source={{ uri: image || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400' }}
+                    style={styles.avatar}
+                />
+                <View style={styles.avatarBadge}>
+                    <Ionicons size={30} color={'#fff'} name='camera' />
+                </View>
+            </View>
+        </TouchableOpacity>
+                    <Text style={styles.userName}>{userData?.name || "Please Add a good Name"}</Text>
+                    <Text style={styles.contact}>{userData?.number}</Text>
+                    <Text style={styles.email}>{userData?.email || "Please Add a Email"}</Text>
+                    {/* <Text style={styles.email}>{userData?.isOtpVerify ? 'Verified User' : ''}</Text> */}
+                    <View style={styles.containerButton}>
+                        <TouchableOpacity style={styles.logoutButton} onPress={() => { }}>
+                            <Text style={styles.logoutText}>Logout</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.editButton} onPress={() => { }}>
+                            <Text style={styles.editText}>Edit Profile</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </LinearGradient>
 
@@ -335,16 +384,28 @@ const styles = StyleSheet.create({
     },
     avatar: {
         width: 100,
+        position: 'relative',
         height: 100,
         borderRadius: 50,
         borderWidth: 3,
         borderColor: '#fff',
     },
-    name: {
+    avatarBadge: {
+        position: 'absolute',
+        bottom: -5,
+        right: 5,
+        textAlign: 'center',
+    },
+    contact: {
+        fontSize: 18,
+        // fontWeight: 'bold',
+        color: '#fff',
+        // marginTop: 12,
+    },
+    userName: {
         fontSize: 24,
         fontWeight: 'bold',
         color: '#fff',
-        marginTop: 12,
     },
     email: {
         fontSize: 16,
@@ -563,5 +624,42 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#10b981',
-    }
+    },
+    containerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 20,
+    },
+    logoutButton: {
+        backgroundColor: '#d64444', // Red color for logout
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        width: '25%',
+        marginHorizontal: 5,
+
+        alignItems: 'center',
+        // marginBottom: 10,
+    },
+    logoutText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+    },
+    editButton: {
+        backgroundColor: '#003873', // Dark blue color for edit
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        width: '30%',
+        alignItems: 'center',
+    },
+    editText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+    },
 });

@@ -13,8 +13,6 @@ const MAX_FILE_SIZE = 50000000; // 50 MB in bytes
 
 const uploadSingleImage = async (fileInput,folder="image") => {
   try {
-
-
     if (Buffer.isBuffer(fileInput)) {
       // Validate file size for Buffer input
       if (fileInput.length > MAX_FILE_SIZE) {

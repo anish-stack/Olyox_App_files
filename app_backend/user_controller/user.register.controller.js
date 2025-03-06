@@ -6,6 +6,7 @@ const ParcelBooks = require("../models/Parcel_Models/Parcel_Request");
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const SendWhatsAppMessage = require("../utils/whatsapp_send");
+const { uploadSingleImage, deleteImage } = require("../utils/cloudinary");
 
 exports.createUser = async (req, res) => {
     try {
@@ -402,5 +403,73 @@ exports.findAllOrders = async (req, res) => {
     }
 };
 
+
+exports.updateProfileDetails = async (req, res) => {
+    try {
+        const file = req.file || {};
+        const { name, email } = req.body || {};
+
+        const userData = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
+
+        console.log("User Data:", userData);
+
+        if (!userData?._id) {
+            return res.status(400).json({
+                success: false,
+                message: "User ID not found",
+            });
+        }
+
+        // Find the user in the database
+        const user = await User.findById(userData?._id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found. Please register first.",
+            });
+        }
+
+        // Update user details
+        if (name) user.name = name;
+        if (email) user.email = email;
+
+        // Handle profile image update
+        if (file && file.buffer) {
+            try {
+                const uploadImage = await uploadSingleImage(file.buffer, 'user-images');
+                const { image, public_id } = uploadImage;
+
+                if (user.profileImage.publicId && public_id !== user.profileImage.publicId) {
+                    await deleteImage(user.profileImage.publicId);
+                }
+
+                user.profileImage = { publicId: public_id, url: image };
+            } catch (uploadError) {
+                return res.status(500).json({
+                    success: false,
+                    message: "Error uploading image",
+                    error: uploadError.message,
+                });
+            }
+        }
+
+        // Save updated user details
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            user,
+        });
+
+    } catch (error) {
+        console.error("Error updating profile:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+};
 
 

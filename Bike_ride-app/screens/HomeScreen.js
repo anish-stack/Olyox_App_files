@@ -62,6 +62,23 @@ const HomeScreen = () => {
   }, [navigation]);
 
 
+  const handleHardReconnect = async (id) => {
+    try {
+      if (!id) {
+        return alert('Please try to re login')
+      }
+      const isReconnectingHard = await initializeSocket({
+        userId: id
+      })
+
+      console.log("i am socket", isReconnectingHard)
+
+    } catch (error) {
+      console.log("i am socket error", error)
+
+    }
+  }
+
 
 
   const fetchUserDetails = async () => {
@@ -135,18 +152,18 @@ const HomeScreen = () => {
   const ConnectionStatus = () => (
     <View style={[
       styles.connectionStatus,
-      { backgroundColor: isSocketReady ? '#FFF8E1' : '#FFEBEE' }
+      { backgroundColor: socket?.connected ? '#FFF8E1' : '#FFEBEE' }
     ]}>
       <MaterialCommunityIcons
-        name={isSocketReady ? "wifi-check" : "wifi-off"}
+        name={socket?.connected ? "wifi-check" : "wifi-off"}
         size={20}
-        color={isSocketReady ? '#FFB300' : '#C62828'}
+        color={socket?.connected ? '#FFB300' : '#C62828'}
       />
       <Text style={[
         styles.connectionText,
-        { color: isSocketReady ? '#FFB300' : '#C62828' }
+        { color: socket?.connected ? '#FFB300' : '#C62828' }
       ]}>
-        {isSocketReady ? "Connected" : "Offline"}
+        {socket?.connected ? "Connected" : "Offline"}
       </Text>
     </View>
   );
@@ -262,6 +279,26 @@ const HomeScreen = () => {
                   { color: user_data?.isAvailable ? '#FFB300' : '#C62828' }
                 ]}>
                   {loading ? 'Updating...' : (user_data?.isAvailable ? 'Online' : 'Offline')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.onlineToggle,
+                  { backgroundColor: isOnline ? '#FFF8E1' : '#FFEBEE' }
+                ]}
+                onPress={() => handleHardReconnect(user_data?._id)}
+                disabled={loading}
+              >
+                <MaterialCommunityIcons
+                  name={isSocketReady ? "wifi-check" : "wifi-off"}
+                  size={24}
+                  color={user_data?.isAvailable ? '#FFB300' : '#C62828'}
+                />
+                <Text style={[
+                  styles.connectionText,
+                  { color: isSocketReady ? '#FFB300' : '#C62828' }
+                ]}>
+                  {isSocketReady ? "Connected" : "Offline"}
                 </Text>
               </TouchableOpacity>
               <RideCome isRefresh={refreshing} />

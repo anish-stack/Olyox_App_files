@@ -36,6 +36,7 @@ export default function RegistrationForm() {
   const [vehicleName, setVehicleName] = useState("")
   const [vehicleType, setVehicleType] = useState("")
   const [vehicleNumber, setVehicleNumber] = useState("")
+  const [RcExpireDate, setRcExpireDate] = useState("")
   const [otp, setOtp] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -105,7 +106,7 @@ export default function RegistrationForm() {
         rideVehicleInfo: {
           vehicleName,
           vehicleType,
-
+          RcExpireDate,
           VehicleNumber: vehicleNumber,
         },
         BH: bhId,
@@ -188,6 +189,7 @@ export default function RegistrationForm() {
     if (!phone) missingFields.push("Phone");
     if (!vehicleName) missingFields.push("Vehicle Name");
     if (!vehicleType) missingFields.push("Vehicle Type");
+    if (!RcExpireDate) missingFields.push("Rc Expire Date");
     if (!vehicleNumber) missingFields.push("Vehicle Number");
 
     if (missingFields.length > 0) {
@@ -210,7 +212,7 @@ export default function RegistrationForm() {
         <Card.Content>
           <Title style={styles.cardTitle}>User Information</Title>
           <Paragraph style={styles.cardParagraph}>Name: {userData.name}</Paragraph>
-        
+
           <Paragraph style={styles.cardParagraph}>Category: {userData.category.title}</Paragraph>
         </Card.Content>
       </Card>
@@ -303,6 +305,15 @@ export default function RegistrationForm() {
         value={vehicleNumber}
         onChangeText={setVehicleNumber}
         mode="outlined"
+        style={styles.input}
+        theme={{ colors: { primary: "#f7de02" } }}
+      />
+      <TextInput
+        label="Rc Expire Date"
+        value={RcExpireDate}
+        onChangeText={setRcExpireDate}
+        mode="outlined"
+        placeholder="YYYY-MM-DD"
         style={styles.input}
         theme={{ colors: { primary: "#f7de02" } }}
       />

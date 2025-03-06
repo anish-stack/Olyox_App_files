@@ -34,6 +34,14 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    profileImage:{
+        image:{
+            type:String
+        },
+        publicId:{
+            type:String
+        }
+    }
 });
 
 // Create the model
