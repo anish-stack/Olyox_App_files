@@ -1,14 +1,14 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Image, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Image, Dimensions, ActivityIndicator, Alert } from 'react-native';
 import React, { useEffect, useState } from 'react';
-import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useNavigation } from '@react-navigation/native';
 import { tokenCache } from '../Auth/cache';
 import { find_me } from '../utils/helpers';
-import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
+import EditModal from './EditModel';
 
 const { width } = Dimensions.get('window');
 
@@ -17,6 +17,7 @@ const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpaci
 export default function UserProfile() {
 
     const navigation = useNavigation();
+    const [editModel, setEditModel] = useState(false);
     const [activeTab, setActiveTab] = useState('Orders');
     const [userData, setUserData] = useState(null);
     const [orderData, setOrderData] = useState(null);
@@ -48,7 +49,7 @@ export default function UserProfile() {
     useEffect(() => {
         (async () => {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            console.log("status",status)
+            console.log("status", status)
             if (status !== 'granted') {
                 Alert.alert('Permission Required', 'Please grant permission to access the media library.');
             }
@@ -57,9 +58,9 @@ export default function UserProfile() {
 
     const pickImage = async () => {
         console.log("Opening image picker...");
-        
+
         let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images, // ✅ Fixed mediaTypes
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
             aspect: [4, 3],
             quality: 1,
@@ -67,11 +68,109 @@ export default function UserProfile() {
 
         console.log(result);
 
-        if (!result.canceled && result.assets?.length > 0) { // ✅ Fixed check
-            setImage(result.assets[0].uri);
+        if (!result.canceled && result.assets?.length > 0) {
+            const imageUri = result.assets[0].uri;
+          
+            setImage(imageUri);
+            
+        }
+    };
+   
+    const uploadImage = async () => {
+
+        try {
+            setLoading(true)
+            const gmail_token = await tokenCache.getToken('auth_token');
+            const db_token = await tokenCache.getToken('auth_token_db');
+            const token = db_token || gmail_token;
+           
+
+            const form = new FormData();
+            form.append('image', {
+                uri: image,
+                name: 'image.jpg',
+                type: 'image/jpeg',
+            });
+          
+
+            const response = await axios.post('http://192.168.1.4:3100/api/v1/user/update-profile', form, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            console.log("response", response.data);
+            Alert.alert('Image uploaded successfully');
+            fetchData();
+            setImage(null);
+            setLoading(false)
+
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            setLoading(false)
+
         }
     };
 
+    const updateDetails = async ({ name, email }) => {
+        try {
+            setLoading(true);
+    
+            // Retrieve token from cache
+            const gmail_token = await tokenCache.getToken('auth_token');
+            const db_token = await tokenCache.getToken('auth_token_db');
+            const token = db_token || gmail_token;
+    
+            // Initialize FormData
+            const form = new FormData();
+            
+            // Only append non-empty fields
+            if (name) form.append('name', name);
+            if (email) form.append('email', email);
+    
+            // Check if there's anything to send in the form
+            if (!name && !email) {
+                Alert.alert('No changes detected', 'Please provide a name or email to update.');
+                setLoading(false);
+                return;
+            }
+    
+            // Send the request to update profile
+            const response = await axios.post('http://192.168.1.4:3100/api/v1/user/update-profile', form, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+    
+            console.log("response", response.data);
+    
+            // Refresh the data after the update
+            fetchData();
+    
+            // Optionally reset image state if needed
+            setImage(null);
+    
+            // Provide feedback and reset loading state
+            Alert.alert('Profile updated successfully');
+            setLoading(false);
+            
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            Alert.alert('Error', 'There was an issue updating your profile. Please try again.');
+            setLoading(false);
+        }
+    };
+    
+
+    useEffect(() => {
+        if (image) {
+            // Call the upload function when the image is set
+            setTimeout(() => {
+                uploadImage();
+            }, 3000);
+        }
+    }, [image]);
 
     const tabs = [
         { name: 'Orders', icon: 'restaurant-menu', count: orderData?.orderCounts?.foodOrders || 0 },
@@ -315,17 +414,17 @@ export default function UserProfile() {
                 style={styles.header}
             >
                 <View style={styles.profileSection}>
-                <TouchableOpacity onPress={pickImage}>
-            <View style={{ position: 'relative' }}>
-                <Image
-                    source={{ uri: image || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400' }}
-                    style={styles.avatar}
-                />
-                <View style={styles.avatarBadge}>
-                    <Ionicons size={30} color={'#fff'} name='camera' />
-                </View>
-            </View>
-        </TouchableOpacity>
+                    <TouchableOpacity onPress={pickImage}>
+                        <View style={{ position: 'relative' }}>
+                            <Image
+                                source={{ uri: userData?.profileImage?.image || image || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400' }}
+                                style={styles.avatar}
+                            />
+                            <View style={styles.avatarBadge}>
+                                <Ionicons size={30} color={'#fff'} name='camera' />
+                            </View>
+                        </View>
+                    </TouchableOpacity>
                     <Text style={styles.userName}>{userData?.name || "Please Add a good Name"}</Text>
                     <Text style={styles.contact}>{userData?.number}</Text>
                     <Text style={styles.email}>{userData?.email || "Please Add a Email"}</Text>
@@ -334,7 +433,7 @@ export default function UserProfile() {
                         <TouchableOpacity style={styles.logoutButton} onPress={() => { }}>
                             <Text style={styles.logoutText}>Logout</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.editButton} onPress={() => { }}>
+                        <TouchableOpacity style={styles.editButton} onPress={() => setEditModel(true)}>
                             <Text style={styles.editText}>Edit Profile</Text>
                         </TouchableOpacity>
                     </View>
@@ -359,6 +458,7 @@ export default function UserProfile() {
                 <Text style={styles.sectionTitle}>{activeTab} History</Text>
                 {renderContent()}
             </View>
+            <EditModal previousData={userData} visible={editModel} onClose={() => setEditModel(false)} onSubmit={updateDetails} />
         </ScrollView>
     );
 }

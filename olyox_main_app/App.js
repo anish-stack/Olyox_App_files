@@ -43,6 +43,7 @@ import UserProfile from './screens/Profile';
 import Tiffins_Page from './Foods/Tiffins_Page/Tiffins_Page';
 import ErrorBoundaryWrapper from './context/ErrorBoundary';
 import { tokenCache } from './Auth/cache';
+import { StatusBar } from 'expo-status-bar';
 
 const Stack = createNativeStackNavigator();
 Sentry.init({
@@ -65,7 +66,7 @@ const App = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-      
+
         const db_token = await tokenCache.getToken('auth_token_db');
         // console.log("DB Token", db_token)
         setIsLogin(db_token !== null);
@@ -191,7 +192,7 @@ const App = () => {
 
                           <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={Onboarding} />
                         </Stack.Navigator>
-                   
+
                       </NavigationContainer>
                     </ErrorBoundaryWrapper>
                   </ClerkLoaded>
@@ -219,7 +220,7 @@ const WrappedApp = Sentry.wrap(App);
 const RootApp = () => (
 
   <FoodProvider>
-
+    <StatusBar backgroundColor='#DA2E2A' style="light" />
     <WrappedApp />
   </FoodProvider>
 

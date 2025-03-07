@@ -442,6 +442,8 @@ exports.updateProfileDetails = async (req, res) => {
                 message: "User ID not found",
             });
         }
+        console.log(" req.file  Data:", req.file);
+        console.log(" req.body  Data:", req.body);
 
         // Find the user in the database
         const user = await User.findById(userData?._id);
@@ -457,16 +459,16 @@ exports.updateProfileDetails = async (req, res) => {
         if (email) user.email = email;
 
         // Handle profile image update
-        if (file && file.buffer) {
+        if (file && file.path) {
             try {
-                const uploadImage = await uploadSingleImage(file.buffer, 'user-images');
+                const uploadImage = await uploadSingleImage(file.path, 'user-images');
                 const { image, public_id } = uploadImage;
-
+                console.log("uploadImage", uploadImage)
                 if (user.profileImage.publicId && public_id !== user.profileImage.publicId) {
                     await deleteImage(user.profileImage.publicId);
                 }
 
-                user.profileImage = { publicId: public_id, url: image };
+                user.profileImage = { publicId: public_id, image: image };
             } catch (uploadError) {
                 return res.status(500).json({
                     success: false,

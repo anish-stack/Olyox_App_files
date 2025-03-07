@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     View,
     Text,
@@ -8,16 +8,36 @@ import {
     StyleSheet,
 } from "react-native";
 
-const EditModal = ({ visible, onClose, onSubmit }) => {
+const EditModal = ({ previousData, visible, onClose, onSubmit }) => {
+    console.log("onSubmit",onSubmit)
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
 
     const handleSubmit = () => {
-        if (!name || !email) return;
+        console.log("handleSubmit called");
+        
+        // Debug the values of name and email
+        console.log("Name:", name);
+        console.log("Email:", email);
+    
+        // Check if onSubmit is a valid function
+        console.log("onSubmit function:", typeof onSubmit);
+    
+       
+    
+        // Debugging the call to onSubmit
+        console.log("Submitting:", { name, email });
+        
+        // Call onSubmit and onClose
         onSubmit({ name, email });
         onClose();
     };
+    
 
+    useEffect(() => {
+        setName(previousData.name || '');
+        setEmail(previousData.email || '');
+    }, [previousData])
     return (
         <Modal transparent={true} visible={visible} animationType="slide">
             <View style={styles.modalOverlay}>

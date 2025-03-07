@@ -48,7 +48,7 @@ export const styles = StyleSheet.create({
 
     // Map container
     mapContainer: {
-        height: height * 0.3,
+        height: height * 0.5,
         width: '100%',
         backgroundColor: '#f0f0f0',
     },

@@ -25,7 +25,7 @@ export function BookingConfirmation() {
     const navigation = useNavigation();
     const { location } = useLocation();
     const { isConnected, socket, userId } = useSocket();
-
+    console.log("socket", socket)
     // State variables
     const [fareDetails, setFareDetails] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -661,6 +661,17 @@ export function BookingConfirmation() {
         </View>
     );
 
+    if (!socket && !socket() || socket === undefined || socket === null) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <Header />
+                <View style={styles.initialLoadingContainer}>
+                    <ActivityIndicator size="large" color="#00aaa9" />
+                    <Text style={styles.initialLoadingText}>Loading ride details...</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
     // Initial loading state
     if (initialLoading) {
         return (
@@ -677,26 +688,7 @@ export function BookingConfirmation() {
     return (
         <SafeAreaView style={styles.container}>
             <Header />
-            <View
-                style={{
-                    padding: 10,
-                    borderRadius: 8,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: isConnected ? "#D4EDDA" : "#F8D7DA",
 
-                }}
-            >
-                <Text
-                    style={{
-                        fontSize: 12,
-                        fontWeight: "bold",
-                        color: isConnected ? "#155724" : "#721C24",
-                    }}
-                >
-                    {isConnected ? "You're online! 🚖✅" : "You're offline. Please check your connection. ❌"}
-                </Text>
-            </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 <View style={styles.mapContainer}>
