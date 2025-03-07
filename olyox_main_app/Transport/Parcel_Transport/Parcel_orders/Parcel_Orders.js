@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text,  TouchableOpacity, ActivityIndicator, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, RefreshControl, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { tokenCache } from '../../../Auth/cache';
 import axios from 'axios';
@@ -101,9 +101,20 @@ export default function Parcel_Orders() {
                         <RefreshControl refreshing={refreshing} onRefresh={fetchData} colors={["#00aaa9"]} />
                     }
                 >
-                    {data.map((item) => (
-                        <View key={item._id}>{renderItem({ item })}</View>
-                    ))}
+                    {data && data.length === 0 ? (
+                        <View style={styles.container}>
+                            <Text style={styles.heading}>No Parcel Found</Text>
+                            <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('AddParcel')}>
+                                <Text style={styles.buttonText}>Book A Order</Text>
+                            </TouchableOpacity>
+
+                        </View>
+                    ) : (
+                        data.map((item) => (
+                            <View key={item._id}>{renderItem({ item })}</View>
+                        ))
+                    )}
+
                 </ScrollView>
 
             </View>

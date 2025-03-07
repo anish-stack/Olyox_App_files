@@ -11,6 +11,7 @@ const { createCancelReason,
     deleteCancelReason,
     toggleCancelReason } = require('../../Admin Controllers/settings/cancelReason');
 const { createHeavyOption, getAllHeavyTransports, getHeavyTransportById, updateHeavyTransport, toggleActiveStatus } = require('../../Admin Controllers/settings/HeavyTransport');
+const { create_home_slide, get_home_slides, get_Home_slide_by_id, update_homeslide_slide, delete_homeslide_slide } = require('../../Admin Controllers/OnboardFnc/HomeScreenSlide');
 
 const admin = express.Router();
 
@@ -38,12 +39,12 @@ admin.delete("/cancel-reasons/:id", deleteCancelReason);
 admin.patch("/cancel-reasons/toggle/:id", toggleCancelReason);
 
 //admin heavy vehicle settings
-admin.post('/create-heavy', upload.single('image'),createHeavyOption);
-admin.post('/update-heavy/:id', upload.single('image'),updateHeavyTransport);
-admin.get('/get-heavy',getAllHeavyTransports);
-admin.get('/get-single-heavy/::id',getHeavyTransportById);
-admin.delete('/delete-heavy',createHeavyOption);
-admin.post('/toggle-status-heavy/id',toggleActiveStatus);
+admin.post('/create-heavy', upload.single('image'), createHeavyOption);
+admin.post('/update-heavy/:id', upload.single('image'), updateHeavyTransport);
+admin.get('/get-heavy', getAllHeavyTransports);
+admin.get('/get-single-heavy/::id', getHeavyTransportById);
+admin.delete('/delete-heavy', createHeavyOption);
+admin.post('/toggle-status-heavy/id', toggleActiveStatus);
 
 admin.post('/createSuggestion', createSuggestion);
 admin.get('/getAllSuggestions', getAllSuggestions);
@@ -51,5 +52,15 @@ admin.get('/getSuggestionById/:id', getSuggestionById);
 admin.put('/updateSuggestion/update/:id', updateSuggestion);
 admin.put('/updateSuggestionStatus/:id', updateStatus);
 admin.delete('/deleteSuggestion/delete/:id', deleteSuggestion);
+
+
+
+//Home Screen Slides 
+admin.post('/create_home_slide', upload.single('image'), create_home_slide)
+admin.get('/get_home_slides', get_home_slides)
+admin.get('/get_single_home_slides/:id', get_Home_slide_by_id)
+admin.put('/update_home_slide/:id', upload.single('image'), update_homeslide_slide)
+admin.delete('/delete_home_slide/:id', delete_homeslide_slide)
+
 
 module.exports = admin;

@@ -5,9 +5,9 @@ const userSchema = new mongoose.Schema({
     number: {
         type: String,
     },
-    tryLogin:{
-        type:Boolean,
-        default:false
+    tryLogin: {
+        type: Boolean,
+        default: false
     },
     otp: {
         type: String,
@@ -19,27 +19,27 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
-    email: { 
+    email: {
         type: String,
-        
+
     },
     name: {
         type: String,
     },
-    isOtpVerify:{
-        type:Boolean,
-        default:false
+    isOtpVerify: {
+        type: Boolean,
+        default: false
     },
     isGoogle: {
         type: Boolean,
         default: false,
     },
-    profileImage:{
-        image:{
-            type:String
+    profileImage: {
+        image: {
+            type: String
         },
-        publicId:{
-            type:String
+        publicId: {
+            type: String
         }
     }
 });
