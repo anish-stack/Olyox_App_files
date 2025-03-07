@@ -837,3 +837,25 @@ exports.updateRiderDetails = async (req, res) => {
     });
   }
 };
+
+exports.getOnlineTimeByRiderId = async (req,res) => {
+  try {
+    const {id} = req.params;
+    const riderStatus = await CabRiderTimes.find({riderId:id});
+    if(!riderStatus){
+      return res.status(404).json({success:false,message:"No data found",data:[]})
+    }
+    res.status(200).json({
+      success: true,
+      message: "Online time found successfully",
+      data: riderStatus
+    })
+  } catch (error) {
+    console.log('Internal server error',error)
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    })
+  }
+}
