@@ -25,119 +25,77 @@ export default function Map({ origin, destination }) {
     const [mapReady, setMapReady] = useState(false);
     const [directionsReady, setDirectionsReady] = useState(false);
 
-    // Implement progressive timeout handling
     useEffect(() => {
-        const timer = setTimeout(() => {
-            if (loading && (!mapReady || !directionsReady)) {
-                setError('Map loading timed out. Please check your internet connection and try again.');
-                setLoading(false);
-            }
-        }, 30000); // Reduced from 30s to 15s for better user experience
+        if (mapReady && directionsReady) {
+            setLoading(false);
+        }
+    }, [mapReady, directionsReady]);
 
-        return () => clearTimeout(timer);
+    useEffect(() => {
+        if (loading) {
+            const timer = setTimeout(() => {
+                if (!mapReady || !directionsReady) {
+                    setError('Map loading timed out. Please check your internet connection.');
+                    setLoading(false);
+                }
+            }, 15000); // 15 seconds timeout
+
+            return () => clearTimeout(timer);
+        }
     }, [loading, mapReady, directionsReady]);
 
-    // Add component mount tracking to handle potential race conditions
-    useEffect(() => {
-        let isMounted = true;
-
-        // Clean-up function
-        return () => {
-            isMounted = false;
-        };
-    }, []);
-
     const handleRetry = () => {
-        setLoading(true);
         setError(null);
-        setRetryCount(prevCount => prevCount + 1);
+        setRetryCount(prev => prev + 1);
         setMapReady(false);
         setDirectionsReady(false);
+        setLoading(true);
     };
-
-    const handleMapError = (e) => {
-        console.error('Map error:', e);
-        setError('An error occurred while loading the map. Please try again.');
-        setLoading(false);
-    };
-
-    const handleDirectionsError = (e) => {
-        console.error('Directions error:', e);
-        setError('Unable to fetch directions. Please check your internet connection and try again.');
-        setLoading(false);
-    };
-
-    const openGoogleMapsDirections = () => {
-        const url = `https://www.google.com/maps/dir/?api=1&origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&travelmode=driving`;
-        Linking.openURL(url).catch(err => {
-            console.error('Could not open Google Maps:', err);
-            setError('Could not open Google Maps. Please try again.');
-        });
-    };
-
-    if (error) {
-        return (
-            <View style={styles.errorContainer}>
-                <Icon name="alert-circle-outline" size={50} color="#F44336" />
-                <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
-                    <Text style={styles.retryButtonText}>Retry</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.fallbackButton} onPress={openGoogleMapsDirections}>
-                    <Text style={styles.fallbackButtonText}>Open in Google Maps</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
 
     return (
-        <ErrorBoundary>
-            <View style={styles.mapContainer}>
-                {loading && <ActivityIndicator size="large" color="#23527C" style={styles.loader} />}
-                <MapView
-                    key={`map-${retryCount}`} // Force re-render on retry
-                    provider={PROVIDER_GOOGLE}
-                    style={styles.map}
-                    initialRegion={{
-                        latitude: origin.latitude,
-                        longitude: origin.longitude,
-                        latitudeDelta: 0.05,
-                        longitudeDelta: 0.05,
-                    }}
-                    showsUserLocation={true}
-                    onMapReady={() => {
-                        console.log("Map ready");
-                        setMapReady(true);
-                        if (directionsReady) setLoading(false);
-                    }}
-                    onError={handleMapError}
-                >
-                    <Marker coordinate={origin} title="Pickup">
-                        <Icon name="nature-people" size={40} color="#23527C" />
-                    </Marker>
-                    <Marker coordinate={destination} title="Dropoff">
-                        <Icon name="map-marker" size={40} color="#F44336" />
-                    </Marker>
-                    <MapViewDirections
-                        origin={origin}
-                        destination={destination}
-                        apikey={GOOGLE_MAPS_APIKEY}
-                        strokeWidth={4}
-                        strokeColor="#FF6666"
-                        onStart={() => {
-                            console.log("Fetching directions...");
-                        }}
-                        onReady={(result) => {
-                            console.log("Directions ready");
+        <View style={{ flex: 1 }}>
+            {loading && <ActivityIndicator size="large" color="#23527C" style={{ position: 'absolute', top: '50%', left: '50%' }} />}
+            {error && (
+                <View style={{ position: 'absolute', top: '50%', left: '50%', backgroundColor: 'white', padding: 10, borderRadius: 5 }}>
+                    <Text>{error}</Text>
+                    <Button title="Retry" onPress={handleRetry} />
+                </View>
+            )}
+            <MapView
+                key={`map-${retryCount}`}
+                provider={PROVIDER_GOOGLE}
+                style={{ flex: 1 }}
+                initialRegion={{
+                    latitude: origin.latitude,
+                    longitude: origin.longitude,
+                    latitudeDelta: 0.05,
+                    longitudeDelta: 0.05,
+                }}
+                showsUserLocation={true}
+                onMapReady={() => setMapReady(true)}
+                onError={() => setError('Failed to load map.')}
+            >
+                <Marker coordinate={origin} title="Pickup">
+                    <Icon name="nature-people" size={40} color="#23527C" />
+                </Marker>
+                <Marker coordinate={destination} title="Dropoff">
+                    <Icon name="map-marker" size={40} color="#F44336" />
+                </Marker>
+                <MapViewDirections
+                    origin={origin}
+                    destination={destination}
+                    apikey={GOOGLE_MAPS_APIKEY}
+                    strokeWidth={5}
+                    strokeColor="#23527C"
+                    onReady={(result) => {
+                        if (result?.coordinates) {
                             setDirectionsReady(true);
-                            if (mapReady) setLoading(false);
-                        }}
-                        onError={handleDirectionsError}
-                        resetOnChange={false}
-                    />
-                </MapView>
-            </View>
-        </ErrorBoundary>
+                        }
+                    }}
+                    onError={() => setError('Failed to load directions.')}
+                />
+            </MapView>
+        </View>
     );
 }
 

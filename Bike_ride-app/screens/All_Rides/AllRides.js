@@ -14,7 +14,8 @@ import {
   import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
   import { format, isToday, isTomorrow, isThisWeek, parseISO } from 'date-fns';
   
-  
+  import { useNavigation } from "@react-navigation/native";
+
   
   export default function AllRides() {
     const [allRides, setAllRides] = useState([]);
@@ -24,7 +25,7 @@ import {
     const [expandedRide, setExpandedRide] = useState(null);
     const [searchDates, setSearchDates] = useState({ start: '', end: '' });
     const [activeFilter, setActiveFilter] = useState('all');
-  
+    const navigation = useNavigation()
     const fetchAllRides = async () => {
       try {
         const token = await SecureStore.getItemAsync('auth_token_cab');
@@ -239,6 +240,11 @@ import {
                       size={24}
                       color="#757575"
                     />
+                    <TouchableOpacity onPress={()=> navigation.navigate('start',{
+                      params:ride
+                    })}>
+                      <Text>Go</Text>
+                    </TouchableOpacity>
                   </View>
   
                   {expandedRide === ride._id && (

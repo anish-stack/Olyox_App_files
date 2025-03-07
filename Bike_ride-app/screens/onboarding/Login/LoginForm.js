@@ -6,7 +6,7 @@ import axios from 'axios';
 import { useNavigation } from "@react-navigation/native";
 
 const LoginForm = ({ onLogin }) => {
-    const [phone, setPhone] = useState("9638547963");
+    const [phone, setPhone] = useState("");
     const navigation = useNavigation()
     const handleLogin = async () => {
         try {

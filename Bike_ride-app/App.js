@@ -36,6 +36,7 @@ import Withdraw from './screens/Profile/Withdraw';
 import * as Sentry from '@sentry/react-native';
 import ErrorBoundaryWrapper  from './ErrorBoundary'
 
+import ActiveRideButton from './ActiveRideButton';
 const Stack = createNativeStackNavigator();
 Sentry.init({
   dsn: 'https://cb37ba59c700e925974e3b36d10e8e5b@o4508691997261824.ingest.us.sentry.io/4508692015022080',
@@ -51,6 +52,29 @@ const App=()=> {
   const [isDocumentVerified, setIsDocumentVerified] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [initialRoute, setInitialRoute] = useState('Onboarding');
+  const [activeRide, setActiveRide] = useState(null);
+
+
+
+  const checkActiveRide = async () => {
+    console.log("I am checking start")
+
+      try {
+          const rideData = await SecureStore.getItemAsync('activeRide');
+          console.log("I",rideData)
+
+          if (rideData) {
+              setActiveRide(JSON.parse(rideData));
+          }
+      } catch (error) {
+          console.error('Error checking active ride:', error);
+      }
+  };
+
+  useEffect(() => {
+    checkActiveRide();
+}, []);
+  console.log("activeRide",activeRide)
 
   useEffect(() => {
     const checkAuthToken = async () => {
@@ -132,6 +156,7 @@ const App=()=> {
 
 
                   </Stack.Navigator>
+                  {activeRide && <ActiveRideButton rideDetails={activeRide} />}
                 </NavigationContainer>
               </SafeAreaProvider>
             </GestureHandlerRootView>
