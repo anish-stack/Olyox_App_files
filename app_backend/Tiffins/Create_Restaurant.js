@@ -336,8 +336,8 @@ exports.updateIsWorking = async (req, res) => {
     }
 }
 
-exports.updateTiffinDocumentVerify = async (req,res) => {
-    try{
+exports.updateTiffinDocumentVerify = async (req, res) => {
+    try {
         const { id } = req.params;
         const { documentVerify } = req.body;
         const restaurant = await Restaurant.findById(id);
@@ -355,7 +355,7 @@ exports.updateTiffinDocumentVerify = async (req,res) => {
             success: true,
             message: "Document Verification updated successfully"
         })
-    }catch(error){
+    } catch (error) {
         console.log("Internal server error", error)
         res.status(500).json({
             success: false,
@@ -993,6 +993,58 @@ exports.getCustomTiffinListingById = async (req, res) => {
     try {
         const user_id = req.user.id._id;
         const allFood = await RestaurantPackageModel.find({ restaurant_id: user_id });
+        if (!allFood) {
+            return res.status(404).json({
+                success: false,
+                message: "Food listing not found",
+                error: "Food listing not found"
+            })
+        }
+        res.status(200).json({
+            success: true,
+            message: "Food listing retrieved successfully.",
+            data: allFood
+        });
+    } catch (error) {
+        console.log("Internal server error", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
+
+exports.getAllPackageListing = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const allFood = await RestaurantPackageModel.find({ restaurant_id: id });
+        if (!allFood) {
+            return res.status(404).json({
+                success: false,
+                message: "Food listing not found",
+                error: "Food listing not found"
+            })
+        }
+        res.status(200).json({
+            success: true,
+            message: "Food listing retrieved successfully.",
+            data: allFood
+        });
+    } catch (error) {
+        console.log("Internal server error", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
+
+exports.getAllFoodListing = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const allFood = await Restaurant_Listing.find({ restaurant_id: id });
         if (!allFood) {
             return res.status(404).json({
                 success: false,
