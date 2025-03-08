@@ -677,7 +677,7 @@ export function BookingConfirmation() {
     return (
         <SafeAreaView style={styles.container}>
             <Header />
-            <View
+            {/* <View
                 style={{
                     padding: 10,
                     borderRadius: 8,
@@ -696,7 +696,7 @@ export function BookingConfirmation() {
                 >
                     {isConnected ? "You're online! 🚖✅" : "You're offline. Please check your connection. ❌"}
                 </Text>
-            </View>
+            </View> */}
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 <View style={styles.mapContainer}>

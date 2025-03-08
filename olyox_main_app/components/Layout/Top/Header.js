@@ -83,7 +83,7 @@ const Header = () => {
   const handleLogout = async () => {
     try {
 
-      const logout = await axios.get("http://192.168.1.3:3100/api/v1/rider/logout", { withCredentials: true });
+      const logout = await axios.get("https://demoapi.olyox.com/api/v1/rider/logout", { withCredentials: true });
 
 
       await tokenCache.deleteToken("auth_token_db");
