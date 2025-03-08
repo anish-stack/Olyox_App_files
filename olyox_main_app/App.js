@@ -47,8 +47,7 @@ import { StatusBar } from 'expo-status-bar';
 
 const Stack = createNativeStackNavigator();
 Sentry.init({
-  dsn: 'https://cb37ba59c700e925974e3b36d10e8e5b@o4508691997261824.ingest.us.sentry.io/4508692015022080',
-  environment: 'production',
+  dsn: "https://c73ead860e964d854e9985d11321815e@o4508943362621440.ingest.de.sentry.io/4508943364194384",
   enableInExpoDevelopment: true,
   debug: false,
   tracesSampleRate: 1.0,

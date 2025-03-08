@@ -26,6 +26,7 @@ export function BookingConfirmation() {
     const { location } = useLocation();
     const { isConnected, socket, userId } = useSocket();
 
+ 
     // State variables
     const [fareDetails, setFareDetails] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -72,39 +73,74 @@ export function BookingConfirmation() {
 
     // Check socket connection
     useEffect(() => {
-        if (socket()) {
-            setSocketConnected(socket.connected);
-
-            const handleConnect = () => {
-                setSocketConnected(true);
-                setError(null);
-            };
-
-            const handleDisconnect = () => {
-                setSocketConnected(false);
-                if (loading) {
-                    setError('Connection lost. Please try again.');
-                }
-            };
-
-            const handleConnectError = (err) => {
-                setSocketConnected(false);
-                setError('Unable to connect to server. Please check your internet connection.');
-                console.error('Socket connection error:', err);
-            };
-
-            socket().on('connect', handleConnect);
-            socket().on('disconnect', handleDisconnect);
-            socket().on('connect_error', handleConnectError);
-
-            return () => {
-                socket().off('connect', handleConnect);
-                socket().off('disconnect', handleDisconnect);
-                socket().off('connect_error', handleConnectError);
-            };
+        // First check if socket function exists
+        if (!socket) {
+          console.error("Socket function is not available");
+          setSocketConnected(false);
+          setError("Socket connection not available");
+          return;
         }
-    }, [socket, loading]);
-
+      
+        // Then safely try to get the socket instance
+        let socketInstance;
+        try {
+          socketInstance = socket();
+        } catch (err) {
+          console.error("Error getting socket instance:", err);
+          setSocketConnected(false);
+          setError("Failed to establish socket connection");
+          return;
+        }
+      
+        // Check if we actually got a valid socket instance
+        if (!socketInstance) {
+          console.error("No socket instance returned from socket()");
+          setSocketConnected(false);
+          setError("Socket connection unavailable");
+          return;
+        }
+      
+        // Now we have a valid socket instance, set the initial connection state
+        setSocketConnected(socketInstance.connected);
+      
+        // Set up event handlers
+        const handleConnect = () => {
+          setSocketConnected(true);
+          setError(null);
+        };
+      
+        const handleDisconnect = () => {
+          setSocketConnected(false);
+          if (loading) {
+            setError('Connection lost. Please try again.');
+          }
+        };
+      
+        const handleConnectError = (err) => {
+          setSocketConnected(false);
+          setError('Unable to connect to server. Please check your internet connection.');
+          console.error('Socket connection error:', err);
+        };
+      
+        // Attach event listeners
+        socketInstance.on('connect', handleConnect);
+        socketInstance.on('disconnect', handleDisconnect);
+        socketInstance.on('connect_error', handleConnectError);
+      
+        // Cleanup function
+        return () => {
+          try {
+            // Make sure the socket instance still exists when cleaning up
+            if (socketInstance) {
+              socketInstance.off('connect', handleConnect);
+              socketInstance.off('disconnect', handleDisconnect);
+              socketInstance.off('connect_error', handleConnectError);
+            }
+          } catch (err) {
+            console.error("Error during socket cleanup:", err);
+          }
+        };
+      }, [socket, loading]);
     // Get current location
     useEffect(() => {
         const fetchLocation = async () => {
@@ -207,99 +243,150 @@ export function BookingConfirmation() {
 
     // Socket event listener for ride confirmation
     useEffect(() => {
-        if (socket()) {
-            const handleRideConfirm = (data) => {
-                try {
-                    console.log('Ride confirmation received:', data);
-
-                    // Clear the timeout timer
-                    if (socketTimeoutRef.current) {
-                        clearTimeout(socketTimeoutRef.current);
-                        socketTimeoutRef.current = null;
-                    }
-
-                    // Clear the countdown timer
-                    if (timerRef.current) {
-                        clearInterval(timerRef.current);
-                        timerRef.current = null;
-                    }
-
-                    setTimeoutActive(false);
-                    setBookingStep(3);
-
-                    if (data && data.rideDetails) {
-                        setTimeout(() => {
-                            setLoading(false);
-                            navigation.navigate('driver_match', {
-                                ride: data.rideDetails,
-                                origin,
-                                destination
-                            });
-                        }, 1000);
-                    } else {
-                        console.error('Invalid ride data received:', data);
-                        setLoading(false);
-                        setError('Invalid ride data received. Please try again.');
-                    }
-                } catch (err) {
-                    console.error('Error processing ride confirmation:', err);
-                    setLoading(false);
-                    setError('Error processing driver match. Please try again.');
-                }
-            };
-
-            const handleRideRejected = (data) => {
-                console.log('Ride rejected:', data);
-                setLoading(false);
-                setError('No drivers available at the moment. Please try again later.');
-
-                // Clear the timeout timer
-                if (socketTimeoutRef.current) {
-                    clearTimeout(socketTimeoutRef.current);
-                    socketTimeoutRef.current = null;
-                }
-
-                // Clear the countdown timer
-                if (timerRef.current) {
-                    clearInterval(timerRef.current);
-                    timerRef.current = null;
-                }
-
-                setTimeoutActive(false);
-            };
-
-            const handleSocketError = (err) => {
-                console.error('Socket error:', err);
-                setLoading(false);
-                setError('Connection error. Please try again.');
-
-                // Clear the timeout timer
-                if (socketTimeoutRef.current) {
-                    clearTimeout(socketTimeoutRef.current);
-                    socketTimeoutRef.current = null;
-                }
-
-                // Clear the countdown timer
-                if (timerRef.current) {
-                    clearInterval(timerRef.current);
-                    timerRef.current = null;
-                }
-
-                setTimeoutActive(false);
-            };
-
-            socket().on('ride_accepted_message', handleRideConfirm);
-            socket().on('ride_rejected_message', handleRideRejected);
-            socket().on('error', handleSocketError);
-
-            return () => {
-                socket().off('ride_accepted_message', handleRideConfirm);
-                socket().off('ride_rejected_message', handleRideRejected);
-                socket().off('error', handleSocketError);
-            };
+        // First check if socket function exists
+        if (!socket) {
+          console.error("Socket function is not available");
+          setLoading(false);
+          setError("Socket connection not available");
+          return;
         }
-    }, [socket, navigation, origin, destination]);
-
+      
+        // Safely try to get the socket instance
+        let socketInstance;
+        try {
+          socketInstance = socket();
+        } catch (err) {
+          console.error("Error getting socket instance:", err);
+          setLoading(false);
+          setError("Failed to establish socket connection");
+          return;
+        }
+      
+        // Check if we actually got a valid socket instance
+        if (!socketInstance) {
+          console.error("No socket instance returned from socket()");
+          setLoading(false);
+          setError("Socket connection unavailable");
+          return;
+        }
+      
+        const handleRideConfirm = (data) => {
+          try {
+            console.log('Ride confirmation received:', data);
+            
+            // Clear the timeout timer
+            if (socketTimeoutRef.current) {
+              clearTimeout(socketTimeoutRef.current);
+              socketTimeoutRef.current = null;
+            }
+            
+            // Clear the countdown timer
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+            }
+            
+            setTimeoutActive(false);
+            setBookingStep(3);
+            
+            if (data && data.rideDetails) {
+              setTimeout(() => {
+                setLoading(false);
+                navigation.navigate('driver_match', {
+                  ride: data.rideDetails,
+                  origin,
+                  destination
+                });
+              }, 1000);
+            } else {
+              console.error('Invalid ride data received:', data);
+              setLoading(false);
+              setError('Invalid ride data received. Please try again.');
+            }
+          } catch (err) {
+            console.error('Error processing ride confirmation:', err);
+            setLoading(false);
+            setError('Error processing driver match. Please try again.');
+          }
+        };
+        
+        const handleRideRejected = (data) => {
+          console.log('Ride rejected:', data);
+          setLoading(false);
+          setError('No drivers available at the moment. Please try again later.');
+          
+          // Clear the timeout timer
+          if (socketTimeoutRef.current) {
+            clearTimeout(socketTimeoutRef.current);
+            socketTimeoutRef.current = null;
+          }
+          
+          // Clear the countdown timer
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          
+          setTimeoutActive(false);
+        };
+        
+        const handleSocketError = (err) => {
+          console.error('Socket error:', err);
+          setLoading(false);
+          setError('Connection error. Please try again.');
+          
+          // Clear the timeout timer
+          if (socketTimeoutRef.current) {
+            clearTimeout(socketTimeoutRef.current);
+            socketTimeoutRef.current = null;
+          }
+          
+          // Clear the countdown timer
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          
+          setTimeoutActive(false);
+        };
+      
+        // Attach event listeners
+        try {
+          socketInstance.on('ride_accepted_message', handleRideConfirm);
+          socketInstance.on('ride_rejected_message', handleRideRejected);
+          socketInstance.on('error', handleSocketError);
+        } catch (err) {
+          console.error("Error attaching socket event listeners:", err);
+          setLoading(false);
+          setError("Failed to establish event handlers");
+          return;
+        }
+        
+        // Return cleanup function
+        return () => {
+          try {
+            // Check if socket instance still exists
+            if (socketInstance) {
+              socketInstance.off('ride_accepted_message', handleRideConfirm);
+              socketInstance.off('ride_rejected_message', handleRideRejected);
+              socketInstance.off('error', handleSocketError);
+            }
+          } catch (err) {
+            console.error("Error during event listener cleanup:", err);
+          }
+          
+          // Always clean up timers regardless of socket state
+          if (socketTimeoutRef.current) {
+            clearTimeout(socketTimeoutRef.current);
+            socketTimeoutRef.current = null;
+          }
+          
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+        };
+      }, [socket, navigation, origin, destination]);
     // Handle booking submission
     const handleSubmit = async () => {
         try {
@@ -309,15 +396,35 @@ export function BookingConfirmation() {
             setBookingStep(0);
             setTimeoutActive(true);
             setTimeRemaining(120);
-
-            // Check if socket is connected
-            if (!socket()) {
+    
+            // Check if socket function exists
+            if (!socket) {
+                setError('Socket connection not available. Please restart the app.');
+                setLoading(false);
+                setTimeoutActive(false);
+                return;
+            }
+    
+            // Safely get socket instance
+            let socketInstance;
+            try {
+                socketInstance = socket();
+            } catch (err) {
+                console.error("Error getting socket instance:", err);
+                setError('Failed to establish socket connection. Please try again.');
+                setLoading(false);
+                setTimeoutActive(false);
+                return;
+            }
+    
+            // Check if socketInstance exists and is connected
+            if (!socketInstance || !socketInstance.connected) {
                 setError('Not connected to server. Please check your internet connection and try again.');
                 setLoading(false);
                 setTimeoutActive(false);
                 return;
             }
-
+    
             // Check if we have all required data
             if (!currentLocation || !origin || !destination || !selectedRide) {
                 setError('Missing ride information. Please try again.');
@@ -325,17 +432,26 @@ export function BookingConfirmation() {
                 setTimeoutActive(false);
                 return;
             }
-
+    
             // Get auth token
-            const token = await tokenCache.getToken('auth_token_db');
-
+            let token;
+            try {
+                token = await tokenCache.getToken('auth_token_db');
+            } catch (err) {
+                console.error("Error retrieving auth token:", err);
+                setError('Authentication error. Please log in again.');
+                setLoading(false);
+                setTimeoutActive(false);
+                return;
+            }
+    
             if (!token) {
                 setError('Authentication error. Please log in again.');
                 setLoading(false);
                 setTimeoutActive(false);
                 return;
             }
-
+    
             // Create ride request
             const response = await axios.post(
                 'https://demoapi.olyox.com/api/v1/rides/create-ride',
@@ -355,64 +471,106 @@ export function BookingConfirmation() {
                     timeout: 15000 // 15 second timeout
                 }
             );
-
+    
             const request = response?.data?.rideRequest;
-
-            if (request && socket) {
-                setBookingStep(1);
-                console.log("i am in  request & socket 🟢", socket)
-
-                // Start the 2-minute countdown timer
-                timerRef.current = setInterval(() => {
-                    setTimeRemaining(prev => {
-                        if (prev <= 1) {
-                            clearInterval(timerRef.current);
-                            return 0;
-                        }
-                        return prev - 1;
-                    });
-                }, 1000);
-
-                // Set a timeout for 2 minutes
-                socketTimeoutRef.current = setTimeout(() => {
-                    console.log("i am in  socketTimeoutRef 🟢".socket)
-
-                    if (loading) {
-                        setLoading(false);
-                        setError('No drivers found nearby. Please try again later.');
-                        setTimeoutActive(false);
-
-                        if (timerRef.current) {
-                            clearInterval(timerRef.current);
-                            timerRef.current = null;
-                        }
-                    }
-                }, 120000); // 2 minutes
-
-                // Emit socket event to find drivers
-                setTimeout(() => {
-                    console.log("i am emit 🟢")
-                    if (socket()) {
-
-                        const data = socket().emit('send_message', {
-                            message: 'ride-save-find-riders',
-                            data: request,
-                        });
-                        setBookingStep(2);
-                        console.log("i am emit data 🟢", data)
-                    } else {
-                        console.log("i am emit socket null 🟢")
-                    }
-                }, 2000);
-                console.log("i am emit 2 🟢")
-            } else {
+    
+            // Validate request data and socket again before proceeding
+            if (!request) {
                 throw new Error('Invalid response from server');
             }
+    
+            // Double-check socket is still available
+            try {
+                socketInstance = socket();
+                if (!socketInstance || !socketInstance.connected) {
+                    throw new Error('Socket disconnected during request');
+                }
+            } catch (err) {
+                console.error("Socket error after API call:", err);
+                setError('Connection lost. Please try again.');
+                setLoading(false);
+                setTimeoutActive(false);
+                return;
+            }
+    
+            // We have valid request and socket connection
+            setBookingStep(1);
+            console.log("Valid request & socket available 🟢", socketInstance);
+    
+            // Start the 2-minute countdown timer
+            timerRef.current = setInterval(() => {
+                setTimeRemaining(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timerRef.current);
+                        timerRef.current = null;
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+    
+            // Set a timeout for 2 minutes
+            socketTimeoutRef.current = setTimeout(() => {
+                console.log("Request timeout reached 🟢");
+    
+                if (loading) {
+                    setLoading(false);
+                    setError('No drivers found nearby. Please try again later.');
+                    setTimeoutActive(false);
+    
+                    if (timerRef.current) {
+                        clearInterval(timerRef.current);
+                        timerRef.current = null;
+                    }
+                }
+            }, 120000); // 2 minutes
+    
+            // Emit socket event to find drivers (with additional validation)
+            setTimeout(() => {
+                console.log("Preparing to emit socket event 🟢");
+                
+                try {
+                    const currentSocket = socket();
+                    
+                    if (!currentSocket) {
+                        throw new Error('Socket not available');
+                    }
+                    
+                    if (!currentSocket.connected) {
+                        throw new Error('Socket disconnected');
+                    }
+                    
+                    const data = currentSocket.emit('send_message', {
+                        message: 'ride-save-find-riders',
+                        data: request,
+                    });
+                    
+                    setBookingStep(2);
+                    console.log("Socket event emitted successfully 🟢", data);
+                } catch (err) {
+                    console.error("Error emitting socket event:", err);
+                    setLoading(false);
+                    setError('Connection error. Please try again.');
+                    setTimeoutActive(false);
+                    
+                    // Clear timers
+                    if (socketTimeoutRef.current) {
+                        clearTimeout(socketTimeoutRef.current);
+                        socketTimeoutRef.current = null;
+                    }
+                    
+                    if (timerRef.current) {
+                        clearInterval(timerRef.current);
+                        timerRef.current = null;
+                    }
+                }
+            }, 2000);
+            
         } catch (err) {
             console.error('Error creating ride:', err);
-
+    
             let errorMessage = 'Failed to create ride request. Please try again.';
-
+    
             if (err.response) {
                 // Server responded with an error
                 if (err.response.status === 401) {
@@ -424,17 +582,17 @@ export function BookingConfirmation() {
                 // Request was made but no response
                 errorMessage = 'Server not responding. Please check your internet connection.';
             }
-
+    
             setError(errorMessage);
             setLoading(false);
             setTimeoutActive(false);
-
+    
             // Clear timers
             if (socketTimeoutRef.current) {
                 clearTimeout(socketTimeoutRef.current);
                 socketTimeoutRef.current = null;
             }
-
+    
             if (timerRef.current) {
                 clearInterval(timerRef.current);
                 timerRef.current = null;

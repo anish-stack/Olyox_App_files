@@ -1,45 +1,39 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, Dimensions,Platform } from 'react-native';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withRepeat, 
-  withTiming, 
-  Easing 
-} from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, Dimensions, Animated, Platform } from 'react-native';
 import { COLORS } from '../constants/colors';
 
 const { width } = Dimensions.get('window');
 
 const SkeletonLoader = ({ count = 6, height = 120, style }) => {
-  const shimmerValue = useSharedValue(0);
-  
-  useEffect(() => {
-    shimmerValue.value = withRepeat(
-      withTiming(1, { 
-        duration: 1500, 
-        easing: Easing.bezier(0.25, 0.1, 0.25, 1) 
-      }),
-      -1,
-      false
-    );
-  }, []);
+  const shimmerValue = useRef(new Animated.Value(0)).current;
 
-  const shimmerStyle = useAnimatedStyle(() => {
-    return {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(255, 255, 255, 0.3)',
-      transform: [
-        { 
-          translateX: shimmerValue.value * (width + 100) - 100
-        }
-      ],
-    };
-  });
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(shimmerValue, {
+        toValue: 1,
+        duration: 1500,
+       
+        useNativeDriver: true,
+      })
+    ).start();
+  }, [shimmerValue]);
+
+  const shimmerStyle = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    transform: [
+      {
+        translateX: shimmerValue.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-100, width + 100],
+        }),
+      },
+    ],
+  };
 
   const renderSkeletonItems = () => {
     const items = [];

@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { View, Text, Button, Alert } from "react-native";
+import { View, Text, Button, Image, ScrollView } from "react-native";
 import axios from "axios";
 
 class ErrorBoundary extends Component {
@@ -9,15 +9,18 @@ class ErrorBoundary extends Component {
   }
 
   static getDerivedStateFromError(error) {
-    // Update state to display fallback UI
     return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
-    // Send the error to the backend
     this.setState({ errorInfo });
 
-    // Send error details to the backend for tracking
+    // If the error is related to user authentication, redirect to login
+    if (error.toString().includes("User not found. Please register first.")) {
+      this.props.navigation.navigate("Login");
+      return;
+    }
+
     axios.post("https://your-backend-api.com/log_error", {
       error: error.toString(),
       errorInfo: JSON.stringify(errorInfo),
@@ -27,20 +30,35 @@ class ErrorBoundary extends Component {
     });
   }
 
-  handleGoBack = () => {
-    console.log("object")
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null, errorInfo: null });
   };
 
   render() {
     if (this.state.hasError) {
-      // Show error message and button to go back to the Home screen
       return (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <Text style={{ fontSize: 18, marginBottom: 10 }}>
-            Something went wrong. Please try again later.
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 20 }}>
+          <Image 
+            source={{ uri: "https://img.freepik.com/free-vector/oops-404-error-with-broken-robot-concept-illustration_114360-5529.jpg" }}
+            style={{ width: 300, height: 200, marginBottom: 20 }}
+            resizeMode="contain"
+          />
+          <Text style={{ fontSize: 20, fontWeight: "bold", color: "red", textAlign: "center" }}>
+            Oops! Something went wrong.
           </Text>
-        
-        </View>
+          <Text style={{ fontSize: 16, marginVertical: 10, textAlign: "center" }}>
+            {this.state.error ? this.state.error.toString() : "Unknown error occurred."}
+          </Text>
+          {this.state.errorInfo && (
+            <Text style={{ fontSize: 14, color: "gray", marginBottom: 10, textAlign: "center" }}>
+              Component: {this.state.errorInfo.componentStack}
+            </Text>
+          )}
+          <Text style={{ fontSize: 14, fontStyle: "italic", textAlign: "center" }}>
+            Try refreshing the page or checking the component's implementation.
+          </Text>
+          <Button title="Retry" onPress={this.handleRetry} color="#d64444" />
+        </ScrollView>
       );
     }
 
@@ -49,6 +67,5 @@ class ErrorBoundary extends Component {
 }
 
 export default function ErrorBoundaryWrapper(props) {
- 
   return <ErrorBoundary {...props} />;
 }

@@ -83,12 +83,11 @@ const Header = () => {
   const handleLogout = async () => {
     try {
 
-      const logout = await axios.get("https://demoapi.olyox.com/api/v1/rider/logout", { withCredentials: true });
+    await axios.get("https://demoapi.olyox.com/api/v1/rider/logout", { withCredentials: true });
 
 
       await tokenCache.deleteToken("auth_token_db");
-      console.log("Token deleted:", data);
-      console.log("logout deleted:", logout);
+    
 
       setIsAuthenticated(false);
 

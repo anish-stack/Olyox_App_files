@@ -8,62 +8,99 @@ export const SocketProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [lastConnectedAt, setLastConnectedAt] = useState(null);
+  const [socketInstance, setSocketInstance] = useState(null);
   const socketInitialized = useRef(false);
   const reconnectTimerRef = useRef(null);
+  const reconnectAttemptsRef = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 5;
 
   // Fetch user data
   useEffect(() => {
     const fetchUser = async () => {
-      const data = await find_me();
-      
-      if (data?.user?._id) {
-        setUser(data.user._id);
-      } else {
-        console.warn("⚠️ No user found");
+      try {
+        const data = await find_me();
+        
+        if (data?.user?._id) {
+          setUser(data.user._id);
+        } else {
+          console.warn("⚠️ No user found");
+        }
+      } catch (error) {
+        console.error("Error fetching user:", error);
       }
     };
     fetchUser();
   }, []);
 
-  // Initialize socket once user is set
+  // Initialize and manage socket
   useEffect(() => {
-    if (user && !socketInitialized.current) {
-      console.log("🚀 Initializing socket for user:", user);
-      
-      const socket = initializeSocket({ userId: user });
-      socketInitialized.current = true;
-      
-      // Set up event listeners for connection state
-      socket.on('connect', () => {
-        console.log("🔌 Socket connected");
-        setIsConnected(true);
-        setLastConnectedAt(new Date());
+    if (!user) return;
+
+    const setupSocket = () => {
+      try {
+        console.log("🚀 Initializing socket for user:", user);
         
-        // Clear any pending reconnection timers when connected
-        if (reconnectTimerRef.current) {
-          clearTimeout(reconnectTimerRef.current);
-          reconnectTimerRef.current = null;
+        // Clean up any existing socket first
+        if (socketInitialized.current) {
+          cleanupSocket();
         }
-      });
-      
-      socket.on('disconnect', () => {
-        console.log("❌ Socket disconnected");
-        setIsConnected(false);
-        // Don't immediately reconnect here - we'll handle it in the reconnection effect
-      });
-      
-      socket.on('connect_error', (err) => {
-        console.error("🚨 Socket connection error:", err);
-        setIsConnected(false);
-      });
-    }
+        
+        const socket = initializeSocket({ userId: user });
+        setSocketInstance(socket);
+        socketInitialized.current = true;
+        
+        // Set up event listeners for connection state
+        socket.on('connect', () => {
+          console.log("🔌 Socket connected");
+          setIsConnected(true);
+          setLastConnectedAt(new Date());
+          reconnectAttemptsRef.current = 0; // Reset reconnect attempts on successful connection
+          
+          // Clear any pending reconnection timers when connected
+          if (reconnectTimerRef.current) {
+            clearTimeout(reconnectTimerRef.current);
+            reconnectTimerRef.current = null;
+          }
+        });
+        
+        socket.on('disconnect', (reason) => {
+          console.log(`❌ Socket disconnected: ${reason}`);
+          setIsConnected(false);
+          
+          // Some disconnect reasons should trigger automatic reconnect
+          if (reason === 'io server disconnect') {
+            // The server has forcefully disconnected the socket
+            socket.connect();
+          }
+          // Other reasons will be handled by our reconnection effect
+        });
+        
+        socket.on('connect_error', (err) => {
+          console.error("🚨 Socket connection error:", err);
+          setIsConnected(false);
+        });
+        
+        return socket;
+      } catch (error) {
+        console.error("Error setting up socket:", error);
+        socketInitialized.current = false;
+        setSocketInstance(null);
+        return null;
+      }
+    };
+
+    const socket = setupSocket();
     
     return () => {
-      if (socketInitialized.current) {
+      if (socket) {
         console.log("🛑 Cleaning up socket on unmount...");
+        socket.off('connect');
+        socket.off('disconnect');
+        socket.off('connect_error');
         cleanupSocket();
         socketInitialized.current = false;
         setIsConnected(false);
+        setSocketInstance(null);
         
         // Clear any pending reconnection timers
         if (reconnectTimerRef.current) {
@@ -74,52 +111,77 @@ export const SocketProvider = ({ children }) => {
     };
   }, [user]);
 
+
   // Handle reconnection logic
   useEffect(() => {
+    if (!user || !socketInitialized.current || isConnected || reconnectTimerRef.current) {
+      return;
+    }
+
     const handleReconnection = () => {
-      // Only attempt to reconnect if we have a user and socket is initialized but not connected
-      if (user && socketInitialized.current && !isConnected) {
-        console.warn("🔄 Socket disconnected. Attempting to reconnect...");
-        
-        // Try getting the existing socket first
-        try {
-          const socket = getSocket();
-          if (!socket.connected) {
-            socket.connect();
-          }
-        } catch (error) {
-          // If getSocket fails, the socket was probably cleared, reinitialize
+      if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+        console.error(`⛔ Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached`);
+        return;
+      }
+
+      reconnectAttemptsRef.current += 1;
+      const backoffTime = Math.min(1000 * (2 ** reconnectAttemptsRef.current), 30000); // Exponential backoff with max of 30 seconds
+      
+      console.warn(`🔄 Socket disconnected. Attempting to reconnect (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})...`);
+      
+      try {
+        // First try to reconnect the existing socket
+        if (socketInstance && !socketInstance.connected) {
+          console.log("Reconnecting existing socket...");
+          socketInstance.connect();
+        } else {
+          // If no valid socket instance, reinitialize
           console.log("Reinitializing socket connection...");
           cleanupSocket();
           socketInitialized.current = false;
           const newSocket = initializeSocket({ userId: user });
+          setSocketInstance(newSocket);
           socketInitialized.current = true;
         }
+      } catch (error) {
+        console.error("Reconnection attempt failed:", error);
+        
+        // Schedule next reconnection attempt
+        reconnectTimerRef.current = setTimeout(() => {
+          reconnectTimerRef.current = null;
+          if (!isConnected) handleReconnection();
+        }, backoffTime);
       }
     };
 
-    // If we're not connected but should be, set up a reconnection timer
-    if (user && socketInitialized.current && !isConnected && !reconnectTimerRef.current) {
-      reconnectTimerRef.current = setTimeout(() => {
-        handleReconnection();
-        reconnectTimerRef.current = null;
-      }, 5000); // Try to reconnect after 5 seconds
-    }
+    // Schedule a reconnection attempt
+    reconnectTimerRef.current = setTimeout(() => {
+      reconnectTimerRef.current = null;
+      handleReconnection();
+    }, 5000); // Initial reconnection delay
 
-    // Clear the timer when unmounting
     return () => {
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null;
       }
     };
-  }, [user, isConnected]);
+  }, [user, isConnected, socketInstance]);
 
-  // Value to expose through context
+  // Provide the actual socket instance, not just the getter function
+  const getSafeSocket = () => {
+    try {
+      return socketInstance || getSocket();
+    } catch (error) {
+      console.error("Error getting socket:", error);
+      return null;
+    }
+  };
+
   const contextValue = {
     isConnected,
     lastConnectedAt,
-    socket: socketInitialized.current ? getSocket : null,
+    socket: getSafeSocket,
     userId: user
   };
 
