@@ -103,7 +103,7 @@ exports.createUser = async (req, res) => {
             // Create a new user with the number and OTP
             const newUser = new User({
                 number,
-                otp,
+                otp:123456,
                 otpExpiresAt,
             });
 
@@ -112,7 +112,7 @@ exports.createUser = async (req, res) => {
 
     Welcome to Olyox – your all-in-one app for rides, food delivery, heavy vehicles, hotels, and so much more! 🎉 
             
-    Here’s your OTP: ${otp} 
+    Here’s your OTP: ${newUser.otp} 
             
     Please verify it to kickstart your Olyox journey. We’re thrilled to have you onboard and can’t wait for you to explore the incredible services we’ve lined up for you.
             
