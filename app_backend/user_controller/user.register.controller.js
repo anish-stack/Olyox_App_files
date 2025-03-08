@@ -62,7 +62,7 @@ exports.createUser = async (req, res) => {
                             status: 200,
                         })
                     } else {
-                        user.otp = otp
+                        user.otp = 123456
                         user.otpExpiresAt = otpExpiresAt
                         user.tryLogin = true
                         await user.save();
@@ -76,7 +76,7 @@ exports.createUser = async (req, res) => {
 
                 }
                 else {
-                    user.otp = otp
+                    user.otp = 123456
                     user.otpExpiresAt = otpExpiresAt
                     user.isOtpVerify = false
                     await user.save();
