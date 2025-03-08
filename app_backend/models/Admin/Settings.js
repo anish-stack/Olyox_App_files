@@ -41,9 +41,9 @@ const SettingsSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    foodDeliveryPrice:{
-        type:Number,
-        default:0
+    foodDeliveryPrice: {
+        type: Number,
+        default: 0
     },
     openMapApiKey: {
         type: String,
@@ -60,6 +60,18 @@ const SettingsSchema = new mongoose.Schema({
     waitingTimeInMinutes: {
         type: Number,
         default: 0
+    },
+    fbUrl: {
+        type: String,
+        default: ''
+    },
+    twitterUrl: {
+        type: String,
+        default: ''
+    },
+    instagramUrl: {
+        type: String,
+        default: ''
     }
 
 }, { timestamps: true });

@@ -187,9 +187,6 @@ const App = () => {
                           <Stack.Screen name="Book-Parcel" options={{ headerShown: false }} component={BookParcel} />
                           <Stack.Screen name="Parcel" options={{ headerShown: false }} component={Parcel_Orders} />
                           <Stack.Screen name="OrderDetails" options={{ headerShown: false }} component={OrderDetails} />
-
-
-
                           <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={Onboarding} />
                         </Stack.Navigator>
 

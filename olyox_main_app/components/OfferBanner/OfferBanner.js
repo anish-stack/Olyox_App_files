@@ -8,7 +8,7 @@ import {
     Animated,
     ScrollView,
 } from 'react-native';
-
+import axios from 'axios'
 const { width } = Dimensions.get('screen');
 
 export default function OfferBanner() {
@@ -38,10 +38,30 @@ export default function OfferBanner() {
             imageUrl: "https://res.cloudinary.com/dglihfwse/image/upload/v1736337273/happy-woman-waiting-to-receive-the-package-from-the-delivery-man-mobile-phone-showing-parcel-status-and-location-fast-motorbike-driver-to-deliver-on-time-design-for-banner-illustration-website-vector_qyobml.jpg",
         },
     ];
-
+    const [banner, setBanner] = useState([])
     const scrollX = useRef(new Animated.Value(0)).current;
     const scrollViewRef = useRef(null);
     const [currentIndex, setCurrentIndex] = useState(0);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const { data } = await axios.get('http://192.168.1.3:3100/api/v1/admin/get_home_slides')
+                if (data.data) {
+                    const filterData = data.data.filter((item) => item.active === true)
+                    setBanner(filterData)
+                } else {
+                    setBanner([])
+
+                }
+            } catch (error) {
+                console.log("Error Fetching Home Slides", error?.response?.data?.message)
+                setBanner([])
+
+            }
+        }
+        fetchData()
+    }, [])
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -80,20 +100,17 @@ export default function OfferBanner() {
                 onMomentumScrollEnd={handleScrollEnd}
                 scrollEventThrottle={16}
             >
-                {banners.map((item, index) => (
-                    <View key={item.id} style={styles.bannerContainer}>
-                        <Image source={{ uri: item.imageUrl }} style={styles.image} />
-                        {/* <View style={styles.textOverlay}>
-                            <Text style={styles.title}>{item.title}</Text>
-                            <Text style={styles.description}>{item.description}</Text>
-                        </View> */}
+                {banner.map((item, index) => (
+                    <View key={index} style={styles.bannerContainer}>
+                        <Image source={{ uri: item.imageUrl?.image }} style={styles.image} />
+
                     </View>
                 ))}
             </ScrollView>
 
             {/* Pagination Dots */}
             <View style={styles.pagination}>
-                {banners.map((_, index) => {
+                {banner.map((_, index) => {
                     const inputRange = [
                         (index - 1) * width,
                         index * width,

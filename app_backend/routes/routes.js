@@ -6,7 +6,7 @@ const router = express.Router();
 
 const multer = require('multer');
 const Protect = require('../middleware/Auth');
-const { findAllOrders } = require('../user_controller/user.register.controller');
+const { findAllOrders, logout } = require('../user_controller/user.register.controller');
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -27,7 +27,7 @@ router.post('/rider-login', login);
 router.post('/rider-upload', Protect, upload.any(), uploadDocuments);
 router.post('/rider-uploadPaymentQr', Protect, upload.single('image'), uploadPaymentQr)
 router.get('/user-details', Protect, details);
-router.put('/updateRiderBlock/:id',updateBlockStatus)
+router.put('/updateRiderBlock/:id', updateBlockStatus)
 
 router.get('/getMyAllDetails', Protect, getMyAllDetails);
 router.get('/getMyAllRides', Protect, getMyAllRides);
@@ -42,12 +42,12 @@ router.put('/:riderId/location', changeLocation);
 router.post('/get-fare-info', calculateRidePriceForUser)
 router.get('/do-verify', verifyDocument)
 
-router.put('/updateRiderBlock/:id',updateBlockStatus)
+router.put('/updateRiderBlock/:id', updateBlockStatus)
 router.get('/get_single_rider/:id', getSingleRider);
-router.put('/update_rider_detail/:id',upload.any(), updateRiderDetails)
+router.put('/update_rider_detail/:id', upload.any(), updateRiderDetails)
 
-
-
+// universal logout
+router.get('/logout', logout)
 
 router.put('/update_rider_document_verify/:id', updateRiderDocumentVerify);
 module.exports = router;

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, Dimensions, BackHandler } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, Dimensions, BackHandler, Alert } from "react-native";
 import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useNavigation } from "@react-navigation/native";
 import { useLocation } from "../../../context/LocationContext";
@@ -7,6 +7,7 @@ import axios from "axios";
 import { tokenCache } from "../../../Auth/cache";
 import { COLORS } from "../../../constants/colors";
 import useSettings from "../../../hooks/Settings";
+import Footer from "./Footer";
 
 const { width } = Dimensions.get("window");
 
@@ -63,8 +64,8 @@ const Header = () => {
       }, 5000);
       return;
     }
-    console.log("location?.coords?.latitude,",location?.coords?.latitude)
-    console.log("location?.coords?.longitude,",location?.coords?.longitude)
+    console.log("location?.coords?.latitude,", location?.coords?.latitude)
+    console.log("location?.coords?.longitude,", location?.coords?.longitude)
 
     try {
       const { data } = await axios.post(`https://demoapi.olyox.com/Fetch-Current-Location`, {
@@ -81,24 +82,38 @@ const Header = () => {
 
   const handleLogout = async () => {
     try {
-      const data = await tokenCache.deleteToken("auth_token_db");
-      console.log("data delete", data);
+
+      const logout = await axios.get("http://192.168.1.3:3100/api/v1/rider/logout", { withCredentials: true });
+
+
+      await tokenCache.deleteToken("auth_token_db");
+      console.log("Token deleted:", data);
+      console.log("logout deleted:", logout);
+
       setIsAuthenticated(false);
-  
-      // Navigate to Onboarding screen
+
+
       navigation.reset({
         index: 0,
         routes: [{ name: "Onboarding" }],
       });
-  
-      // Delay before exiting to ensure navigation happens
+
+
       setTimeout(() => {
         BackHandler.exitApp();
-      }, 1000); // Adjust delay if needed
+      }, 1000);
+
     } catch (error) {
       console.error("Error during logout:", error);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Onboarding" }],
+      });
+      Alert.alert("Logout Failed", "Something went wrong. Please try again.");
     }
   };
+
+
   const handleLogin = () => {
     navigation.navigate("Login");
     hideSidebar();
@@ -128,9 +143,12 @@ const Header = () => {
   };
 
   const menuItems = [
-    { title: "Home", icon: "home", iconType: "Ionicons" },
-    { title: "Profile", icon: "person", iconType: "Ionicons" },
-    { title: "Parcel", icon: "briefcase", iconType: "FontAwesome5" },
+    { title: "Home", icon: "home-outline", iconType: "Ionicons" },
+    { title: "Profile", icon: "person-outline", iconType: "Ionicons" },
+    { title: "Parcel", icon: "box", iconType: "Feather" },
+    { title: "Orders", icon: "shopping-bag", iconType: "FontAwesome5" },
+    { title: "Hotel", icon: "bed", iconType: "FontAwesome5" },
+    { title: "Transport", icon: "bus", iconType: "FontAwesome5" },
   ];
 
   const handleMenuClick = (title) => {
@@ -235,7 +253,7 @@ const Header = () => {
           >
             <TouchableOpacity activeOpacity={1} onPress={() => { }}>
               <View style={styles.sidebarHeader}>
-                <Text style={styles.sidebarTitle}>Menu</Text>
+                <Text style={styles.sidebarTitle}>Olyox</Text>
                 <TouchableOpacity onPress={hideSidebar} style={styles.closeButton}>
                   <MaterialCommunityIcons name="close" size={24} color={COLORS.text} />
                 </TouchableOpacity>
@@ -270,9 +288,11 @@ const Header = () => {
                   </TouchableOpacity>
                 ))}
               </View>
+              <Footer />
             </TouchableOpacity>
           </Animated.View>
         </TouchableOpacity>
+
       </Modal>
     </View>
   );
@@ -337,6 +357,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   sidebarHeader: {
+
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -388,6 +409,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   menuItems: {
+    height: "65%",
     padding: 16,
   },
   menuItem: {
