@@ -17,7 +17,7 @@ exports.registerRider = async (req, res) => {
   try {
     // console.log("rider", req.body)
     const { name, phone, rideVehicleInfo, BH } = req.body;
-    const { vehicleName, vehicleType, PricePerKm, VehicleNumber ,RcExpireDate} = rideVehicleInfo;
+    const { vehicleName, vehicleType, PricePerKm, VehicleNumber, RcExpireDate } = rideVehicleInfo;
 
     if (!BH) {
       return res.status(400).json({ message: "Please enter your BH Number" });
@@ -73,7 +73,7 @@ exports.registerRider = async (req, res) => {
     const newRider = new Rider({
       name,
       phone,
-      rideVehicleInfo: { vehicleName, vehicleType, VehicleNumber,RcExpireDate },
+      rideVehicleInfo: { vehicleName, vehicleType, VehicleNumber, RcExpireDate },
       BH,
       otp,
       isOtpVerify: false,
@@ -382,7 +382,6 @@ exports.changeLocation = async (req, res) => {
 
 exports.uploadDocuments = async (req, res) => {
   try {
-    console.log(req.user)
     const userId = req.user.userId;
     const findRider = await Rider.findById(userId);
 
@@ -397,7 +396,15 @@ exports.uploadDocuments = async (req, res) => {
     const uploadedDocs = {};
 
     for (const file of req.files) {
-      const uploadResponse = await cloudinary.uploader.upload(file.path, { folder: "rider_documents" });
+      const fileSizeInKB = file.size / 1024;
+      if (fileSizeInKB > 500) {
+        fs.unlinkSync(file.path);
+        return res.status(400).json({
+          success: false,
+          message: `File ${file.originalname} is too large. Max size allowed is 500KB.`
+        });
+      }
+      const uploadResponse = await cloudinary.uploader.upload(file.path, { folder: "rider_documents", quality: "auto:low", format: "jpg" });
 
       if (file.originalname.includes('dl')) uploadedDocs.license = uploadResponse.secure_url;
       if (file.originalname.includes('rc')) uploadedDocs.rc = uploadResponse.secure_url;
@@ -405,6 +412,7 @@ exports.uploadDocuments = async (req, res) => {
       if (file.originalname.includes('aadharBack')) uploadedDocs.aadharBack = uploadResponse.secure_url;
       if (file.originalname.includes('aadharFront')) uploadedDocs.aadharFront = uploadResponse.secure_url;
       if (file.originalname.includes('pancard')) uploadedDocs.pancard = uploadResponse.secure_url;
+      if (file.originalname.includes('profile')) uploadedDocs.profile = uploadResponse.secure_url;
       fs.unlinkSync(file.path);
     }
     console.log(uploadedDocs)
@@ -609,6 +617,51 @@ exports.toggleWorkStatusOfRider = async (req, res) => {
   } catch (error) {
     console.error("Error toggling work status:", error);
     return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+exports.markPaid = async (req, res) => {
+  try {
+    const { rechargePlan, expireData, approveRecharge, riderBh } = req.body || {};
+    console.log("rbody",req.body)
+    // Find the rider by ID
+    const findRider = await Rider.findOne({BH: riderBh });
+
+    if (!findRider) {
+      return res.status(404).json({ success: false, message: "Rider not found" });
+    }
+
+    // If approveRecharge is true, update the recharge details
+    if (approveRecharge) {
+      findRider.RechargeData = {
+        rechargePlan: rechargePlan,
+        expireData: expireData,
+        approveRecharge: true,
+      };
+      findRider.isPaid = true;
+
+      // Save the updated rider details
+      await findRider.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Recharge approved and rider marked as paid.",
+        data: findRider,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Recharge approval is required.",
+      });
+    }
+  } catch (error) {
+    console.error("Error in markPaid:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
 
@@ -838,12 +891,12 @@ exports.updateRiderDetails = async (req, res) => {
   }
 };
 
-exports.getOnlineTimeByRiderId = async (req,res) => {
+exports.getOnlineTimeByRiderId = async (req, res) => {
   try {
-    const {id} = req.params;
-    const riderStatus = await CabRiderTimes.find({riderId:id});
-    if(!riderStatus){
-      return res.status(404).json({success:false,message:"No data found",data:[]})
+    const { id } = req.params;
+    const riderStatus = await CabRiderTimes.find({ riderId: id });
+    if (!riderStatus) {
+      return res.status(404).json({ success: false, message: "No data found", data: [] })
     }
     res.status(200).json({
       success: true,
@@ -851,7 +904,7 @@ exports.getOnlineTimeByRiderId = async (req,res) => {
       data: riderStatus
     })
   } catch (error) {
-    console.log('Internal server error',error)
+    console.log('Internal server error', error)
     res.status(500).json({
       success: false,
       message: 'Internal server error',

@@ -11,7 +11,9 @@ import {
   Pressable,
   BackHandler,
   Alert,
+  Image,
 } from "react-native";
+import * as Updates from "expo-updates";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
@@ -72,7 +74,8 @@ const HomeScreen = () => {
       })
 
       console.log("i am socket", isReconnectingHard)
-
+      // Reload the entire app
+      await Updates.reloadAsync();
     } catch (error) {
       console.log("i am socket error", error)
 
@@ -146,7 +149,13 @@ const HomeScreen = () => {
       setLoading(false);
     }
   };
-  // console.log("user_data",socket)
+  const formatToIST = (dateString) => {
+    if (!dateString) return "N/A";
+
+    const date = new Date(dateString);
+    return date.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+  };
+  // console.log("user_data",user_data)
   // console.log("isReconnecting",isReconnecting)
 
   const ConnectionStatus = () => (
@@ -224,12 +233,23 @@ const HomeScreen = () => {
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Dashboard</Text>
-        <TouchableOpacity
+       <View style={{flexDirection:'row'}}>
+       <TouchableOpacity
+          onPress={() => setMenuVisible(true)}
+          style={styles.menuButton}
+        >
+          <MaterialCommunityIcons name="bell" size={24} color="#212121" />
+          <Text style={styles.count}>0</Text>
+        </TouchableOpacity>
+        
+       <TouchableOpacity
           onPress={() => setMenuVisible(true)}
           style={styles.menuButton}
         >
           <MaterialCommunityIcons name="dots-vertical" size={24} color="#212121" />
         </TouchableOpacity>
+        
+       </View>
       </View>
 
       <ScrollView
@@ -249,7 +269,13 @@ const HomeScreen = () => {
             <View style={styles.welcomeCardContent}>
               <View style={styles.avatarContainer}>
                 <View style={styles.avatar}>
-                  <MaterialCommunityIcons name="account" size={40} color="#FFB300" />
+                  {user_data?.documents?.profile ? (
+                    <Image source={{ uri: user_data?.documents?.profile }} style={styles.profileImage}
+                      resizeMode="cover" />
+                  ) : (
+                    <MaterialCommunityIcons name="account" size={40} color="#FFB300" />
+
+                  )}
                 </View>
                 <ConnectionStatus />
               </View>
@@ -258,7 +284,7 @@ const HomeScreen = () => {
                   Welcome back!
                 </Text>
                 <Text style={styles.subText}>
-                  Ready for today's rides?
+                  Your Recharge is End on {formatToIST(user_data?.RechargeData?.expireData)}
                 </Text>
               </View>
               <TouchableOpacity
@@ -408,7 +434,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   subText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#757575',
   },
   onlineToggle: {
@@ -461,6 +487,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0E0E0',
     marginVertical: 8,
   },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50, // Makes it circular if width and height are equal
+    borderWidth: 2,
+    borderColor: "#f7de02", // Example border color
+  },
+  count:{
+    position:'absolute',
+    right:0
+
+  }
 });
 
 export default HomeScreen;

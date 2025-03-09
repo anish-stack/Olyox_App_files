@@ -118,7 +118,12 @@ export default function Profile() {
             })
             .catch((err) => Alert.alert('Error', 'An unexpected error occurred'));
     };
+    const formatToIST = (dateString) => {
+        if (!dateString) return "N/A";
 
+        const date = new Date(dateString);
+        return date.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+    };
 
 
     const DocumentsModal = () => (
@@ -144,6 +149,24 @@ export default function Profile() {
                                     style={styles.documentItem}>
                                     <MaterialCommunityIcons name="file-document" size={24} color="#FFB300" />
                                     <Text style={styles.documentText}>Vehicle RC</Text>
+                                    <MaterialCommunityIcons name="chevron-right" size={24} color="#757575" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => Linking.openURL(userData.documents.profile)}
+                                    style={styles.documentItem}>
+                                    <MaterialCommunityIcons name="file-document" size={24} color="#FFB300" />
+                                    <Text style={styles.documentText}>Profile Image</Text>
+                                    <MaterialCommunityIcons name="chevron-right" size={24} color="#757575" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => Linking.openURL(userData.documents.aadharFront)}
+                                    style={styles.documentItem}>
+                                    <MaterialCommunityIcons name="file-document" size={24} color="#FFB300" />
+                                    <Text style={styles.documentText}>Aadhar Front</Text>
+                                    <MaterialCommunityIcons name="chevron-right" size={24} color="#757575" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => Linking.openURL(userData.documents.aadharBack)}
+                                    style={styles.documentItem}>
+                                    <MaterialCommunityIcons name="file-document" size={24} color="#FFB300" />
+                                    <Text style={styles.documentText}>Aadhar Back</Text>
                                     <MaterialCommunityIcons name="chevron-right" size={24} color="#757575" />
                                 </TouchableOpacity>
 
@@ -191,8 +214,8 @@ export default function Profile() {
                             <Text style={styles.vehicleValue}>{userData?.rideVehicleInfo?.vehicleName || 'N/A'}</Text>
                         </View>
                         <View style={styles.vehicleDetail}>
-                            <Text style={styles.vehicleLabel}>Price per KM</Text>
-                            <Text style={styles.vehicleValue}>₹{userData?.rideVehicleInfo?.PricePerKm || '0'}</Text>
+                            <Text style={styles.vehicleLabel}>RC Expires On</Text>
+                            <Text style={styles.vehicleValue}>{userData?.rideVehicleInfo?.RcExpireDate || '0'}</Text>
                         </View>
                     </ScrollView>
                     {/* <TouchableOpacity
@@ -233,6 +256,14 @@ export default function Profile() {
                         <View style={styles.profileField}>
                             <Text style={styles.fieldLabel}>Phone</Text>
                             <Text style={styles.fieldValue}>{userData?.phone || 'N/A'}</Text>
+                        </View>
+                        <View style={styles.profileField}>
+                            <Text style={styles.fieldLabel}>Recharge Plan</Text>
+                            <Text style={styles.fieldValue}>{userData?.RechargeData?.rechargePlan || 'N/A'}</Text>
+                        </View>
+                        <View style={styles.profileField}>
+                            <Text style={styles.fieldLabel}>Phone</Text>
+                            <Text style={styles.fieldValue}>{formatToIST(userData?.RechargeData?.expireData) || 'N/A'}</Text>
                         </View>
 
                     </ScrollView>

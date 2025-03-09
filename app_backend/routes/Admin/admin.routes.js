@@ -50,6 +50,8 @@ const {
     update_homeslide_slide,
     delete_homeslide_slide
 } = require('../../Admin Controllers/OnboardFnc/HomeScreenSlide');
+const { markPaid } = require('../../controllers/rider.controller');
+const { createNotification, getNotifications, getNotificationById, markAsRead, deleteNotification } = require('../../Admin Controllers/settings/notificationController');
 
 const admin = express.Router();
 
@@ -100,5 +102,15 @@ admin.get('/get_home_slides', get_home_slides);
 admin.get('/get_single_home_slides/:id', get_Home_slide_by_id);
 admin.put('/update_home_slide/:id', upload.single('image'), update_homeslide_slide);
 admin.delete('/delete_home_slide/:id', delete_homeslide_slide);
+
+//mark paid
+admin.post('/mark-paid', markPaid);
+
+//notification
+admin.post("/create-notification",createNotification);
+admin.get("/all-notification",getNotifications);
+admin.get("/notification/:id",getNotificationById);
+admin.put("/mark-read-notification/:id",markAsRead);
+admin.delete("/delete-notification/:id",deleteNotification);
 
 module.exports = admin;

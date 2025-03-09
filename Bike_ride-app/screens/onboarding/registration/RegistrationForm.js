@@ -245,6 +245,7 @@ export default function RegistrationForm() {
       <TextInput
         label="Name"
         value={name}
+        editable={false}
         onChangeText={setName}
         mode="outlined"
         style={styles.input}
@@ -253,6 +254,8 @@ export default function RegistrationForm() {
       <TextInput
         label="Phone"
         value={phone}
+        editable={false}
+
         onChangeText={setPhone}
         mode="outlined"
         style={styles.input}

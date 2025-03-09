@@ -75,8 +75,9 @@ export default function MoneyPage() {
         fetchUserDetails();
     }, []);
 
-    const handleISPay = () => {
+    const handleISPay = async() => {
         setIsLoading(true);
+        await SecureStore.deleteItemAsync('activeRide')
         setTimeout(() => {
             socket.emit('isPay', data);
             setIsLoading(false);

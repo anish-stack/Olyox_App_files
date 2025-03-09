@@ -23,15 +23,16 @@ import Animated, {
 import { useNavigation } from '@react-navigation/native';
 
 const DOCUMENTS = [
-  { id: 'dl', title: 'Driver\'s License', icon: 'car-outline' },
-  { id: 'rc', title: 'Registration Certificate', icon: 'document-text-outline' },
-  { id: 'insurance', title: 'Insurance', icon: 'card-outline' },
-  { id: 'aadharBack', title: 'aadharBack', icon: 'card-outline' },
-  { id: 'aadharFront', title: 'aadharFront', icon: 'card-outline' },
-  { id: 'pancard', title: 'pancard', icon: 'card-outline' }
+  { id: 'dl', title: 'Driver\'s License', label:'Driver\'s License', icon: 'car-outline' },
+  { id: 'rc', title: 'Registration Certificate',label:'Registration Certificate', icon: 'document-text-outline' },
+  { id: 'insurance', title: 'Insurance',label:'Insurance', icon: 'card-outline' },
+  { id: 'aadharFront', title: 'aadharFront', label:'Front Side Of Aadhar',icon: 'card-outline' },
+  { id: 'aadharBack', title: 'aadharBack',label:'Back Side Of Aadhar', icon: 'card-outline' },
+  { id: 'pancard', title: 'pancard', label:'Pan Card', icon: 'card-outline' },
+  { id: 'profile', title: 'profile', label:'Profile Image', icon: 'person' },
 ];
 
-const API_URL = 'https://demoapi.olyox.com/api/v1/rider/rider-upload';
+const API_URL = 'http://192.168.1.10:3100/api/v1/rider/rider-upload';
 
 export default function Documents() {
   const [images, setImages] = useState({});
@@ -161,6 +162,7 @@ export default function Documents() {
         throw new Error(response.data.message || 'Upload failed');
       }
     } catch (err) {
+      console.log("Error I am Error")
       const errorMessage = err.response?.data?.message || err.message || 'Failed to submit documents';
       Alert.alert(
         'Error',
@@ -227,7 +229,7 @@ export default function Documents() {
                 ) : (
                   <View style={styles.placeholderContainer}>
                     <Ionicons name={doc.icon} size={32} color="#666" />
-                    <Text style={styles.documentTitle}>{doc.title}</Text>
+                    <Text style={styles.documentTitle}>{doc.label}</Text>
                     <Text style={styles.uploadText}>Tap to upload</Text>
                   </View>
                 )}

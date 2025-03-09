@@ -69,12 +69,20 @@ const RiderSchema = new Schema({
         },
         pancard: {
             type: String
+        },
+        profile: {
+            type: String
         }
 
     },
     isPaid: {
         type: Boolean,
         default: false
+    },
+    RechargeData: {
+        rechargePlan: String,
+        expireData: Date,
+        approveRecharge: Boolean
     },
 
     Bh: {

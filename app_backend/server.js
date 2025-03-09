@@ -736,6 +736,7 @@ io.on('connection', (socket) => {
         }
     });
 
+
     /**
      * Handle client disconnections
      * Removes the disconnected client from appropriate connection maps
