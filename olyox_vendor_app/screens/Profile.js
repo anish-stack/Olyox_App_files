@@ -6,13 +6,15 @@ import { CommonActions, useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
+import { useBhDetails } from '../hooks/useBhDetails';
+import RechargeSection from './RechargeSection';
 
 const Profile = () => {
     const navigation = useNavigation();
     const [restaurant, setRestaurant] = useState('');
     const [selectImage, setSelectedImages] = useState([]);
     const [loading, setLoading] = useState(false);
-  
+    const { error, data, fetchDetails } = useBhDetails()
     const profileData = {
         name: "Sharma's Kitchen",
         category: "Tiffin Service",
@@ -35,6 +37,10 @@ const Profile = () => {
         );
     };
 
+
+
+    // console.log("data",data)
+
     useEffect(() => {
         const fetchProfile = async () => {
             try {
@@ -47,7 +53,7 @@ const Profile = () => {
                 // console.log("storedToken",storedToken)
 
                 const { data } = await axios.get(
-                    'http://192.168.1.2:3100/api/v1/tiffin/get_single_tiffin_profile',
+                    'http://192.168.1.8:3100/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -55,9 +61,10 @@ const Profile = () => {
                     }
                 );
 
-               
 
+                // console.log(data.data)
                 if (data?.data) {
+                    fetchDetails(data?.data?.restaurant_BHID)
                     setRestaurant(data.data);
                 } else {
                     console.error("Error: restaurant_id not found in API response");
@@ -70,6 +77,8 @@ const Profile = () => {
 
         fetchProfile();
     }, []);
+
+
 
     const pickImage = async () => {
         try {
@@ -99,6 +108,7 @@ const Profile = () => {
     };
 
 
+
     const handleUploadImage = async (image) => {
         setLoading(true);
         try {
@@ -108,21 +118,21 @@ const Profile = () => {
                 const filename = imageUri.split('/').pop();
                 const match = /\.(\w+)$/.exec(filename);
                 const type = match ? `image/${match[1]}` : 'image/jpeg';
-    
+
                 formData.append('logo', {
                     uri: imageUri,
                     name: filename,
                     type
                 });
             }
-    
-       
-            const res = await axios.put(`http://192.168.1.2:3100/api/v1/tiffin/upload_logo/${restaurant._id}`, formData, {
+
+
+            const res = await axios.put(`http://192.168.1.8:3100/api/v1/tiffin/upload_logo/${restaurant._id}`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 }
             });
-    
+
             if (res.data.success) {
                 Alert.alert('Success', 'Profile image uploaded successfully!');
                 setRestaurant(prevState => ({
@@ -140,6 +150,37 @@ const Profile = () => {
             setLoading(false);
         }
     };
+
+
+    const calculateTotalReferrals = data?.data
+        ? (data?.data?.Child_referral_ids?.length || 0) +
+        (data?.data?.Level1?.length || 0) +
+        (data?.data?.Level2?.length || 0) +
+        (data?.data?.Level3?.length || 0) +
+        (data?.data?.Level4?.length || 0) +
+        (data?.data?.Level5?.length || 0) +
+        (data?.data?.Level6?.length || 0) +
+        (data?.data?.Level7?.length || 0)
+        : 0;
+
+    // console.log("Total Referrals:", profileData);
+
+   
+    const calculateDaysLeft = (endDate) => {
+        if (!endDate) return "No end date available";
+    
+        const today = new Date(); // Current date
+        const end = new Date(endDate); // Convert endDate to Date object
+    
+        const timeDiff = end - today; // Difference in milliseconds
+        const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)); // Convert to days
+    
+        return daysLeft > 0 ? `${daysLeft} days left` : "Expired";
+    };
+    
+    // Example usage
+    const daysLeft = calculateDaysLeft(data?.data?.payment_id?.end_date);
+    // console.log(daysLeft);
     
 
     const MenuItem = ({ icon, title, value, onPress }) => (
@@ -173,7 +214,7 @@ const Profile = () => {
                 {loading && <ActivityIndicator size="large" color="#0000ff" />}
 
                 <Text style={styles.name}>{restaurant?.restaurant_name || ''}</Text>
-                <Text style={styles.category}>{profileData?.category || ''}</Text>
+                <Text style={styles.category}>{restaurant?.category || ''}</Text>
                 <View style={styles.planBadge}>
                     <Icon name="crown" size={16} color="#FFD700" />
                     <Text style={styles.planText}>Premium Plan</Text>
@@ -183,47 +224,59 @@ const Profile = () => {
             {/* Quick Stats */}
             <View style={styles.statsContainer}>
                 <View style={styles.statBox}>
-                    <Icon name="currency-inr" size={24} color="#4CAF50" />
-                    <Text style={styles.statAmount}>₹{restaurant?.wallet?.toFixed(2) || 0}</Text>
-                    <Text style={styles.statLabel}>Total Earnings</Text>
+                    <Icon name="gift" size={24} color="#FF9800" />
+
+                    <Text style={styles.statAmount}>
+                        ₹{typeof data?.data?.wallet === "number" ? data?.data?.wallet.toFixed(2) : "0.00"}
+                    </Text>
+                    <Text style={styles.statLabel}>Total Referral Earnings</Text>
                 </View>
                 <View style={styles.statBox}>
                     <Icon name="account-group" size={24} color="#2196F3" />
-                    <Text style={styles.statAmount}>{restaurant?.referralCount || 0}</Text>
+                    <Text style={styles.statAmount}>{calculateTotalReferrals}</Text>
                     <Text style={styles.statLabel}>Referrals</Text>
                 </View>
                 <View style={styles.statBox}>
-                    <Icon name="gift" size={24} color="#FF9800" />
-                    <Text style={styles.statAmount}>₹{restaurant?.referral_earning || 0}</Text>
-                    <Text style={styles.statLabel}>Referral Earnings</Text>
+                    <Icon name="currency-inr" size={24} color="#4CAF50" />
+
+
+                    <Text style={styles.statAmount}>
+                        ₹{typeof data?.wallet === "number" ? restaurant.wallet.toFixed(2) : "0.00"}
+                    </Text>
+                    <Text style={styles.statLabel}> Earnings from food</Text>
                 </View>
             </View>
 
             {/* Recharge Box */}
-            <View style={styles.rechargeBox}>
-                <View style={styles.rechargeInfo}>
-                    <Text style={styles.rechargeTitle}>Plan expires in</Text>
-                    <Text style={styles.rechargeExpiry}>30 Days</Text>
-                    <Text style={styles.referralCode}>Referral Code: {profileData.referralCode}</Text>
+            {data?.data?.recharge === 0 ? (
+             <RechargeSection navigation={navigation} />
+            ) : (
+                <View style={styles.rechargeBox}>
+                    <View style={styles.rechargeInfo}>
+                        <Text style={styles.rechargeTitle}>Plan expires in</Text>
+                        <Text style={styles.rechargeExpiry}>{daysLeft}</Text>
+                        <Text style={styles.referralCode}>Referral Code: {restaurant?.restaurant_BHID || "jdj"}</Text>
+                    </View>
+                    <TouchableOpacity style={styles.rechargeButton} onPress={() => navigation.navigate('Recharge Plan')}>
+                        <Text style={styles.rechargeButtonText}>Recharge Now</Text>
+                    </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={styles.rechargeButton}>
-                    <Text onPress={() => navigation.navigate('Recharge Plan')} style={styles.rechargeButtonText}>Recharge Now</Text>
-                </TouchableOpacity>
-            </View>
+            )}
+
 
             {/* Menu Items */}
             <View style={styles.menuContainer}>
                 <Text style={styles.menuHeader}>Business</Text>
                 <MenuItem icon="food" title="Add Listing" onPress={() => navigation.navigate('Add Listing')} />
                 <MenuItem icon="food-variant" title="Customize Tiffin Plan" onPress={() => navigation.navigate('Customize Tiffine Plan')} />
-                <MenuItem icon="chart-bar" title="Order Report" onPress={() => navigation.navigate('Order Report')} />
+                {/* <MenuItem icon="chart-bar" title="Order Report" onPress={() => navigation.navigate('Order Report')} /> */}
                 {/* <MenuItem icon="account-multiple" title="Other Vendor IDs" /> */}
 
                 {/* <Text style={styles.menuHeader}>Earnings & History</Text> */}
                 {/* <MenuItem icon="wallet" title="Sales Earnings" value={`₹${restaurant?.wallet?.toFixed(2) || 0}`} /> */}
-                {/* <MenuItem icon="history" title="Recharge History" onPress={()=>navigation.navigate('Recharge History')} /> */}
-                {/* <MenuItem icon="cash-multiple" title="Withdraw History" onPress={()=>navigation.navigate('Withdraw History')} /> */}
-                {/* <MenuItem icon="account-group" title="Referral History" onPress={()=>navigation.navigate('Referral History')} /> */}
+                <MenuItem icon="history" title="Recharge History" onPress={()=>navigation.navigate('Recharge History')} />
+                <MenuItem icon="cash-multiple" title="Withdraw History" onPress={()=>navigation.navigate('Withdraw History')} />
+                <MenuItem icon="account-group" title="Referral History" onPress={()=>navigation.navigate('Referral History')} />
 
                 <Text style={styles.menuHeader}>Account Settings</Text>
                 <MenuItem icon="account-edit" title="Update Profile" onPress={() => navigation.navigate('Profile Update')} />
@@ -321,7 +374,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     statLabel: {
-        fontSize: 12,
+        fontSize: 10,
         color: '#666',
         marginTop: 4,
     },
@@ -397,6 +450,7 @@ const styles = StyleSheet.create({
         color: '#4CAF50',
         fontWeight: '600',
     },
+
 });
 
 export default Profile;

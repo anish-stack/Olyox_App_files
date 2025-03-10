@@ -2,7 +2,7 @@ import io from "socket.io-client";
 import axios from "axios";
 import * as SecureStore from 'expo-secure-store';
 
-const SOCKET_URL = "http://192.168.1.2:3100";
+const SOCKET_URL = "http://192.168.1.8:3100";
 let socket = null;
 
 // Fetch user details
@@ -15,7 +15,7 @@ export const fetchUserData = async () => {
         }
 
         const response = await axios.get(
-            "http://192.168.1.2:3100/api/v1/rider/user-details",
+            "http://192.168.1.8:3100/api/v1/rider/user-details",
             {
                 headers: { Authorization: `Bearer ${token}` },
             }

@@ -17,7 +17,6 @@ import AddListing from './screens/AddListing';
 import { CustomizeTiffinPlan } from './screens/CustomizeTiffinPlan';
 import { OrderReport } from './screens/OrderReport';
 import { Recharge } from './screens/Recharge';
-import { RechargeHistory } from './screens/RechargeHistory';
 import { Withdraw } from './screens/Withdraw';
 import { ChangePassword } from './screens/ChangePassoword';
 import ReferralHistory from './screens/ReferralHistory';
@@ -36,6 +35,7 @@ import { SocketProvider } from './context/SocketContext';
 import BhVerification from './screens/BH_Re/BhVerification';
 import RegisterWithBh from './screens/BH_Re/Bh_registeration';
 import BhOtpVerification from './screens/BH_Re/BhOtpVerification';
+import RechargeHistoryTiffin from './screens/RechargeHistory';
 
 Sentry.init({
   dsn: 'https://517d3fb5279b487fb84063c1fb2804c9@o4508835632185344.ingest.us.sentry.io/4508835637493760',
@@ -63,7 +63,7 @@ export default function App() {
         }
 
         const { data } = await axios.get(
-          'http://192.168.1.2:3100/api/v1/tiffin/get_single_tiffin_profile',
+          'http://192.168.1.8:3100/api/v1/tiffin/get_single_tiffin_profile',
           {
             headers: { 'Authorization': `Bearer ${storedToken}` }
           }
@@ -110,11 +110,11 @@ export default function App() {
                 <Stack.Screen name="Add Listing" options={{ headerShown: true }} component={AddListing} />
                 <Stack.Screen name="Customize Tiffine Plan" options={{ headerShown: false }} component={CustomizeTiffinPlan} />
                 <Stack.Screen name="Order Report" options={{ headerShown: true }} component={OrderReport} />
-                <Stack.Screen name="Recharge Plan" options={{ headerShown: true }} component={Recharge} />
-                <Stack.Screen name="Recharge History" options={{ headerShown: true }} component={RechargeHistory} />
-                <Stack.Screen name="Withdraw History" options={{ headerShown: true }} component={Withdraw} />
+                <Stack.Screen name="Recharge Plan" options={{ headerShown: false }} component={Recharge} />
+                <Stack.Screen name="Recharge History" options={{ headerShown: true }} component={RechargeHistoryTiffin} />
+                <Stack.Screen name="Withdraw History" options={{ headerShown: false }} component={Withdraw} />
                 <Stack.Screen name="Change Password" options={{ headerShown: true }} component={ChangePassword} />
-                <Stack.Screen name="Referral History" options={{ headerShown: true }} component={ReferralHistory} />
+                <Stack.Screen name="Referral History" options={{ headerShown: false }} component={ReferralHistory} />
                 <Stack.Screen name="Support" options={{ headerShown: true }} component={Support} />
                 <Stack.Screen name="Profile Update" options={{ headerShown: true, title: 'Profile' }} component={ProfileUpdate} />
                 <Stack.Screen name="Help" options={{ headerShown: true }} component={Help} />

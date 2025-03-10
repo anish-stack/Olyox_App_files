@@ -19,7 +19,7 @@ export default function Status() {
                 }
 
                 const { data } = await axios.get(
-                    'http://192.168.1.2:3100/api/v1/tiffin/get_single_tiffin_profile',
+                    'http://192.168.1.8:3100/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -52,7 +52,7 @@ export default function Status() {
             const newStatus = !isActive;
     
             const response = await axios.put(
-                `http://192.168.1.2:3100/api/v1/tiffin/update_is_working/${restaurantId}`,
+                `http://192.168.1.8:3100/api/v1/tiffin/update_is_working/${restaurantId}`,
                 { isWorking: newStatus }
             );
     

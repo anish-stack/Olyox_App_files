@@ -29,7 +29,7 @@ export default function OnGoingOrder() {
                 }
 
                 const { data } = await axios.get(
-                    'http://192.168.1.2:3100/api/v1/tiffin/get_single_tiffin_profile',
+                    'http://192.168.1.8:3100/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -54,7 +54,7 @@ export default function OnGoingOrder() {
     const handleFetchOrderDetails = async () => {
         setLoading(true);
         try {
-            const { data } = await axios.get(`http://192.168.1.2:3100/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
+            const { data } = await axios.get(`http://192.168.1.8:3100/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
             if (data.success) {
                 const orders = data.data;
                 const filterData = orders.filter((order) => order.status === 'Confirmed');
@@ -101,7 +101,7 @@ export default function OnGoingOrder() {
     const handleChangeOrderStatus = async (orderId, status) => {
         try {
             // console.log("object", orderId, status);
-            const { data } = await axios.put(`http://192.168.1.2:3100/api/v1/tiffin/update_order_status/${selectedOrderId}`, { ...formData, status: "Out for Delivery" });
+            const { data } = await axios.put(`http://192.168.1.8:3100/api/v1/tiffin/update_order_status/${selectedOrderId}`, { ...formData, status: "Out for Delivery" });
             if (data.success) {
                 alert("Order status updated successfully");
                 handleFetchOrderDetails();

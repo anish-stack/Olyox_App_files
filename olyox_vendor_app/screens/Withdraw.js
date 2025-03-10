@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Text,
     StyleSheet,
@@ -8,60 +8,125 @@ import {
     Modal,
     TextInput,
     Keyboard,
-    TouchableWithoutFeedback
+    TouchableWithoutFeedback,
+    Alert
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
 export function Withdraw() {
     const [modalVisible, setModalVisible] = useState(false);
     const [withdrawForm, setWithdrawForm] = useState({
-        vendor_id: '6778080d9305bbb2473485b2',
+
+
         amount: '',
-        method: '',
-        bankDetails: {
+        method: 'UPI',
+        isBank: false,
+        isUpi: true,
+        BankDetails: {
             accountNo: '',
             ifsc_code: '',
-            bankName: ''
+            bankName: '',
         },
         upi_details: {
-            upi_id: ''
-        }
-    });
-
-    // Sample withdraw history data
-    const withdrawHistory = [
-        {
-            _id: "67796140aafa9fdd104dd607",
-            vendor_id: "6778080d9305bbb2473485b2",
-            amount: 1200,
-            method: "UPI",
-            upi_details: {
-                upi_id: "anish@pytes"
-            },
-            status: "Approved",
-            requestedAt: "2025-01-04T16:26:40.163+00:00",
-            createdAt: "2025-01-04T16:26:40.234+00:00",
-            updatedAt: "2025-01-04T16:27:42.454+00:00",
-            time_of_payment_done: "2025-01-04T23:57:00.000+00:00",
-            trn_no: "123456ASDFGH"
+            upi_id: '',
         },
-        {
-            _id: "67796140aafa9fdd104dd608",
-            vendor_id: "6778080d9305bbb2473485b3",
-            amount: 5000,
-            method: "Bank Transfer",
-            bankDetails: {
-                accountNo: "1234567890",
-                ifsc_code: "SBIN0001234",
-                bankName: "State Bank of India"
-            },
-            status: "Pending",
-            requestedAt: "2025-01-04T15:26:40.163+00:00",
-            createdAt: "2025-01-04T15:26:40.234+00:00",
-            updatedAt: "2025-01-04T15:27:42.454+00:00"
+    });
+    const [data, setData] = useState(null)
+    const [bhData, setBhData] = useState(null)
+    const [error, setError] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [withdrawals, setWithdrawals] = useState([])
+
+
+
+    const fetchUserDetails = async () => {
+        setLoading(true);
+        setError("");
+
+        try {
+            const storedToken = await AsyncStorage.getItem("userToken");
+
+            if (!storedToken) {
+                navigation.replace("Login");
+                return;
+            }
+
+            // Fetch user details
+            const userResponse = await axios.get(
+                "http://192.168.1.8:3100/api/v1/tiffin/get_single_tiffin_profile",
+                { headers: { Authorization: `Bearer ${storedToken}` } }
+            );
+
+            console.log("User details response:", userResponse.data.data);
+
+            const BhId = userResponse?.data?.data?.restaurant_BHID;
+
+            if (!BhId) {
+                throw new Error("BHID not found");
+            }
+
+            // Fetch provider details by BhId
+            const providerResponse = await axios.post(
+                "http://192.168.1.8:7000/api/v1/getProviderDetailsByBhId",
+                { BhId }
+            );
+
+
+            await fetchWithdrawals(providerResponse.data?.data?._id)
+            setData(providerResponse);
+        } catch (error) {
+            setError(error.response?.data?.message || "Something went wrong");
+            console.error("Error fetching user details:", error.message);
+        } finally {
+            setLoading(false);
         }
-    ];
+    };
+
+
+
+    const fetchWithdrawals = async (id) => {
+        setLoading(true);
+        try {
+            const response = await axios.get(`http://192.168.1.8:7000/api/v1/withdrawal?_id=${id}`);
+            // console.log("withdraw", response.data)
+            setWithdrawals(response.data.withdrawal || []);
+
+            // Set last used method and details if available
+            if (response.data.withdrawal && response.data.withdrawal.length > 0) {
+                const lastWithdrawal = response.data.withdrawal[0];
+                const isBank = lastWithdrawal.method === 'Bank Transfer';
+                setWithdrawForm(prev => ({
+                    ...prev,
+                    method: lastWithdrawal.method,
+                    isBank: isBank,
+                    isUpi: !isBank,
+                    BankDetails: isBank ? {
+                        accountNo: lastWithdrawal.BankDetails?.accountNo || '',
+                        ifsc_code: lastWithdrawal.BankDetails?.ifsc_code || '',
+                        bankName: lastWithdrawal.BankDetails?.bankName || '',
+                    } : prev.BankDetails,
+                    upi_details: !isBank ? {
+                        upi_id: lastWithdrawal.upi_details?.upi_id || '',
+                    } : prev.upi_details,
+                }));
+            }
+        } catch (error) {
+            console.error('Error fetching withdrawals:', error.response.data);
+            // Alert.alert('Error', 'Failed to load withdrawal history');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+
+        fetchUserDetails()
+    }, [])
+
+
 
     const formatDate = (dateString) => {
         const date = new Date(dateString);
@@ -82,24 +147,36 @@ export function Withdraw() {
             default: return '#666';
         }
     };
+  
 
-    const handleSubmit = () => {
-        console.log('Form submitted:', withdrawForm);
-        setModalVisible(false);
-        // Reset form
-        setWithdrawForm({
-            vendor_id: '6778080d9305bbb2473485b2',
-            amount: '',
-            method: '',
-            bankDetails: {
-                accountNo: '',
-                ifsc_code: '',
-                bankName: ''
-            },
-            upi_details: {
-                upi_id: ''
-            }
-        });
+    const handleSubmit = async () => {
+       const parsed = data.data;
+        setLoading(true);
+        try {
+            // For demo purposes, we're just logging the data
+            console.log('pardes', parsed.data?._id);
+
+            // Uncomment this for actual API call
+            const response = await axios.post(`http://192.168.1.8:7000/api/v1/create-withdrawal?_id=${parsed.data?._id}`, withdrawForm);
+            console.log("response", response.data)
+            // Simulate API response
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            setLoading(false)
+            Alert.alert(
+                'Success',
+                'Your withdrawal request has been submitted successfully!',
+                [{ text: 'OK', onPress: () => setShowModal(false) }]
+            );
+
+            // Refresh withdrawals list
+            fetchUserDetails()
+            fetchWithdrawals();
+        } catch (error) {
+            // setServerErrors(error?.response?.data?.message || 'An error occurred while processing your request');
+            console.error('Error creating withdrawal:', error?.response?.data?.message || error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -121,7 +198,15 @@ export function Withdraw() {
             </View>
 
             {/* Withdraw List */}
-            {withdrawHistory.map((withdraw) => (
+
+            {withdrawals.length === 0 ? (
+                <View style={styles.noWithdraws}>
+                    <Text style={styles.noWithdrawsText}>No withdrawals found.</Text>
+                </View>
+            ) : null}
+
+
+            {withdrawals && withdrawals.map((withdraw) => (
                 <View key={withdraw._id} style={styles.withdrawCard}>
                     {/* Status and Amount */}
                     <View style={styles.topSection}>
@@ -161,19 +246,19 @@ export function Withdraw() {
                                 <View style={styles.detailRow}>
                                     <Icon name="bank" size={20} color="#666" />
                                     <Text style={styles.detailLabel}>Bank:</Text>
-                                    <Text style={styles.detailValue}>{withdraw.bankDetails.bankName}</Text>
+                                    <Text style={styles.detailValue}>{withdraw.BankDetails.bankName}</Text>
                                 </View>
                                 <View style={styles.detailRow}>
                                     <Icon name="card-account-details" size={20} color="#666" />
                                     <Text style={styles.detailLabel}>Account:</Text>
                                     <Text style={styles.detailValue}>
-                                        {withdraw.bankDetails.accountNo.replace(/(\d{4})(?=\d)/g, '$1 ')}
+                                        {withdraw.BankDetails.accountNo.replace(/(\d{4})(?=\d)/g, '$1 ')}
                                     </Text>
                                 </View>
                                 <View style={styles.detailRow}>
                                     <Icon name="barcode" size={20} color="#666" />
                                     <Text style={styles.detailLabel}>IFSC:</Text>
-                                    <Text style={styles.detailValue}>{withdraw.bankDetails.ifsc_code}</Text>
+                                    <Text style={styles.detailValue}>{withdraw.BankDetails.ifsc_code}</Text>
                                 </View>
                             </>
                         )}
@@ -295,10 +380,10 @@ export function Withdraw() {
                                             <TextInput
                                                 style={styles.input}
                                                 placeholder="Enter bank name"
-                                                value={withdrawForm.bankDetails.bankName}
+                                                value={withdrawForm.BankDetails.bankName}
                                                 onChangeText={(text) => setWithdrawForm({
                                                     ...withdrawForm,
-                                                    bankDetails: { ...withdrawForm.bankDetails, bankName: text }
+                                                    BankDetails: { ...withdrawForm.BankDetails, bankName: text }
                                                 })}
                                             />
                                         </View>
@@ -312,10 +397,10 @@ export function Withdraw() {
                                                 style={styles.input}
                                                 placeholder="Enter account number"
                                                 keyboardType="numeric"
-                                                value={withdrawForm.bankDetails.accountNo}
+                                                value={withdrawForm.BankDetails.accountNo}
                                                 onChangeText={(text) => setWithdrawForm({
                                                     ...withdrawForm,
-                                                    bankDetails: { ...withdrawForm.bankDetails, accountNo: text }
+                                                    BankDetails: { ...withdrawForm.BankDetails, accountNo: text }
                                                 })}
                                             />
                                         </View>
@@ -329,10 +414,10 @@ export function Withdraw() {
                                                 style={styles.input}
                                                 placeholder="Enter IFSC code"
                                                 autoCapitalize="characters"
-                                                value={withdrawForm.bankDetails.ifsc_code}
+                                                value={withdrawForm.BankDetails.ifsc_code}
                                                 onChangeText={(text) => setWithdrawForm({
                                                     ...withdrawForm,
-                                                    bankDetails: { ...withdrawForm.bankDetails, ifsc_code: text }
+                                                    BankDetails: { ...withdrawForm.BankDetails, ifsc_code: text }
                                                 })}
                                             />
                                         </View>

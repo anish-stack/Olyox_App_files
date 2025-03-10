@@ -84,7 +84,7 @@ const App = () => {
 
         if (token) {
           const response = await axios.get(
-            'http://192.168.1.2:3100/api/v1/rider/user-details',
+            'http://192.168.1.8:3100/api/v1/rider/user-details',
             { headers: { Authorization: `Bearer ${token}` } }
           );
 

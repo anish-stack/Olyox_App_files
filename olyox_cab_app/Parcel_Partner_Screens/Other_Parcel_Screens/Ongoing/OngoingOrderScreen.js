@@ -39,7 +39,7 @@ const OngoingOrderScreen = () => {
             const token = await AsyncStorage.getItem("auth_token_partner")
             if (!token) throw new Error("No auth token found")
 
-            const response = await axios.get("http://192.168.1.2:3100/api/v1/parcel/user-details", {
+            const response = await axios.get("http://192.168.1.8:3100/api/v1/parcel/user-details", {
               headers: { Authorization: `Bearer ${token}` },
             })
             if (response.data.latestOrder) {

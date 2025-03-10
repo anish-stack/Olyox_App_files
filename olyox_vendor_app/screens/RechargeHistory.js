@@ -1,204 +1,411 @@
-import React from 'react';
-import { Text, StyleSheet, View, ScrollView, TouchableOpacity } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-export function RechargeHistory() {
-    // Sample recharge history data
-    const rechargeHistory = [
-        {
-            _id: "67795dfbaafa9fdd104d9457",
-            membership_plan: "6774ee499e74c1fdbe5c095a",
-            vendor_id: "67795d72aafa9fdd104d91c4",
-            end_date: "2025-02-04T16:12:43.424+00:00",
-            amount: 3000,
-            trn_no: "123456789SDFGHJKL",
-            payment_approved: true,
-            isCancelPayment: false,
-            createdAt: "2025-01-04T16:12:43.696+00:00",
-            updatedAt: "2025-01-04T16:24:59.023+00:00"
-        },
-        // Add more sample data for demonstration
-        {
-            _id: "67795dfbaafa9fdd104d9458",
-            membership_plan: "6774ee499e74c1fdbe5c095b",
-            vendor_id: "67795d72aafa9fdd104d91c4",
-            end_date: "2025-03-04T16:12:43.424+00:00",
-            amount: 5000,
-            trn_no: "ABCDEF123456789",
-            payment_approved: true,
-            isCancelPayment: false,
-            createdAt: "2025-01-01T10:12:43.696+00:00",
-            updatedAt: "2025-01-01T10:24:59.023+00:00"
-        }
-    ];
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
+  SafeAreaView,
+  StatusBar,
+} from "react-native"
+import { useState, useEffect, useCallback } from "react"
+import { useNavigation, useFocusEffect } from "@react-navigation/native"
+import axios from "axios"
+import { MaterialCommunityIcons } from "@expo/vector-icons"
+import useFetchProfile from "../hooks/useFetchProfile"
 
-    const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
+export default function RechargeHistoryTiffin() {
+  const navigation = useNavigation()
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [rechargeData, setRechargeData] = useState([])
+  const { refetch, restaurant } = useFetchProfile()
+  const [error, setError] = useState(null)
 
+  // Fetch data when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      loadData()
+      return () => {} // Cleanup function
+    }, []),
+  )
+
+  // Initial data load
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      await refetch()
+      await fetchRechargeHistory()
+    } catch (error) {
+      console.error("Error loading data:", error)
+      setError("Failed to load recharge history. Please try again.")
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  const fetchRechargeHistory = async () => {
+    if (!restaurant?.restaurant_BHID) {
+      setError("User profile not found. Please try again later.")
+      return
+    }
+
+    try {
+      const response = await axios.get(`https://api.olyox.com/api/v1/get-recharge?_id=${restaurant.restaurant_BHID}`)
+
+      if (response.data && response.data.data) {
+        setRechargeData(response.data.data)
+      } else {
+        setRechargeData([])
+      }
+    } catch (error) {
+      console.error("Error fetching recharge history:", error)
+      throw new Error("Failed to fetch recharge history")
+    }
+  }
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true)
+    loadData()
+  }, [])
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A"
+
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return "Invalid date"
+
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
+  }
+
+  const formatCurrency = (amount) => {
+    if (!amount && amount !== 0) return "₹0"
+
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  if (loading) {
     return (
-        <ScrollView style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Recharge History</Text>
-                <Text style={styles.headerSubtitle}>View your subscription payments</Text>
-            </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FF385C" />
+          <Text style={styles.loadingText}>Loading your recharge history...</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
 
-            {/* Transaction List */}
-            {rechargeHistory.map((transaction) => (
-                <View key={transaction._id} style={styles.transactionCard}>
-                    {/* Status and Amount */}
-                    <View style={styles.topSection}>
-                        <View style={styles.statusContainer}>
-                            <Icon 
-                                name={transaction.payment_approved ? "check-circle" : "alert-circle"} 
-                                size={24} 
-                                color={transaction.payment_approved ? "#4CAF50" : "#FF5252"}
-                            />
-                            <Text style={[
-                                styles.statusText,
-                                { color: transaction.payment_approved ? "#4CAF50" : "#FF5252" }
-                            ]}>
-                                {transaction.payment_approved ? "Payment Successful" : "Payment Failed"}
-                            </Text>
-                        </View>
-                        <Text style={styles.amount}>₹{transaction.amount}</Text>
-                    </View>
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.errorContainer}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={64} color="#FF385C" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadData}>
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    )
+  }
 
-                    {/* Transaction Details */}
-                    <View style={styles.detailsContainer}>
-                        <View style={styles.detailRow}>
-                            <Icon name="identifier" size={20} color="#666" />
-                            <Text style={styles.detailLabel}>Transaction ID:</Text>
-                            <Text style={styles.detailValue}>{transaction.trn_no}</Text>
-                        </View>
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-                        <View style={styles.detailRow}>
-                            <Icon name="calendar" size={20} color="#666" />
-                            <Text style={styles.detailLabel}>Date:</Text>
-                            <Text style={styles.detailValue}>{formatDate(transaction.createdAt)}</Text>
-                        </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>Recharge History</Text>
+          <Text style={styles.headerSubtitle}>Your past transactions</Text>
+        </View>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
+        </TouchableOpacity>
+      </View>
 
-                        <View style={styles.detailRow}>
-                            <Icon name="calendar-clock" size={20} color="#666" />
-                            <Text style={styles.detailLabel}>Valid Until:</Text>
-                            <Text style={styles.detailValue}>{formatDate(transaction.end_date)}</Text>
-                        </View>
-                    </View>
+      {/* Transaction List */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF385C"]} tintColor="#FF385C" />
+        }
+      >
+        {rechargeData.length > 0 ? (
+          rechargeData.map((recharge) => (
+            <TransactionCard
+              key={recharge._id}
+              recharge={recharge}
+              formatDate={formatDate}
+              formatCurrency={formatCurrency}
+            />
+          ))
+        ) : (
+          <EmptyState />
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  )
+}
 
-                    {/* Action Button */}
-                    <TouchableOpacity 
-                        style={styles.downloadButton}
-                        onPress={() => {/* Handle invoice download */}}
-                    >
-                        <Icon name="download" size={20} color="#2196F3" />
-                        <Text style={styles.downloadText}>Download Invoice</Text>
-                    </TouchableOpacity>
-                </View>
-            ))}
-        </ScrollView>
-    );
+// Transaction Card Component
+function TransactionCard({ recharge, formatDate, formatCurrency }) {
+  const getStatusColor = (isApproved) => (isApproved ? "#4CAF50" : "#FF9800")
+  const getStatusIcon = (isApproved) => (isApproved ? "check-circle" : "clock-outline")
+
+  return (
+    <View style={styles.transactionCard}>
+      {/* Status Badge */}
+      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(recharge.payment_approved) + "20" }]}>
+        <MaterialCommunityIcons
+          name={getStatusIcon(recharge.payment_approved)}
+          size={14}
+          color={getStatusColor(recharge.payment_approved)}
+        />
+        <Text style={[styles.statusText, { color: getStatusColor(recharge.payment_approved) }]}>
+          {recharge.payment_approved ? "Approved" : "Pending"}
+        </Text>
+      </View>
+
+      {/* Card Header */}
+      <View style={styles.cardHeader}>
+        <View style={styles.planInfo}>
+          <Text style={styles.planName}>{recharge.member_id?.title || "Subscription Plan"}</Text>
+          <Text style={styles.validity}>
+            {recharge.member_id?.validityDays || "N/A"} {recharge.member_id?.whatIsThis || "days"}
+          </Text>
+        </View>
+        <View style={styles.amountContainer}>
+          <Text style={styles.amount}>{formatCurrency(recharge.amount)}</Text>
+        </View>
+      </View>
+
+      <View style={styles.divider} />
+
+      {/* Details Section */}
+      <View style={styles.detailsContainer}>
+        <DetailRow icon="calendar-range" text={`Valid till: ${formatDate(recharge.end_date)}`} />
+
+        <DetailRow icon="receipt" text={`Transaction ID: ${recharge.trn_no || "N/A"}`} />
+
+        <DetailRow icon="calendar-clock" text={`Purchased: ${formatDate(recharge.createdAt)}`} />
+      </View>
+    </View>
+  )
+}
+
+// Detail Row Component
+function DetailRow({ icon, text, color = "#666" }) {
+  return (
+    <View style={styles.detailRow}>
+      <MaterialCommunityIcons name={icon} size={18} color={color} />
+      <Text style={[styles.detailText, { color }]}>{text}</Text>
+    </View>
+  )
+}
+
+// Empty State Component
+function EmptyState() {
+  return (
+    <View style={styles.emptyContainer}>
+      <MaterialCommunityIcons name="history" size={64} color="#ddd" />
+      <Text style={styles.emptyTitle}>No Recharge History</Text>
+      <Text style={styles.emptyText}>
+        You haven't made any recharges yet. Your transaction history will appear here.
+      </Text>
+    </View>
+  )
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F5F5F5',
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8f9fa",
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 16,
+    marginBottom: 24,
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 24,
+  },
+  retryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: "#FF385C",
+    borderRadius: 8,
+    elevation: 2,
+  },
+  retryButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#000",
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "#666",
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#f5f5f5",
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  transactionCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
     },
-    header: {
-        padding: 20,
-        backgroundColor: '#FFF',
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    headerSubtitle: {
-        fontSize: 14,
-        color: '#666',
-        marginTop: 4,
-    },
-    transactionCard: {
-        backgroundColor: '#FFF',
-        margin: 16,
-        borderRadius: 12,
-        padding: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    topSection: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingBottom: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
-    },
-    statusContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    statusText: {
-        marginLeft: 8,
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    amount: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    detailsContainer: {
-        marginTop: 16,
-    },
-    detailRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    detailLabel: {
-        fontSize: 14,
-        color: '#666',
-        marginLeft: 8,
-        width: 100,
-    },
-    detailValue: {
-        flex: 1,
-        fontSize: 14,
-        color: '#333',
-        fontWeight: '500',
-    },
-    downloadButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 16,
-        padding: 12,
-        borderRadius: 8,
-        backgroundColor: '#E3F2FD',
-    },
-    downloadText: {
-        marginLeft: 8,
-        color: '#2196F3',
-        fontSize: 14,
-        fontWeight: '600',
-    }
-});
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    position: "relative",
+  },
+  statusBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 4,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  planInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  planName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#000",
+    marginBottom: 4,
+  },
+  validity: {
+    fontSize: 14,
+    color: "#666",
+  },
+  amountContainer: {
+    backgroundColor: "#f8f9fa",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  amount: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FF385C",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#eee",
+    marginVertical: 16,
+  },
+  detailsContainer: {
+    gap: 12,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  detailText: {
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 40,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    marginTop: 20,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+})
+

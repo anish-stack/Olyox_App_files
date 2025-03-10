@@ -30,7 +30,7 @@ export default function Withdraw() {
     const [showModal, setShowModal] = useState(false);
     const route = useRoute();
     const { _id, wallet } = route.params || { _id: 'user123' }; // Default ID for testing
-    console.log(_id)
+ 
     const [formData, setFormData] = useState({
         amount: '',
         method: 'UPI',
@@ -57,7 +57,7 @@ export default function Withdraw() {
             const token = await SecureStore.getItemAsync('auth_token_cab');
             if (token) {
                 const response = await axios.get(
-                    'http://192.168.1.2:3100/api/v1/rider/user-details',
+                    'http://192.168.1.8:3100/api/v1/rider/user-details',
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 if (response.data.partner) {
