@@ -71,7 +71,7 @@ const OnlineStatusToggle = ({ workStatus, onStatusChange, statusOfPartner }) => 
             }
 
             const response = await axios.post(
-                'https://demoapi.olyox.com/api/v1/parcel/manage_offline_online',
+                'http://192.168.1.8:3100/api/v1/parcel/manage_offline_online',
                 { status: isOnline ? 'offline' : 'online' },
                 { headers: { Authorization: `Bearer ${token}` } }
             );

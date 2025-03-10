@@ -28,7 +28,7 @@ const OtpScreen = ({ onVerify, number }) => {
     setLoading(true);
     try {
       const response = await axios.post(
-        'https://demoapi.olyox.com/api/v1/parcel/login_parcel_otp_verify',
+        'http://192.168.1.8:3100/api/v1/parcel/login_parcel_otp_verify',
         { otp, number }
       );
 
@@ -71,7 +71,7 @@ const OtpScreen = ({ onVerify, number }) => {
   const handleResendOtp = async () => {
     try {
       const response = await axios.post(
-        'https://demoapi.olyox.com/api/v1/parcel/login_parcel_otp_resend',
+        'http://192.168.1.8:3100/api/v1/parcel/login_parcel_otp_resend',
         { number }
       );
 

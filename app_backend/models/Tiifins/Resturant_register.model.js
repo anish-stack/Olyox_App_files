@@ -177,6 +177,10 @@ const restaurantSchema = new mongoose.Schema({
     minPrice: {
         type: Number,
         default: 200
+    },
+    IsProfileComplete:{
+        type:Boolean,
+        default:false
     }
 }, {
     timestamps: true

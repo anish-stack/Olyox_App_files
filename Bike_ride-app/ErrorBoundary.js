@@ -1,38 +1,38 @@
 import React, { Component } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView
 } from "react-native";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { 
-      hasError: false, 
-      error: null, 
+    this.state = {
+      hasError: false,
+      error: null,
       errorInfo: null,
       errorLocation: null
     };
   }
 
   static getDerivedStateFromError(error) {
-    return { 
-      hasError: true, 
-      error 
+    return {
+      hasError: true,
+      error
     };
   }
 
   componentDidCatch(error, errorInfo) {
     // Extract error location if possible
     const errorLocation = this.extractErrorLocation(errorInfo);
-    
-    this.setState({ 
-      errorInfo, 
-      errorLocation 
+
+    this.setState({
+      errorInfo,
+      errorLocation
     });
   }
 
@@ -46,11 +46,11 @@ class ErrorBoundary extends Component {
   }
 
   handleRetry = () => {
-    this.setState({ 
-      hasError: false, 
-      error: null, 
+    this.setState({
+      hasError: false,
+      error: null,
       errorInfo: null,
-      errorLocation: null 
+      errorLocation: null
     });
   };
 
@@ -60,33 +60,33 @@ class ErrorBoundary extends Component {
         <View style={styles.container}>
           <ScrollView contentContainerStyle={styles.scrollContainer}>
             <View style={styles.errorCard}>
-              <MaterialCommunityIcons 
-                name="alert-circle" 
-                size={80} 
-                color="#FF6B6B" 
+              <MaterialCommunityIcons
+                name="alert-circle"
+                size={80}
+                color="#FF6B6B"
               />
-              
+
               <Text style={styles.errorTitle}>
                 Oops! Something Went Wrong
               </Text>
-              
+
               <Text style={styles.errorMessage}>
                 We encountered an unexpected error in {this.state.errorLocation}.
               </Text>
-              
+
               <Text style={styles.errorDetails}>
                 Error: {this.state.error?.toString()}
               </Text>
-              
+
               <View style={styles.buttonContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.retryButton}
                   onPress={this.handleRetry}
                 >
-                  <MaterialCommunityIcons 
-                    name="refresh" 
-                    size={24} 
-                    color="white" 
+                  <MaterialCommunityIcons
+                    name="refresh"
+                    size={24}
+                    color="white"
                   />
                   <Text style={styles.retryButtonText}>
                     Retry

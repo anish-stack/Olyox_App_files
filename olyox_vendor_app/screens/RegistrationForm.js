@@ -5,17 +5,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DropDownPicker from 'react-native-dropdown-picker';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Location from 'expo-location';
 const API_BASE_URL = 'https://api.olyox.com/api/v1';
-const MAIN_API_BASE_URL = 'https://demoapi.olyox.com/api/v1/tiffin';
+const MAIN_API_BASE_URL = 'http://192.168.1.8:3100/api/v1/tiffin';
 
 const { width } = Dimensions.get('window');
 
 export default function RegistrationForm() {
     const router = useNavigation();
+    const route = useRoute()
+    const { BH } = route.params || {}
     const [step, setStep] = useState(1);
-    const [bhId, setBhId] = useState('BH');
+    const [bhId, setBhId] = useState(BH ? BH : 'BH');
     const [userData, setUserData] = useState(null);
     const [location, setLocation] = useState(null);
     const [lerrorMsg, setLerrorMsg] = useState(null);
@@ -129,9 +131,9 @@ export default function RegistrationForm() {
 
 
     const fetchUserDetails = async () => {
-        console.log('Fetching user details',validateBhId())
+        console.log('Fetching user details', validateBhId())
         if (!validateBhId()) return;
-        
+
 
         setLoading(true);
         try {
@@ -155,12 +157,12 @@ export default function RegistrationForm() {
     };
 
     const registerRestaurant = async () => {
-        console.log('Fetching user details',validateForm())
+        console.log('Fetching user details', validateForm())
 
         if (!validateForm()) return;
 
         if (!location) {
-            console.log("location",location)
+            console.log("location", location)
             Alert.alert(
                 'Allow Location',
                 'To continue, please enable location access in your app settings.',
@@ -192,9 +194,9 @@ export default function RegistrationForm() {
             });
             console.log(response.data)
 
-                setStep(3);
-                setLoading(false);
-                setSuccess('Registration successful. Please enter OTP.');
+            setStep(3);
+            setLoading(false);
+            setSuccess('Registration successful. Please enter OTP.');
 
         } catch (error) {
             setLoading(false);
@@ -235,11 +237,11 @@ export default function RegistrationForm() {
         try {
             await axios.post(`${MAIN_API_BASE_URL}/resend-otp`, {
                 restaurant_BHID: bhId,
-                type:"verify"
+                type: "verify"
             });
             setSuccess('OTP resent successfully');
         } catch (error) {
-            Alert.alert('Otp Send Failed',error.response.data.message)
+            Alert.alert('Otp Send Failed', error.response.data.message)
             setError('Failed to resend OTP');
         } finally {
             setLoading(false);

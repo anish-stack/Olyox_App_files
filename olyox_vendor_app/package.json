@@ -2,7 +2,7 @@
   "name": "olyox_user_app",
   "version": "1.0.0",
   "main": "index.js",
-  "proxy": "https://demoapi.olyox.com",
+  "proxy": "http://192.168.1.8:3100",
   "scripts": {
     "start": "expo start --dev-client",
     "android": "expo run:android",
@@ -42,7 +42,8 @@
     "react-native-svg": "15.8.0",
     "react-native-vector-icons": "^10.2.0",
     "react-redux": "^8.1.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "@react-native-community/datetimepicker": "8.2.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

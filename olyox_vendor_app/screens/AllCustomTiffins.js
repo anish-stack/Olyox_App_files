@@ -27,7 +27,7 @@ const AllCustomTiffins = () => {
         navigation.replace('Login');
         return;
       }
-      const { data } = await axios.get('https://demoapi.olyox.com/api/v1/tiffin/get_custom_tiffin_by_resutrant_id',{
+      const { data } = await axios.get('http://192.168.1.8:3100/api/v1/tiffin/get_custom_tiffin_by_resutrant_id',{
         headers: {
           'Authorization': `Bearer ${storedToken}`
         }
@@ -61,7 +61,7 @@ const AllCustomTiffins = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await axios.delete(`https://demoapi.olyox.com/api/v1/tiffin/delete_custom_tiffin/${id}`);
+              await axios.delete(`http://192.168.1.8:3100/api/v1/tiffin/delete_custom_tiffin/${id}`);
               handleFetchTiffin();
               Alert.alert('Success', 'Tiffin plan deleted successfully');
             } catch (error) {
@@ -76,7 +76,7 @@ const AllCustomTiffins = () => {
   const handleUpdateTiffinAvailability = async (id, food_availability) => {
     try {
       const updated = !food_availability;
-      const response = await axios.put(`https://demoapi.olyox.com/api/v1/tiffin/update_tiffin_availability/${id}`, { food_availability: updated });
+      const response = await axios.put(`http://192.168.1.8:3100/api/v1/tiffin/update_tiffin_availability/${id}`, { food_availability: updated });
       if (response.status === 200) {
         handleFetchTiffin();
         Alert.alert('Success', 'Tiffin availability updated successfully');

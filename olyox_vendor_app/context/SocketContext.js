@@ -21,20 +21,20 @@ export const SocketProvider = ({ children }) => {
 
                 // Step 1: Retrieve token from AsyncStorage
                 const token = await AsyncStorage.getItem("userToken");
-                console.log(token)
+                // console.log(token)
                 if (!token) {
                     throw new Error("No auth token found");
                 }
 
                 // Step 2: Fetch user data
                 const response = await axios.get(
-                    'https://demoapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
+                    'http://192.168.1.8:3100/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: { 'Authorization': `Bearer ${token}` }
                     }
                 );
 
-                console.log("Full API Response:", response);
+                // console.log("Full API Response:", response);
 
                 // Ensure response structure is correct
                 if (!response || !response.data || !response.data.data) {
@@ -42,7 +42,7 @@ export const SocketProvider = ({ children }) => {
                 }
 
                 const user = response.data.data;
-                console.log("User Data:", user);
+                // console.log("User Data:", user);
 
                 if (!user || !user._id) {
                     throw new Error("Invalid user data");
@@ -63,6 +63,8 @@ export const SocketProvider = ({ children }) => {
                     setReconnecting(false);
                 }
             } catch (err) {
+                const token = await AsyncStorage.removeItem("userToken");
+
                 console.error("Socket initialization error:", err);
                 setError(err.message);
             } finally {

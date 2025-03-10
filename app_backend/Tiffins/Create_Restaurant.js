@@ -662,24 +662,41 @@ exports.login = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "Restaurant BHID is required to login",
-                error: "Restaurant BHID is required to login"
+                error: "Missing restaurant_BHID"
             });
         }
 
-        const restaurant = await Restaurant.findOne({ restaurant_BHID });
+        let restaurant = await Restaurant.findOne({ restaurant_BHID });
 
+        // Check if restaurant exists
         if (!restaurant) {
-            return res.status(404).json({
-                success: false,
-                message: "Restaurant not found",
-                error: "Restaurant not found"
-            });
+            try {
+                const response = await axios.post("http://localhost:7000/api/v1/getProviderDetailsByBhId", {
+                    BhId: restaurant_BHID 
+                });
+
+                if (response.data?.success) {
+                    return res.status(403).json({
+                        success: false,
+                        BhID: response.data.BH_ID,
+                        message: "You are registered on the website but need to complete your profile on the Vendor App!",
+                        redirect: "complete-profile"
+                    });
+                }
+            } catch (error) {
+                console.error("API Error:", error?.response?.data || error.message);
+                return res.status(404).json({
+                    success: false,
+                    message: "Profile not found on website or app. Please register first!",
+                });
+            }
         }
 
         // Generate a 4-digit OTP
         const otp = Math.floor(1000 + Math.random() * 9000);
-        const otpExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes expiry
+        const otpExpiry = new Date(Date.now() + 2 * 60 * 1000).toISOString(); // Store in ISO format
 
+        // Update restaurant with OTP
         restaurant.otp = otp;
         restaurant.otpExpiry = otpExpiry;
         await restaurant.save();
@@ -690,7 +707,7 @@ exports.login = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "OTP sent successfully to registered phone number",
+            message: "OTP sent successfully to the registered phone number.",
         });
 
     } catch (error) {

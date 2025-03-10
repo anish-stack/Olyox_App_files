@@ -25,7 +25,7 @@ export function Login() {
 
         setLoading(true);
         try {
-            const response = await fetch('https://demoapi.olyox.com/api/v1/tiffin/tiffin_login', {
+            const response = await fetch('http://192.168.1.8:3100/api/v1/tiffin/tiffin_login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID }),
@@ -37,9 +37,13 @@ export function Login() {
                 Alert.alert('Success', 'OTP sent to your registered phone');
                 setStep(2);
             } else {
-                Alert.alert('Error', data.message || 'Failed to send OTP');
+
+                console.log("data", data)
+                Alert.alert('Error While', data.message || 'Failed to send OTP');
+                navigation.navigate('complete-register', { BH: data.BhID })
             }
         } catch (error) {
+            console.log("Login Error", error)
             Alert.alert('Error', 'Network error. Please try again.');
         } finally {
             setLoading(false);
@@ -57,7 +61,7 @@ export function Login() {
         setTimeout(() => setResendDisabled(false), 30000); // Re-enable after 30s
 
         try {
-            const response = await fetch('https://demoapi.olyox.com/api/v1/tiffin/resend-otp', {
+            const response = await fetch('http://192.168.1.8:3100/api/v1/tiffin/resend-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID }),
@@ -84,7 +88,7 @@ export function Login() {
 
         setLoading(true);
         try {
-            const response = await fetch('https://demoapi.olyox.com/api/v1/tiffin/verify_otp', {
+            const response = await fetch('http://192.168.1.8:3100/api/v1/tiffin/verify_otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID, otp }),
@@ -190,7 +194,7 @@ export function Login() {
                         alignItems: 'center'
                     }}
                     activeOpacity={0.8}
-                    onPress={() => navigation.navigate('Regisiter')}
+                    onPress={() => navigation.navigate('Register')}
                 >
                     <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>New Register</Text>
                 </TouchableOpacity>
