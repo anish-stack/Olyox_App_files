@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Location from 'expo-location';
 const API_BASE_URL = 'https://api.olyox.com/api/v1';
-const MAIN_API_BASE_URL = 'http://192.168.1.8:3100/api/v1/tiffin';
+const MAIN_API_BASE_URL = 'http://192.168.1.2:3100/api/v1/tiffin';
 
 const { width } = Dimensions.get('window');
 
@@ -262,10 +262,7 @@ export default function RegistrationForm() {
                         <Text style={styles.infoLabel}>Email:</Text>
                         <Text style={styles.infoValue}>{userData.email}</Text>
                     </View>
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Plan:</Text>
-                        <Text style={styles.infoValue}>{userData.member_id?.title}</Text>
-                    </View>
+
                     <View style={styles.infoRow}>
                         <Text style={styles.infoLabel}>Category:</Text>
                         <Text style={styles.infoValue}>{userData.category?.title}</Text>
@@ -550,7 +547,7 @@ const styles = StyleSheet.create({
     },
     container: {
         flexGrow: 1,
-        padding: 20,
+        padding: 8,
         justifyContent: 'center',
     },
     formCard: {

@@ -12,7 +12,7 @@ const Profile = () => {
     const [restaurant, setRestaurant] = useState('');
     const [selectImage, setSelectedImages] = useState([]);
     const [loading, setLoading] = useState(false);
-    // Sample data
+  
     const profileData = {
         name: "Sharma's Kitchen",
         category: "Tiffin Service",
@@ -47,7 +47,7 @@ const Profile = () => {
                 // console.log("storedToken",storedToken)
 
                 const { data } = await axios.get(
-                    'http://192.168.1.8:3100/api/v1/tiffin/get_single_tiffin_profile',
+                    'http://192.168.1.2:3100/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -55,7 +55,7 @@ const Profile = () => {
                     }
                 );
 
-                // console.log("API Response:", data); // Debug API response
+               
 
                 if (data?.data) {
                     setRestaurant(data.data);
@@ -116,9 +116,8 @@ const Profile = () => {
                 });
             }
     
-            console.log("formdata", formData,restaurant._id);
-    
-            const res = await axios.put(`http://192.168.1.8:3100/api/v1/tiffin/upload_logo/${restaurant._id}`, formData, {
+       
+            const res = await axios.put(`http://192.168.1.2:3100/api/v1/tiffin/upload_logo/${restaurant._id}`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 }

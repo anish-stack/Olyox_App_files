@@ -34,6 +34,8 @@ import RegistrationForm from './screens/RegistrationForm';
 import * as Sentry from '@sentry/react-native';
 import { SocketProvider } from './context/SocketContext';
 import BhVerification from './screens/BH_Re/BhVerification';
+import RegisterWithBh from './screens/BH_Re/Bh_registeration';
+import BhOtpVerification from './screens/BH_Re/BhOtpVerification';
 
 Sentry.init({
   dsn: 'https://517d3fb5279b487fb84063c1fb2804c9@o4508835632185344.ingest.us.sentry.io/4508835637493760',
@@ -61,7 +63,7 @@ export default function App() {
         }
 
         const { data } = await axios.get(
-          'http://192.168.1.8:3100/api/v1/tiffin/get_single_tiffin_profile',
+          'http://192.168.1.2:3100/api/v1/tiffin/get_single_tiffin_profile',
           {
             headers: { 'Authorization': `Bearer ${storedToken}` }
           }
@@ -106,7 +108,7 @@ export default function App() {
                 <Stack.Screen name="Profile" options={{ headerShown: true }} component={Profile} />
                 <Stack.Screen name="New Order" options={{ headerShown: true }} component={NewOrder} />
                 <Stack.Screen name="Add Listing" options={{ headerShown: true }} component={AddListing} />
-                <Stack.Screen name="Customize Tiffine Plan" options={{ headerShown: true }} component={CustomizeTiffinPlan} />
+                <Stack.Screen name="Customize Tiffine Plan" options={{ headerShown: false }} component={CustomizeTiffinPlan} />
                 <Stack.Screen name="Order Report" options={{ headerShown: true }} component={OrderReport} />
                 <Stack.Screen name="Recharge Plan" options={{ headerShown: true }} component={Recharge} />
                 <Stack.Screen name="Recharge History" options={{ headerShown: true }} component={RechargeHistory} />
@@ -118,10 +120,12 @@ export default function App() {
                 <Stack.Screen name="Help" options={{ headerShown: true }} component={Help} />
                 <Stack.Screen name="All Order" options={{ headerShown: true }} component={AllOrders} />
                 <Stack.Screen name="Login" options={{ headerShown: true }} component={Login} />
+                <Stack.Screen name="OtpVerify" options={{ headerShown: true }} component={BhOtpVerification} />
                 <Stack.Screen name="complete-register" options={{ headerShown: true,title:"Complete Profile" }} component={RegistrationForm} />
-                <Stack.Screen name="Register" options={{ headerShown: true }} component={BhVerification} />
-                <Stack.Screen name="AllFood" options={{ headerShown: true }} component={AllFood} />
-                <Stack.Screen name="CustomFood" options={{ headerShown: true }} component={AllCustomTiffins} />
+                <Stack.Screen name="BHRegister" options={{ headerShown: true }} component={BhVerification} />
+                <Stack.Screen name="Register" options={{ headerShown: true }} component={RegisterWithBh} />
+                <Stack.Screen name="AllFood" options={{ headerShown: false }} component={AllFood} />
+                <Stack.Screen name="CustomFood" options={{ headerShown: false }} component={AllCustomTiffins} />
                 <Stack.Screen name="Running Order" options={{ headerShown: true }} component={OnGoingOrder} />
                 <Stack.Screen name="Complete Order" options={{ headerShown: true }} component={CompleteOrder} />
               </Stack.Navigator>

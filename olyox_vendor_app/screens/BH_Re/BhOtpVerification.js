@@ -39,7 +39,7 @@ const BhOtpVerification = () => {
                 formData
             );
             Alert.alert("Success", response.data.message || "OTP verified successfully!", [
-                { text: "OK", onPress: () => navigation.navigate('register', { bh: response.data.BHID }) }
+                { text: "OK", onPress: () => navigation.navigate('complete-register', { BH: response.data.BHID }) }
             ]);
         } catch (error) {
             Alert.alert("Error", error.response?.data?.message || "Failed to verify OTP.");

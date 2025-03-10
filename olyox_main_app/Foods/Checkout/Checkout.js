@@ -30,7 +30,7 @@ const Checkout = () => {
 
     const findCurrent = async () => {
         try {
-            const data = await axios.post(`http://192.168.1.8:3100/Fetch-Current-Location`, {
+            const data = await axios.post(`http://192.168.1.2:3100/Fetch-Current-Location`, {
                 lat: location?.coords?.latitude,
                 lng: location?.coords?.longitude
             })
@@ -305,7 +305,7 @@ const Checkout = () => {
     
         try {
             const response = await axios.post(
-                `http://192.168.1.8:3100/api/v1/tiffin/create_order_of_food`,
+                `http://192.168.1.2:3100/api/v1/tiffin/create_order_of_food`,
                 {
                     order_items: items,
                     orderId: "ORD" + Math.floor(Math.random() * 1000000),

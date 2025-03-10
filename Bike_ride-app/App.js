@@ -34,7 +34,7 @@ import WorkingData from './screens/WorkingData/WorkingData';
 import ReferalHistory from './screens/Profile/ReferalHistory';
 import Withdraw from './screens/Profile/Withdraw';
 import * as Sentry from '@sentry/react-native';
-import ErrorBoundaryWrapper  from './ErrorBoundary'
+import ErrorBoundaryWrapper from './ErrorBoundary'
 
 import ActiveRideButton from './ActiveRideButton';
 const Stack = createNativeStackNavigator();
@@ -45,7 +45,7 @@ Sentry.init({
   debug: false,
   tracesSampleRate: 1.0,
 });
-const App=()=> {
+const App = () => {
   const [userType, setUserType] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isDocumentUploaded, setIsDocumentUploaded] = useState(false);
@@ -59,22 +59,22 @@ const App=()=> {
   const checkActiveRide = async () => {
     console.log("I am checking start")
 
-      try {
-          const rideData = await SecureStore.getItemAsync('activeRide');
-          console.log("I",rideData)
+    try {
+      const rideData = await SecureStore.getItemAsync('activeRide');
+      console.log("I", rideData)
 
-          if (rideData) {
-              setActiveRide(JSON.parse(rideData));
-          }
-      } catch (error) {
-          console.error('Error checking active ride:', error);
+      if (rideData) {
+        setActiveRide(JSON.parse(rideData));
       }
+    } catch (error) {
+      console.error('Error checking active ride:', error);
+    }
   };
 
   useEffect(() => {
     checkActiveRide();
-}, []);
-  console.log("activeRide",activeRide)
+  }, []);
+  console.log("activeRide", activeRide)
 
   useEffect(() => {
     const checkAuthToken = async () => {
@@ -84,7 +84,7 @@ const App=()=> {
 
         if (token) {
           const response = await axios.get(
-            'http://192.168.1.8:3100/api/v1/rider/user-details',
+            'http://192.168.1.2:3100/api/v1/rider/user-details',
             { headers: { Authorization: `Bearer ${token}` } }
           );
 
@@ -167,10 +167,10 @@ const App=()=> {
   );
 }
 const WrappedApp = Sentry.wrap(App);
-const RootApp = ()=>(
+const RootApp = () => (
   <ErrorBoundaryWrapper>
     <WrappedApp />
-</ErrorBoundaryWrapper>
+  </ErrorBoundaryWrapper>
 )
 
 AppRegistry.registerComponent(appName, () => RootApp);

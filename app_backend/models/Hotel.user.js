@@ -10,7 +10,6 @@ const HotelUserSchema = new Schema({
     hotel_zone: {
         type: String,
         required: true,
-
     },
     hotel_address: {
         type: String,

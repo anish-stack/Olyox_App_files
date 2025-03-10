@@ -181,7 +181,10 @@ const restaurantSchema = new mongoose.Schema({
     IsProfileComplete:{
         type:Boolean,
         default:false
-    }
+    },
+    JsonData: {
+        type: Object
+    },
 }, {
     timestamps: true
 });

@@ -40,7 +40,7 @@ export default function Restaurant() {
     setLoading(true)
     try {
       const { data } = await axios.get(
-        `http://192.168.1.8:3100/api/v1/tiffin/find_Restaurant_And_Her_foods?restaurant_id=${item}`,
+        `http://192.168.1.2:3100/api/v1/tiffin/find_Restaurant_And_Her_foods?restaurant_id=${item}`,
       )
       if (data.details) {
         setDetails(data.details)

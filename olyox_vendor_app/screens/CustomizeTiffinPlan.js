@@ -15,6 +15,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 // import ImagePicker from 'react-native-image-picker';
 
 export function CustomizeTiffinPlan() {
@@ -33,7 +34,7 @@ export function CustomizeTiffinPlan() {
         }
 
         const { data } = await axios.get(
-          'http://192.168.1.8:3100/api/v1/tiffin/get_single_tiffin_profile',
+          'http://192.168.1.2:3100/api/v1/tiffin/get_single_tiffin_profile',
           {
             headers: {
               'Authorization': `Bearer ${storedToken}`
@@ -262,7 +263,7 @@ export function CustomizeTiffinPlan() {
 
     try {
       const response = await axios.post(
-        'http://192.168.1.8:3100/api/v1/tiffin/create_custom_tiffin',
+        'http://192.168.1.2:3100/api/v1/tiffin/create_custom_tiffin',
         formData,
         {
           headers: {
@@ -385,53 +386,55 @@ export function CustomizeTiffinPlan() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Icon name="food-variant" size={32} color="#FF6B6B" />
-        <Text style={styles.headerText}>Customize Your Tiffin Plan</Text>
-      </View>
-
-      {/* Image Upload Section */}
-      <View style={styles.imageSection}>
-        <TouchableOpacity style={styles.imageUploadButton} onPress={pickImage}>
-          {plan.images ? (
-            <Image source={{ uri: plan.images }} style={styles.selectedImage} />
-          ) : (
-            <>
-              <Icon name="camera" size={32} color="#666" />
-              <Text style={styles.imageUploadText}>Upload Tiffin Image</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Duration Selection */}
-      <View style={styles.durationCard}>
-        <Text style={styles.cardTitle}>Plan Duration</Text>
-        <View style={styles.durationButtons}>
-          {[7, 15, 30].map(days => (
-            <TouchableOpacity
-              key={days}
-              style={[
-                styles.durationButton,
-                plan.duration === days && styles.durationButtonActive
-              ]}
-              onPress={() => setPlan(prev => ({ ...prev, duration: days }))}
-            >
-              <Text style={[
-                styles.durationText,
-                plan.duration === days && styles.durationTextActive
-              ]}>
-                {days} Days
-              </Text>
-            </TouchableOpacity>
-          ))}
+    <SafeAreaView style={{ flex: 1 }}>
+  <View style={styles.header}>
+          <Icon name="food-variant" size={32} color="#FF6B6B" />
+          <Text style={styles.headerText}>Customize Your Tiffin Plan</Text>
         </View>
-      </View>
+      <ScrollView style={styles.container}>
 
-      <View
-         style={styles.durationCard}
+      
+
+        {/* Image Upload Section */}
+        <View style={styles.imageSection}>
+          <TouchableOpacity style={styles.imageUploadButton} onPress={pickImage}>
+            {plan.images ? (
+              <Image source={{ uri: plan.images }} style={styles.selectedImage} />
+            ) : (
+              <>
+                <Icon name="camera" size={32} color="#666" />
+                <Text style={styles.imageUploadText}>Upload Tiffin Image</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Duration Selection */}
+        <View style={styles.durationCard}>
+          <Text style={styles.cardTitle}>Plan Duration</Text>
+          <View style={styles.durationButtons}>
+            {[7, 15, 30].map(days => (
+              <TouchableOpacity
+                key={days}
+                style={[
+                  styles.durationButton,
+                  plan.duration === days && styles.durationButtonActive
+                ]}
+                onPress={() => setPlan(prev => ({ ...prev, duration: days }))}
+              >
+                <Text style={[
+                  styles.durationText,
+                  plan.duration === days && styles.durationTextActive
+                ]}>
+                  {days} Days
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View
+          style={styles.durationCard}
         >
           <Text style={styles.cardTitle}>Package Name</Text>
           <TextInput
@@ -442,109 +445,110 @@ export function CustomizeTiffinPlan() {
           />
         </View>
 
-      {/* Preferences Section */}
-      <View style={styles.preferencesCard}>
-        <Text style={styles.cardTitle}>Preferences</Text>
+        {/* Preferences Section */}
+        <View style={styles.preferencesCard}>
+          <Text style={styles.cardTitle}>Preferences</Text>
 
-        {/* Veg/Non-veg Toggle */}
-        <View style={styles.preferenceRow}>
-          <Text style={styles.preferenceLabel}>Vegetarian</Text>
-          <TouchableOpacity
-            style={[styles.toggleButton, plan.preferences.isVeg && styles.toggleButtonActive]}
-            onPress={() => setPlan(prev => ({
-              ...prev,
-              preferences: { ...prev.preferences, isVeg: !prev.preferences.isVeg }
-            }))}
-          >
-            <Icon
-              name={plan.preferences.isVeg ? "leaf" : "food-drumstick"}
-              size={24}
-              color={plan.preferences.isVeg ? "#fff" : "#666"}
-            />
-          </TouchableOpacity>
-        </View>
+          {/* Veg/Non-veg Toggle */}
+          <View style={styles.preferenceRow}>
+            <Text style={styles.preferenceLabel}>Vegetarian</Text>
+            <TouchableOpacity
+              style={[styles.toggleButton, plan.preferences.isVeg && styles.toggleButtonActive]}
+              onPress={() => setPlan(prev => ({
+                ...prev,
+                preferences: { ...prev.preferences, isVeg: !prev.preferences.isVeg }
+              }))}
+            >
+              <Icon
+                name={plan.preferences.isVeg ? "leaf" : "food-drumstick"}
+                size={24}
+                color={plan.preferences.isVeg ? "#fff" : "#666"}
+              />
+            </TouchableOpacity>
+          </View>
 
-        {/* Spice Level Selection */}
-        <View style={styles.preferenceRow}>
-          <Text style={styles.preferenceLabel}>Spice Level</Text>
-          <View style={styles.spiceLevelButtons}>
-            {["low", "medium", "high"].map(level => (
-              <TouchableOpacity
-                key={level}
-                style={[
-                  styles.spiceLevelButton,
-                  plan.preferences.spiceLevel === level && styles.spiceLevelButtonActive
-                ]}
-                onPress={() => setPlan(prev => ({
-                  ...prev,
-                  preferences: { ...prev.preferences, spiceLevel: level }
-                }))}
-              >
-                <Text style={[
-                  styles.spiceLevelText,
-                  plan.preferences.spiceLevel === level && styles.spiceLevelTextActive
-                ]}>
-                  {level.charAt(0).toUpperCase() + level.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          {/* Spice Level Selection */}
+          <View style={styles.preferenceRow}>
+            <Text style={styles.preferenceLabel}>Spice Level</Text>
+            <View style={styles.spiceLevelButtons}>
+              {["low", "medium", "high"].map(level => (
+                <TouchableOpacity
+                  key={level}
+                  style={[
+                    styles.spiceLevelButton,
+                    plan.preferences.spiceLevel === level && styles.spiceLevelButtonActive
+                  ]}
+                  onPress={() => setPlan(prev => ({
+                    ...prev,
+                    preferences: { ...prev.preferences, spiceLevel: level }
+                  }))}
+                >
+                  <Text style={[
+                    styles.spiceLevelText,
+                    plan.preferences.spiceLevel === level && styles.spiceLevelTextActive
+                  ]}>
+                    {level.charAt(0).toUpperCase() + level.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Weekend Toggle */}
+          <View style={styles.preferenceRow}>
+            <Text style={styles.preferenceLabel}>Include Weekends</Text>
+            <TouchableOpacity
+              style={[styles.toggleButton, plan.preferences.includeWeekends && styles.toggleButtonActive]}
+              onPress={() => setPlan(prev => ({
+                ...prev,
+                preferences: { ...prev.preferences, includeWeekends: !prev.preferences.includeWeekends }
+              }))}
+            >
+              <Icon
+                name={plan.preferences.includeWeekends ? "calendar-check" : "calendar-remove"}
+                size={24}
+                color={plan.preferences.includeWeekends ? "#fff" : "#666"}
+              />
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Weekend Toggle */}
-        <View style={styles.preferenceRow}>
-          <Text style={styles.preferenceLabel}>Include Weekends</Text>
-          <TouchableOpacity
-            style={[styles.toggleButton, plan.preferences.includeWeekends && styles.toggleButtonActive]}
-            onPress={() => setPlan(prev => ({
-              ...prev,
-              preferences: { ...prev.preferences, includeWeekends: !prev.preferences.includeWeekends }
-            }))}
-          >
-            <Icon
-              name={plan.preferences.includeWeekends ? "calendar-check" : "calendar-remove"}
-              size={24}
-              color={plan.preferences.includeWeekends ? "#fff" : "#666"}
-            />
-          </TouchableOpacity>
+        {/* Meals Section */}
+        <View style={styles.mealsCard}>
+          <Text style={styles.cardTitle}>Select Meals & Items</Text>
+          {renderMealCard('breakfast', 'coffee')}
+          {renderMealCard('lunch', 'food')}
+          {renderMealCard('dinner', 'food-variant')}
         </View>
-      </View>
 
-      {/* Meals Section */}
-      <View style={styles.mealsCard}>
-        <Text style={styles.cardTitle}>Select Meals & Items</Text>
-        {renderMealCard('breakfast', 'coffee')}
-        {renderMealCard('lunch', 'food')}
-        {renderMealCard('dinner', 'food-variant')}
-      </View>
-
-      {/* Price Summary */}
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Total Price</Text>
-          <Text style={styles.summaryPrice}>₹{calculateTotalPrice()}</Text>
+        {/* Price Summary */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Total Price</Text>
+            <Text style={styles.summaryPrice}>₹{calculateTotalPrice()}</Text>
+          </View>
+          <Text style={styles.summaryNote}>
+            {plan.duration} days × {Object.values(plan.meals).filter(m => m.enabled).length} meals per day
+          </Text>
         </View>
-        <Text style={styles.summaryNote}>
-          {plan.duration} days × {Object.values(plan.meals).filter(m => m.enabled).length} meals per day
-        </Text>
-      </View>
 
-      {/* Submit Button */}
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        {
-          loading ? (
-            <>
-              <Text style={styles.submitText}>Adding...</Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.submitText}>Confirm Plan</Text>
-              <Icon name="check-circle" size={24} color="#fff" />
-            </>
-          )
-        }
-      </TouchableOpacity>
-    </ScrollView>
+        {/* Submit Button */}
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          {
+            loading ? (
+              <>
+                <Text style={styles.submitText}>Adding...</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.submitText}>Confirm Plan</Text>
+                <Icon name="check-circle" size={24} color="#fff" />
+              </>
+            )
+          }
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -562,7 +566,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
   headerText: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 10,
     color: '#333',

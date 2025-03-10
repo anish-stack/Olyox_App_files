@@ -42,7 +42,7 @@ export default function TopFood({ show = false }) {
             console.log("User Location:", latitude, longitude);
 
             // Fetch restaurants based on location
-            const response = await axios.get(`http://192.168.1.8:3100/api/v1/tiffin/find_RestaurantTop`, {
+            const response = await axios.get(`http://192.168.1.2:3100/api/v1/tiffin/find_RestaurantTop`, {
                 params: {
                     lat: latitude,
                     lng: longitude

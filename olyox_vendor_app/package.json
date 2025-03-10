@@ -2,7 +2,7 @@
   "name": "olyox_user_app",
   "version": "1.0.0",
   "main": "index.js",
-  "proxy": "http://192.168.1.8:3100",
+  "proxy": "http://192.168.1.2:3100",
   "scripts": {
     "start": "expo start --dev-client",
     "android": "expo run:android",
@@ -12,6 +12,7 @@
   "dependencies": {
     "@nativescript/imagepicker": "^5.0.0",
     "@react-native-async-storage/async-storage": "^2.1.0",
+    "@react-native-community/datetimepicker": "8.2.0",
     "@react-native-picker/picker": "^2.11.0",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.11.0",
@@ -42,8 +43,7 @@
     "react-native-svg": "15.8.0",
     "react-native-vector-icons": "^10.2.0",
     "react-redux": "^8.1.1",
-    "socket.io-client": "^4.8.1",
-    "@react-native-community/datetimepicker": "8.2.0"
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
