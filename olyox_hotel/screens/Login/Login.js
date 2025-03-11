@@ -54,6 +54,19 @@ export default function Login({ navigation }) {
                 setError('');
             }
         } catch (error) {
+            console.log("Error while login", error.response.data)
+            if (error.response.status === 403) {
+                setTimeout(() => {
+                    navigation.navigate('HotelListing', {
+                        bh: error.response.data?.BhID
+                    })
+                }, 1500)
+            }
+            if (error.response.status === 402) {
+                setTimeout(() => {
+                    navigation.navigate('BhVerification')
+                }, 1500)
+            }
             setError(error.response.data.message);
         } finally {
             setLoading(false);
@@ -178,6 +191,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     errorText: {
+        textAlign: 'center',
         color: 'red',
         fontSize: 14,
         marginTop: 10,

@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     color: "#D32F2F",
   },
   documentStatus: {
-    flexDirection: "row",
+    // flexDirection: "row",
     alignItems: "center",
     marginBottom: 12,
     backgroundColor: "#F5F5F5",

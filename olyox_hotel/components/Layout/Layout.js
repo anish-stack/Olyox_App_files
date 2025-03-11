@@ -68,7 +68,8 @@ export default function Layout({ data, children, title = 'Hotel Management', pro
     { id: 'bookings', label: 'Bookings', icon: 'book-online' },
     { id: 'guests', label: 'Guests', icon: 'people' },
     { id: 'recharge', label: 'Recharge', icon: 'payment' },
-    { id: 'settings', label: 'Settings', icon: 'settings' },
+    { id: 'recharge_history', label: 'Recharge History', icon: 'money' },
+    { id: 'withdraw', label: 'Withdraw History', icon: 'money' },
   ];
 
   // Bottom bar items

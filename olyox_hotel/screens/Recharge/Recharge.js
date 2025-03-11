@@ -3,48 +3,77 @@ import {
     Text,
     TouchableOpacity,
     TextInput,
-    Image,
-    StyleSheet,
-    ScrollView,
     ActivityIndicator,
     Dimensions,
+    Image,
     Alert,
-    SafeAreaView,
+    ScrollView,
+    StyleSheet,
 } from 'react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useToken } from '../../context/AuthContext';
-
-const { width } = Dimensions.get('window');
+import useSettings from '../../hooks/Settings';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import useHotelApi from '../../context/HotelDetails';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+const {width} = Dimensions.get('window')
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000;
 
 export default function Recharge() {
     const navigation = useNavigation();
-    const [showQR, setShowQR] = useState(false);
+    const { settings } = useSettings();
+    const { findDetails } = useHotelApi();
+    const { token } = useToken();
+    
     const [loading, setLoading] = useState(false);
     const [userData, setUserData] = useState(null);
-    const { token } = useToken()
     const [memberships, setMemberships] = useState([]);
     const [selectedMemberId, setSelectedMemberId] = useState(null);
     const [transactionId, setTransactionId] = useState('');
+    const [showQR, setShowQR] = useState(false);
     const [timer, setTimer] = useState(30 * 60);
-
-    const fetchHotelData = async () => {
+    
+    
+    // Fetch User Data with Retry Mechanism
+    const fetchHotelData = useCallback(async (attempt = 1) => {
         setLoading(true);
         try {
             const response = await findDetails();
             if (response.success) {
                 setUserData(response.data.data);
-
+                setLoading(false);
             } else {
-                setError(response.message);
+                throw new Error(response.message);
             }
         } catch (err) {
-            setError('Failed to fetch hotel data. Please try again.');
-        } finally {
-            setLoading(false);
+            if (attempt < MAX_RETRIES) {
+                setTimeout(() => {
+                    console.log(`Retrying fetchHotelData... Attempt ${attempt + 1}`);
+                    fetchHotelData(attempt + 1);
+                }, RETRY_DELAY);
+            } else {
+                Alert.alert('Error', 'Failed to fetch user data. Please try again later.');
+                setLoading(false);
+            }
+        }
+    }, []);
+
+    const formatTime = (seconds) => {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return` ${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    };
+
+    // Fetch Membership Plans
+    const fetchMembershipPlan = async () => {
+        try {
+            const { data } = await axios.get('https://www.api.olyox.com/api/v1/membership-plans');
+            setMemberships(data.data.filter((item) => item.category === 'Hotel'));
+        } catch (err) {
+            Alert.alert('Error', 'Error fetching membership plans');
         }
     };
 
@@ -63,21 +92,6 @@ export default function Recharge() {
         return () => clearInterval(interval);
     }, [showQR, timer]);
 
-    const fetchMembershipPlan = async () => {
-        try {
-            const { data } = await axios.get('https://www.api.olyox.com/api/v1/membership-plans');
-            setMemberships(data.data);
-        } catch (err) {
-            Alert.alert('Error', 'Error fetching membership plans');
-        }
-    };
-
-    const formatTime = (seconds) => {
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-    };
-
     const handlePlanSelect = (memberId) => {
         setSelectedMemberId(memberId);
         setShowQR(true);
@@ -90,29 +104,30 @@ export default function Recharge() {
     };
 
     const handleRecharge = async () => {
+        if (!userData) {
+            await fetchHotelData();
+        }
+        if (!userData) {
+            Alert.alert('Error', 'User data not available. Please try again.');
+            return;
+        }
+
         setLoading(true);
         try {
-
-
             const { data } = await axios.post(
                 `https://api.olyox.com/api/v1/do-recharge?_id=${userData?.bh}`,
                 {
                     userId: userData?._id,
                     plan_id: selectedMemberId,
                     trn_no: transactionId,
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
                 }
             );
             Alert.alert('Success', data?.message);
-            setLoading(false);
             navigation.goBack();
         } catch (error) {
-            setLoading(false);
             Alert.alert('Error', error?.response?.data?.message || error.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -176,7 +191,7 @@ export default function Recharge() {
                     </View>
                     <View style={styles.qrCard}>
                         <Image
-                            source={{ uri: 'https://offercdn.paytm.com/blog/2022/02/scan/scan-banner.png' }}
+                            source={{ uri: settings?.paymentQr || 'https://offercdn.paytm.com/blog/2022/02/scan/scan-banner.png' }}
                             style={styles.qrImage}
                             resizeMode="contain"
                         />

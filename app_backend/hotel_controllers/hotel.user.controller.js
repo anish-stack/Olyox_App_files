@@ -5,6 +5,7 @@ const sendToken = require("../utils/SendToken");
 const SendWhatsAppMessage = require("../utils/whatsapp_send");
 const cloudinary = require("cloudinary").v2;
 require("dotenv").config();
+const axios = require('axios')
 const fs = require("fs").promises;
 const streamifier = require("streamifier");
 
@@ -271,33 +272,59 @@ exports.find_Hotel_Login = async (req, res) => {
 }
 
 
+
 exports.LoginHotel = async (req, res) => {
     try {
         const { BH } = req.body;
-
-        // Find the hotel by BH ID
-        const foundHotel = await HotelUser.findOne({ bh: BH });
-        if (!foundHotel) {
-            return res.status(404).json({
+        if (!BH) {
+            return res.status(400).json({
                 success: false,
-                message: "No user found with this ID.",
+                message: "BH ID is required."
             });
         }
 
-        // Generate OTP and expiration time
+        // Check if the hotel exists in the database
+        let foundHotel = await HotelUser.findOne({ bh: BH });
+
+        if (!foundHotel) {
+            try {
+                // Fetch details from external API if hotel not found
+                const response = await axios.post('https://api.olyox.com/api/v1/getProviderDetailsByBhId', { BhId: BH });
+
+                if (response.data?.success) {
+                    return res.status(403).json({
+                        success: false,
+                        BhID: response.data.BH_ID,
+                        message: "You are registered on the website but need to complete your profile on the Vendor App!",
+                        redirect: "complete-profile"
+                    });
+                } else {
+                    return res.status(404).json({
+                        success: false,
+                        message: "Hotel profile not found. Please register first."
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching provider details:", error?.response?.data || error);
+                return res.status(402).json({
+                    success: false,
+                    message: "Hotel profile not found. Please register first."
+                });
+            }
+        }
+
+        // Generate OTP
         const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
         const otpCode = generateOtp();
         const otpExpireTime = Date.now() + 5 * 60 * 1000; // OTP valid for 5 minutes
 
-        // Update hotel details with OTP
+        // Update the hotel's OTP details
         foundHotel.otp = otpCode;
         foundHotel.otp_expires = otpExpireTime;
         await foundHotel.save();
 
-        // Construct message
+        // Construct and send WhatsApp message
         const message = `Please verify your hotel login. Your OTP is ${otpCode}, sent to your WhatsApp number ${foundHotel.hotel_phone}.`;
-
-        // Send OTP via WhatsApp
         await SendWhatsAppMessage(message, foundHotel.hotel_phone);
 
         return res.status(200).json({
@@ -308,10 +335,11 @@ exports.LoginHotel = async (req, res) => {
         console.error("Error in hotel login:", error);
         return res.status(500).json({
             success: false,
-            message: "Something went wrong. Please try again later.",
+            message: "Something went wrong. Please try again later."
         });
     }
 };
+
 
 exports.find_My_rooms = async (req, res) => {
     try {
@@ -777,10 +805,10 @@ exports.getHotelsDetails = async (req, res) => {
     }
 };
 
-exports.getSingleHotelDetails = async (req,res) => {
+exports.getSingleHotelDetails = async (req, res) => {
     try {
-        const {id} = req.params;
-        console.log("id",id)
+        const { id } = req.params;
+        console.log("id", id)
         const hotelData = await HotelUser.findById(id);
         if (!hotelData) {
             return res.status(404).json({ success: false, message: "Hotel not found." })
@@ -791,14 +819,14 @@ exports.getSingleHotelDetails = async (req,res) => {
             data: hotelData
         })
     } catch (error) {
-        console.log("Internal server error",error)
+        console.log("Internal server error", error)
     }
 }
 
-exports.updateHotelBlock = async(req,res) => {
+exports.updateHotelBlock = async (req, res) => {
     try {
-        const {id} = req.params;
-        const {isBlockByAdmin} = req.body;
+        const { id } = req.params;
+        const { isBlockByAdmin } = req.body;
         const hotelData = await HotelUser.findById(id);
         if (!hotelData) {
             return res.status(404).json({ success: false, message: "Hotel not found." })
@@ -811,7 +839,7 @@ exports.updateHotelBlock = async(req,res) => {
             data: hotelData
         })
     } catch (error) {
-        console.log("Internal server error",error)
+        console.log("Internal server error", error)
         res.status(500).json({
             success: false,
             message: "Something went wrong while updating the hotel block status",
@@ -960,33 +988,33 @@ exports.updateHotelDetail = async (req, res) => {
             return { url: result.secure_url, public_id: result.public_id };
         };
 
-       // Loop through the document fields and handle image uploads and replacement
-for (const field of documentFields) {
-    if (req.files && req.files[field]) {
-        const uploadedImage = await uploadImage(req.files[field][0]);
+        // Loop through the document fields and handle image uploads and replacement
+        for (const field of documentFields) {
+            if (req.files && req.files[field]) {
+                const uploadedImage = await uploadImage(req.files[field][0]);
 
-        if (uploadedImage) {
-            // Remove old image from Cloudinary if a new one is uploaded
-            const existingDocument = hotel.Documents.find(doc => doc.d_type === field);
-            if (existingDocument) {
-                await cloudinary.uploader.destroy(existingDocument.d_public_id);
+                if (uploadedImage) {
+                    // Remove old image from Cloudinary if a new one is uploaded
+                    const existingDocument = hotel.Documents.find(doc => doc.d_type === field);
+                    if (existingDocument) {
+                        await cloudinary.uploader.destroy(existingDocument.d_public_id);
+                    }
+
+                    // Add the new document to the list
+                    documents.push({
+                        d_type: field,
+                        d_url: uploadedImage.url,
+                        d_public_id: uploadedImage.public_id
+                    });
+                }
+            } else {
+                // If no new file, keep the existing document if it exists
+                const existingDocument = hotel.Documents.find(doc => doc.d_type === field);
+                if (existingDocument) {
+                    documents.push(existingDocument);
+                }
             }
-
-            // Add the new document to the list
-            documents.push({
-                d_type: field,
-                d_url: uploadedImage.url,
-                d_public_id: uploadedImage.public_id
-            });
         }
-    } else {
-        // If no new file, keep the existing document if it exists
-        const existingDocument = hotel.Documents.find(doc => doc.d_type === field);
-        if (existingDocument) {
-            documents.push(existingDocument);
-        }
-    }
-}
 
 
         // Update hotel details, including new documents array
@@ -1045,7 +1073,7 @@ for (const field of documentFields) {
 exports.geHotelListingByHotelUser = async (req, res) => {
     try {
         const { id } = req.params; // Get hotel user ID from request params
-        
+
         // Find hotel listings by hotel_user ID
         const hotelListings = await HotelListing.find({ hotel_user: id });
 

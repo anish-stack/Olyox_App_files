@@ -4,8 +4,9 @@ const { width } = Dimensions.get("window")
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        marginBottom:20,
         backgroundColor: "#f5f5f5",
-        padding: 20,
+        padding: 10,
       },
       title: {
         fontSize: 24,

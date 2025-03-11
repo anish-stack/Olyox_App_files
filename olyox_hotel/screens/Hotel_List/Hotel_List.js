@@ -17,7 +17,7 @@ import { API_BASE_URL_V1, API_BASE_URL_V2, API_BASE_URL_V3 } from '../../constan
 import styles from './styles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../constant/Colors';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 export default function HotelRegistration() {
   const [hotelData, setHotelData] = useState({
@@ -61,6 +61,8 @@ export default function HotelRegistration() {
 
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation()
+  const route = useRoute()
+  const { bh } = route.params || {}
   const [error, setError] = useState(null);
   const [bhDetails, setBhDetails] = useState(null);
   const [isBhValid, setIsBhValid] = useState(false);
@@ -94,6 +96,14 @@ export default function HotelRegistration() {
       setSnackbarVisible(false);
     });
   };
+
+  useEffect(() => {
+    if (bh) {
+      setHotelData((prev) => {
+        return { ...prev, bh: bh }
+      })
+    }
+  }, [bh])
 
   // Toggle amenities section
   const toggleAmenitiesSection = () => {

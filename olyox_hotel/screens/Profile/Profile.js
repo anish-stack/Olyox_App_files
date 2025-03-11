@@ -7,34 +7,91 @@ import useHotelApi from "../../context/HotelDetails"
 import { Feather, MaterialIcons, FontAwesome5, Ionicons } from "@expo/vector-icons"
 import styles from "./Profile.style"
 import { useNavigation } from "@react-navigation/native"
-
+import { API_BASE_URL_V1, API_BASE_URL_V2 } from "../../constant/Api"
+import axios from 'axios'
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000;
 export default function Profile() {
     const { token } = useToken()
+    const [retryCount, setRetryCount] = useState(0);
     const [hotelData, setHotelData] = useState(null)
+    const [bhData, setBhData] = useState(null)
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(true)
     const { findDetails } = useHotelApi()
     const navigation = useNavigation()
+
+
     const fetchHotelData = useCallback(async () => {
-        setLoading(true)
         try {
-            const response = await findDetails()
+            setLoading(true);
+            const response = await findDetails();
             if (response.success) {
-                setHotelData(response.data.data)
-                console.log(response.data.data)
+                setHotelData(response.data.data);
+                return response.data.data; // Return fetched data
             } else {
-                setError(response.message)
+                setError(response.message);
+                return null;
             }
         } catch (err) {
-            setError("Failed to fetch hotel data. Please try again.")
+            setError("Failed to fetch hotel data. Please try again.");
+            return null;
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }, [findDetails])
+    }, [findDetails]);
+
+
+    const fetchBhDetails = async (bhId) => {
+        // console.log("Bh Come", bhId)
+        setLoading(true)
+
+        try {
+            const { data } = await axios.post(`https://api.olyox.com/api/v1/getProviderDetailsByBhId`, {
+                BhId: bhId
+            })
+            // console.log("Bh Details", data.data)
+            if (data.data) {
+                setBhData(data.data)
+
+            }
+            setLoading(false)
+
+
+        } catch (error) {
+            console.log("error Details", error.response.data)
+            setLoading(false)
+
+        }
+    }
 
     useEffect(() => {
-        fetchHotelData()
-    }, [token])
+        const attemptFetch = async () => {
+            let attempts = 0;
+            let fetchedHotelData = null;
+
+            while (attempts < MAX_RETRIES) {
+                fetchedHotelData = await fetchHotelData();
+
+                if (fetchedHotelData?.bh) {
+                    fetchBhDetails(fetchedHotelData.bh);
+                    return; // Stop retrying if bhData is found
+                }
+
+                attempts++;
+                setRetryCount(attempts);
+                console.log(`Retrying... Attempt ${attempts}/${MAX_RETRIES}`);
+
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            }
+
+            console.warn("Max retry attempts reached. BH data is still undefined.");
+        };
+
+        attemptFetch();
+    }, []);
+
+
 
     if (loading) {
         return (
@@ -87,7 +144,7 @@ export default function Profile() {
         DocumentUploadedVerified,
     } = hotelData
 
-    console.log(DocumentUploaded)
+
     const renderStatusBadge = (isActive) => (
         <View style={[styles.statusBadge, isActive ? styles.statusActive : styles.statusInactive]}>
             <Text style={styles.statusText}>{isActive ? "Active" : "Inactive"}</Text>
@@ -100,6 +157,11 @@ export default function Profile() {
                 <View style={styles.documentStatus}>
                     <MaterialIcons name="warning" size={20} color="#FFA000" />
                     <Text style={styles.documentPending}>Documents Not Uploaded</Text>
+                    <View>
+                        <TouchableOpacity onPress={() => navigation.navigate('upload_Documents')} style={styles.uploadButton}>
+                            <Text style={styles.uploadButtonText}>Upload Documents</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             )
         } else if (!DocumentUploadedVerified) {
@@ -156,22 +218,22 @@ export default function Profile() {
 
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Name:</Text>
-                        <Text style={styles.detailValue}>{BhJsonData.name}</Text>
+                        <Text style={styles.detailValue}>{bhData?.name}</Text>
                     </View>
 
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Email:</Text>
-                        <Text style={styles.detailValue}>{BhJsonData.email}</Text>
+                        <Text style={styles.detailValue}>{bhData?.email}</Text>
                     </View>
 
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Phone:</Text>
-                        <Text style={styles.detailValue}>{BhJsonData.number}</Text>
+                        <Text style={styles.detailValue}>{bhData?.number}</Text>
                     </View>
 
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>DOB:</Text>
-                        <Text style={styles.detailValue}>{new Date(BhJsonData.dob).toLocaleDateString()}</Text>
+                        <Text style={styles.detailValue}>{new Date(bhData?.dob).toLocaleDateString()}</Text>
                     </View>
                 </View>
 
@@ -185,20 +247,20 @@ export default function Profile() {
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>My Referral Code:</Text>
                         <View style={styles.referralCodeContainer}>
-                            <Text style={styles.referralCode}>{BhJsonData.myReferral}</Text>
+                            <Text style={styles.referralCode}>{bhData?.myReferral}</Text>
                         </View>
                     </View>
 
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Applied Referral:</Text>
                         <Text style={styles.detailValue}>
-                            {BhJsonData.is_referral_applied ? BhJsonData.referral_code_which_applied : "None"}
+                            {bhData?.is_referral_applied ? bhData?.referral_code_which_applied : "None"}
                         </Text>
                     </View>
 
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Referral Status:</Text>
-                        {renderStatusBadge(BhJsonData.is_referral_applied)}
+                        {renderStatusBadge(bhData?.is_referral_applied)}
                     </View>
                 </View>
 
@@ -211,7 +273,7 @@ export default function Profile() {
 
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Account Status:</Text>
-                        {renderStatusBadge(BhJsonData.isActive)}
+                        {renderStatusBadge(bhData?.isActive)}
                     </View>
 
 
@@ -222,13 +284,13 @@ export default function Profile() {
 
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Plan Status:</Text>
-                        {renderStatusBadge(BhJsonData.plan_status)}
+                        {renderStatusBadge(bhData?.plan_status)}
                     </View>
 
-                    <View style={styles.detailRow}>
+                    {/* <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Free Plan:</Text>
-                        {renderStatusBadge(BhJsonData.isFreePlanActive)}
-                    </View>
+                        {renderStatusBadge(bhData?.isFreePlanActive)}
+                    </View> */}
                 </View>
 
                 {/* Wallet & Recharge */}
@@ -241,13 +303,21 @@ export default function Profile() {
                     <View style={styles.walletContainer}>
                         <View style={styles.walletItem}>
                             <Text style={styles.walletLabel}>Wallet Balance</Text>
-                            <Text style={styles.walletAmount}>₹{BhJsonData.wallet}</Text>
+                            <Text style={styles.walletAmount}>₹{bhData?.wallet}</Text>
                         </View>
 
-                        <View style={styles.walletItem}>
-                            <Text style={styles.walletLabel}>Recharge</Text>
-                            <Text style={styles.walletAmount}>₹{BhJsonData.recharge}</Text>
-                        </View>
+                        {bhData?.recharge === 0 && !bhData?.isPaid ? (
+
+                            <TouchableOpacity onPress={() => navigation.navigate('Recharge')} style={styles.walletItem}>
+                                <Text style={styles.walletAmount}>Make Your First Recharge</Text>
+                            </TouchableOpacity>
+                        ) :
+                            <View style={styles.walletItem}>
+                                <Text style={styles.walletLabel}>Recharge</Text>
+                                <Text style={styles.walletAmount}>₹{bhData?.recharge}</Text>
+                            </View>
+                        }
+
                     </View>
                 </View>
 
@@ -260,37 +330,6 @@ export default function Profile() {
 
                     {renderDocumentStatus()}
 
-                    {/* <View style={styles.documentList}>
-                        {BhJsonData.Documents.documentFirst && (
-                            <View style={styles.documentItem}>
-                                <Feather name="file" size={16} color="#D32F2F" />
-                                <Text style={styles.documentName}>Document 1</Text>
-                            </View>
-                        )}
-
-                        {BhJsonData.Documents.documentSecond && (
-                            <View style={styles.documentItem}>
-                                <Feather name="file" size={16} color="#D32F2F" />
-                                <Text style={styles.documentName}>Document 2</Text>
-                            </View>
-                        )}
-
-                        {BhJsonData.Documents.documentThird && (
-                            <View style={styles.documentItem}>
-                                <Feather name="file" size={16} color="#D32F2F" />
-                                <Text style={styles.documentName}>Document 3</Text>
-                            </View>
-                        )}
-
-                        {!BhJsonData.Documents.documentFirst &&
-                            !BhJsonData.Documents.documentSecond &&
-                            !BhJsonData.Documents.documentThird && <View>
-                                <Text style={styles.noDocuments}>No documents uploaded</Text>
-                                <TouchableOpacity onPress={()=> navigation.navigate('upload_Documents')} style={styles.uploadButton}>
-                                    <Text style={styles.uploadButtonText}>Upload Documents</Text>
-                                </TouchableOpacity>
-                                </View>}
-                    </View> */}
                 </View>
 
                 {/* Amenities */}

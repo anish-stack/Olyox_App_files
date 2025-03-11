@@ -15,7 +15,7 @@ import FormInput from './FormInput';
 import AddressForm from './AddressForm';
 import styles from './RegisterStyle';
 import axios from 'axios';
-import { API_BASE_URL_V2 } from '../../constant/Api';
+import { API_BASE_URL_V1, API_BASE_URL_V2 } from '../../constant/Api';
 
 export default function RegisterViaBh() {
     const route = useRoute();
@@ -27,17 +27,17 @@ export default function RegisterViaBh() {
     const [errorMessage, setErrorMessage] = useState('');
 
     const [formData, setFormData] = useState({
-        name: 'Anish',
-        email: 'anishjha86@gmail.com',
-        reEmail: 'anishjha86@gmail.com',
-        number: '7217619794',
-        password: '123456789',
+        name: '',
+        email: '',
+        reEmail: '',
+        number: '',
+        password: '',
         category: '676ef95b5c75082fcbc59c4b',
         address: {
-            area: 'Delhi',
+            area: '',
             street_address: '',
-            landmark: 'Delhi',
-            pincode: '110085',
+            landmark: '',
+            pincode: '',
             location: {
                 type: 'Point',
                 coordinates: [78.2693, 25.369],
@@ -151,6 +151,7 @@ export default function RegisterViaBh() {
                 }, 1500);
             }
         } catch (error) {
+            // console.log(error.response)
             const errorMsg = error.response?.data?.message || 'Registration failed. Please try again.';
             setErrorMessage(errorMsg);
 
