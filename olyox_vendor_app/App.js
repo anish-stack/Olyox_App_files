@@ -31,7 +31,6 @@ import OnGoingOrder from './screens/OnGoingOrder';
 import CompleteOrder from './screens/CompleteOrder';
 import RegistrationForm from './screens/RegistrationForm';
 import * as Sentry from '@sentry/react-native';
-import { SocketProvider } from './context/SocketContext';
 import BhVerification from './screens/BH_Re/BhVerification';
 import RegisterWithBh from './screens/BH_Re/Bh_registeration';
 import BhOtpVerification from './screens/BH_Re/BhOtpVerification';
@@ -99,7 +98,7 @@ export default function App() {
     <Provider store={store}>
       <PaperProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <SocketProvider>
+
 
           <SafeAreaProvider>
             <NavigationContainer>
@@ -121,7 +120,7 @@ export default function App() {
                 <Stack.Screen name="All Order" options={{ headerShown: true }} component={AllOrders} />
                 <Stack.Screen name="Login" options={{ headerShown: true }} component={Login} />
                 <Stack.Screen name="OtpVerify" options={{ headerShown: true }} component={BhOtpVerification} />
-                <Stack.Screen name="complete-register" options={{ headerShown: true,title:"Complete Profile" }} component={RegistrationForm} />
+                <Stack.Screen name="complete-register" options={{ headerShown: true, title: "Complete Profile" }} component={RegistrationForm} />
                 <Stack.Screen name="BHRegister" options={{ headerShown: true }} component={BhVerification} />
                 <Stack.Screen name="Register" options={{ headerShown: true }} component={RegisterWithBh} />
                 <Stack.Screen name="AllFood" options={{ headerShown: false }} component={AllFood} />
@@ -132,7 +131,6 @@ export default function App() {
             </NavigationContainer>
           </SafeAreaProvider>
 
-          </SocketProvider>
         </GestureHandlerRootView>
       </PaperProvider>
     </Provider>

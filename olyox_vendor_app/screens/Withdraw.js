@@ -11,6 +11,7 @@ import {
     TouchableWithoutFeedback,
     Alert
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -180,6 +181,8 @@ export function Withdraw() {
     };
 
     return (
+        <SafeAreaView style={{flex:1}}>
+
         <ScrollView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
@@ -437,6 +440,7 @@ export function Withdraw() {
                 </TouchableWithoutFeedback>
             </Modal>
         </ScrollView>
+        </SafeAreaView>
     );
 }
 

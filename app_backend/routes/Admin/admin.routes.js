@@ -42,7 +42,7 @@ const {
     toggleActiveStatus,
     deleteHeavyTransport
 } = require('../../Admin Controllers/settings/HeavyTransport');
-
+const { createCoupon, getAllCoupons, getCouponById, updateCoupon, deleteCoupon, updateIsActiveStatus } = require('../../Admin Controllers/Coupon.Controller');
 const {
     create_home_slide,
     get_home_slides,
@@ -112,5 +112,15 @@ admin.get("/all-notification",getNotifications);
 admin.get("/notification/:id",getNotificationById);
 admin.put("/mark-read-notification/:id",markAsRead);
 admin.delete("/delete-notification/:id",deleteNotification);
+
+
+// Coupon routes here 
+
+admin.post('/createCoupon', createCoupon);
+admin.get('/all_getCoupon', getAllCoupons);
+admin.get('/getSingleCoupon/:id', getCouponById);
+admin.put('/updateCoupon/:id', updateCoupon);
+admin.delete('/deleteCoupon/:id', deleteCoupon);
+admin.put('/updateCouponStatus/:id', updateIsActiveStatus);
 
 module.exports = admin;
