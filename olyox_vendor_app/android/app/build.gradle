@@ -86,7 +86,7 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.olyoxtiffins"
+    namespace 'com.aanu9745.OlyoxTiffinsApp'
     defaultConfig {
         applicationId 'com.aanu9745.OlyoxTiffinsApp'
         minSdkVersion rootProject.ext.minSdkVersion
