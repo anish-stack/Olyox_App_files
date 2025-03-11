@@ -26,23 +26,23 @@ export default function RegisterWithBh() {
   const [errors, setErrors] = useState({});
 
   const [formData, setFormData] = useState({
-    name: 'aa',
-    email: '36aa@gmail.com',
-    reEmail: '36aa@gmail.com',
-    number: '8529637410',
-    password: 'Mahakaal@21',
+    name: '',
+    email: '',
+    reEmail: '',
+    number: '',
+    password: '',
     category: '',
     address: {
-      area: 'Delhi',
-      street_address: 'Delhi',
-      landmark: 'Delhi',
-      pincode: '110085',
+      area: '',
+      street_address: '',
+      landmark: '',
+      pincode: '',
       location: {
         type: 'Point',
         coordinates: [78.2693, 25.369],
       },
     },
-    dob: '2001-12-02',
+    dob: '',
     member_id: '',
     referral_code_which_applied: bh_id,
     is_referral_applied: true,

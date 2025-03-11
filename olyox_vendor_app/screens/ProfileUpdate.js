@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Dimensions, ScrollView, StyleSheet, Image, Alert, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Dimensions, ScrollView, StyleSheet, Image, Alert, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -42,7 +42,7 @@ export function ProfileUpdate() {
 
             // Make the API request
             const { data } = await axios.get(
-                'http://192.168.1.8:3100/api/v1/tiffin/get_single_tiffin_profile',
+                'https://demoapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
                 {
                     headers: {
                         'Authorization': `Bearer ${storedToken}`
@@ -234,7 +234,7 @@ export function ProfileUpdate() {
 
 
             const response = await axios.put(
-                `http://192.168.1.8:3100/api/v1/tiffin/update_restaurant_details/${vendorId}`,
+                `https://demoapi.olyox.com/api/v1/tiffin/update_restaurant_details/${vendorId}`,
                 formDataToSend,
                 {
                     headers: {
@@ -415,7 +415,7 @@ export function ProfileUpdate() {
             <View style={styles.formContainer}>
                 {renderInput('Restaurant Name', 'account', formData.restaurant_name, 'restaurant_name')}
                 {renderInput('Phone', 'phone', formData.restaurant_phone, 'restaurant_phone')}
-                {renderInput('Contact Person', 'account', formData.restaurant_contact, 'restaurant_contact')}
+                {/* {renderInput('Contact Person', 'account', formData.restaurant_contact, 'restaurant_contact')} */}
                 {renderInput('Opening Hours', 'clock-outline', formData.openingHours, 'openingHours')}
                 {/* {renderInput('Category', 'food', formData.restaurant_category, 'restaurant_category')} */}
                 {renderCategoryDropdown()}

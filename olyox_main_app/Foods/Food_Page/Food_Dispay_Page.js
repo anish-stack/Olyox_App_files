@@ -5,6 +5,7 @@ import axios from "axios"
 import Food_Card from "../Food_Card/Food_Card"
 import FoodsHeader from "../FoodsHeader"
 import { useFood } from "../../context/Food_Context/Food_context"
+import { ScrollView } from "react-native"
 
 export default function Food_Display_Page() {
     const route = useRoute()
@@ -19,7 +20,7 @@ export default function Food_Display_Page() {
         setLoading(true)
         try {
             const { data } = await axios.get(
-                `http://192.168.1.8:3100/api/v1/tiffin/find_Restaurant_foods?food_category=${title}`,
+                `https://demoapi.olyox.com/api/v1/tiffin/find_Restaurant_foods?food_category=${title}`,
             )
             if (data.data) {
                 console.log(data.data[0])
@@ -83,29 +84,32 @@ export default function Food_Display_Page() {
         <View style={styles.container}>
             <FoodsHeader onSearch={handleSearch} />
 
-            {loading ? (
-                <ActivityIndicator size="large" color="#E23744" style={styles.loader} />
-            ) : error ? (
-                <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>{error}</Text>
-                    <TouchableOpacity style={styles.retryButton} onPress={fetchFoods}>
-                        <Text style={styles.retryButtonText}>Retry</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : (
-                <View style={styles.listContent}>
-                    {filteredFoodData.length > 0 ? (
-                        filteredFoodData.map((item) => (
-                            <View key={item._id} style={styles.foodItem}>
-                                {renderFood({ item })}
-                            </View>
-                        ))
-                    ) : (
-                        <ListEmptyComponent />
-                    )}
-                </View>
+            <ScrollView>
 
-            )}
+                {loading ? (
+                    <ActivityIndicator size="large" color="#E23744" style={styles.loader} />
+                ) : error ? (
+                    <View style={styles.errorContainer}>
+                        <Text style={styles.errorText}>{error}</Text>
+                        <TouchableOpacity style={styles.retryButton} onPress={fetchFoods}>
+                            <Text style={styles.retryButtonText}>Retry</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={styles.listContent}>
+                        {filteredFoodData.length > 0 ? (
+                            filteredFoodData.map((item) => (
+                                <View key={item._id} style={styles.foodItem}>
+                                    {renderFood({ item })}
+                                </View>
+                            ))
+                        ) : (
+                            <ListEmptyComponent />
+                        )}
+                    </View>
+
+                )}
+            </ScrollView>
 
         </View>
     )

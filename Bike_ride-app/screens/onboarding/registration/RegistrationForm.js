@@ -8,7 +8,7 @@ import * as SecureStore from 'expo-secure-store';
 import { useNavigation, useRoute } from "@react-navigation/native"
 
 const API_BASE_URL = "https://api.olyox.com/api/v1"
-const MAIN_API_BASE_URL = "http://192.168.1.8:3100/api/v1/rider"
+const MAIN_API_BASE_URL = "https://demoapi.olyox.com/api/v1/rider"
 
 const vehicleTypes = ["SEDAN", "SUV", "PRIME", "MINI"]
 const vehicleBrands = [
@@ -74,7 +74,7 @@ export default function RegistrationForm() {
 
   const fetchTypes = async () => {
     try {
-      const response = await axios.get(`http://192.168.1.8:3100/api/v1/admin/getAllSuggestions`)
+      const response = await axios.get(`https://demoapi.olyox.com/api/v1/admin/getAllSuggestions`)
       if (response.data.success) {
         setAllTypes(response.data.data)
       }

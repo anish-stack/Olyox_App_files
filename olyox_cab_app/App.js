@@ -49,7 +49,7 @@ const App = () => {
       }
 
       const response = await axios.get(
-        'http://192.168.1.8:3100/api/v1/parcel/user-details',
+        'https://demoapi.olyox.com/api/v1/parcel/user-details',
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

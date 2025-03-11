@@ -11,7 +11,7 @@ export const useBhDetails = () => {
         setError('');
         try {
             const response = await axios.post(
-                "http://192.168.1.8:7000/api/v1/getProviderDetailsByBhId",
+                "https://api.olyox.com/api/v1/getProviderDetailsByBhId",
                 { BhId }
             );
             setData(response.data);

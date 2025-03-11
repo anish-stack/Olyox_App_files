@@ -216,7 +216,7 @@ const WrappedApp = Sentry.wrap(App);
 const RootApp = () => (
 
   <FoodProvider>
-    <StatusBar backgroundColor='#DA2E2A' style="light" />
+   
     <WrappedApp />
   </FoodProvider>
 

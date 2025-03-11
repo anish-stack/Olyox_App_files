@@ -19,7 +19,7 @@ export default function Status() {
                 }
 
                 const { data } = await axios.get(
-                    'http://192.168.1.8:3100/api/v1/tiffin/get_single_tiffin_profile',
+                    'https://demoapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -47,15 +47,15 @@ export default function Status() {
             console.error("Restaurant ID is missing!");
             return;
         }
-    
+
         try {
             const newStatus = !isActive;
-    
+
             const response = await axios.put(
-                `http://192.168.1.8:3100/api/v1/tiffin/update_is_working/${restaurantId}`,
+                `https://demoapi.olyox.com/api/v1/tiffin/update_is_working/${restaurantId}`,
                 { isWorking: newStatus }
             );
-    
+
             if (response.data.success) {
                 setIsActive(newStatus);
             } else {
@@ -63,10 +63,10 @@ export default function Status() {
             }
         } catch (error) {
             console.error("Error updating status:", error);
-    
+
             if (error.response && error.response.data && error.response.data.message) {
                 const errorMessage = error.response.data.message;
-    
+
                 if (errorMessage === "Document Verification in Progress") {
                     Alert.alert(
                         'Verification Status',
@@ -74,6 +74,26 @@ export default function Status() {
                         [
                             { text: 'Cancel', style: 'cancel' },
                             { text: 'View Documents', onPress: () => navigation.navigate('Profile') },
+                        ],
+                        { cancelable: true }
+                    );
+                } else if (errorMessage === "Your account is not recharged. Please recharge first to go online.") {
+                    Alert.alert(
+                        'Recharge Pending',
+                        errorMessage,
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Recharge Now', onPress: () => navigation.navigate('Recharge Plan') },
+                        ],
+                        { cancelable: true }
+                    );
+                } else if (errorMessage === "Your payment is not approved. Please Wait for approval ") {
+                    Alert.alert(
+                        'Payment Status',
+                        errorMessage,
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'View Payment History', onPress: () => navigation.navigate('Recharge History') },
                         ],
                         { cancelable: true }
                     );
@@ -98,7 +118,7 @@ export default function Status() {
             }
         }
     };
-    
+
 
     return (
         <View style={styles.container}>

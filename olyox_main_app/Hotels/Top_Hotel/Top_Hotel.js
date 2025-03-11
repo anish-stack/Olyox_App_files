@@ -6,7 +6,7 @@ import * as Location from 'expo-location';
 import HotelCard from './Top_Hotel_cards';
 import SkeletonLoader from '../../components/common/SkeletonLoader';
 
-export default function Top_Hotel({ show = false }) {
+export default function Top_Hotel({ show = false ,onRefresh,refreshing }) {
     const [showAll, setShowAll] = useState(show);
     const [hotelData, setHotelData] = useState([]);
     const [loading, setLoading] = useState(true);

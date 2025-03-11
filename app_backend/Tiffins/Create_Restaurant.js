@@ -298,43 +298,87 @@ exports.updateIsWorking = async (req, res) => {
     try {
         const { id } = req.params;
         const { isWorking } = req.body;
+
+        // Find the restaurant by ID
         const restaurant = await Restaurant.findById(id);
 
         if (!restaurant) {
             return res.status(404).json({
                 success: false,
-                message: "Restaurant not found"
-            })
-        }
-        if (restaurant.isDocumentUpload === false) {
-            return res.status(400).json({
-                success: false,
-                message: "Please verify your documents first."
-            })
-        }
-        if (restaurant.documentVerify === false) {
-            return res.status(400).json({
-                success: false,
-                message: "Document Verification in Progress "
-            })
+                message: "Restaurant not found. Please check the provided ID."
+            });
         }
 
+        // Check if documents are uploaded
+        if (!restaurant.isDocumentUpload) {
+            return res.status(400).json({
+                success: false,
+                message: "Your documents have not been uploaded. Please upload them to proceed."
+            });
+        }
 
+        // Check if document verification is completed
+        if (!restaurant.documentVerify) {
+            return res.status(400).json({
+                success: false,
+                message: "Your documents are still being verified. Please wait for the verification to complete."
+            });
+        }
+
+        let isPaid = false;
+
+        try {
+            // Check plan details from external API
+            const response = await axios.post('https://api.olyox.com/api/v1/getProviderDetailsByBhId', {
+                BhId: restaurant.restaurant_BHID
+            });
+
+            const data = response.data.data;
+
+            if (data.plan_status && data.recharge > 0 && data) {
+                if (data?.payment_id?.payment_approved) {
+                    isPaid = true;
+                } else {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Your payment is not approved. Please Wait for approval "
+                    });
+                }
+                isPaid = data.plan_status;
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: "Your account is not recharged. Please recharge first to go online."
+                });
+            }
+
+        } catch (error) {
+            console.error("Error while checking plan details:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Failed to verify your plan details. Please try again later."
+            });
+        }
+
+        // Update isWorking status
         restaurant.isWorking = isWorking;
         await restaurant.save();
+
         return res.status(200).json({
             success: true,
-            message: "Restaurant isWorking updated successfully"
-        })
+            message: `Restaurant status updated successfully. Your restaurant is now ${isWorking ? "Online" : "Offline"}.`
+        });
+
     } catch (error) {
-        console.log("Internal server error", error)
-        res.status(500).json({
+        console.error("Internal server error:", error);
+        return res.status(500).json({
             success: false,
-            message: "Internal server error",
+            message: "Something went wrong. Please try again later.",
             error: error.message
-        })
+        });
     }
-}
+};
+
 
 exports.updateTiffinDocumentVerify = async (req, res) => {
     try {
@@ -672,7 +716,7 @@ exports.login = async (req, res) => {
         if (!restaurant) {
             try {
                 const response = await axios.post("http://localhost:7000/api/v1/getProviderDetailsByBhId", {
-                    BhId: restaurant_BHID 
+                    BhId: restaurant_BHID
                 });
 
                 if (response.data?.success) {

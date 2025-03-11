@@ -97,10 +97,8 @@ exports.find_Restaurant_foods = async (req, res) => {
     try {
         const { food_category, food_availability, restaurant_id } = req.query;
 
-        // Initialize the query object
         let query = {};
 
-        // Add filters dynamically based on the query parameters
         if (food_category) {
             query.food_category = food_category;
         }
@@ -112,9 +110,12 @@ exports.find_Restaurant_foods = async (req, res) => {
         }
 
         // Fetch data from the database based on the query
-        const restaurants_foods = await Restaurant_Listing.find(query).populate('restaurant_id');
+        let restaurants_foods = await Restaurant_Listing.find(query).populate('restaurant_id');
 
-        // Respond with the fetched data
+        // Shuffle the results randomly
+        restaurants_foods = restaurants_foods.sort(() => Math.random() - 0.5);
+
+        // Respond with the shuffled data
         return res.status(200).json({
             success: true,
             count: restaurants_foods.length,
@@ -125,10 +126,11 @@ exports.find_Restaurant_foods = async (req, res) => {
         console.error("Error fetching restaurants foods:", error.message);
         return res.status(500).json({
             success: false,
-            message: "An error occurred while fetching the restaurants foods.",
+            message: "An error occurred while fetching the restaurant foods.",
         });
     }
 };
+
 
 
 exports.find_Restaurant_And_Her_foods = async (req, res) => {
