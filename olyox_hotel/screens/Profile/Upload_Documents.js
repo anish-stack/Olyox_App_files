@@ -175,7 +175,7 @@ export default function UploadDocuments() {
                 <Text style={styles.modalButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.modalButton, styles.modalButtonConfirm]} onPress={uploadDocuments}>
-                <Text style={styles.modalButtonText}>Confirm</Text>
+                <Text style={styles.modalButtonText}>{loading ? 'Please Wait ...':'Confirm'}</Text>
               </TouchableOpacity>
             </View>
           </View>

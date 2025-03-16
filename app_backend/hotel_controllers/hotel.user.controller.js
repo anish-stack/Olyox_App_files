@@ -178,7 +178,7 @@ exports.verifyOtp = async (req, res) => {
         hotelUser.otp_expires = null;
 
 
-        // await hotelUser.save();
+        await hotelUser.save();
         await sendToken(hotelUser, res, 200)
         // return res.status(200).json({
         //     success: true,

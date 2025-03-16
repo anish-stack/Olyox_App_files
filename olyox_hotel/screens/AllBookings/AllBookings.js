@@ -201,6 +201,7 @@ export default function AllBookings() {
                 return "#757575"
         }
     }
+    const indiaDate = new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
 
     const renderActiveFilters = () => {
         const filters = []
@@ -547,7 +548,7 @@ export default function AllBookings() {
 
                                 <View style={styles.cardActions}>
                                     {!booking.isUserCheckedIn ? (
-                                        new Date(booking.checkInDate).toDateString() <= getIndiaDate() ? (
+                                        new Date(booking.checkInDate).toLocaleDateString("en-IN") <= indiaDate ? (
                                             <View style={{ flexDirection: 'row', flex: 1, gap: 4 }}>
 
                                                 {booking.status === 'Pending' || 'Cancelled' && (

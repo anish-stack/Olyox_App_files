@@ -66,7 +66,7 @@ export function RideConfirmed() {
 
     const fetchReason = async () => {
         try {
-            const { data } = await axios.get(`http://192.168.1.9:3100/api/v1/admin/cancel-reasons?active=active`)
+            const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/admin/cancel-reasons?active=active`)
 
             if (data.data) {
                 setCancelReason(data.data)
@@ -129,7 +129,7 @@ export function RideConfirmed() {
                 return;
             }
 
-            const { data } = await axios.get(`http://192.168.1.9:3100/api/v1/rides/find-ride_details?id=${rideId}`);
+            const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/rides/find-ride_details?id=${rideId}`);
             if (data.data) {
                 setRideData(data.data);
                 setRideDetails(prev => ({

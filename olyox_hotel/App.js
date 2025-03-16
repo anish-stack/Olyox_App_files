@@ -71,7 +71,7 @@ const AppNavigator = () => {
         <Stack.Screen name="upload_Documents" options={{ headerShown: false }} component={Upload_Documents} />
         <Stack.Screen name="Recharge" options={{ headerShown: true }} component={Recharge} />
         <Stack.Screen name="Recharge History" options={{ headerShown: true }} component={RechargeHistoryTiffin} />
-        <Stack.Screen name="Referral History" options={{ headerShown: true }} component={ReferralHistory} />
+        <Stack.Screen name="Referral History" options={{ headerShown: false }} component={ReferralHistory} />
         <Stack.Screen name="Withdraw History" options={{ headerShown: false }} component={Withdraw} />
 
 

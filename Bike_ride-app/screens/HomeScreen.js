@@ -91,7 +91,7 @@ const HomeScreen = () => {
       console.log(token)
       if (token) {
         const response = await axios.get(
-          'http://192.168.1.9:3100/api/v1/rider/user-details',
+          'https://demoapi.olyox.com/api/v1/rider/user-details',
           { headers: { Authorization: `Bearer ${token}` } }
         );
         // console.log("response.data.partner",response.data.partner)
@@ -120,13 +120,13 @@ const HomeScreen = () => {
     try {
       const token = await SecureStore.getItemAsync("auth_token_cab");
       const response = await axios.post(
-        "http://192.168.1.9:3100/api/v1/rider/toggleWorkStatusOfRider",
+        "https://demoapi.olyox.com/api/v1/rider/toggleWorkStatusOfRider",
         { status: !isOnline },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const response_two = await axios.get(
-        "http://192.168.1.9:3100/api/v1/rider/user-details",
+        "https://demoapi.olyox.com/api/v1/rider/user-details",
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

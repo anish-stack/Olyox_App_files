@@ -14,20 +14,24 @@
     },
     "ios": {
       "supportsTablet": true
-     
     },
     "android": {
-     
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.happy_coding.olyox_hotel"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "405d0efb-e9d3-4d5b-8ffb-90ff2f4a0afa"
+      }
+    }
   }
 }

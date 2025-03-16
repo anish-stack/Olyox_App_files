@@ -46,7 +46,7 @@ const HotelUserSchema = new Schema({
     },
     contactNumberVerify: {
         type: Boolean,
-        default: false
+        default: true
     },
 
 

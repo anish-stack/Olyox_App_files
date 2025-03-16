@@ -6,7 +6,7 @@ import { API_BASE_URL_V1, API_BASE_URL_V3 } from '../../constant/Api';
 import styles from './Styles';
 
 const BhVerification = () => {
-    const [bh, setBh] = useState('BH648624');
+    const [bh, setBh] = useState('BH');
     const [name, setName] = useState('');
     const [response, setResponse] = useState(null);
     const [error, setError] = useState(null);

@@ -715,7 +715,7 @@ exports.login = async (req, res) => {
         // Check if restaurant exists
         if (!restaurant) {
             try {
-                const response = await axios.post("http://localhost:7000/api/v1/getProviderDetailsByBhId", {
+                const response = await axios.post("https://api.olyox.com/api/v1/getProviderDetailsByBhId", {
                     BhId: restaurant_BHID
                 });
 
