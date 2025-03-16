@@ -34,6 +34,8 @@ export default function Profile() {
                 return null;
             }
         } catch (err) {
+                  console.log("err from profile",err.response.data)
+            
             setError("Failed to fetch hotel data. Please try again.");
             return null;
         } finally {
@@ -314,7 +316,7 @@ export default function Profile() {
                         ) :
                             <View style={styles.walletItem}>
                                 <Text style={styles.walletLabel}>Recharge</Text>
-                                <Text style={styles.walletAmount}>₹{bhData?.recharge}</Text>
+                                <Text style={styles.walletAmount}>{bhData?.recharge}</Text>
                             </View>
                         }
 

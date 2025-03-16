@@ -42,6 +42,7 @@ export default function Layout({ data, children, title = 'Hotel Management', pro
         setError(response.message);
       }
     } catch (err) {
+      console.log("err",err.response.data)
       setError('Failed to fetch hotel data. Please try again.');
     } finally {
       setLoading(false);
@@ -65,10 +66,12 @@ export default function Layout({ data, children, title = 'Hotel Management', pro
   const menuItems = [
     { id: 'home', label: 'Home', icon: 'dashboard' },
     { id: 'rooms', label: 'Rooms', icon: 'hotel' },
+    { id: 'rooms', label: 'All Rooms', icon: 'hotel' },
     { id: 'bookings', label: 'Bookings', icon: 'book-online' },
     { id: 'guests', label: 'Guests', icon: 'people' },
-    { id: 'recharge', label: 'Recharge', icon: 'payment' },
-    { id: 'recharge_history', label: 'Recharge History', icon: 'money' },
+    { id: 'recharge', label: 'Recharge', icon: 'attach-money' },
+    { id: 'ReferralHistory', label: 'Referral History', icon: 'exposure-plus-1' },
+    { id: 'recharge_history', label: 'Recharge History', icon: 'payment' },
     { id: 'withdraw', label: 'Withdraw History', icon: 'money' },
   ];
 
@@ -140,14 +143,14 @@ export default function Layout({ data, children, title = 'Hotel Management', pro
           <Text style={styles.headerTitle}>{hotelData?.hotelName || hotelInfo.name || title}</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.notificationButton}>
+          {/* <TouchableOpacity style={styles.notificationButton}>
             <MaterialIcons name="notifications" size={24} color={colors.primaryWhite} />
             {notificationCount > 0 && (
               <View style={styles.notificationBadge}>
                 <Text style={styles.badgeText}>{notificationCount}</Text>
               </View>
             )}
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           <TouchableOpacity style={styles.profileButton}>
             <Image
               source={{ uri: hotelInfo.profileImage }}

@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Picker } from '@react-native-picker/picker';
+
 import { FontAwesome, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import Layout from '../../components/Layout/Layout';
 import { useToken } from '../../context/AuthContext';
@@ -25,11 +27,15 @@ export default function BookingCreate() {
   const [formData, setFormData] = useState({
     guestInformation: [{ guestName: '', guestPhone: '' }],
     checkInDate: '',
+    male: 0,
+    females: 0,
+    child: 0,
     checkOutDate: '',
     listing_id: '',
     booking_payment_done: false,
     modeOfBooking: 'Offline',
     bookingAmount: '',
+    noOfRoomsBook: 1,
     anyDiscountByHotel: '',
     paymentMode: 'Cash',
   });
@@ -47,6 +53,14 @@ export default function BookingCreate() {
   const [success, setSuccess] = useState(null);
   const [bookingDays, setBookingDays] = useState(0);
   const [showRoomModal, setShowRoomModal] = useState(false);
+  const [allowed_person, setAllowed_person] = useState(0)
+
+
+
+  const totalGuests = formData.male + formData.females + formData.child;
+  const maxAllowedGuests = formData.noOfRoomsBook * selectedRoom?.allowed_person || 0;
+  const isValidGuests = totalGuests <= maxAllowedGuests;
+
 
   useEffect(() => {
     fetchAllRooms();
@@ -65,12 +79,20 @@ export default function BookingCreate() {
         setError('No available rooms found. Please make sure you have rooms with booking available.');
       }
     } catch (error) {
-      console.error('Error fetching rooms:', error);
-      setError('Failed to load available rooms. Please check your connection and try again.');
+      console.error('Error fetching rooms:', error.response.data);
+      if (error.response?.data?.message === "No rooms found for this user.") {
+        setError('No rooms! Please add first rooms');
+      } else {
+
+        setError(error.response?.data?.message);
+      }
+
     } finally {
       setLoading(false);
     }
   };
+
+
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -104,8 +126,9 @@ export default function BookingCreate() {
   const selectRoom = (room) => {
     setSelectedRoom(room);
     console.log(room?.book_price)
-    handleChange('listing_id', room._id);
+    handleChange('listing_id', room?._id);
     setShowRoomModal(false);
+    setAllowed_person(room?.allowed_person)
     setFormData((prev) => ({
       ...prev,
       bookingAmount: room?.book_price, // Updating bookingAmount
@@ -179,7 +202,7 @@ export default function BookingCreate() {
       setSuccess('Booking created successfully! Please verify with the OTP sent to the guest.');
       alert('Booking created successfully! Please verify with the OTP sent to the guest.')
     } catch (error) {
-      console.error('Booking error:', error);
+      console.error('Booking error:', (error.response?.data?.message));
       alert(error.response?.data?.message || 'Failed to create booking. Please try again.')
       setError(error.response?.data?.message || 'Failed to create booking. Please try again.');
     } finally {
@@ -346,6 +369,129 @@ export default function BookingCreate() {
           </TouchableOpacity>
         </View>
 
+
+        <View style={styles.stepContainer}>
+          <Text style={styles.stepTitle}>Guest Details</Text>
+
+          {/* {errors.guests && (
+            <Text style={styles.errorText}>{errors.guests}</Text>
+          )} */}
+
+          <View style={styles.roomInfoContainer}>
+            <Text style={styles.roomInfoText}>
+              Room Capacity: {selectedRoom?.allowed_person} guests per room
+            </Text>
+            <Text style={styles.roomInfoText}>
+              Your Selection: {formData.noOfRoomsBook} room(s) - Maximum {maxAllowedGuests} guests
+            </Text>
+          </View>
+
+          <View style={styles.roomCountContainer}>
+            <Text style={styles.roomCountLabel}>Number of Rooms:</Text>
+            <View style={styles.roomCountControls}>
+              <TouchableOpacity
+                onPress={() => setFormData((prev) => ({
+                  ...prev,
+                  noOfRoomsBook: Math.max(1, (prev.noOfRoomsBook || 1) - 1) // Ensuring it doesn't go below 1
+                }))}
+
+                style={styles.roomCountButton}
+                disabled={formData.noOfRoomsBook <= 1}
+              >
+                <FontAwesome name="minus" size={16} color="white" />
+              </TouchableOpacity>
+
+              <Text style={styles.roomCountValue}>{formData.noOfRoomsBook}</Text>
+
+              <TouchableOpacity
+                onPress={() => setFormData((prev) => ({
+                  ...prev,
+                  noOfRoomsBook: (prev.noOfRoomsBook || 0) + 1
+                }))}
+                style={styles.roomCountButton}
+              >
+                <FontAwesome name="plus" size={16} color="white" />
+              </TouchableOpacity>
+
+            </View>
+          </View>
+
+          <View style={styles.guestTypeContainer}>
+            <View style={styles.guestTypePicker}>
+              <Text style={styles.guestTypeLabel}>Male</Text>
+              <Picker
+                selectedValue={formData.male} // Ensure correct state key
+                style={styles.picker}
+                onValueChange={(value) => setFormData((prev) => ({
+                  ...prev,
+                  male: value, // Set selected value properly
+                }))}
+              >
+                {[...Array(maxAllowedGuests + 1)].map((_, i) => (
+                  <Picker.Item
+                    key={`male-${i}`}
+                    label={i.toString()}
+                    value={i}
+                  />
+                ))}
+              </Picker>
+
+            </View>
+
+            <View style={styles.guestTypePicker}>
+              <Text style={styles.guestTypeLabel}>Female</Text>
+              <Picker
+                selectedValue={formData.females}
+                style={styles.picker}
+                onValueChange={(value) => setFormData((prev) => ({
+                  ...prev,
+                  females: value, // Set selected value properly
+                }))}
+              >
+                {[...Array(maxAllowedGuests + 1)].map((_, i) => (
+                  <Picker.Item
+                    key={`female-${i}`}
+                    label={i.toString()}
+                    value={i}
+                  />
+                ))}
+              </Picker>
+            </View>
+
+            <View style={styles.guestTypePicker}>
+              <Text style={styles.guestTypeLabel}>Children</Text>
+              <Picker
+                selectedValue={formData.child}
+
+                style={styles.picker}
+                onValueChange={(value) => setFormData((prev) => ({
+                  ...prev,
+                  child: value,
+                }))}
+              >
+                {[...Array(maxAllowedGuests + 1)].map((_, i) => (
+                  <Picker.Item
+                    key={`child-${i}`}
+                    label={i.toString()}
+                    value={i}
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.guestSummaryContainer}>
+            <Text style={styles.guestSummaryText}>
+              Total Guests: {totalGuests}
+            </Text>
+            {!isValidGuests && (
+              <Text style={styles.guestSummaryError}>
+                Please add more rooms or reduce the number of guests
+              </Text>
+            )}
+          </View>
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Guest Information</Text>
 
@@ -365,6 +511,11 @@ export default function BookingCreate() {
 
               <TextInput
                 style={styles.input}
+                autoComplete="off"
+                importantForAutofill="no"
+                textContentType="none" 
+                disableFullscreenUI={true} 
+                autoCorrect={false} 
                 placeholder="Guest Name"
                 value={guest.guestName}
                 onChangeText={(text) => handleGuestChange(index, 'guestName', text)}
@@ -373,8 +524,13 @@ export default function BookingCreate() {
               <TextInput
                 style={styles.input}
                 placeholder="Guest Phone (10 digits)"
-                keyboardType="phone-pad"
+                // keyboardType="phone-pad"
                 value={guest.guestPhone}
+                disableFullscreenUI={true} 
+                autoCorrect={false} 
+                autoComplete="off"
+                importantForAutofill="no"
+                textContentType="none" 
                 onChangeText={(text) => handleGuestChange(index, 'guestPhone', text)}
                 maxLength={10}
               />
@@ -386,6 +542,8 @@ export default function BookingCreate() {
             <Text style={styles.addGuestText}>Add Another Guest</Text>
           </TouchableOpacity>
         </View>
+
+
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payment Details</Text>
@@ -421,6 +579,8 @@ export default function BookingCreate() {
             style={styles.amountInput}
             placeholder="Booking Amount (₹)"
             keyboardType="numeric"
+            autoComplete="off"
+
             value={formData.bookingAmount?.toString()}
             onChangeText={(text) => handleChange('bookingAmount', text)}
           />
@@ -442,6 +602,7 @@ export default function BookingCreate() {
             style={styles.amountInput}
             placeholder="Discount Amount (₹)"
             keyboardType="numeric"
+         autoComplete="off"
             value={formData.anyDiscountByHotel}
             onChangeText={(text) => handleChange('anyDiscountByHotel', text)}
           />

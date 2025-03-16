@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import styles from './BookingModel.style';
 import axios from 'axios';
 import { tokenCache } from '../../Auth/cache';
+import { useEffect } from 'react';
 
 export default function BookingModal({ visible, onClose, roomData }) {
   const [checkInDate, setCheckInDate] = useState(new Date());
@@ -32,9 +33,10 @@ export default function BookingModal({ visible, onClose, roomData }) {
   const [guests, setGuests] = useState([{ guestName: "", guestAge: "", guestPhone: "" }]);
   const [paymentMethod, setPaymentMethod] = useState('online');
   const [errors, setErrors] = useState({});
-  
+  const [totalAmount, setTotalAmount] = useState('0');
+
   const navigation = useNavigation();
-  
+
   const totalGuests = males + females + children;
   const maxAllowedGuests = numberOfRooms * roomData?.allowed_person || 0;
   const isValidGuests = totalGuests <= maxAllowedGuests;
@@ -58,7 +60,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
     if (selectedDate) {
       if (type === 'checkIn') {
         setCheckInDate(selectedDate);
-        
+
         // If check-out date is before or equal to new check-in date,
         // set check-out date to the day after check-in
         if (checkOutDate <= selectedDate) {
@@ -88,10 +90,10 @@ export default function BookingModal({ visible, onClose, roomData }) {
     const newGuests = [...guests];
     newGuests[index][field] = value;
     setGuests(newGuests);
-    
+
     // Clear error when user types
     if (errors[`guest_${index}_${field}`]) {
-      const newErrors = {...errors};
+      const newErrors = { ...errors };
       delete newErrors[`guest_${index}_${field}`];
       setErrors(newErrors);
     }
@@ -99,33 +101,33 @@ export default function BookingModal({ visible, onClose, roomData }) {
 
   const validateStep = () => {
     const newErrors = {};
-    
+
     switch (step) {
       case 1:
         // Validate dates
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         if (checkInDate < today) {
           newErrors.checkInDate = "Check-in date cannot be in the past";
         }
-        
+
         if (checkOutDate <= checkInDate) {
           newErrors.checkOutDate = "Check-out date must be after check-in date";
         }
         break;
-        
+
       case 2:
         // Validate guest count
         if (totalGuests === 0) {
           newErrors.guests = "At least one guest is required";
         }
-        
+
         if (totalGuests > maxAllowedGuests) {
           newErrors.guests = `Maximum ${maxAllowedGuests} guests allowed for ${numberOfRooms} room(s)`;
         }
         break;
-        
+
       case 3:
         // Validate guest information
         guests.forEach((guest, index) => {
@@ -134,13 +136,13 @@ export default function BookingModal({ visible, onClose, roomData }) {
             if (!guest.guestName.trim()) {
               newErrors[`guest_${index}_guestName`] = "Name is required";
             }
-            
+
             if (!guest.guestAge.trim()) {
               newErrors[`guest_${index}_guestAge`] = "Age is required";
             } else if (isNaN(guest.guestAge) || parseInt(guest.guestAge) <= 0) {
               newErrors[`guest_${index}_guestAge`] = "Please enter a valid age";
             }
-            
+
             if (!guest.guestPhone.trim()) {
               newErrors[`guest_${index}_guestPhone`] = "Phone number is required";
             } else if (!/^[0-9]{10}$/.test(guest.guestPhone.trim())) {
@@ -151,7 +153,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
             if (!guest.guestName.trim()) {
               newErrors[`guest_${index}_guestName`] = "Name is required";
             }
-            
+
             if (!guest.guestAge.trim()) {
               newErrors[`guest_${index}_guestAge`] = "Age is required";
             } else if (isNaN(guest.guestAge) || parseInt(guest.guestAge) <= 0) {
@@ -161,7 +163,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
         });
         break;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -175,6 +177,18 @@ export default function BookingModal({ visible, onClose, roomData }) {
   const handlePreviousStep = () => {
     setStep(step - 1);
   };
+
+useEffect(()=>{
+  const checkIn = new Date(checkInDate);
+  const checkOut = new Date(checkOutDate);
+  const oneDay = 24 * 60 * 60 * 1000;
+  const numberOfDays = Math.max(1, Math.round((checkOut - checkIn) / oneDay)); 
+
+  const roomPricePerDay = 999;
+  const totalPrice = numberOfDays * roomPricePerDay * numberOfRooms;
+  console.log("totalPrice",totalPrice)
+  setTotalAmount(totalPrice)
+},[guests])
 
   const handleSubmit = async () => {
     try {
@@ -195,6 +209,8 @@ export default function BookingModal({ visible, onClose, roomData }) {
         return;
       }
 
+
+
       const dataToBeSend = {
         guestInformation: guests,
         checkInDate,
@@ -205,6 +221,11 @@ export default function BookingModal({ visible, onClose, roomData }) {
         paymentMethod,
         booking_payment_done: false,
         modeOfBooking: "Online",
+        males,
+        females,
+        children,
+        totalGuests,
+        totalAmount,
         paymentMode: paymentMethod
       };
 
@@ -212,7 +233,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
 
       // Make API call
       const { data } = await axios.post(
-        `https://demoapi.olyox.com/api/v1/hotels/book-room-user`,
+        `http://192.168.1.9:3100/api/v1/hotels/book-room-user`,
         dataToBeSend,
         {
           headers: {
@@ -271,14 +292,14 @@ export default function BookingModal({ visible, onClose, roomData }) {
         return (
           <View style={styles.stepContainer}>
             <Text style={styles.stepTitle}>Select Your Stay Dates</Text>
-            
+
             {errors.checkInDate && (
               <Text style={styles.errorText}>{errors.checkInDate}</Text>
             )}
             {errors.checkOutDate && (
               <Text style={styles.errorText}>{errors.checkOutDate}</Text>
             )}
-            
+
             <TouchableOpacity
               style={styles.dateButton}
               onPress={() => setShowCheckIn(true)}
@@ -320,7 +341,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
                 minimumDate={new Date()}
               />
             )}
-            
+
             <View style={styles.stayDurationContainer}>
               <Text style={styles.stayDurationText}>
                 Total Stay: {Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24))} night(s)
@@ -328,16 +349,16 @@ export default function BookingModal({ visible, onClose, roomData }) {
             </View>
           </View>
         );
-        
+
       case 2:
         return (
           <View style={styles.stepContainer}>
             <Text style={styles.stepTitle}>Guest Details</Text>
-            
+
             {errors.guests && (
               <Text style={styles.errorText}>{errors.guests}</Text>
             )}
-            
+
             <View style={styles.roomInfoContainer}>
               <Text style={styles.roomInfoText}>
                 Room Capacity: {roomData.allowed_person} guests per room
@@ -346,7 +367,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
                 Your Selection: {numberOfRooms} room(s) - Maximum {maxAllowedGuests} guests
               </Text>
             </View>
-            
+
             <View style={styles.roomCountContainer}>
               <Text style={styles.roomCountLabel}>Number of Rooms:</Text>
               <View style={styles.roomCountControls}>
@@ -357,9 +378,9 @@ export default function BookingModal({ visible, onClose, roomData }) {
                 >
                   <FontAwesome name="minus" size={16} color="white" />
                 </TouchableOpacity>
-                
+
                 <Text style={styles.roomCountValue}>{numberOfRooms}</Text>
-                
+
                 <TouchableOpacity
                   onPress={() => setNumberOfRooms(numberOfRooms + 1)}
                   style={styles.roomCountButton}
@@ -403,7 +424,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
                   ))}
                 </Picker>
               </View>
-              
+
               <View style={styles.guestTypePicker}>
                 <Text style={styles.guestTypeLabel}>Children</Text>
                 <Picker
@@ -421,7 +442,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
                 </Picker>
               </View>
             </View>
-            
+
             <View style={styles.guestSummaryContainer}>
               <Text style={styles.guestSummaryText}>
                 Total Guests: {totalGuests}
@@ -434,22 +455,22 @@ export default function BookingModal({ visible, onClose, roomData }) {
             </View>
           </View>
         );
-        
+
       case 3:
         return (
           <View style={styles.stepContainer}>
             <Text style={styles.stepTitle}>Guest Information</Text>
-            
+
             <Text style={styles.guestInfoNote}>
               Please provide details for all {totalGuests} guests
             </Text>
-            
+
             {guests.map((guest, index) => (
               <View key={index} style={styles.guestInfoCard}>
                 <View style={styles.guestInfoHeader}>
                   <Text style={styles.guestInfoTitle}>Guest {index + 1}</Text>
                   {index > 0 && (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       onPress={() => removeGuest(index)}
                       style={styles.removeGuestButton}
                     >
@@ -457,7 +478,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
                     </TouchableOpacity>
                   )}
                 </View>
-                
+
                 <View style={styles.guestInfoField}>
                   <Text style={styles.guestInfoLabel}>Name *</Text>
                   <TextInput
@@ -475,7 +496,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
                     </Text>
                   )}
                 </View>
-                
+
                 <View style={styles.guestInfoField}>
                   <Text style={styles.guestInfoLabel}>Age *</Text>
                   <TextInput
@@ -495,7 +516,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
                     </Text>
                   )}
                 </View>
-                
+
                 {index === 0 && (
                   <View style={styles.guestInfoField}>
                     <Text style={styles.guestInfoLabel}>Phone Number *</Text>
@@ -519,10 +540,10 @@ export default function BookingModal({ visible, onClose, roomData }) {
                 )}
               </View>
             ))}
-            
+
             {guests.length < totalGuests && (
-              <TouchableOpacity 
-                style={styles.addGuestButton} 
+              <TouchableOpacity
+                style={styles.addGuestButton}
                 onPress={addGuest}
               >
                 <FontAwesome name="plus-circle" size={20} color="#de423e" />
@@ -531,40 +552,44 @@ export default function BookingModal({ visible, onClose, roomData }) {
             )}
           </View>
         );
-        
+
       case 4:
         return (
           <View style={styles.stepContainer}>
             <Text style={styles.stepTitle}>Payment Method</Text>
-            
+
             <View style={styles.bookingSummary}>
               <Text style={styles.bookingSummaryTitle}>Booking Summary</Text>
-              
+
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Check-in:</Text>
                 <Text style={styles.summaryValue}>{formatIndianDate(checkInDate)}</Text>
               </View>
-              
+
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Check-out:</Text>
                 <Text style={styles.summaryValue}>{formatIndianDate(checkOutDate)}</Text>
               </View>
-              
+
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Room(s):</Text>
                 <Text style={styles.summaryValue}>{numberOfRooms}</Text>
               </View>
-              
+
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Guests:</Text>
                 <Text style={styles.summaryValue}>
                   {males} Male, {females} Female, {children} Children
                 </Text>
               </View>
-              
+
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Total Guests:</Text>
                 <Text style={styles.summaryValue}>{totalGuests}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Total Amount:</Text>
+                <Text style={styles.summaryValue}>Rs {totalAmount}</Text>
               </View>
             </View>
 
@@ -621,7 +646,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
             </TouchableOpacity>
           </View>
         );
-        
+
       default:
         return null;
     }
@@ -673,7 +698,7 @@ export default function BookingModal({ visible, onClose, roomData }) {
                 <Text style={styles.backButtonText}>Back</Text>
               </TouchableOpacity>
             )}
-            
+
             {step < 4 ? (
               <TouchableOpacity
                 style={[

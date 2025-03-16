@@ -12,15 +12,33 @@ const BookingRequestSchema = new Schema({
             guestPhone: {
                 type: String
             },
-            guestAge:{
+            guestAge: {
                 type: Number,
-                
+
             }
         }
     ],
     guest_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
+
+    },
+    totalGuests: {
+        type: Number,
+        default: 0,
+    },
+    no_of_mens: {
+        type: Number,
+        default: 0
+    },
+    no_of_womens: {
+        type: Number,
+        default: 0
+
+    },
+    no_of_child: {
+        type: Number,
+        default: 0
 
     },
     checkInDate: {
@@ -36,7 +54,7 @@ const BookingRequestSchema = new Schema({
         ref: 'Hotel_Listing',
         required: true
     },
-    numberOfGuests: {
+    numberOfGuestsDetails: {
         type: Number,
         required: true
     },
@@ -53,7 +71,10 @@ const BookingRequestSchema = new Schema({
         type: Boolean,
         default: false
     },
-    
+    NumberOfRoomBooks:{
+        type:Number,
+        default:0
+    },
     modeOfBooking: {
         type: String,
         enum: ['Online', 'Offline',],
@@ -66,9 +87,16 @@ const BookingRequestSchema = new Schema({
     anyDiscountByHotel: {
         type: Number,
     },
+    final_price_according_to_days: {
+        type: Number,
+        default: 0
+    },
+    booking_reject_reason: {
+        type: String,
+    },
     paymentMode: {
         type: String,
-        enum: ['Cash', 'Online','Pay at Hotel'],
+        enum: ['Cash', 'Online', 'Pay at Hotel'],
         default: 'Cash'
     },
     HotelUserId: {

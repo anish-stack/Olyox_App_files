@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -13,11 +13,10 @@ import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 
 import Icon from 'react-native-vector-icons/FontAwesome';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import Feather from 'react-native-vector-icons/Feather';
 
-import { checkBhDetails } from '../../utils/Api';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import useHotelApi from '../../context/HotelDetails';
 
 export default function ReferralHistory() {
     const [loading, setLoading] = useState(false);
@@ -25,50 +24,68 @@ export default function ReferralHistory() {
     const [userData, setUserData] = useState(null);
     const [activeLevelTab, setActiveLevelTab] = useState('Level1');
     const [error, setError] = useState(null);
+    const { findDetails } = useHotelApi()
+    const [hotelData, setHotelData] = useState(null)
+
+    const navigation = useNavigation()
+
+    const fetchHotelData = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await findDetails();
+            if (response.success) {
+                setHotelData(response.data.data);
+                await fetchBhDetails(response?.data?.data?.bh);
+
+                return response.data.data; // Return fetched data
+            } else {
+                setError(response.message);
+                return null;
+            }
+        } catch (err) {
+            console.log("err from profile", err.response.data)
+
+            setError("Failed to fetch hotel data. Please try again.");
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+
+    const fetchBhDetails = async (bhId) => {
+        // console.log("Bh Come", bhId)
+        setLoading(true)
+
+        try {
+            const { data } = await axios.post(`https://api.olyox.com/api/v1/getProviderDetailsByBhId`, {
+                BhId: bhId
+            })
+            if (data.data) {
+                setUserData(data.data);
+            }
+            setLoading(false)
+
+
+        } catch (error) {
+            console.log("error Details", error.response.data)
+            setLoading(false)
+
+        }
+    }
+
+
 
     const levels = ['Level1', 'Level2', 'Level3', 'Level4', 'Level5', 'Level6', 'Level7'];
 
-    useEffect(() => {
-        fetchUserDetails();
-    }, []);
-
-    const fetchUserDetails = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const token = await SecureStore.getItemAsync('auth_token_cab');
-            if (!token) {
-                setError('Authentication token not found. Please login again.');
-                return;
-            }
-
-            const response = await axios.get(
-                'http://192.168.1.9:3100/api/v1/rider/user-details',
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            if (response.data.partner) {
-                const data = await checkBhDetails(response.data.partner?.BH);
-                if (data.complete) {
-                    setUserData(data.complete);
-                } else {
-                    setError('No referral data available');
-                }
-            } else {
-                setError('Partner information not found');
-            }
-        } catch (error) {
-            console.error('Error fetching user details:', error);
-            setError(error?.response?.data?.message || 'Failed to load referral data. Please try again.');
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    };
+useEffect(()=>{
+    fetchHotelData()
+},[])
+   
 
     const onRefresh = () => {
         setRefreshing(true);
-        fetchUserDetails();
+        fetchHotelData();
     };
 
     const renderEmptyState = () => (
@@ -78,7 +95,7 @@ export default function ReferralHistory() {
                 style={styles.emptyImage}
             />
             <Text style={styles.emptyText}>No referrals found for {activeLevelTab}</Text>
-            <TouchableOpacity style={styles.refreshButton} onPress={fetchUserDetails}>
+            <TouchableOpacity style={styles.refreshButton} onPress={fetchHotelData}>
                 <Icon name='download' size={16} color='#fff' />
 
                 <Text style={styles.refreshButtonText}>Refresh</Text>

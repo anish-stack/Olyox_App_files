@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons"
 import axios from "axios"
 import { LinearGradient } from "expo-linear-gradient"
 import { SafeAreaView } from 'react-native-safe-area-context'
-const BASE_URL = `https://demoapi.olyox.com/api/v1/tiffin/find_Restaurant_Packages`
+const BASE_URL = `http://192.168.1.9:3100/api/v1/tiffin/find_Restaurant_Packages`
 const { width } = Dimensions.get("window")
 
 export default function TiffinsPage() {

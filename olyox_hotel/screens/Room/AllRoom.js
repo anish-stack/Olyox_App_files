@@ -5,7 +5,6 @@ import Layout from '../../components/Layout/Layout';
 import axios from 'axios';
 import { useToken } from '../../context/AuthContext';
 import { API_BASE_URL_V2 } from '../../constant/Api';
-// import { Package } from 'lucide-react-native';
 import styles from './AllRoomStyles';
 
 export default function AllRoom() {

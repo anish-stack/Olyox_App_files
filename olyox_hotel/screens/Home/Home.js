@@ -3,38 +3,30 @@ import {
   View,
   Text,
   Switch,
-  Image,
   ScrollView,
   ActivityIndicator,
   Alert,
   TouchableOpacity,
-  Animated,
-  RefreshControl
-
+  RefreshControl,
+  StyleSheet,
 } from 'react-native';
-import { MaterialIcons, FontAwesome5, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import useHotelApi from '../../context/HotelDetails';
 import styles, { colors } from './styles';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Layout from '../../components/Layout/Layout';
 import { useNavigation } from '@react-navigation/native';
+import useAnalyticData from '../../hooks/useAnyliticData';
+import { BlurView } from 'expo-blur';
 
 export default function HotelDashboard() {
   const { findDetails, toggleHotel } = useHotelApi();
+  const { data, loading: dataLoading } = useAnalyticData();
   const [hotelData, setHotelData] = useState(null);
-  const [listingData, setListingData] = useState([]);
   const [workStatus, setWorkStatus] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const navigation = useNavigation()
-  const [refresh, setRefresh] = useState(false)
-  // Mock data for the dashboard cards
-  const [dashboardStats, setDashboardStats] = useState({
-    totalRooms: 24,
-    occupiedRooms: 18,
-    activePackages: 5,
-    pendingBookings: 3
-  });
+  const [refresh, setRefresh] = useState(false);
+  const navigation = useNavigation();
 
   useEffect(() => {
     fetchHotelData();
@@ -46,7 +38,6 @@ export default function HotelDashboard() {
       const response = await findDetails();
       if (response.success) {
         setHotelData(response.data.data);
-        setListingData(response.data.listings);
         setWorkStatus(response.data.data?.isOnline || false);
       } else {
         setError(response.message);
@@ -61,39 +52,35 @@ export default function HotelDashboard() {
   const handleToggle = async () => {
     const newStatus = !workStatus;
     setWorkStatus(newStatus);
-
     try {
       const response = await toggleHotel({ status: newStatus });
       if (response.success) {
         Alert.alert(
           'Status Updated',
-          newStatus ? 'Hotel is now Online and accepting bookings' : 'Hotel is now Offline and not accepting bookings'
+          newStatus
+            ? 'Hotel is now Online and accepting bookings'
+            : 'Hotel is now Offline and not accepting bookings'
         );
       } else {
-        setWorkStatus(!newStatus); // Revert if failed
+        setWorkStatus(!newStatus);
         Alert.alert('Update Failed', response.message || 'Failed to update status');
       }
     } catch (err) {
-      setWorkStatus(!newStatus); // Revert if failed
+      setWorkStatus(!newStatus);
       Alert.alert('Error', 'An error occurred while updating status');
     }
   };
 
   const handleRefresh = useCallback(() => {
-    fetchHotelData();
-  }, [refresh]); // Ensure dependencies are included
-
-
-  const handleNewBooking = () => {
- navigation.navigate('Booking-create')
-    // Navigation would go here in a real implementation
-  };
+    setRefresh(true);
+    fetchHotelData().finally(() => setRefresh(false));
+  }, []);
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primaryViolet} />
-        <Text style={{ marginTop: 10, color: colors.darkGray }}>Loading hotel information...</Text>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading dashboard...</Text>
       </View>
     );
   }
@@ -101,133 +88,155 @@ export default function HotelDashboard() {
   if (error) {
     return (
       <View style={styles.errorContainer}>
-        <MaterialIcons name="error-outline" size={50} color={colors.primaryRed} />
+        <MaterialIcons name="error-outline" size={50} color={colors.danger} />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity
-          style={[styles.newBookingButton, { marginTop: 20, backgroundColor: colors.primaryViolet }]}
-          onPress={fetchHotelData}
-        >
-          <Text style={styles.newBookingText}>Retry</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchHotelData}>
+          <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // Format amenities for display
-  const formatAmenityName = (name) => {
-    return name.replace(/([A-Z])/g, ' $1').trim();
-  };
-
-  // Filter active amenities
-  const activeAmenities = hotelData?.amenities ?
-    Object.entries(hotelData.amenities)
-      .filter(([_, value]) => value)
-      .map(([key, _]) => key) :
-    [];
+  const StatCard = ({ icon, label, value, color }) => (
+    <View style={[styles.statCard, { borderLeftColor: color }]}>
+      <FontAwesome5 name={icon} size={24} color={color} style={styles.statIcon} />
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={[styles.statValue, { color }]}>{value}</Text>
+    </View>
+  );
 
   return (
-    // <SafeAreaView style={{ flex: 1 }}>
-    <Layout data={hotelData} title={hotelData?.hotel_name} profileImages={"https://img.freepik.com/free-vector/user-blue-gradient_78370-4692.jpg"} >
-
-      <View style={styles.container}>
-        <ScrollView refreshControl={<RefreshControl
-          onRefresh={handleRefresh}
-          refreshing={refresh}
-
-        />} style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {/* Hotel Header Card */}
-          <View style={styles.headerContainer}>
-            <Text style={styles.hotelName}>{hotelData?.hotel_name || "Not Aviable"}</Text>
-
-            <View style={styles.statusContainer}>
-              <Switch
-                value={workStatus}
-                onValueChange={handleToggle}
-                trackColor={{ false: colors.primaryRed, true: colors.primaryGreen }}
-                thumbColor={colors.primaryWhite}
-                ios_backgroundColor={colors.lightRed}
-              />
-              <Text style={[
+    <Layout
+      data={hotelData}
+      title={hotelData?.hotel_name}
+      profileImages="https://img.freepik.com/free-vector/user-blue-gradient_78370-4692.jpg"
+    >
+      <ScrollView
+      showsVerticalScrollIndicator={false}
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refresh} onRefresh={handleRefresh} />
+        }
+      >
+        <View style={styles.header}>
+          <Text style={styles.hotelName}>
+            {hotelData?.hotel_name || 'Not Available'}
+          </Text>
+          <View style={styles.statusContainer}>
+            <Switch
+              value={workStatus}
+              onValueChange={handleToggle}
+              trackColor={{
+                false: colors.danger,
+                true: colors.success,
+              }}
+              thumbColor={colors.white}
+            />
+            <Text
+              style={[
                 styles.statusText,
-                workStatus ? styles.onlineText : styles.offlineText
-              ]}>
-                {workStatus ? 'Online - Accepting Bookings' : 'Offline - Not Available'}
-              </Text>
-            </View>
-
-
-
-            <View style={styles.detailsContainer}>
-              <Text style={styles.ownerName}>{hotelData?.hotel_owner}</Text>
-              <Text style={styles.addressText}>{hotelData?.hotel_address}</Text>
-              <Text style={styles.phoneText}>
-                <MaterialIcons name="phone" size={14} color={colors.darkGray} /> {hotelData?.hotel_phone}
-              </Text>
-            </View>
+                workStatus ? styles.onlineText : styles.offlineText,
+              ]}
+            >
+              {workStatus ? 'Online - Accepting Bookings' : 'Offline'}
+            </Text>
           </View>
+        </View>
 
-          {/* Dashboard Cards */}
-          <Text style={styles.sectionTitle}>Dashboard</Text>
-          <View style={styles.cardsContainer}>
-            <TouchableOpacity onPress={() => navigation.navigate('All_Rooms')}>
-              <View style={styles.card}>
-                <FontAwesome5 name="door-open" size={24} color={colors.primaryViolet} />
-                <Text style={styles.cardTitle}>Total Rooms</Text>
-                <Text style={styles.cardValue}>{listingData.length || 0}</Text>
-              </View>
-            </TouchableOpacity>
+        <View style={styles.statsGrid}>
+          <StatCard
+            icon="money-bill-wave"
+            label="Total Earnings"
+            value={`₹${data?.totalEarnings || 0}`}
+            color={colors.success}
+          />
+          <StatCard
+            icon="gift"
+            label="Referral Balance"
+            value={`₹${data?.referralBalance || 0}`}
+            color={colors.info}
+          />
+          <StatCard
+            icon="calendar-check"
+            label="Total Bookings"
+            value={data?.totalBookings || 0}
+            color={colors.primary}
+          />
+          <StatCard
+            icon="clock"
+            label="Pending Bookings"
+            value={data?.pendingBookings || 0}
+            color={colors.warning}
+          />
+          <StatCard
+            icon="check-circle"
+            label="Completed Bookings"
+            value={data?.completedBookings || 0}
+            color={colors.success}
+          />
+          <StatCard
+            icon="times-circle"
+            label="Rejected Bookings"
+            value={data?.rejectedBookings || 0}
+            color={colors.danger}
+          />
+          <StatCard
+            icon="hotel"
+            label="Total Rooms"
+            value={data?.totalRooms || 0}
+            color={colors.primary}
+          />
+          <StatCard
+            icon="bed"
+            label="Occupied Rooms"
+            value={data?.occupiedRooms || 0}
+            color={colors.warning}
+          />
+          <StatCard
+            icon="box"
+            label="Total Packages"
+            value={data?.totalPackages || 0}
+            color={colors.info}
+          />
+          <StatCard
+            icon="box-open"
+            label="Running Packages"
+            value={data?.runningPackages || 0}
+            color={colors.success}
+          />
+        </View>
 
-            <View style={styles.card}>
-              <FontAwesome5 name="bed" size={24} color={colors.primaryRed} />
-              <Text style={styles.cardTitle}>Occupied Rooms</Text>
-              <Text style={[styles.cardValue, { color: colors.primaryRed }]}>
-                {dashboardStats.occupiedRooms}
-              </Text>
-            </View>
+        <View style={styles.infoSection}>
+          <Text style={styles.infoTitle}>Additional Information</Text>
+          <Text style={styles.infoText}>
+            Plan Expires: {new Date(data?.planExpire).toLocaleDateString()}
+          </Text>
+          <Text style={styles.infoText}>
+            Highest Booking Month: {data?.highestBookingMonth}
+          </Text>
+          <Text style={styles.infoText}>
+            Last Recharge: {data?.lastRecharge} time(s)
+          </Text>
+          <Text style={styles.infoText}>
+            Average Rating: {data?.averageRating || 'No Reviews'}
+          </Text>
+          <Text style={styles.infoText}>
+            Online Payments: {data?.modeCounts?.online || 0}
+          </Text>
+          <Text style={styles.infoText}>
+            Cash/Hotel Payments: {data?.modeCounts?.cashOrPayAtHotel || 0}
+          </Text>
+        </View>
+      </ScrollView>
 
-            <View style={styles.card}>
-              <FontAwesome5 name="box" size={24} color={colors.primaryGreen} />
-              <Text style={styles.cardTitle}>Active Packages</Text>
-              <Text style={[styles.cardValue, { color: colors.primaryGreen }]}>
-                {dashboardStats.activePackages}
-              </Text>
-            </View>
-
-            <View style={styles.card}>
-              <FontAwesome5 name="calendar-check" size={24} color={colors.warningYellow} />
-              <Text style={styles.cardTitle}>Pending Bookings</Text>
-              <Text style={[styles.cardValue, { color: colors.warningYellow }]}>
-                {dashboardStats.pendingBookings}
-              </Text>
-            </View>
-          </View>
-
-          {/* Amenities Section */}
-          <Text style={styles.sectionTitle}>Available Amenities</Text>
-          <View style={styles.amenitiesContainer}>
-            {activeAmenities.length > 0 ? (
-              <View style={styles.amenitiesGrid}>
-                {activeAmenities.map((amenity) => (
-                  <View key={amenity} style={styles.amenityItem}>
-                    <MaterialIcons name="check-circle" size={20} color={colors.primaryGreen} />
-                    <Text style={styles.amenityText}>{formatAmenityName(amenity)}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={{ color: colors.primaryRed, textAlign: 'center' }}>
-                No amenities available
-              </Text>
-            )}
-          </View>
-
-          {/* New Booking Button */}
-          <TouchableOpacity style={styles.newBookingButton} onPress={handleNewBooking}>
-            <Text style={styles.newBookingText}>Create New Booking</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('Booking-create')}
+      >
+        <BlurView intensity={100} tint="light" style={styles.fabBlur}>
+          <FontAwesome5 name="plus" size={24} color={colors.primary} />
+        </BlurView>
+      </TouchableOpacity>
     </Layout>
-    // </SafeAreaView>
   );
 }

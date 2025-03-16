@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "olyox_hotel",
+    "name": "olyox hotel",
     "slug": "olyox_hotel",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,8 +14,10 @@
     },
     "ios": {
       "supportsTablet": true
+     
     },
     "android": {
+     
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

@@ -1,4 +1,3 @@
-"use client"
 
 import { useCallback, useEffect, useState } from "react"
 import {
@@ -19,6 +18,7 @@ import axios from "axios"
 import { useToken } from "../../context/AuthContext"
 import { API_BASE_URL_V2 } from "../../constant/Api"
 import styles from "./styles"
+import CancelBookingModal from "./CancelBookingModel"
 
 export default function AllBookings() {
     const [bookings, setBookings] = useState([])
@@ -28,6 +28,8 @@ export default function AllBookings() {
     const [searchBookingId, setSearchBookingId] = useState("")
     const [searchPhone, setSearchPhone] = useState("")
     const [refresh, setRefresh] = useState(false)
+    const [cancelModel, setCancelModel] = useState(false)
+    const [cancelBookingId, setCancelBookingId] = useState('')
     const [checkingLoading, setCheckingLoading] = useState(false)
     const [checkOutLoading, setCheckOutLoading] = useState(false)
     const { token } = useToken()
@@ -38,13 +40,15 @@ export default function AllBookings() {
 
     const fetchBookings = async () => {
         try {
-            console.log(selectedFilter)
+
             setLoading(true)
             const response = await axios.get(`${API_BASE_URL_V2}/get-bookings`, {
                 headers: { Authorization: `Bearer ${token}` },
                 params: selectedFilter,
             })
-            setBookings(response.data.data || [])
+            const filterNotCancelBooking = response?.data?.data.filter((item) => item.status !== 'Cancelled')
+            // console.log("Bookings New", response.data.data[0]?.listing_id)
+            setBookings(filterNotCancelBooking || response.data.data || [])
         } catch (error) {
             if (error.response?.data?.message === "No bookings found matching the criteria") {
                 setBookings([])
@@ -112,6 +116,35 @@ export default function AllBookings() {
 
         }
     };
+
+    const handleOpenCancel = (id) => {
+        setCancelBookingId(id)
+        setCancelModel(true)
+    }
+
+    const handleAccept = async (id) => {
+        try {
+            const response = await axios.post(`${API_BASE_URL_V2}/accept-booking`, {
+                Booking_id: id,
+            });
+            Alert.alert('Success ✅', 'Your booking has been successfully Confirmed.');
+            await fetchBookings()
+
+
+        } catch (error) {
+            Alert.alert("Booking Not Confirmed", error.response?.data?.message, [{
+                text: "OK",
+                onPress: () => console.log('OK Pressed'),
+            }])
+        }
+    }
+
+
+    const handleCloseCancel = () => {
+        setCancelBookingId('')
+        fetchBookings()
+        setCancelModel(false)
+    }
 
     const clearFilters = () => {
         setSelectedFilter({})
@@ -262,6 +295,7 @@ export default function AllBookings() {
                                     <AntDesign name="close" size={24} color="#c41e3a" />
                                 </TouchableOpacity>
                             </View>
+
 
                             <ScrollView style={styles.modalBody}>
                                 <Text style={styles.filterSectionTitle}>Booking Status</Text>
@@ -431,13 +465,58 @@ export default function AllBookings() {
                                     <View style={styles.infoRow}>
                                         <View style={styles.infoItem}>
                                             <FontAwesome5 name="money-bill-wave" size={16} color="#c41e3a" />
-                                            <Text style={styles.infoLabel}>Payment</Text>
+                                            {/* <Text style={styles.infoLabel}>Payment</Text> */}
                                             <Text style={styles.infoValue}>{booking.paymentMode}</Text>
+                                        </View>
+                                        <View style={styles.infoItem}>
+                                            <MaterialIcons name="attach-money" size={14} color="#c41e3a" />
+                                            <Text style={styles.infoLabel}>Room Books</Text>
+                                            <Text style={styles.infoValue}>{booking.NumberOfRoomBooks}</Text>
+                                        </View>
+                                    </View>
+                                    <View style={styles.infoRow}>
+                                        <View style={styles.infoItem}>
+                                            <Text style={styles.infoLabel}>Otp</Text>
+                                            <Text style={styles.infoValue}>{booking.BookingOtp}</Text>
+                                        </View>
+                                        <View style={styles.infoItem}>
+                                            <Text style={styles.infoLabel}>Total Guests</Text>
+                                            <Text style={styles.infoValue}>{booking.totalGuests}</Text>
+                                        </View>
+                                        <View style={styles.infoItem}>
+                                            <Text style={styles.infoLabel}>Guests Details</Text>
+                                            <Text style={styles.infoValue}>{booking.numberOfGuestsDetails}</Text>
+                                        </View>
+
+
+                                    </View>
+                                    <View style={styles.infoRow}>
+                                        <View style={styles.infoItem}>
+                                            <Text style={styles.infoLabel}>Mens</Text>
+                                            <Text style={styles.infoValue}>{booking.no_of_mens}</Text>
+                                        </View>
+                                        <View style={styles.infoItem}>
+                                            <Text style={styles.infoLabel}>Female</Text>
+                                            <Text style={styles.infoValue}>{booking.no_of_womens}</Text>
+                                        </View>
+                                        <View style={styles.infoItem}>
+                                            <Text style={styles.infoLabel}>Children</Text>
+                                            <Text style={styles.infoValue}>{booking.no_of_child}</Text>
+                                        </View>
+
+
+                                    </View>
+
+                                    <View style={styles.infoRow}>
+                                        <View style={styles.infoItem}>
+                                            {/* <FontAwesome5 name="money-bill-wave" size={16} color="#c41e3a" /> */}
+                                            <Text style={styles.infoLabel}>Room Type</Text>
+                                            <Text style={styles.infoValue}>{booking.listing_id?.room_type}</Text>
                                         </View>
                                         <View style={styles.infoItem}>
                                             <MaterialIcons name="attach-money" size={16} color="#c41e3a" />
                                             <Text style={styles.infoLabel}>Amount</Text>
-                                            <Text style={styles.infoValue}>₹{booking.bookingAmount}</Text>
+                                            <Text style={styles.infoValue}>₹{booking.final_price_according_to_days}</Text>
                                         </View>
                                     </View>
 
@@ -469,14 +548,36 @@ export default function AllBookings() {
                                 <View style={styles.cardActions}>
                                     {!booking.isUserCheckedIn ? (
                                         new Date(booking.checkInDate).toDateString() <= getIndiaDate() ? (
-                                            <TouchableOpacity style={styles.checkInButton} onPress={() => handleCheckIn(booking.Booking_id)}>
-                                                <Ionicons name="log-in-outline" size={18} color="#fff" />
-                                                <Text style={styles.buttonText}>{checkingLoading ? 'Please Wait' : 'Check-In'}</Text>
-                                            </TouchableOpacity>
+                                            <View style={{ flexDirection: 'row', flex: 1, gap: 4 }}>
+
+                                                {booking.status === 'Pending' || 'Cancelled' && (
+
+                                                    <TouchableOpacity style={[styles.checkInButton, { flex: 1, backgroundColor: '#800080' }]} onPress={() => handleCheckIn(booking.Booking_id)}>
+                                                        <Ionicons name="log-in-outline" size={18} color="#fff" />
+                                                        <Text style={[styles.buttonText, { fontSize: 12 }]}>{checkingLoading ? 'Please Wait' : 'Check-In'}</Text>
+                                                    </TouchableOpacity>
+
+                                                )}
+
+                                                {booking.status === 'Pending' && (
+                                                    <TouchableOpacity style={[styles.checkInButton, { flex: 1 }]} onPress={() => handleOpenCancel(booking.Booking_id)}>
+                                                        <Ionicons name="close" size={18} color="#fff" />
+                                                        <Text style={[styles.buttonText, { fontSize: 12 }]}>Reject</Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                                {booking.status !== 'Cancelled' || 'Confirmed' && (
+                                                    <TouchableOpacity style={[styles.checkInButton, { flex: 1, backgroundColor: '#1CAC78' }]} onPress={() => handleAccept(booking.Booking_id)}>
+                                                        <AntDesign name="check" size={18} color="#fff" />
+                                                        <Text style={[styles.buttonText, { fontSize: 12 }]}>Accept</Text>
+                                                    </TouchableOpacity>
+                                                )}
+
+
+
+                                            </View>
                                         ) : (
                                             <Text style={styles.currentDateText}>
                                                 Check-in available on: {new Date(booking.checkInDate).toDateString()}
-
                                             </Text>
                                         )
                                     ) : !booking.userCheckOutStatus ? (
@@ -512,6 +613,7 @@ export default function AllBookings() {
                     )
                 )}
             </View>
+            <CancelBookingModal isOpen={cancelModel} onClose={handleCloseCancel} Booking_id={cancelBookingId} />
         </Layout>
     )
 }

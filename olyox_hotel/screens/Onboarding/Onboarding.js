@@ -23,9 +23,9 @@ export default function Onboarding() {
                 <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.secondary_button}>
                     <Text style={styles.secondary_button_text}>Login Via BH</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('HotelListing')} style={[styles.secondary_button, { marginVertical: 5 }]}>
+                {/* <TouchableOpacity onPress={() => navigation.navigate('HotelListing')} style={[styles.secondary_button, { marginVertical: 5 }]}>
                     <Text style={styles.secondary_button_text}>Complete Profile</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
             </View>
         </SafeAreaView>
     );

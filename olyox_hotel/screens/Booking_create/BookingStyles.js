@@ -6,7 +6,7 @@ export default StyleSheet.create({
   container: {
     // flex: 1,
     paddingHorizontal: 16,
-    
+
   },
   header: {
     // marginBottom: 20,
@@ -326,7 +326,7 @@ export default StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     marginTop: 5,
-        marginBottom:5,
+    marginBottom: 5,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#00aaa9", // Theme color
@@ -345,5 +345,136 @@ export default StyleSheet.create({
     fontWeight: "bold",
     color: "#25d366", // Green to indicate cost
     fontSize: 16,
-  }
+  },
+
+  stepContainer: {
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  stepTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+  },
+
+  // Date selection
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 10,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  dateTextContainer: {
+    marginLeft: 15,
+  },
+  dateLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  dateValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 5,
+  },
+  stayDurationContainer: {
+    alignItems: 'center',
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#f0f8ff',
+    borderRadius: 8,
+  },
+  stayDurationText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0066cc',
+  },
+
+  // Room and guest selection
+  roomInfoContainer: {
+    backgroundColor: '#f9f9f9',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 15,
+  },
+  roomInfoText: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 5,
+  },
+  roomCountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  roomCountLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  roomCountControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  roomCountButton: {
+    backgroundColor: '#de423e',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  roomCountValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginHorizontal: 15,
+    minWidth: 30,
+    textAlign: 'center',
+  },
+  guestTypeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  guestTypePicker: {
+    flex: 1,
+    marginHorizontal: 5,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  guestTypeLabel: {
+    backgroundColor: '#f5f5f5',
+    padding: 8,
+    textAlign: 'center',
+    fontWeight: '600',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  picker: {
+    height: 120,
+  },
+  guestSummaryContainer: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  guestSummaryText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  guestSummaryError: {
+    color: '#de423e',
+    marginTop: 5,
+    textAlign: 'center',
+  },
 });

@@ -11,11 +11,14 @@ import {
     TouchableWithoutFeedback,
     Alert
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { COLORS } from '../constants/colors';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// import { COLORS } from '../constants/colors';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { COLORS } from '../../constant/Google';
+import useHotelApi from '../../context/HotelDetails';
+// COLORS
 
 export function Withdraw() {
     const [modalVisible, setModalVisible] = useState(false);
@@ -35,6 +38,8 @@ export function Withdraw() {
             upi_id: '',
         },
     });
+
+    const { findDetails } = useHotelApi()
     const [data, setData] = useState(null)
     const [bhData, setBhData] = useState(null)
     const [error, setError] = useState('')
@@ -48,22 +53,14 @@ export function Withdraw() {
         setError("");
 
         try {
-            const storedToken = await AsyncStorage.getItem("userToken");
 
-            if (!storedToken) {
-                navigation.replace("Login");
-                return;
-            }
 
             // Fetch user details
-            const userResponse = await axios.get(
-                "https://demoapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile",
-                { headers: { Authorization: `Bearer ${storedToken}` } }
-            );
+            const userResponse = await findDetails()
 
             console.log("User details response:", userResponse.data.data);
 
-            const BhId = userResponse?.data?.data?.restaurant_BHID;
+            const BhId = userResponse?.data?.data?.BhJsonData?.myReferral;
 
             if (!BhId) {
                 throw new Error("BHID not found");
@@ -75,7 +72,7 @@ export function Withdraw() {
                 { BhId }
             );
 
-
+            // console.log("providerResponse",providerResponse.data?.data?._id)
             await fetchWithdrawals(providerResponse.data?.data?._id)
             setData(providerResponse);
         } catch (error) {
@@ -148,31 +145,32 @@ export function Withdraw() {
             default: return '#666';
         }
     };
-  
+
 
     const handleSubmit = async () => {
-       const parsed = data.data;
+        const parsed = data.data;
         setLoading(true);
         try {
-            // For demo purposes, we're just logging the data
-            console.log('pardes', parsed.data?._id);
+
 
             // Uncomment this for actual API call
             const response = await axios.post(`https://api.olyox.com/api/v1/create-withdrawal?_id=${parsed.data?._id}`, withdrawForm);
-            console.log("response", response.data)
-            // Simulate API response
+
             await new Promise(resolve => setTimeout(resolve, 1500));
-            setLoading(false)
+
             Alert.alert(
                 'Success',
                 'Your withdrawal request has been submitted successfully!',
-                [{ text: 'OK', onPress: () => setShowModal(false) }]
+                [{ text: 'OK' }]
             );
-
-            // Refresh withdrawals list
+            setLoading(false)
+            setModalVisible(false)
             fetchUserDetails()
             fetchWithdrawals();
+            setModalVisible(false)
+
         } catch (error) {
+            setLoading(false)
             // setServerErrors(error?.response?.data?.message || 'An error occurred while processing your request');
             console.error('Error creating withdrawal:', error?.response?.data?.message || error);
         } finally {
@@ -181,265 +179,265 @@ export function Withdraw() {
     };
 
     return (
-        <SafeAreaView style={{flex:1}}>
+        <SafeAreaView style={{ flex: 1 }}>
 
-        <ScrollView style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <View>
-                    <Text style={styles.headerTitle}>Withdraw History</Text>
-                    <Text style={styles.headerSubtitle}>Track your withdrawal requests</Text>
-                </View>
-
-                <TouchableOpacity
-                    style={styles.newWithdrawButton}
-                    onPress={() => setModalVisible(true)}
-                >
-                    <Icon name="plus-circle" size={24} color="#fff" />
-                    <Text style={styles.newWithdrawText}>New Withdrawal</Text>
-                </TouchableOpacity>
-            </View>
-
-            {/* Withdraw List */}
-
-            {withdrawals.length === 0 ? (
-                <View style={styles.noWithdraws}>
-                    <Text style={styles.noWithdrawsText}>No withdrawals found.</Text>
-                </View>
-            ) : null}
-
-
-            {withdrawals && withdrawals.map((withdraw) => (
-                <View key={withdraw._id} style={styles.withdrawCard}>
-                    {/* Status and Amount */}
-                    <View style={styles.topSection}>
-                        <View style={styles.methodContainer}>
-                            <Icon
-                                name={withdraw.method === 'UPI' ? 'cellphone-wireless' : 'bank'}
-                                size={24}
-                                color="#2196F3"
-                            />
-                            <Text style={styles.methodText}>{withdraw.method}</Text>
-                        </View>
-                        <Text style={styles.amount}>₹{withdraw.amount}</Text>
+            <ScrollView style={styles.container}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <View>
+                        <Text style={styles.headerTitle}>Withdraw History</Text>
+                        <Text style={styles.headerSubtitle}>Track your withdrawal requests</Text>
                     </View>
 
-                    {/* Status Badge */}
-                    <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(withdraw.status)}20` }]}>
-                        <Icon
-                            name={withdraw.status === 'Approved' ? 'check-circle' : 'clock-outline'}
-                            size={20}
-                            color={getStatusColor(withdraw.status)}
-                        />
-                        <Text style={[styles.statusText, { color: getStatusColor(withdraw.status) }]}>
-                            {withdraw.status}
-                        </Text>
-                    </View>
-
-                    {/* Payment Details */}
-                    <View style={styles.detailsContainer}>
-                        {withdraw.method === 'UPI' ? (
-                            <View style={styles.detailRow}>
-                                <Icon name="identifier" size={20} color="#666" />
-                                <Text style={styles.detailLabel}>UPI ID:</Text>
-                                <Text style={styles.detailValue}>{withdraw.upi_details.upi_id}</Text>
-                            </View>
-                        ) : (
-                            <>
-                                <View style={styles.detailRow}>
-                                    <Icon name="bank" size={20} color="#666" />
-                                    <Text style={styles.detailLabel}>Bank:</Text>
-                                    <Text style={styles.detailValue}>{withdraw.BankDetails.bankName}</Text>
-                                </View>
-                                <View style={styles.detailRow}>
-                                    <Icon name="card-account-details" size={20} color="#666" />
-                                    <Text style={styles.detailLabel}>Account:</Text>
-                                    <Text style={styles.detailValue}>
-                                        {withdraw.BankDetails.accountNo.replace(/(\d{4})(?=\d)/g, '$1 ')}
-                                    </Text>
-                                </View>
-                                <View style={styles.detailRow}>
-                                    <Icon name="barcode" size={20} color="#666" />
-                                    <Text style={styles.detailLabel}>IFSC:</Text>
-                                    <Text style={styles.detailValue}>{withdraw.BankDetails.ifsc_code}</Text>
-                                </View>
-                            </>
-                        )}
-
-                        {withdraw.trn_no && (
-                            <View style={styles.detailRow}>
-                                <Icon name="file-document" size={20} color="#666" />
-                                <Text style={styles.detailLabel}>Transaction:</Text>
-                                <Text style={styles.detailValue}>{withdraw.trn_no}</Text>
-                            </View>
-                        )}
-
-                        <View style={styles.detailRow}>
-                            <Icon name="calendar" size={20} color="#666" />
-                            <Text style={styles.detailLabel}>Requested:</Text>
-                            <Text style={styles.detailValue}>{formatDate(withdraw.requestedAt)}</Text>
-                        </View>
-
-                        {withdraw.time_of_payment_done && (
-                            <View style={styles.detailRow}>
-                                <Icon name="calendar-check" size={20} color="#666" />
-                                <Text style={styles.detailLabel}>Completed:</Text>
-                                <Text style={styles.detailValue}>
-                                    {formatDate(withdraw.time_of_payment_done)}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
+                    <TouchableOpacity
+                        style={styles.newWithdrawButton}
+                        onPress={() => setModalVisible(true)}
+                    >
+                        <Icon name="plus-circle" size={24} color="#fff" />
+                        <Text style={styles.newWithdrawText}>New Withdrawal</Text>
+                    </TouchableOpacity>
                 </View>
-            ))}
 
-            {/* Withdraw Modal */}
-            <Modal
-                animationType="slide"
-                transparent={true}
-                visible={modalVisible}
-                onRequestClose={() => setModalVisible(false)}
-            >
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <View style={styles.modalOverlay}>
-                        <View style={styles.modalContent}>
-                            <View style={styles.modalHeader}>
-                                <Text style={styles.modalTitle}>New Withdrawal</Text>
-                                <TouchableOpacity
-                                    onPress={() => setModalVisible(false)}
-                                    style={styles.closeButton}
-                                >
-                                    <Icon name="close" size={24} color="#666" />
-                                </TouchableOpacity>
-                            </View>
+                {/* Withdraw List */}
 
-                            {/* Amount Input */}
-                            <View style={styles.inputContainer}>
-                                <Text style={styles.inputLabel}>Amount (₹)</Text>
-                                <View style={styles.inputWrapper}>
-                                    <Icon name="currency-inr" size={20} color="#666" style={styles.inputIcon} />
-                                    <TextInput
-                                        style={styles.input}
-                                        keyboardType="numeric"
-                                        placeholder="Enter amount"
-                                        value={withdrawForm.amount}
-                                        onChangeText={(text) => setWithdrawForm({ ...withdrawForm, amount: text })}
-                                    />
-                                </View>
-                            </View>
+                {withdrawals.length === 0 ? (
+                    <View style={styles.noWithdraws}>
+                        <Text style={styles.noWithdrawsText}>No withdrawals found.</Text>
+                    </View>
+                ) : null}
 
-                            {/* Payment Method Selection */}
-                            <Text style={styles.inputLabel}>Select Payment Method</Text>
+
+                {withdrawals && withdrawals.map((withdraw) => (
+                    <View key={withdraw._id} style={styles.withdrawCard}>
+                        {/* Status and Amount */}
+                        <View style={styles.topSection}>
                             <View style={styles.methodContainer}>
-                                {['UPI', 'Bank Transfer'].map((method) => (
-                                    <TouchableOpacity
-                                        key={method}
-                                        style={[
-                                            styles.methodButton,
-                                            withdrawForm.method === method && styles.methodButtonActive
-                                        ]}
-                                        onPress={() => setWithdrawForm({ ...withdrawForm, method })}
-                                    >
-                                        <Icon
-                                            name={method === 'UPI' ? 'cellphone-wireless' : 'bank'}
-                                            size={24}
-                                            color={withdrawForm.method === method ? '#fff' : '#666'}
-                                        />
-                                        <Text style={[
-                                            styles.methodButtonText,
-                                            withdrawForm.method === method && styles.methodButtonTextActive
-                                        ]}>
-                                            {method}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
+                                <Icon
+                                    name={withdraw.method === 'UPI' ? 'cellphone-wireless' : 'bank'}
+                                    size={24}
+                                    color="#2196F3"
+                                />
+                                <Text style={styles.methodText}>{withdraw.method}</Text>
                             </View>
+                            <Text style={styles.amount}>₹{withdraw.amount}</Text>
+                        </View>
 
-                            {/* Conditional Form Fields */}
-                            {withdrawForm.method === 'UPI' && (
-                                <View style={styles.inputContainer}>
-                                    <Text style={styles.inputLabel}>UPI ID</Text>
-                                    <View style={styles.inputWrapper}>
-                                        <Icon name="at" size={20} color="#666" style={styles.inputIcon} />
-                                        <TextInput
-                                            style={styles.input}
-                                            placeholder="Enter UPI ID"
-                                            value={withdrawForm.upi_details.upi_id}
-                                            onChangeText={(text) => setWithdrawForm({
-                                                ...withdrawForm,
-                                                upi_details: { upi_id: text }
-                                            })}
-                                        />
-                                    </View>
+                        {/* Status Badge */}
+                        <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(withdraw.status)}20` }]}>
+                            <Icon
+                                name={withdraw.status === 'Approved' ? 'check-circle' : 'clock-outline'}
+                                size={20}
+                                color={getStatusColor(withdraw.status)}
+                            />
+                            <Text style={[styles.statusText, { color: getStatusColor(withdraw.status) }]}>
+                                {withdraw.status}
+                            </Text>
+                        </View>
+
+                        {/* Payment Details */}
+                        <View style={styles.detailsContainer}>
+                            {withdraw.method === 'UPI' ? (
+                                <View style={styles.detailRow}>
+                                    <Icon name="identifier" size={20} color="#666" />
+                                    <Text style={styles.detailLabel}>UPI ID:</Text>
+                                    <Text style={styles.detailValue}>{withdraw.upi_details.upi_id}</Text>
                                 </View>
-                            )}
-
-                            {withdrawForm.method === 'Bank Transfer' && (
+                            ) : (
                                 <>
-                                    <View style={styles.inputContainer}>
-                                        <Text style={styles.inputLabel}>Bank Name</Text>
-                                        <View style={styles.inputWrapper}>
-                                            <Icon name="bank" size={20} color="#666" style={styles.inputIcon} />
-                                            <TextInput
-                                                style={styles.input}
-                                                placeholder="Enter bank name"
-                                                value={withdrawForm.BankDetails.bankName}
-                                                onChangeText={(text) => setWithdrawForm({
-                                                    ...withdrawForm,
-                                                    BankDetails: { ...withdrawForm.BankDetails, bankName: text }
-                                                })}
-                                            />
-                                        </View>
+                                    <View style={styles.detailRow}>
+                                        <Icon name="bank" size={20} color="#666" />
+                                        <Text style={styles.detailLabel}>Bank:</Text>
+                                        <Text style={styles.detailValue}>{withdraw.BankDetails.bankName}</Text>
                                     </View>
-
-                                    <View style={styles.inputContainer}>
-                                        <Text style={styles.inputLabel}>Account Number</Text>
-                                        <View style={styles.inputWrapper}>
-                                            <Icon name="card-account-details" size={20} color="#666" style={styles.inputIcon} />
-                                            <TextInput
-                                                style={styles.input}
-                                                placeholder="Enter account number"
-                                                keyboardType="numeric"
-                                                value={withdrawForm.BankDetails.accountNo}
-                                                onChangeText={(text) => setWithdrawForm({
-                                                    ...withdrawForm,
-                                                    BankDetails: { ...withdrawForm.BankDetails, accountNo: text }
-                                                })}
-                                            />
-                                        </View>
+                                    <View style={styles.detailRow}>
+                                        <Icon name="card-account-details" size={20} color="#666" />
+                                        <Text style={styles.detailLabel}>Account:</Text>
+                                        <Text style={styles.detailValue}>
+                                            {withdraw.BankDetails.accountNo.replace(/(\d{4})(?=\d)/g, '$1 ')}
+                                        </Text>
                                     </View>
-
-                                    <View style={styles.inputContainer}>
-                                        <Text style={styles.inputLabel}>IFSC Code</Text>
-                                        <View style={styles.inputWrapper}>
-                                            <Icon name="barcode" size={20} color="#666" style={styles.inputIcon} />
-                                            <TextInput
-                                                style={styles.input}
-                                                placeholder="Enter IFSC code"
-                                                autoCapitalize="characters"
-                                                value={withdrawForm.BankDetails.ifsc_code}
-                                                onChangeText={(text) => setWithdrawForm({
-                                                    ...withdrawForm,
-                                                    BankDetails: { ...withdrawForm.BankDetails, ifsc_code: text }
-                                                })}
-                                            />
-                                        </View>
+                                    <View style={styles.detailRow}>
+                                        <Icon name="barcode" size={20} color="#666" />
+                                        <Text style={styles.detailLabel}>IFSC:</Text>
+                                        <Text style={styles.detailValue}>{withdraw.BankDetails.ifsc_code}</Text>
                                     </View>
                                 </>
                             )}
 
-                            <TouchableOpacity
-                                style={styles.submitButton}
-                                onPress={handleSubmit}
-                            >
-                                <Text style={styles.submitButtonText}>Submit Withdrawal</Text>
-                                <Icon name="arrow-right" size={20} color="#fff" />
-                            </TouchableOpacity>
+                            {withdraw.trn_no && (
+                                <View style={styles.detailRow}>
+                                    <Icon name="file-document" size={20} color="#666" />
+                                    <Text style={styles.detailLabel}>Transaction:</Text>
+                                    <Text style={styles.detailValue}>{withdraw.trn_no}</Text>
+                                </View>
+                            )}
+
+                            <View style={styles.detailRow}>
+                                <Icon name="calendar" size={20} color="#666" />
+                                <Text style={styles.detailLabel}>Requested:</Text>
+                                <Text style={styles.detailValue}>{formatDate(withdraw.requestedAt)}</Text>
+                            </View>
+
+                            {withdraw.time_of_payment_done && (
+                                <View style={styles.detailRow}>
+                                    <Icon name="calendar-check" size={20} color="#666" />
+                                    <Text style={styles.detailLabel}>Completed:</Text>
+                                    <Text style={styles.detailValue}>
+                                        {formatDate(withdraw.time_of_payment_done)}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                     </View>
-                </TouchableWithoutFeedback>
-            </Modal>
-        </ScrollView>
+                ))}
+
+                {/* Withdraw Modal */}
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={modalVisible}
+                    onRequestClose={() => setModalVisible(false)}
+                >
+                    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                        <View style={styles.modalOverlay}>
+                            <View style={styles.modalContent}>
+                                <View style={styles.modalHeader}>
+                                    <Text style={styles.modalTitle}>New Withdrawal</Text>
+                                    <TouchableOpacity
+                                        onPress={() => setModalVisible(false)}
+                                        style={styles.closeButton}
+                                    >
+                                        <Icon name="close" size={24} color="#666" />
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* Amount Input */}
+                                <View style={styles.inputContainer}>
+                                    <Text style={styles.inputLabel}>Amount (₹)</Text>
+                                    <View style={styles.inputWrapper}>
+                                        <Icon name="currency-inr" size={20} color="#666" style={styles.inputIcon} />
+                                        <TextInput
+                                            style={styles.input}
+                                            keyboardType="numeric"
+                                            placeholder="Enter amount"
+                                            value={withdrawForm.amount}
+                                            onChangeText={(text) => setWithdrawForm({ ...withdrawForm, amount: text })}
+                                        />
+                                    </View>
+                                </View>
+
+                                {/* Payment Method Selection */}
+                                <Text style={styles.inputLabel}>Select Payment Method</Text>
+                                <View style={styles.methodContainer}>
+                                    {['UPI', 'Bank Transfer'].map((method) => (
+                                        <TouchableOpacity
+                                            key={method}
+                                            style={[
+                                                styles.methodButton,
+                                                withdrawForm.method === method && styles.methodButtonActive
+                                            ]}
+                                            onPress={() => setWithdrawForm({ ...withdrawForm, method })}
+                                        >
+                                            <Icon
+                                                name={method === 'UPI' ? 'cellphone-wireless' : 'bank'}
+                                                size={24}
+                                                color={withdrawForm.method === method ? '#fff' : '#666'}
+                                            />
+                                            <Text style={[
+                                                styles.methodButtonText,
+                                                withdrawForm.method === method && styles.methodButtonTextActive
+                                            ]}>
+                                                {method}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+
+                                {/* Conditional Form Fields */}
+                                {withdrawForm.method === 'UPI' && (
+                                    <View style={styles.inputContainer}>
+                                        <Text style={styles.inputLabel}>UPI ID</Text>
+                                        <View style={styles.inputWrapper}>
+                                            <Icon name="at" size={20} color="#666" style={styles.inputIcon} />
+                                            <TextInput
+                                                style={styles.input}
+                                                placeholder="Enter UPI ID"
+                                                value={withdrawForm.upi_details.upi_id}
+                                                onChangeText={(text) => setWithdrawForm({
+                                                    ...withdrawForm,
+                                                    upi_details: { upi_id: text }
+                                                })}
+                                            />
+                                        </View>
+                                    </View>
+                                )}
+
+                                {withdrawForm.method === 'Bank Transfer' && (
+                                    <>
+                                        <View style={styles.inputContainer}>
+                                            <Text style={styles.inputLabel}>Bank Name</Text>
+                                            <View style={styles.inputWrapper}>
+                                                <Icon name="bank" size={20} color="#666" style={styles.inputIcon} />
+                                                <TextInput
+                                                    style={styles.input}
+                                                    placeholder="Enter bank name"
+                                                    value={withdrawForm.BankDetails.bankName}
+                                                    onChangeText={(text) => setWithdrawForm({
+                                                        ...withdrawForm,
+                                                        BankDetails: { ...withdrawForm.BankDetails, bankName: text }
+                                                    })}
+                                                />
+                                            </View>
+                                        </View>
+
+                                        <View style={styles.inputContainer}>
+                                            <Text style={styles.inputLabel}>Account Number</Text>
+                                            <View style={styles.inputWrapper}>
+                                                <Icon name="card-account-details" size={20} color="#666" style={styles.inputIcon} />
+                                                <TextInput
+                                                    style={styles.input}
+                                                    placeholder="Enter account number"
+                                                    keyboardType="numeric"
+                                                    value={withdrawForm.BankDetails.accountNo}
+                                                    onChangeText={(text) => setWithdrawForm({
+                                                        ...withdrawForm,
+                                                        BankDetails: { ...withdrawForm.BankDetails, accountNo: text }
+                                                    })}
+                                                />
+                                            </View>
+                                        </View>
+
+                                        <View style={styles.inputContainer}>
+                                            <Text style={styles.inputLabel}>IFSC Code</Text>
+                                            <View style={styles.inputWrapper}>
+                                                <Icon name="barcode" size={20} color="#666" style={styles.inputIcon} />
+                                                <TextInput
+                                                    style={styles.input}
+                                                    placeholder="Enter IFSC code"
+                                                    autoCapitalize="characters"
+                                                    value={withdrawForm.BankDetails.ifsc_code}
+                                                    onChangeText={(text) => setWithdrawForm({
+                                                        ...withdrawForm,
+                                                        BankDetails: { ...withdrawForm.BankDetails, ifsc_code: text }
+                                                    })}
+                                                />
+                                            </View>
+                                        </View>
+                                    </>
+                                )}
+
+                                <TouchableOpacity
+                                    style={styles.submitButton}
+                                    onPress={handleSubmit}
+                                >
+                                    <Text style={styles.submitButtonText}>{loading ? 'Please Wait....' : 'Submit Withdrawal'}</Text>
+                                    <Icon name="arrow-right" size={20} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </Modal>
+            </ScrollView>
         </SafeAreaView>
     );
 }
@@ -451,7 +449,7 @@ const styles = StyleSheet.create({
     },
     header: {
         width: '100%',
-        padding: 20,
+        padding: 14,
         backgroundColor: '#FFF',
         borderBottomLeftRadius: 20,
         borderBottomRightRadius: 20,
@@ -466,7 +464,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between'
     },
     headerTitle: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: 'bold',
         color: '#333',
     },
@@ -477,7 +475,7 @@ const styles = StyleSheet.create({
     },
     withdrawCard: {
         backgroundColor: '#FFF',
-        margin: 16,
+        margin: 8,
         borderRadius: 12,
         padding: 16,
         shadowColor: '#000',
@@ -551,7 +549,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: COLORS.error,
         paddingVertical: 12,
-        paddingHorizontal: 20,
+        paddingHorizontal: 14,
         borderRadius: 25,
         // margin: 16,
         elevation: 3,
@@ -562,9 +560,9 @@ const styles = StyleSheet.create({
     },
     newWithdrawText: {
         color: '#fff',
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold',
-        marginLeft: 8,
+        // marginLeft: 8,
     },
     modalOverlay: {
         flex: 1,
@@ -576,7 +574,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         padding: 20,
-        maxHeight: '90%',
+        maxHeight: '100%',
     },
     modalHeader: {
         flexDirection: 'row',
@@ -585,7 +583,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     modalTitle: {
-        fontSize: 20,
+        fontSize: 14,
         fontWeight: 'bold',
         color: '#333',
     },
@@ -664,4 +662,19 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginRight: 8,
     },
+    noWithdraws: {
+        flex: 1,
+        paddingTop: 40,
+
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: "100%",
+        textAlign: 'center'
+    },
+    noWithdrawsText: {
+        fontSize: 40,
+        color: "#666",
+        marginBottom: 20
+
+    }
 });

@@ -24,7 +24,7 @@ const useHotelApi = () => {
         return { success: false, message: "Unexpected response from server." };
       }
     } catch (error) {
-      console.error("Error fetching hotel details:", error);
+      console.error("Error fetching hotel details:", error.response.data.message || error.message );
 
       return {
         success: false,
@@ -53,7 +53,7 @@ const useHotelApi = () => {
         return { success: false, message: "Unexpected response from server." };
       }
     } catch (error) {
-      console.error("Error online hotel:", error);
+      console.error("Error online hotel:", error.response.data);
 
       return {
         success: false,

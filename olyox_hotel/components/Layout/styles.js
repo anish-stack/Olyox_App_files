@@ -22,7 +22,7 @@ export default StyleSheet.create({
   // Header styles
   header: {
     backgroundColor: colors.primaryRed,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 10,
     paddingBottom: 8,
     paddingHorizontal: 14,
     flexDirection: 'row',

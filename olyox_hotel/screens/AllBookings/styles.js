@@ -247,6 +247,7 @@ export default StyleSheet.create({
       infoRow: {
         flexDirection: "row",
         justifyContent: "space-between",
+        gap:14,
         marginBottom: 12,
       },
       infoItem: {
@@ -261,6 +262,7 @@ export default StyleSheet.create({
         marginRight: 4,
       },
       infoValue: {
+        marginLeft:4,
         fontSize: 14,
         color: "#333",
         fontWeight: "500",

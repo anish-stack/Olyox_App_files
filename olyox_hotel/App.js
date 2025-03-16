@@ -22,13 +22,15 @@ import Profile from './screens/Profile/Profile';
 import Upload_Documents from './screens/Profile/Upload_Documents';
 import Recharge from './screens/Recharge/Recharge';
 import RechargeHistoryTiffin from './screens/Recharge/RechargeHistory';
+import ReferralHistory from './screens/Refferal/ReferalHistory';
+import { Withdraw } from './screens/Recharge/Withdraw';
 
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
 
-  const { isLoggedIn, loading } = useToken(); 
-  console.log(isLoggedIn)
+  const { isLoggedIn, loading } = useToken();
+  console.log(loading)
 
   if (loading) {
     return (
@@ -52,7 +54,7 @@ const AppNavigator = () => {
         {/* Hotel Listing */}
         <Stack.Screen name="HotelListing" options={{ headerShown: false }} component={Hotel_List} />
         <Stack.Screen name="Rooms" options={{ headerShown: false }} component={HotelListingForm} />
-        <Stack.Screen name="All_Rooms" options={{ headerShown: false }} component={AllRoom} />
+        <Stack.Screen name="All Rooms" options={{ headerShown: false }} component={AllRoom} />
         <Stack.Screen name="RoomDetail" options={{ headerShown: false }} component={SingleDetailsPage} />
 
 
@@ -69,6 +71,8 @@ const AppNavigator = () => {
         <Stack.Screen name="upload_Documents" options={{ headerShown: false }} component={Upload_Documents} />
         <Stack.Screen name="Recharge" options={{ headerShown: true }} component={Recharge} />
         <Stack.Screen name="Recharge History" options={{ headerShown: true }} component={RechargeHistoryTiffin} />
+        <Stack.Screen name="Referral History" options={{ headerShown: true }} component={ReferralHistory} />
+        <Stack.Screen name="Withdraw History" options={{ headerShown: false }} component={Withdraw} />
 
 
       </Stack.Navigator>

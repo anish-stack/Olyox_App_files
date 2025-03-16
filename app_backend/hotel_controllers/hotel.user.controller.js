@@ -1,13 +1,14 @@
 const HotelUser = require("../models/Hotel.user");
 const HotelListing = require("../models/Hotels.model");
+const BookingRequestSchema = require("../models/Hotel.booking_request");
 const generateOtp = require("../utils/Otp.Genreator");
 const sendToken = require("../utils/SendToken");
 const SendWhatsAppMessage = require("../utils/whatsapp_send");
 const cloudinary = require("cloudinary").v2;
 require("dotenv").config();
 const axios = require('axios')
-const fs = require("fs").promises;
-const streamifier = require("streamifier");
+const moment = require("moment");
+const mongoose = require("mongoose");
 
 cloudinary.config({
     cloud_name: "dsd8nepa5",
@@ -531,61 +532,153 @@ exports.toggleHotelStatus = async (req, res) => {
         const { status } = req.body;
         const userId = req.user.id;
 
+        console.log("Request received to toggle hotel status:", { userId, requestedStatus: status });
+
         // Fetch user details
         const foundFreshDetails = await HotelUser.findById(userId);
         if (!foundFreshDetails) {
+            console.log("User not found:", userId);
             return res.status(404).json({
                 success: false,
-                message: "No user found with this ID.",
+                message: "We couldn't find your account. Please try logging in again.",
             });
         }
 
+        console.log("User details found:", {
+            id: foundFreshDetails._id,
+            contactVerified: foundFreshDetails.contactNumberVerify,
+            docsUploaded: foundFreshDetails.DocumentUploaded,
+            docsVerified: foundFreshDetails.DocumentUploadedVerified,
+            isBlocked: foundFreshDetails.isBlockByAdmin,
+            bhId: foundFreshDetails.bh
+        });
+
         // Check verification and block status
         if (!foundFreshDetails.contactNumberVerify) {
+            console.log("Phone not verified for user:", userId);
             return res.status(400).json({
                 success: false,
-                message: "Please verify your contact number first.",
+                message: "Your phone number is not verified. Please verify it to proceed.",
             });
         }
         if (!foundFreshDetails.DocumentUploaded) {
+            console.log("Documents not uploaded for user:", userId);
             return res.status(400).json({
                 success: false,
-                message: "Please upload your document first.",
+                message: "You need to upload the required documents before activating your hotel.",
             });
         }
         if (!foundFreshDetails.DocumentUploadedVerified) {
+            console.log("Documents not yet verified for user:", userId);
             return res.status(400).json({
                 success: false,
-                message: "Document verification is pending.",
+                message: "Your documents are still under review. Please wait for verification.",
             });
         }
         if (foundFreshDetails.isBlockByAdmin) {
+            console.log("User is blocked by admin:", userId);
             return res.status(403).json({
                 success: false,
-                message: "Your account has been blocked by the admin.",
+                message: "Your account has been blocked by the admin. Please contact support for assistance.",
+            });
+        }
+
+        let checkItsValidRechargeOrNot = false;
+
+        try {
+            console.log("Fetching provider details for BH ID:", foundFreshDetails?.bh);
+            const response = await axios.post(
+                "https://api.olyox.com/api/v1/getProviderDetailsByBhId",
+                { BhId: foundFreshDetails?.bh }
+            );
+
+            console.log("Provider API response received:",response.data);
+            // console.log("Provider API response received:",response);
+
+            if (response.data && response.data.data) {
+                const providerDetails = response.data.data;
+
+                // Get current date and time in Indian Standard Time (IST)
+                const currentDateIST = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+                const currentDateObj = new Date(currentDateIST);
+
+                // Get end date from provider details
+                const endDateObj = providerDetails.payment_id && providerDetails.payment_id.end_date
+                    ? new Date(providerDetails.payment_id.end_date)
+                    : null;
+
+                console.log("Date comparison:", {
+                    currentDateIST,
+                    currentDateObj: currentDateObj.toISOString(),
+                    endDate: endDateObj ? endDateObj.toISOString() : "N/A"
+                });
+
+                // Check if either plan_status is true OR payment is approved AND end date is in the future
+                if (providerDetails.recharge !== 0) {
+                    if (providerDetails.plan_status && endDateObj && endDateObj > currentDateObj) {
+                        console.log("Valid subscription found: plan_status is true");
+                        checkItsValidRechargeOrNot = true;
+                    } else if (providerDetails.payment_id && providerDetails.payment_id.payment_approved) {
+                        if (endDateObj && endDateObj > currentDateObj) {
+                            console.log("Valid subscription found: payment approved and end date is in the future");
+                            checkItsValidRechargeOrNot = true;
+                        } else {
+                            console.log("Subscription expired: end date has passed");
+                            // Set specific message for expired subscription
+                            return res.status(400).json({
+                                success: false,
+                                message: "Your subscription has expired. Please renew to continue using our services.",
+                            });
+                        }
+                    } else {
+                        console.log("No valid subscription: both plan_status and payment_approved are false/missing");
+                    }
+                } else {
+                    console.log("No recharge found for user");
+                }
+            } else {
+                console.log("Invalid response format from provider API");
+            }
+        } catch (error) {
+            console.error("Error fetching provider details:", error);
+            return res.status(500).json({
+                success: false,
+                message: "We couldn't verify your subscription status. Please try again later or contact support.",
+                error: error.message,
+            });
+        }
+
+        if (!checkItsValidRechargeOrNot) {
+            console.log("Invalid recharge status for user:", userId);
+            return res.status(400).json({
+                success: false,
+                message: "Your subscription has not been activated. Please recharge to start using our services.",
             });
         }
 
         // Convert status properly
         const changeStatusToBoolean = status === true || status === "true";
+        // console.log("Setting hotel online status to:", changeStatusToBoolean);
 
         // Update the online status
         foundFreshDetails.isOnline = changeStatusToBoolean;
-        await foundFreshDetails.save(); // Ensure changes are saved
+        await foundFreshDetails.save();
+
+        // console.log("Hotel status successfully updated for user:", userId);
 
         return res.status(200).json({
             success: true,
             message: changeStatusToBoolean
-                ? "Hotel is now online and ready to take bookings."
-                : "Hotel is now offline.",
+                ? "Your hotel is now online! Customers can now book rooms."
+                : "Your hotel is now offline. You can enable it again anytime.",
         });
     } catch (error) {
         console.error("Error in toggleHotelStatus:", error);
 
         return res.status(500).json({
             success: false,
-            message: "An unexpected error occurred. Please try again later.",
-            error: error.message, // Optional: Send error details for debugging
+            message: "Something went wrong on our end. Please try again later or contact support.",
+            error: error.message,
         });
     }
 };
@@ -1097,5 +1190,170 @@ exports.geHotelListingByHotelUser = async (req, res) => {
             message: "Internal server error",
             error: error.message,
         });
+    }
+};
+
+exports.HotelAnalyticData = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ success: false, message: "Hotel ID is required" });
+        }
+
+        const hotel = await HotelUser.findById(id);
+        if (!hotel) {
+            return res.status(404).json({ success: false, message: "Hotel not found" });
+        }
+
+        // 1. Get the hotel listings (rooms)
+        const hotelListings = await HotelListing.find({ hotel_user: id }).select("_id isPackage");
+        const hotelListingIds = hotelListings.map(listing => listing._id);
+        const totalRooms = hotelListings.length;
+
+        // Count Package Listings
+        const packageListings = hotelListings.filter(listing => listing.isPackage);
+        const totalPackages = packageListings.length;
+
+        // 2. Booking Statistics
+        const bookingStats = await BookingRequestSchema.aggregate([
+            { $match: { listing_id: { $in: hotelListingIds } } },
+            {
+                $group: {
+                    _id: "$status",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const bookingData = {
+            total: bookingStats.reduce((acc, val) => acc + val.count, 0),
+            pending: bookingStats.find(stat => stat._id === "Pending")?.count || 0,
+            completed: bookingStats.find(stat => stat._id === "Checkout")?.count || 0,
+            rejected: bookingStats.find(stat => stat._id === "Cancelled")?.count || 0,
+        };
+
+        // 3. Highest Booking Month with Month Name
+        const bookingsByMonth = await BookingRequestSchema.aggregate([
+            { $match: { listing_id: { $in: hotelListingIds } } },
+            {
+                $group: {
+                    _id: { $month: "$createdAt" },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { count: -1 } },
+            { $limit: 1 }
+        ]);
+
+        const mostBookedMonth = bookingsByMonth[0]
+            ? moment().month(bookingsByMonth[0]._id - 1).format("MMMM")
+            : "No Data";
+
+        const mongooseId = new mongoose.Types.ObjectId(id);
+
+        // 4. Average Rating Calculation
+        const avgRatingResult = await HotelUser.aggregate([
+            { $match: { _id: mongooseId } },
+            { $unwind: "$reviews" },
+            { $group: { _id: "$_id", avgRating: { $avg: "$reviews.rating" } } }
+        ]);
+
+        const avgRating = avgRatingResult[0]?.avgRating?.toFixed(1) || "No Reviews";
+
+        // 5. Booking Mode Count (Online vs Cash/Pay at Hotel)
+        const bookingModes = await BookingRequestSchema.aggregate([
+            { $match: { listing_id: { $in: hotelListingIds } } },
+            {
+                $group: {
+                    _id: "$paymentMode",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const modeCounts = {
+            online: bookingModes.find(mode => mode._id === "Online")?.count || 0,
+            cashOrPayAtHotel: 
+                (bookingModes.find(mode => mode._id === "Offline")?.count || 0) +
+                (bookingModes.find(mode => mode._id === "Pay at Hotel" || "Cash")?.count || 0)
+        };
+
+        // 6. Calculate Total Earnings from final_price_according_to_days
+        const totalEarningsResult = await BookingRequestSchema.aggregate([
+            { $match: { listing_id: { $in: hotelListingIds }, status: "Checkout" } },
+            {
+                $group: {
+                    _id: null,
+                    totalEarnings: { $sum: "$final_price_according_to_days" }
+                }
+            }
+        ]);
+
+        const totalEarnings = totalEarningsResult[0]?.totalEarnings || 0;
+
+        // 7. Calculate **Occupied Rooms** → Check-in but not Checkout
+        const occupiedRoomsCount = await BookingRequestSchema.countDocuments({
+            listing_id: { $in: hotelListingIds },
+            status: "CheckIn"
+        });
+
+        // 8. Running Package Bookings (Packages that are active)
+        const runningPackages = await BookingRequestSchema.countDocuments({
+            listing_id: { $in: packageListings.map(listing => listing._id) },
+            status: "CheckIn"
+        });
+
+        // 9. Fetch Provider Subscription Details
+        let providerDetails = null,
+            planExpire = "N/A",
+            lastRecharge = "N/A",
+            referralBalance = 0,
+            referral = {};
+
+        try {
+            const response = await axios.post(
+                "https://api.olyox.com/api/v1/getProviderDetailsByBhId",
+                { BhId: hotel.bh }
+            );
+
+            if (response.data?.data) {
+                providerDetails = response.data.data;
+                planExpire = providerDetails.payment_id?.end_date || "N/A";
+                lastRecharge = providerDetails.recharge || "N/A";
+                referralBalance = providerDetails.wallet || 0; // Referral Balance instead of Wallet
+                referral = {
+                    parent: providerDetails.parentReferral_id,
+                    children: providerDetails.Child_referral_ids || []
+                };
+            }
+        } catch (error) {
+            console.error("Error fetching provider details:", error.response?.data);
+        }
+
+        // Final Response
+        res.status(200).json({
+            success: true,
+            hotelId: id,
+            totalEarnings,
+            totalBookings: bookingData.total,
+            pendingBookings: bookingData.pending,
+            completedBookings: bookingData.completed,
+            rejectedBookings: bookingData.rejected,
+            highestBookingMonth: mostBookedMonth,
+            averageRating: avgRating,
+            planExpire,
+            lastRecharge,
+            referralBalance, // Changed from wallet to referralBalance
+            referralDetails: referral,
+            modeCounts,
+            totalRooms, // Total rooms available in the hotel
+            occupiedRooms: occupiedRoomsCount, // Rooms that are currently occupied (checked in but not checked out)
+            totalPackages, // Total listings that are packages
+            runningPackages // Number of packages currently active (checked-in bookings)
+        });
+
+    } catch (error) {
+        console.error("Error in HotelAnalyticData:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
     }
 };

@@ -14,10 +14,11 @@ export const TokenProvider = ({ children }) => {
             // await SecureStore.deleteItemAsync('userToken');
             try {
                 const storedToken = await SecureStore.getItemAsync('userToken');
-                console.log(storedToken)
+                // console.log(storedToken)
                 if (storedToken) {
                     setToken(storedToken);
                     setIsLoggedIn(true);
+                    setLoading(false)
                 }
                 setLoading(false)
 
@@ -38,7 +39,7 @@ export const TokenProvider = ({ children }) => {
             await SecureStore.setItemAsync('userToken', newToken);
             setToken(newToken);
             setIsLoggedIn(true);
-            setLoading(true)
+            setLoading(false)
 
         } catch (error) {
             setLoading(false)
@@ -53,6 +54,8 @@ export const TokenProvider = ({ children }) => {
             setToken(null);
             setIsLoggedIn(false); // ✅ Ensure logout state is updated
         } catch (error) {
+            setLoading(false)
+
             console.error('Failed to remove token:', error);
         }
     };

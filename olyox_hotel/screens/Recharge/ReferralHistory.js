@@ -34,7 +34,7 @@ export default function ReferralHistory({ navigation }) {
         'https://api.olyox.com/api/v1/getProviderDetailsByBhId',
         { BhId: bhId }
       );
-    //   console.log(data)
+      //   console.log(data)
       return data.data;
     } catch (err) {
       throw new Error(err.response?.data?.message || 'Failed to fetch details');
@@ -44,27 +44,26 @@ export default function ReferralHistory({ navigation }) {
   const fetchProfile = useCallback(async (page = 1) => {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      
+
       if (!token) {
         navigation.replace('Login');
         return;
       }
 
       const { data } = await axios.get(
-        'https://demoapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
+        'http://192.168.1.9:3100/api/v1/tiffin/get_single_tiffin_profile',
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-console.log("data?.data",data?.data)
+   
       if (!data?.data?.restaurant_BHID) {
         throw new Error('Restaurant ID not found');
       }
 
       setRestaurant(data.data);
       const detailsData = await fetchDetails(data.data.restaurant_BHID);
-      console.log("detailsData",detailsData)
-      
+
       // Handle pagination
       const levelData = detailsData[activeLevelTab] || [];
       const start = (page - 1) * ITEMS_PER_PAGE;
@@ -84,7 +83,7 @@ console.log("data?.data",data?.data)
       }
 
       setHasMore(end < levelData.length);
-      
+
     } catch (err) {
       setError({
         message: err.message || 'Failed to load profile',
@@ -105,7 +104,7 @@ console.log("data?.data",data?.data)
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loading) return;
-    
+
     setLoading(true);
     try {
       await fetchProfile(currentPage + 1);

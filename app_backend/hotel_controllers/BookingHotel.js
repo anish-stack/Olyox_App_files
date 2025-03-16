@@ -23,11 +23,17 @@ exports.makeBookingOffline = async (req, res) => {
             checkOutDate,
             listing_id,
             NumberOfRoomBooks,
+            anyDiscountByHotel,
             numberOfGuests,
             booking_payment_done,
             modeOfBooking = "Offline",
             bookingAmount,
-            paymentMode
+            paymentMode,
+            male,
+            noOfRoomsBook,
+            priceTotal,
+            females,
+            child,
         } = req.body || {};
 
         // Validate Required Fields
@@ -46,13 +52,25 @@ exports.makeBookingOffline = async (req, res) => {
         }
 
         // Date Validations
-        const today = new Date();
-        if (new Date(checkInDate) < today) {
+        const today = new Date(new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }));
+        today.setHours(0, 0, 0, 0); // Normalize to start of the day
+        
+        const checkIn = new Date(checkInDate);
+        checkIn.setHours(0, 0, 0, 0); // Normalize to start of the day
+        
+        const checkOut = new Date(checkOutDate);
+        checkOut.setHours(0, 0, 0, 0); // Normalize to start of the day
+        
+        // Allow today's date but not past dates
+        if (checkIn < today) {
             return res.status(400).json({ success: false, message: "Check-in date cannot be in the past." });
         }
-        if (new Date(checkOutDate) <= new Date(checkInDate)) {
+        
+        // Check-out must be after check-in
+        if (checkOut <= checkIn) {
             return res.status(400).json({ success: false, message: "Check-out date must be after check-in date." });
         }
+        
 
         // Create New Booking
         const newBooking = new BookingRequestSchema({
@@ -60,14 +78,21 @@ exports.makeBookingOffline = async (req, res) => {
             checkInDate,
             checkOutDate,
             listing_id,
-            numberOfGuests: guestInformation.length || 0,
+            totalGuests: male + females + child,
+            numberOfGuests: male + females + child || 0,
             booking_payment_done,
             modeOfBooking,
             bookingAmount,
+            no_of_mens: male,
+            no_of_womens: females,
+            no_of_child: child,
             paymentMode,
-            NumberOfRoomBooks,
+            numberOfGuestsDetails: guestInformation.length || 0,
+            NumberOfRoomBooks: noOfRoomsBook,
+            final_price_according_to_days: anyDiscountByHotel || priceTotal,
             HotelUserId: userId,
             Booking_id: bookingId,
+            anyDiscountByHotel: anyDiscountByHotel,
             BookingOtp: bookingOtp,
             BookingOtpExpiry: otpExpiry
         });
@@ -90,7 +115,7 @@ exports.makeBookingOffline = async (req, res) => {
 
     } catch (error) {
         console.error("Error creating booking:", error);
-        return res.status(500).json({ success: false, message: "Internal server error" });
+        return res.status(500).json({ success: false, message: "Please try again server is busy !! sorry for inconvince" });
     }
 };
 
@@ -230,7 +255,7 @@ exports.getMyBookingAll = async (req, res) => {
         if (!req.user || !req.user.id) {
             return res.status(401).json({ success: false, message: "Unauthorized: User ID is required" });
         }
-        console.log(req.query)
+
         const { status, Booking_id, userCheckOutStatus, isUserCheckedIn, booking_payment_done, paymentMode, guestPhone } = req.query;
 
         // Base filter with HotelUserId
@@ -246,9 +271,11 @@ exports.getMyBookingAll = async (req, res) => {
         if (guestPhone) filter["guestInformation.guestPhone"] = guestPhone;
 
         // Fetch bookings
-        const bookings = await BookingRequestSchema.find(filter).sort({
-            "checkInDate": -1
-        });
+        const bookings = await BookingRequestSchema.find(filter)
+            .populate("listing_id")
+            .populate("HotelUserId")
+            .lean();
+        console.log(bookings);
 
         if (!bookings.length) {
             return res.status(404).json({ success: false, message: "No bookings found matching the criteria." });
@@ -379,9 +406,7 @@ exports.getAllUniqueGuestAndBookingAndHerAmount = async (req, res) => {
 
 exports.UserMakesBooking = async (req, res) => {
     try {
-        console.log(req.body)
-        console.log(req.user)
-        // Validate User Authentication
+       
         if (!req.user || !req.user?.user?._id) {
             return res.status(401).json({ success: false, message: "Unauthorized: User ID is required" });
         }
@@ -397,8 +422,13 @@ exports.UserMakesBooking = async (req, res) => {
             checkInDate,
             checkOutDate,
             listing_id,
-            NumberOfRoomBooks = 1,
+            numberOfRooms,
             hotel_id,
+            males,
+            females,
+            children,
+            totalGuests,
+            totalAmount,
             paymentMethod,
             booking_payment_done,
             modeOfBooking = "Online",
@@ -423,14 +453,27 @@ exports.UserMakesBooking = async (req, res) => {
 
         // Validate Dates
         const today = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-        console.log(today);
-
-        if (new Date(checkInDate) < today) {
+        const currentIST = new Date(today);
+        currentIST.setHours(0, 0, 0, 0); // Normalize to start of the day
+        
+        const checkIn = new Date(checkInDate);
+        checkIn.setHours(0, 0, 0, 0); // Normalize to start of the day
+        
+        const checkOut = new Date(checkOutDate);
+        checkOut.setHours(0, 0, 0, 0); // Normalize to start of the day
+        
+        console.log("currentIST",currentIST)
+        console.log("checkIn",checkIn)
+        // Allow today's date but not past dates
+        if (checkIn < currentIST) {
             return res.status(400).json({ success: false, message: "Check-in date cannot be in the past." });
         }
-        if (new Date(checkOutDate) <= new Date(checkInDate)) {
+        
+        // Check-out must be after check-in
+        if (checkOut <= checkIn) {
             return res.status(400).json({ success: false, message: "Check-out date must be after check-in date." });
         }
+        
 
         // Determine Payment Mode
         const mode = paymentMethod === "hotel"
@@ -471,19 +514,24 @@ exports.UserMakesBooking = async (req, res) => {
             checkInDate,
             checkOutDate,
             listing_id,
-            numberOfGuests: guestInformation.length || 0,
+            numberOfGuestsDetails: guestInformation.length || 0,
             booking_payment_done,
             modeOfBooking,
             bookingAmount,
-            NumberOfRoomBooks,
+            NumberOfRoomBooks: numberOfRooms,
             paymentMode: mode,
             guest_id: userId,
             HotelUserId: hotel_id,
             Booking_id: bookingId,
             BookingOtp: bookingOtp,
             BookingOtpExpiry: otpExpiry,
+            no_of_mens: males,
+            no_of_womens: females,
+            no_of_child: children,
+            totalGuests,
+            final_price_according_to_days: totalAmount,
             isBookingDone: true,
-            status: "Confirmed"
+            status: "Pending"
         });
 
         await newBooking.save();
@@ -570,7 +618,7 @@ exports.getAllHotelBooking = async (req, res) => {
 
 exports.getSingleHotelBooking = async (req, res) => {
     try {
-        const {id} = req.params;
+        const { id } = req.params;
         const allHotelBooking = await BookingRequestSchema.findById(id).populate("listing_id").populate('HotelUserId').populate('guest_id');;
         if (!allHotelBooking) {
             return res.status(400).json({
@@ -588,3 +636,112 @@ exports.getSingleHotelBooking = async (req, res) => {
         return res.status(500).json({ success: false, message: "Internal server error", error: error.message });
     }
 }
+
+exports.cancelBooking = async (req, res) => {
+    try {
+        const { Booking_id, reason } = req.body || {};
+        console.log(req.body)
+
+        // Check if Booking ID is provided
+        if (!Booking_id) {
+            return res.status(400).json({
+                success: false,
+                message: "Booking ID is required"
+            });
+        }
+
+        // Find the booking
+        const booking = await BookingRequestSchema.findOne({ Booking_id });
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: "Booking not found"
+            });
+        }
+        if (booking.status === "Cancelled") {
+            return res.status(400).json({
+                success: false,
+                message: "Booking is already cancelled"
+            })
+        }
+
+        // Update booking status
+        booking.status = "Cancelled";
+        booking.booking_reject_reason = reason;
+        await booking.save();
+
+        // Send a cancellation message to the user
+        const guestNumber = booking.guestInformation[0]?.guestPhone;
+        if (guestNumber) {
+            const message = `*Dear Customer,*\n\nYour booking with *ID:* ${Booking_id} has been *cancelled*.\n\n*Reason:* _${reason}_\n\nWe sincerely apologize for any inconvenience caused.\n\nFor further assistance, please contact our support team.`;
+            const data = await SendWhatsAppMessage(message, guestNumber);
+        }
+
+
+        // Send response to client
+        return res.status(200).json({
+            success: true,
+            message: "Booking cancelled successfully"
+        });
+
+    } catch (error) {
+        console.error("Cancel Booking Error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+exports.acceptBooking = async (req, res) => {
+    try {
+        const { Booking_id } = req.body || {};
+
+
+        // Check if Booking ID is provided
+        if (!Booking_id) {
+            return res.status(400).json({
+                success: false,
+                message: "Booking ID is required"
+            });
+        }
+
+        // Find the booking
+        const booking = await BookingRequestSchema.findOne({ Booking_id });
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: "Booking not found"
+            });
+        }
+
+        // Update booking status
+        booking.status = "Confirmed";
+        await booking.save();
+
+        // Send a cancellation message to the user
+        const guestNumber = booking.guestInformation[0]?.guestPhone;
+        if (guestNumber) {
+            const message = `*Dear Customer,*\n\nYour booking with *ID:* ${Booking_id} has been ✅ *Confirmed*.\n\n📅 *Check-in Date:* Please arrive at the hotel on time for your check-in.\n\nFor any assistance, feel free to contact our support team.\n\n📞 *Support Team:* We’re here to help!`;
+            const data = await SendWhatsAppMessage(message, guestNumber);
+        }
+
+
+
+        // Send response to client
+        return res.status(200).json({
+            success: true,
+            message: "Booking cancelled successfully"
+        });
+
+    } catch (error) {
+        console.error("Cancel Booking Error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
+
+
+
