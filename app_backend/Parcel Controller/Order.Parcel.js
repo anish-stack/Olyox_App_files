@@ -7,7 +7,7 @@ const { driverSocketMap } = require("../server");
 
 exports.request_of_parcel = async (req, res) => {
     try {
-      
+
         const userData = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
         const { customerName, customerPhone, dropoff, pickup } = req.body || {};
         // const { customerName, customerPhone, dropoff,request_of_parcel  } = req.body || {};
@@ -113,13 +113,13 @@ exports.request_of_parcel = async (req, res) => {
         await newParcelRequest.save();
 
         const availableBoys = [];
-        const today = new Date().toISOString().split("T")[0]; 
-  
+        const today = new Date().toISOString().split("T")[0];
+
         console.log("findBoysNearPickup", findBoysNearPickup)
 
         for (const boy of findBoysNearPickup) {
             const checkStatus = await Parcel_User_Login_Status.findOne({
-                riderId: boy.riderId._id || {},
+                riderId: boy._id || {},
                 date: today,
                 status: "online",
             });
