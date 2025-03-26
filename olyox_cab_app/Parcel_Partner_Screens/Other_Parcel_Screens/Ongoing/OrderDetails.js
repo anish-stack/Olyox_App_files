@@ -27,20 +27,6 @@ const OrderDetails = ({ orderData }) => {
         </View>
       </View>
 
-      <View style={styles.parcelInfo}>
-        <Text style={styles.parcelInfoTitle}>Parcel Details</Text>
-        <View style={styles.parcelInfoItem}>
-          <Text style={styles.parcelInfoLabel}>Dimensions:</Text>
-          <Text style={styles.parcelInfoText}>
-            {orderData.parcelDetails.dimensions.length} x {orderData.parcelDetails.dimensions.width} x{" "}
-            {orderData.parcelDetails.dimensions.height} cm
-          </Text>
-        </View>
-        <View style={styles.parcelInfoItem}>
-          <Text style={styles.parcelInfoLabel}>Weight:</Text>
-          <Text style={styles.parcelInfoText}>{orderData.parcelDetails.weight} kg</Text>
-        </View>
-      </View>
 
       <View style={styles.parcelInfo}>
         <Text style={styles.parcelInfoTitle}>Customer Details</Text>
