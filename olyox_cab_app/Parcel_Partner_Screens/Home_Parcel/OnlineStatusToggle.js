@@ -6,14 +6,15 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const OnlineStatusToggle = ({ workStatus, onStatusChange, statusOfPartner }) => {
-    const [isOnline, setIsOnline] = useState(statusOfPartner);
+  
+    const [isOnline, setIsOnline] = useState(statusOfPartner === "offline" ? false : true);
     const [workTime, setWorkTime] = useState(0);
     const [startTime, setStartTime] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [fadeAnim] = useState(new Animated.Value(1));
     const [slideAnim] = useState(new Animated.Value(0));
-    console.log("workStatus", workStatus)
+  
     useEffect(() => {
         if (workStatus?.isOnline) {
             setIsOnline(true);
@@ -76,6 +77,7 @@ const OnlineStatusToggle = ({ workStatus, onStatusChange, statusOfPartner }) => 
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
+            console.log("2xledge response: " + JSON.stringify(response.data))
             if (response.data.message === 'Status updated successfully') {
                 Animated.spring(slideAnim, {
                     toValue: isOnline ? 0 : 1,

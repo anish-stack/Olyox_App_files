@@ -55,21 +55,21 @@ export default function Home_Parcel({ navigation }) {
 
     const fetchData = async () => {
         try {
-            console.log("🔵 Fetching data started...");
+   
 
             setError(null);
             setLoading(true);
 
-            // Retrieve auth token
+  
             const token = await AsyncStorage.getItem('auth_token_partner');
-            console.log("🟢 Retrieved token:", token);
+          
 
             if (!token) {
                 throw new Error('❌ Authentication required. Please login again.');
             }
 
             const headers = { Authorization: `Bearer ${token}` };
-            console.log("🟢 Headers set:", headers);
+           
 
             // Initialize state variables
             let userData = null;
@@ -80,13 +80,13 @@ export default function Home_Parcel({ navigation }) {
             try {
                 console.log("🔵 Fetching user details...");
                 const userResponse = await axios.get(`${API_BASE_URL}/user-details`, { headers });
-                console.log("✅ User Details Response:", userResponse.data);
+               ;
                 userData = userResponse.data.partner;
             } catch (error) {
                 console.error("❌ Failed to fetch user details:", error?.response?.data?.message || error.message);
             }
 
-            // Fetch work details
+          
             try {
                 console.log("🔵 Fetching work status...");
                 const workResponse = await axios.get(`${API_BASE_URL}/my_parcel_driver-details`, { headers });
@@ -139,8 +139,8 @@ export default function Home_Parcel({ navigation }) {
             return setInterval(async () => {
                 const { coords } = await Location.getCurrentPositionAsync({});
                 setLocation(coords);
-                sendLocationToServer(coords.latitude, coords.longitude);
-            }, 1000);
+                // sendLocationToServer(coords.latitude, coords.longitude);
+            }, 5000);
         } catch (error) {
             console.error('Location tracking error:', error);
         }
@@ -151,7 +151,7 @@ export default function Home_Parcel({ navigation }) {
             const token = await AsyncStorage.getItem('auth_token_partner');
             if (!token) return;
 
-            await fetch('https://demoapi.olyox.com/webhook/receive-location', {
+         const data = await fetch('http://192.168.1.3:3100/webhook/receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -159,6 +159,9 @@ export default function Home_Parcel({ navigation }) {
                 },
                 body: JSON.stringify({ latitude, longitude }),
             });
+
+            console.log("🔵 Location sent to server:",data);
+           
         } catch (error) {
             console.error('Error sending location:', error);
         }

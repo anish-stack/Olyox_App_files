@@ -7,7 +7,7 @@ const { driverSocketMap } = require("../server");
 
 exports.request_of_parcel = async (req, res) => {
     try {
-        console.log("req.body", req.body)
+      
         const userData = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
         const { customerName, customerPhone, dropoff, pickup } = req.body || {};
         // const { customerName, customerPhone, dropoff,request_of_parcel  } = req.body || {};
@@ -51,6 +51,8 @@ exports.request_of_parcel = async (req, res) => {
         if (findBoysNearPickup.length === 0) {
             return res.status(404).json({ message: "No delivery boys found near pickup location" });
         }
+
+        console.log("findBoysNearPickup", findBoysNearPickup)
 
         const pickupResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
             params: { address: pickup, key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8' },
@@ -110,18 +112,18 @@ exports.request_of_parcel = async (req, res) => {
 
         await newParcelRequest.save();
 
-        // Check delivery boys' online status
         const availableBoys = [];
-        const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
-        // console.log("tofay date")
+        const today = new Date().toISOString().split("T")[0]; 
+  
+        console.log("findBoysNearPickup", findBoysNearPickup)
 
         for (const boy of findBoysNearPickup) {
             const checkStatus = await Parcel_User_Login_Status.findOne({
-                riderId: boy.riderId._id,
+                riderId: boy.riderId._id || {},
                 date: today,
                 status: "online",
             });
-
+            console.log("checkStatus", checkStatus)
             if (!checkStatus) continue; // Skip if checkStatus is null
 
             const findRiderIsAvailableOrNot = await Parcel_Bike_Register.findOne({
@@ -338,11 +340,11 @@ exports.single_my_parcels = async (req, res) => {
 };
 
 
-exports.get_all_parcel = async (req,res) => {
+exports.get_all_parcel = async (req, res) => {
     try {
         const allParcelOrder = await Parcel_Request.find().populate('driverId')
-        .sort({ createdAt: -1 });
-        if(!allParcelOrder){
+            .sort({ createdAt: -1 });
+        if (!allParcelOrder) {
             return res.status(400).json({
                 success: false,
                 message: "Parcel order not found"
@@ -354,7 +356,7 @@ exports.get_all_parcel = async (req,res) => {
             data: allParcelOrder
         })
     } catch (error) {
-        console.log("Internal server error",error)
+        console.log("Internal server error", error)
         res.status(500).json({
             success: false,
             message: 'Internal server error',

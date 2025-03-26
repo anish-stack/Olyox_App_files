@@ -40,7 +40,7 @@ const App = () => {
   const checkAuthToken = async () => {
     try {
       const token = await AsyncStorage.getItem('auth_token_partner');
-      console.log('Auth Token:', token);
+      // console.log('Auth Token:', token);
 
       if (!token) {
         setUserType(null);
@@ -53,7 +53,7 @@ const App = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      console.log('User Data:', response.data.partner);
+      // console.log('User Data:', response.data.partner);
 
       setImageUpload(response?.data?.partner?.isDocumentUpload || false);
       setUserType(response?.data?.partner?.type || '');
