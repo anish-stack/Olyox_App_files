@@ -139,7 +139,7 @@ exports.request_of_parcel = async (req, res) => {
 
         const availableRidersData = [];
         for (const item of availableBoys) {
-            const rider_data = await Parcel_Bike_Register.findById(item.riderId._id);
+            const rider_data = await Parcel_Bike_Register.findById(item._id);
             if (rider_data) {
                 availableRidersData.push({
                     rider_data,
