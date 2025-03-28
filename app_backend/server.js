@@ -150,10 +150,66 @@ io.on('connection', (socket) => {
         console.log(`[${new Date().toISOString()}] Emitted ride data to ${emittedCount} drivers`);
     };
 
+
+    /**
+     * Handle Showing Available Rider Near User Location 
+     * Updates the Riders on map and notifies relevant parties
+     */
+
+    socket.on('show_me_available_riders', async (data) => {
+        console.log("show_me_available_riders",data)
+        if (!data) {
+            throw new Error('No data available');
+        }
+
+        try {
+            const { user_location } = data || {};
+
+            if (!user_location ) {
+                throw new Error('Incomplete data');
+            }
+
+            // Construct the location point with correct coordinates
+            let location = {
+                type: 'Point',
+                coordinates: [
+                    user_location.longitude ,
+                    user_location.latitude
+                ]
+            };
+
+            // Find available riders within 3 km (3000 meters), selecting only location and rideVehicleInfo
+            const findAvailableRiders = await RiderModel.find(
+                {
+                    isAvailable: true,
+                    location: {
+                        $near: {
+                            $geometry: location,
+                            $maxDistance: 3000 // 3 km
+                        }
+                    }
+                },
+                { location: 1, rideVehicleInfo: 1, _id: 0 }
+            ).limit(10);
+            console.log("findAvailableRiders",findAvailableRiders)
+            // Emit only location and rideVehicleInfo to the client
+            socket.emit('available_riders', findAvailableRiders);
+
+        } catch (error) {
+            console.error('Error fetching available riders:', error.message);
+            socket.emit('error', { message: 'Error fetching available riders' });
+        }
+    });
+
+
+
+
     /**
      * Handle ride acceptance by driver
      * Processes a driver accepting a ride and notifies the user
      */
+
+
     socket.on('ride_accepted', async (data) => {
         try {
             console.log(`[${new Date().toISOString()}] Ride acceptance request:`, data);
@@ -837,10 +893,10 @@ app.post('/webhook/cab-receive-location', Protect, async (req, res) => {
 });
 app.post('/webhook/receive-location', Protect, async (req, res) => {
     try {
-        console.log("user hits",req.user)
+        console.log("user hits", req.user)
         const { latitude, longitude } = req.body;
         const userId = req.user.userId;
-      
+
         const data = await Parcel_boy_Location.findOneAndUpdate(
             { _id: userId },
             {

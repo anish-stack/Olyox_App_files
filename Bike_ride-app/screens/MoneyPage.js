@@ -59,7 +59,7 @@ export default function MoneyPage() {
             const token = await SecureStore.getItemAsync('auth_token_cab');
             if (token) {
                 const response = await axios.get(
-                    'https://demoapi.olyox.com/api/v1/rider/user-details',
+                    'http://192.168.1.12:3100/api/v1/rider/user-details',
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 setUserData(response.data.partner);

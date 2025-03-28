@@ -19,7 +19,7 @@ const LoginForm = ({ onLogin }) => {
             setLoading(true);
             setError("");
             const response = await axios.post(
-                "https://demoapi.olyox.com/api/v1/parcel/login_parcel_partner",
+                "http://192.168.1.12:3100/api/v1/parcel/login_parcel_partner",
                 { number: phone }
             );
             console.log("response", response.data);

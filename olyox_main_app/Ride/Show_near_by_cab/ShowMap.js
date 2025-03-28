@@ -16,6 +16,7 @@ import { useNavigation, useRoute } from "@react-navigation/native"
 import Map from "../Map/Map"
 import axios from "axios"
 import { AntDesign, MaterialIcons, Ionicons } from "@expo/vector-icons"
+import useShowRiders from "../../hooks/Show_Riders"
 
 export default function ShowMap() {
   const route = useRoute()
@@ -41,6 +42,12 @@ export default function ShowMap() {
       ? { latitude: dropoff.latitude, longitude: dropoff.longitude }
       : { latitude: 28.70406, longitude: 77.102493 }
 
+
+
+  const { riders, loading: riderLoading, error: riderError } = useShowRiders(origin);
+
+
+// console.log("riders",riders)
   // Initial loading simulation
   useEffect(() => {
     setTimeout(() => setLoading(false), 2000)
@@ -50,7 +57,7 @@ export default function ShowMap() {
   const fetchRidesVehicle = async () => {
     try {
       setInitialLoading(true)
-      const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/admin/getAllSuggestions`)
+      const { data } = await axios.get(`http://192.168.1.12:3100/api/v1/admin/getAllSuggestions`)
       if (data?.data?.length) {
         setRides(data.data)
       } else {
@@ -79,7 +86,7 @@ export default function ShowMap() {
 
         try {
           const response = await axios.post(
-            "https://demoapi.olyox.com/api/v1/rider/get-fare-info",
+            "http://192.168.1.12:3100/api/v1/rider/get-fare-info",
             {
               origin,
               destination,
@@ -219,8 +226,10 @@ export default function ShowMap() {
           return "🚐"
         case "AUTO":
           return "🛺"
+        case "Bike":
+          return "🏍️"
         default:
-          return "🚗"
+          return "🏍️"
       }
     }
 
