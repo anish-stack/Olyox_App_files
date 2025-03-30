@@ -61,6 +61,8 @@ export default function SingleHotelDetails() {
     const [refreshing, setRefreshing] = useState(false)
     const [showModal, setShowModal] = useState(false)
     const [showAllAmenities, setShowAllAmenities] = useState(false)
+    const [imageError, setImageError] = useState(false);
+
 
     const fetchData = useCallback(
         async (showLoader = true) => {
@@ -135,7 +137,16 @@ export default function SingleHotelDetails() {
                 style={styles.container}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
             >
-                <Image source={{ uri: data?.main_image?.url }} style={styles.mainImage} resizeMode="cover" />
+                <Image
+                    style={styles.mainImage}
+                    resizeMode="cover"
+                    onError={() => setImageError(true)}
+                    source={
+                        imageError
+                            ? require('./no-image.jpeg')
+                            : { uri: data?.main_image?.url }
+                    }
+                />
 
                 <View style={styles.ratingBadge}>
                     <Icon name="star" size={16} color="#FFD700" />

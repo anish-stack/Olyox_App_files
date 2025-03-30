@@ -51,7 +51,7 @@ export default function ReferralHistory({ navigation }) {
       }
 
       const { data } = await axios.get(
-        'http://192.168.1.12:3100/api/v1/tiffin/get_single_tiffin_profile',
+        'https://demoapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
         {
           headers: { Authorization: `Bearer ${token}` }
         }

@@ -124,66 +124,80 @@ exports.register_hotel_user = async (req, res) => {
 };
 exports.verifyOtp = async (req, res) => {
     try {
-        console.log(req.body)
+        console.log("Incoming Request Data:", req.body);
         const { hotel_phone, bh, otp, type = "register" } = req.body;
-
+    
         if (!hotel_phone || !otp) {
+            console.log("Error: Missing phone number or OTP.");
             return res.status(400).json({
                 success: false,
                 message: "Phone number and OTP are required.",
             });
         }
-
-        let hotelUser
+    
+        let hotelUser;
+        console.log("Checking user type:", type);
+    
         if (type === "register") {
+            console.log("Finding user by hotel phone number...");
             hotelUser = await HotelUser.findOne({ hotel_phone });
         } else {
+            console.log("Finding user by bh...");
             hotelUser = await HotelUser.findOne({ bh: hotel_phone });
         }
-
-        console.log(hotelUser)
-
+    
+        console.log("User Found:", hotelUser);
+    
         if (!hotelUser) {
+            console.log("Error: No user found with the given phone number.");
             return res.status(404).json({
                 success: false,
                 message: "No user found with this phone number.",
             });
         }
-
-        // if (hotelUser.contactNumberVerify) {
-        //     return res.status(400).json({
-        //         success: false,
-        //         message: "Contact number already verified.",
-        //     })
-        // }
-
+    
+        // Uncomment if necessary to check if the contact number is already verified
+        /*
+        if (hotelUser.contactNumberVerify) {
+            console.log("Error: Contact number already verified.");
+            return res.status(400).json({
+                success: false,
+                message: "Contact number already verified.",
+            });
+        }
+        */
+    
+        console.log("Comparing OTP:", hotelUser.otp, "with received OTP:", Number(otp));
         if (hotelUser.otp !== Number(otp)) {
+            console.log("Error: Invalid OTP.");
             return res.status(400).json({
                 success: false,
                 message: "Invalid OTP. Please enter the correct OTP.",
             });
         }
-
+    
         const currentTime = new Date().getTime();
+        console.log("Current Time:", currentTime, "OTP Expires At:", hotelUser.otp_expires);
+    
         if (currentTime > hotelUser.otp_expires) {
+            console.log("Error: OTP has expired.");
             return res.status(400).json({
                 success: false,
                 message: "OTP has expired. Please request a new OTP.",
             });
         }
-
+    
         // Mark user as verified
         hotelUser.contactNumberVerify = true;
         hotelUser.otp = null;
         hotelUser.otp_expires = null;
-
-
+    
+        console.log("Marking user as verified and saving to database...");
         await hotelUser.save();
-        await sendToken(hotelUser, res, 200)
-        // return res.status(200).json({
-        //     success: true,
-        //     message: "OTP verified successfully. Your hotel registration is now complete.",
-        // });
+        console.log("User verification successful. Sending token...");
+    
+       const data  =  await sendToken(hotelUser, res, 200);
+        console.log("Token sent successfully.",data);
     } catch (error) {
         console.error("Error verifying OTP:", error);
         return res.status(500).json({
@@ -192,6 +206,7 @@ exports.verifyOtp = async (req, res) => {
             error: error.message,
         });
     }
+    
 };
 
 exports.resendOtp = async (req, res) => {

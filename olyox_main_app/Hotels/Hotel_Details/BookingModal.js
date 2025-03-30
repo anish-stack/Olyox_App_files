@@ -61,8 +61,6 @@ export default function BookingModal({ visible, onClose, roomData }) {
       if (type === 'checkIn') {
         setCheckInDate(selectedDate);
 
-        // If check-out date is before or equal to new check-in date,
-        // set check-out date to the day after check-in
         if (checkOutDate <= selectedDate) {
           const nextDay = new Date(selectedDate);
           nextDay.setDate(nextDay.getDate() + 1);
@@ -233,7 +231,7 @@ useEffect(()=>{
 
       // Make API call
       const { data } = await axios.post(
-        `http://192.168.1.12:3100/api/v1/hotels/book-room-user`,
+        `https://demoapi.olyox.com/api/v1/hotels/book-room-user`,
         dataToBeSend,
         {
           headers: {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { COLORS } from '../../constants/colors';
@@ -8,18 +8,31 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
 
 export default function RoomList({ rooms }) {
-    const navigation = useNavigation()
+  const [imageError, setImageError] = useState(false);
+  // console.log("rooms images", rooms)
+  const navigation = useNavigation()
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Available Rooms</Text>
       <View style={styles.grid}>
         {rooms.map((room) => (
-          <View key={room._id} style={styles.roomCard}>
+          <TouchableOpacity onPress={() => navigation.navigate('Single-hotels-listing', { id: room?._id })} key={room._id} style={styles.roomCard}>
             <Image
-              source={{ uri: room.main_image?.url }}
+           
+              source={
+                imageError
+                  ? require('./no-image.jpeg') 
+                  : { uri: room.main_image?.url }
+              }
+
               style={styles.roomImage}
+              onError={(error) => setImageError(true)}
+              defaultSource={require('./no-image.jpeg')}  // Lightweight placeholder while loading
+              resizeMode="cover"
             />
-            
+
+
+
             <View style={styles.badgeContainer}>
               <View style={styles.ratingBadge}>
                 <Icon name="star" size={12} color="#FFD700" />
@@ -55,11 +68,11 @@ export default function RoomList({ rooms }) {
                 </Text>
               </View>
 
-              <TouchableOpacity onPress={()=> navigation.navigate('Single-hotels-listing',{id:room?._id})} style={styles.bookButton}>
+              <TouchableOpacity onPress={() => navigation.navigate('Single-hotels-listing', { id: room?._id })} style={styles.bookButton}>
                 <Text style={styles.bookButtonText}>Book Now</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
     </View>
