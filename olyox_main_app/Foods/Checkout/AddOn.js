@@ -8,6 +8,7 @@ export default function AddOn({ restaurant_id }) {
   console.log("v", restaurant_id)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [imageError,setImageError] = useState(false)
   const [details, setDetails] = useState(null)
   const [foods, setFoods] = useState([])
   const { addFood, cart, updateQuantity } = useFood()
@@ -97,7 +98,10 @@ export default function AddOn({ restaurant_id }) {
               index === addOnItems.length - 1 && styles.lastCard,
             ]}
           >
-            <Image source={{ uri: item.images.url }} style={styles.image} />
+
+            <Image source={imageError ? (require('./no-image.jpeg')) : { uri: item.images.url }}
+             onError={()=>setImageError(true)}
+             style={styles.image} />
             <View style={styles.infoContainer}>
               <Text style={styles.foodName} numberOfLines={2}>
                 {item.food_name}

@@ -126,7 +126,7 @@ exports.verifyOtp = async (req, res) => {
     try {
         console.log("Incoming Request Data:", req.body);
         const { hotel_phone, bh, otp, type = "register" } = req.body;
-    
+
         if (!hotel_phone || !otp) {
             console.log("Error: Missing phone number or OTP.");
             return res.status(400).json({
@@ -134,10 +134,10 @@ exports.verifyOtp = async (req, res) => {
                 message: "Phone number and OTP are required.",
             });
         }
-    
+
         let hotelUser;
         console.log("Checking user type:", type);
-    
+
         if (type === "register") {
             console.log("Finding user by hotel phone number...");
             hotelUser = await HotelUser.findOne({ hotel_phone });
@@ -145,9 +145,9 @@ exports.verifyOtp = async (req, res) => {
             console.log("Finding user by bh...");
             hotelUser = await HotelUser.findOne({ bh: hotel_phone });
         }
-    
+
         console.log("User Found:", hotelUser);
-    
+
         if (!hotelUser) {
             console.log("Error: No user found with the given phone number.");
             return res.status(404).json({
@@ -155,7 +155,7 @@ exports.verifyOtp = async (req, res) => {
                 message: "No user found with this phone number.",
             });
         }
-    
+
         // Uncomment if necessary to check if the contact number is already verified
         /*
         if (hotelUser.contactNumberVerify) {
@@ -166,7 +166,7 @@ exports.verifyOtp = async (req, res) => {
             });
         }
         */
-    
+
         console.log("Comparing OTP:", hotelUser.otp, "with received OTP:", Number(otp));
         if (hotelUser.otp !== Number(otp)) {
             console.log("Error: Invalid OTP.");
@@ -175,10 +175,10 @@ exports.verifyOtp = async (req, res) => {
                 message: "Invalid OTP. Please enter the correct OTP.",
             });
         }
-    
+
         const currentTime = new Date().getTime();
         console.log("Current Time:", currentTime, "OTP Expires At:", hotelUser.otp_expires);
-    
+
         if (currentTime > hotelUser.otp_expires) {
             console.log("Error: OTP has expired.");
             return res.status(400).json({
@@ -186,18 +186,18 @@ exports.verifyOtp = async (req, res) => {
                 message: "OTP has expired. Please request a new OTP.",
             });
         }
-    
+
         // Mark user as verified
         hotelUser.contactNumberVerify = true;
         hotelUser.otp = null;
         hotelUser.otp_expires = null;
-    
+
         console.log("Marking user as verified and saving to database...");
         await hotelUser.save();
         console.log("User verification successful. Sending token...");
-    
-       const data  =  await sendToken(hotelUser, res, 200);
-        console.log("Token sent successfully.",data);
+
+        const data = await sendToken(hotelUser, res, 200);
+        console.log("Token sent successfully.", data);
     } catch (error) {
         console.error("Error verifying OTP:", error);
         return res.status(500).json({
@@ -206,7 +206,7 @@ exports.verifyOtp = async (req, res) => {
             error: error.message,
         });
     }
-    
+
 };
 
 exports.resendOtp = async (req, res) => {
@@ -607,7 +607,7 @@ exports.toggleHotelStatus = async (req, res) => {
                 { BhId: foundFreshDetails?.bh }
             );
 
-            console.log("Provider API response received:",response.data);
+            console.log("Provider API response received:", response.data);
             // console.log("Provider API response received:",response);
 
             if (response.data && response.data.data) {
@@ -1288,7 +1288,7 @@ exports.HotelAnalyticData = async (req, res) => {
 
         const modeCounts = {
             online: bookingModes.find(mode => mode._id === "Online")?.count || 0,
-            cashOrPayAtHotel: 
+            cashOrPayAtHotel:
                 (bookingModes.find(mode => mode._id === "Offline")?.count || 0) +
                 (bookingModes.find(mode => mode._id === "Pay at Hotel" || "Cash")?.count || 0)
         };

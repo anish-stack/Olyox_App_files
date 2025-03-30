@@ -561,17 +561,22 @@ export default function AllBookings() {
                                                 )}
 
                                                 {booking.status === 'Pending' && (
-                                                    <TouchableOpacity style={[styles.checkInButton, { flex: 1 }]} onPress={() => handleOpenCancel(booking.Booking_id)}>
-                                                        <Ionicons name="close" size={18} color="#fff" />
-                                                        <Text style={[styles.buttonText, { fontSize: 12 }]}>Reject</Text>
-                                                    </TouchableOpacity>
+                                                    <>
+
+                                                        <TouchableOpacity style={[styles.checkInButton, { flex: 1 }]} onPress={() => handleOpenCancel(booking.Booking_id)}>
+                                                            <Ionicons name="close" size={18} color="#fff" />
+                                                            <Text style={[styles.buttonText, { fontSize: 12 }]}>Reject</Text>
+                                                        </TouchableOpacity>
+
+                                                        <TouchableOpacity style={[styles.checkInButton, { flex: 1, backgroundColor: '#1CAC78' }]} onPress={() => handleAccept(booking.Booking_id)}>
+                                                            <AntDesign name="check" size={18} color="#fff" />
+                                                            <Text style={[styles.buttonText, { fontSize: 12 }]}>Accept</Text>
+                                                        </TouchableOpacity>
+                                                    </>
                                                 )}
-                                                {booking.status !== 'Cancelled' || 'Confirmed' && (
-                                                    <TouchableOpacity style={[styles.checkInButton, { flex: 1, backgroundColor: '#1CAC78' }]} onPress={() => handleAccept(booking.Booking_id)}>
-                                                        <AntDesign name="check" size={18} color="#fff" />
-                                                        <Text style={[styles.buttonText, { fontSize: 12 }]}>Accept</Text>
-                                                    </TouchableOpacity>
-                                                )}
+                                                {/* {booking.status !== 'Cancelled' || 'Confirmed' && (
+                                                 
+                                                )} */}
 
 
 

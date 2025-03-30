@@ -9,6 +9,7 @@ const ITEM_WIDTH = (width - 75) / 4;
 export default function Categories() {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [imageError, setImageError] = useState(false)
     const navigation = useNavigation()
     useEffect(() => {
         fetchCategories();
@@ -32,10 +33,10 @@ export default function Categories() {
 
         if (screen === 'Cab Service') {
             navigation.navigate('Start_Booking_Ride')
-        } else if(screen === "Transport"){
+        } else if (screen === "Transport") {
             navigation.navigate('Transport')
-            
-        }else {
+
+        } else {
             navigation.navigate(screen)
         }
 
@@ -61,8 +62,9 @@ export default function Categories() {
                     >
                         <View style={styles.imageContainer}>
                             <Image
-                                source={{ uri: category.icon }}
+                                source={imageError ? (require('./no-image.jpeg')) : { uri: category?.icon }}
                                 style={styles.icon}
+                                onError={() => setImageError(true)}
                             />
                         </View>
                         <Text numberOfLines={1} style={styles.title}>{category.title}</Text>

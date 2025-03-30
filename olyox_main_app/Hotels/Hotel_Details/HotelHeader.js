@@ -1,18 +1,26 @@
 import React from 'react';
+import { useState } from 'react';
 import { View, Text, StyleSheet, Image, Dimensions } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const { width } = Dimensions.get('window');
 
 export default function HotelHeader({ hotel }) {
+  const [imageError, setImageError] = useState(false)
   return (
     <View style={styles.container}>
-      <Image 
-        source={{ uri: hotel.hotel_main_show_image }} 
+      <Image
+        source={
+          imageError || !hotel?.hotel_main_show_image
+            ? require('./no-image.jpeg')
+            : { uri: hotel.hotel_main_show_image }
+        }
         style={styles.headerImage}
+        onError={() => setImageError(true)}
         resizeMode="cover"
       />
-      
+
+
       <View style={styles.contentContainer}>
         <View style={styles.titleRow}>
           <Text style={styles.hotelName}>{hotel.hotel_name}</Text>

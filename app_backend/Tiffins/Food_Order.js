@@ -3,6 +3,7 @@ const Restuarnt_Listing = require("../models/Tiifins/Restaurant.listing.model");
 const Restaurant = require("../models/Tiifins/Resturant_register.model");
 const SendWhatsAppMessage = require("../utils/whatsapp_send");
 const User = require("../models/normal_user/User.model");
+const Coupon = require('../models/Tiifins/couponsOfFood');
 
 exports.create_order_of_food = async (req, res) => {
     try {
@@ -166,6 +167,187 @@ exports.create_order_of_food = async (req, res) => {
     }
 };
 
+
+
+// Create a new coupon
+exports.createCoupon = async (req, res) => {
+    try {
+        const { title, Coupon_Code, min_order_amount, max_discount, discount_type, discount, active } = req.body;
+
+        if (!title || !Coupon_Code || !min_order_amount || !max_discount || !discount_type || !discount) {
+            return res.status(400).json({
+                success: false,
+                message: "All required fields must be provided.",
+            });
+        }
+
+        const existingCoupon = await Coupon.findOne({ Coupon_Code });
+        if (existingCoupon) {
+            return res.status(400).json({
+                success: false,
+                message: "Coupon code already exists.",
+            });
+        }
+
+        const coupon = await Coupon.create({
+            title,
+            Coupon_Code,
+            min_order_amount,
+            max_discount,
+            discount_type,
+            discount,
+            active
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Coupon created successfully.",
+            data: coupon,
+        });
+    } catch (error) {
+        console.error("Error creating coupon:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while creating coupon.",
+            error: error.message,
+        });
+    }
+};
+
+// Get all coupons
+exports.getAllCoupons = async (req, res) => {
+    try {
+        const coupons = await Coupon.find();
+        return res.status(200).json({
+            success: true,
+            data: coupons,
+        });
+    } catch (error) {
+        console.error("Error fetching coupons:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while fetching coupons.",
+            error: error.message,
+        });
+    }
+};
+
+// Get a single coupon by ID
+exports.getSingleCoupon = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const coupon = await Coupon.findById(id);
+
+        if (!coupon) {
+            return res.status(404).json({
+                success: false,
+                message: "Coupon not found.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: coupon,
+        });
+    } catch (error) {
+        console.error("Error fetching coupon:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while fetching the coupon.",
+            error: error.message,
+        });
+    }
+};
+
+// Update a coupon by ID
+exports.updateCoupon = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updatedData = req.body;
+
+        const coupon = await Coupon.findByIdAndUpdate(id, updatedData, { new: true });
+
+        if (!coupon) {
+            return res.status(404).json({
+                success: false,
+                message: "Coupon not found.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Coupon updated successfully.",
+            data: coupon,
+        });
+    } catch (error) {
+        console.error("Error updating coupon:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while updating the coupon.",
+            error: error.message,
+        });
+    }
+};
+
+// Delete a coupon by ID
+exports.deleteCoupon = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const coupon = await Coupon.findByIdAndDelete(id);
+
+        if (!coupon) {
+            return res.status(404).json({
+                success: false,
+                message: "Coupon not found.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Coupon deleted successfully.",
+        });
+    } catch (error) {
+        console.error("Error deleting coupon:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while deleting the coupon.",
+            error: error.message,
+        });
+    }
+};
+
+// Toggle active status of a coupon by ID
+exports.toggleStatusOfActive = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const coupon = await Coupon.findById(id);
+
+        if (!coupon) {
+            return res.status(404).json({
+                success: false,
+                message: "Coupon not found.",
+            });
+        }
+
+        coupon.active = !coupon.active;
+        await coupon.save();
+
+        return res.status(200).json({
+            success: true,
+            message: `Coupon status updated to ${coupon.active ? "active" : "inactive"}.`,
+            data: coupon,
+        });
+    } catch (error) {
+        console.error("Error toggling coupon status:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while toggling coupon status.",
+            error: error.message,
+        });
+    }
+};
+
+
 exports.cancel_order = async (req, res) => {
     try {
         const { orderId } = req.params;
@@ -313,7 +495,7 @@ exports.get_orders_by_restaurant = async (req, res) => {
 exports.change_order_status = async (req, res) => {
     try {
         const { orderId } = req.params;
-        const { status, deliveryBoyName,deliveryBoyPhone,deliveryBoyBikeNumber} = req.body;
+        const { status, deliveryBoyName, deliveryBoyPhone, deliveryBoyBikeNumber } = req.body;
         // console.log("object", req.body,orderId)
         const order = await RestuarntOrderModel.findById(orderId);
         if (!order) {
@@ -434,8 +616,8 @@ exports.getAllTiffinOrder = async (req, res) => {
             .populate("items.foodItem_id")
             .populate("user")
             .populate("restaurant");
-            
-        if(!allOrder){
+
+        if (!allOrder) {
             return res.status(400).json({
                 success: false,
                 message: "Order not found"

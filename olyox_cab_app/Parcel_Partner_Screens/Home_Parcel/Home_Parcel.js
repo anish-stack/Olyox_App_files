@@ -21,7 +21,7 @@ import NewOrder from '../Other_Parcel_Screens/New_Order/NewOrder';
 import { useSocket } from '../../context/SocketContext';
 import initializeSocket from '../../context/socketService';
 
-const API_BASE_URL = 'http://192.168.1.12:3100/api/v1/parcel';
+const API_BASE_URL = 'https://demoapi.olyox.com/api/v1/parcel';
 
 export default function Home_Parcel({ navigation }) {
     const { socket, isSocketReady } = useSocket();
