@@ -13,7 +13,7 @@ exports.createUser = async (req, res) => {
     try {
 
         const { number, email, isGoogle, name } = req.body;
-        const otp = crypto.randomInt(100000, 999999).toString();
+        const otp = generateOtp()
         const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
         if (isGoogle) {
@@ -52,7 +52,7 @@ exports.createUser = async (req, res) => {
                 // user try to login send otp
                 if (user.isOtpVerify) {
                     if (user.number === 7217619794) {
-                        user.otp = 123456
+                        user.otp = generateOtp()
                         user.otpExpiresAt = otpExpiresAt
                         user.tryLogin = true
                         await user.save();
@@ -104,7 +104,7 @@ exports.createUser = async (req, res) => {
             // Create a new user with the number and OTP
             const newUser = new User({
                 number,
-                otp: 123456,
+                otp,
                 otpExpiresAt,
             });
 
