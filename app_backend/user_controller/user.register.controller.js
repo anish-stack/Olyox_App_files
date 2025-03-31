@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const SendWhatsAppMessage = require("../utils/whatsapp_send");
 const { uploadSingleImage, deleteImage } = require("../utils/cloudinary");
+const generateOtp = require("../utils/Otp.Genreator");
 
 exports.createUser = async (req, res) => {
     try {
@@ -62,7 +63,7 @@ exports.createUser = async (req, res) => {
                             status: 200,
                         })
                     } else {
-                        user.otp = 123456
+                        user.otp = generateOtp()
                         user.otpExpiresAt = otpExpiresAt
                         user.tryLogin = true
                         await user.save();
@@ -76,7 +77,7 @@ exports.createUser = async (req, res) => {
 
                 }
                 else {
-                    user.otp = 123456
+                    user.otp = generateOtp()
                     user.otpExpiresAt = otpExpiresAt
                     user.isOtpVerify = false
                     await user.save();
@@ -103,7 +104,7 @@ exports.createUser = async (req, res) => {
             // Create a new user with the number and OTP
             const newUser = new User({
                 number,
-                otp:123456,
+                otp: 123456,
                 otpExpiresAt,
             });
 

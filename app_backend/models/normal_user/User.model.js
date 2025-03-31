@@ -21,10 +21,12 @@ const userSchema = new mongoose.Schema({
     },
     email: {
         type: String,
+        default: 'Please enter your email address',
 
     },
     name: {
         type: String,
+        default: 'Guest',
     },
     isOtpVerify: {
         type: Boolean,
@@ -37,6 +39,7 @@ const userSchema = new mongoose.Schema({
     profileImage: {
         image: {
             type: String
+            
         },
         publicId: {
             type: String
