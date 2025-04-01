@@ -41,6 +41,7 @@ const {
     mark_cancel
 } = require('./driver');
 const Protect = require('./middleware/Auth');
+const Heavy = require('./routes/Heavy_vehicle/Heavy.routes');
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -836,6 +837,7 @@ app.use('/api/v1/hotels', hotel_router);
 app.use('/api/v1/user', users);
 app.use('/api/v1/tiffin', tiffin);
 app.use('/api/v1/parcel', parcel);
+app.use('/api/v1/heavy', Heavy);
 app.use('/api/v1/admin', admin);
 
 /**

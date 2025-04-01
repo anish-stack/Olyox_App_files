@@ -51,9 +51,9 @@ exports.createUser = async (req, res) => {
             await user.save();
 
             const message = user.isOtpVerify
-            ? `Hi there! 😊 Your OTP is: ${otp}. Please verify it.`
-            : `Hi there! 😊\n\nWelcome to Olyox – your all-in-one app for rides, food delivery, heavy vehicles, hotels, and so much more! 🎉\n\nHere’s your OTP: ${otp}\n\nPlease verify it to kickstart your Olyox journey. We’re thrilled to have you onboard and can’t wait for you to explore the incredible services we’ve lined up for you.\n\nIf you have any questions, feel free to reach out.\n\nHappy exploring! 🚀`;
-    
+                ? `Hi there! 😊 Your OTP is: ${otp}. Please verify it.`
+                : `Hi there! 😊\n\nWelcome to Olyox – your all-in-one app for rides, food delivery, heavy vehicles, hotels, and so much more! 🎉\n\nHere’s your OTP: ${otp}\n\nPlease verify it to kickstart your Olyox journey. We’re thrilled to have you onboard and can’t wait for you to explore the incredible services we’ve lined up for you.\n\nIf you have any questions, feel free to reach out.\n\nHappy exploring! 🚀`;
+
             await SendWhatsAppMessage(message, number);
 
             return res.status(200).json({
