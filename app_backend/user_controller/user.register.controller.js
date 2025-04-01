@@ -11,125 +11,85 @@ const generateOtp = require("../utils/Otp.Genreator");
 
 exports.createUser = async (req, res) => {
     try {
-
         const { number, email, isGoogle, name } = req.body;
-        const otp = generateOtp()
+        const otp = generateOtp();  // Generate OTP only once
         const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
         if (isGoogle) {
-            const user = await User.findOne({ email });
+            // Handle Google Authentication User
+            let user = await User.findOne({ email });
+
             if (!user) {
-                // Create new user for Google authentication
-                const email_user = new User({
-                    name,
-                    email,
-                    isGoogle,
-                });
-                await email_user.save();
-
-                const token = jwt.sign(
-                    { user: email_user },
-                    "dfhdhfuehfuierrheuirheuiryueiryuiewyrshddjidshfuidhduih",
-                    { expiresIn: '30d' }
-                );
-
-                return res.status(201).json({
-                    message: "User created successfully",
-                    user: email_user,
-                    status: 201,
-                    token: token,
-                });
-            } else {
-                return res.status(200).json({
-                    message: "User already exists",
-                    user,
-                    status: 200,
-                });
-            }
-        } else {
-            const user = await User.findOne({ number });
-            if (user) {
-                // user try to login send otp
-                if (user.isOtpVerify) {
-                    if (user.number === 7217619794) {
-                        user.otp = generateOtp()
-                        user.otpExpiresAt = otpExpiresAt
-                        user.tryLogin = true
-                        await user.save();
-                        const message = `Hi there! 😊 Your OTP is: ${otp}. Please verify it .`;
-                        const data = await SendWhatsAppMessage(message, number)
-                        return res.status(200).json({
-                            message: "OTP sent successfully",
-                            status: 200,
-                        })
-                    } else {
-                        user.otp = generateOtp()
-                        user.otpExpiresAt = otpExpiresAt
-                        user.tryLogin = true
-                        await user.save();
-                        const message = `Hi there! 😊 Your OTP is: ${otp}. Please verify it .`;
-                        const data = await SendWhatsAppMessage(message, number)
-                        return res.status(200).json({
-                            message: "OTP sent successfully",
-                            status: 200,
-                        })
-                    }
-
-                }
-                else {
-                    user.otp = generateOtp()
-                    user.otpExpiresAt = otpExpiresAt
-                    user.isOtpVerify = false
-                    await user.save();
-                    const message = `Hi there! 😊 
-
-                    Welcome to Olyox – your all-in-one app for rides, food delivery, heavy vehicles, hotels, and so much more! 🎉 
-                            
-                    Here’s your OTP: ${otp} 
-                            
-                    Please verify it to kickstart your Olyox journey. We’re thrilled to have you onboard and can’t wait for you to explore the incredible services we’ve lined up for you.
-                            
-                    If you have any questions, feel free to reach out. 
-                            
-                    Happy exploring! 🚀`;
-                    const data = await SendWhatsAppMessage(message, number)
-                    return res.status(200).json({
-                        message: "OTP sent successfully",
-                        status: 200,
-                    })
-                }
+                user = new User({ name, email, isGoogle });
+                await user.save();
             }
 
+            const token = jwt.sign(
+                { user: user },
+                "dfhdhfuehfuierrheuirheuiryueiryuiewyrshddjidshfuidhduih",
+                { expiresIn: '30d' }
+            );
 
-            // Create a new user with the number and OTP
-            const newUser = new User({
-                number,
-                otp,
-                otpExpiresAt,
-            });
-
-            await newUser.save();
-            const message = `Hi there! 😊 
-
-    Welcome to Olyox – your all-in-one app for rides, food delivery, heavy vehicles, hotels, and so much more! 🎉 
-            
-    Here’s your OTP: ${newUser.otp} 
-            
-    Please verify it to kickstart your Olyox journey. We’re thrilled to have you onboard and can’t wait for you to explore the incredible services we’ve lined up for you.
-            
-    If you have any questions, feel free to reach out. 
-            
-    Happy exploring! 🚀`;
-
-
-            const data = await SendWhatsAppMessage(message, number)
-
-            return res.status(201).json({
-                message: "User created successfully. OTP sent.",
-                user: newUser,
-                status: 201,
+            return res.status(200).json({
+                message: user.isNew ? "User created successfully" : "User already exists",
+                user,
+                status: user.isNew ? 201 : 200,
+                token,
             });
         }
+
+        // Handle Number-Based User
+        let user = await User.findOne({ number });
+
+        if (user) {
+            // Update existing user with OTP and login attempt
+            user.otp = otp;
+            user.otpExpiresAt = otpExpiresAt;
+            user.tryLogin = true;
+            user.isOtpVerify = user.isOtpVerify || false;
+
+            await user.save();
+
+            const message = user.isOtpVerify
+            ? `Hi there! 😊 Your OTP is: ${otp}. Please verify it.`
+            : `Hi there! 😊\n\nWelcome to Olyox – your all-in-one app for rides, food delivery, heavy vehicles, hotels, and so much more! 🎉\n\nHere’s your OTP: ${otp}\n\nPlease verify it to kickstart your Olyox journey. We’re thrilled to have you onboard and can’t wait for you to explore the incredible services we’ve lined up for you.\n\nIf you have any questions, feel free to reach out.\n\nHappy exploring! 🚀`;
+    
+            await SendWhatsAppMessage(message, number);
+
+            return res.status(200).json({
+                message: "OTP sent successfully",
+                status: 200,
+            });
+        }
+
+        // Creating a new user if not found
+        const newUser = new User({
+            number,
+            otp,
+            otpExpiresAt,
+        });
+
+        await newUser.save();
+
+        const newUserMessage = `Hi there! 😊 
+
+Welcome to Olyox – your all-in-one app for rides, food delivery, heavy vehicles, hotels, and so much more! 🎉 
+
+Here’s your OTP: ${otp} 
+
+Please verify it to kickstart your Olyox journey. We’re thrilled to have you onboard and can’t wait for you to explore the incredible services we’ve lined up for you.
+
+If you have any questions, feel free to reach out.
+
+Happy exploring! 🚀`;
+
+        await SendWhatsAppMessage(newUserMessage, number);
+
+        return res.status(201).json({
+            message: "User created successfully. OTP sent.",
+            user: newUser,
+            status: 201,
+        });
     } catch (error) {
         console.error("Error in createUser:", error);
         return res.status(500).json({
@@ -139,6 +99,7 @@ exports.createUser = async (req, res) => {
         });
     }
 };
+
 
 exports.verify_user = async (req, res) => {
     try {
