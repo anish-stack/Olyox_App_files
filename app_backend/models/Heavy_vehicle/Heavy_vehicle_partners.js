@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 // Define a GeoJSON Schema for service areas
 const serviceAreaSchema = new mongoose.Schema({
-    place_name: {
+    name: {
         type: String,
         required: true
     },
@@ -28,19 +28,14 @@ const serviceAreaSchema = new mongoose.Schema({
 // Define the call timing schema
 const callTimingSchema = new mongoose.Schema({
     start_time: {
-        type: Date,
+        type: String,
         required: true
     },
     
     end_time: {
-        type: Date,
-        required: true,
-        validate: {
-            validator: function(v) {
-                return this.start_time < v;
-            },
-            message: 'End time must be greater than start time.'
-        }
+        type: String,
+        required: true
+        
     }
 });
 
@@ -91,7 +86,7 @@ const Heavy_vehicle_partners = new mongoose.Schema({
     }],
     profile_shows_at_position: {
         type: Number,
-        required: true,
+        
         min: [1, 'Profile position must be greater than or equal to 1.']
     },
     otp: {

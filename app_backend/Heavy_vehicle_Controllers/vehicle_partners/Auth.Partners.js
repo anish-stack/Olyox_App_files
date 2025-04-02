@@ -31,8 +31,8 @@ exports.create_heavy_vehicle_partner = async (req, res) => {
             service_areas = [],
             call_timing
 
-        } = req.body || {};
-
+        } = req.body?.formData || req.body || {};
+        console.log(req.body?.formData?.service_areas[0])
         let emptyFields = [];
         if (!Bh_Id) emptyFields.push('Bh Id');
         if (!name) emptyFields.push('name');
@@ -84,11 +84,11 @@ exports.create_heavy_vehicle_partner = async (req, res) => {
         // Validate vehicle IDs if provided
         if (vehicle_info && vehicle_info.length > 0) {
             for (const vehicleId of vehicle_info) {
-                const validVehicle = await Vehicle.findById(vehicleId);
+                const validVehicle = await Vehicle.findById(vehicleId?.id);
                 if (!validVehicle) {
                     return res.status(400).json({
                         success: false,
-                        message: `Invalid Vehicle Type with ID: ${vehicleId}.`
+                        message: `Invalid Vehicle Type with ID: ${vehicleId?.id}.`
                     });
                 }
             }
@@ -97,7 +97,7 @@ exports.create_heavy_vehicle_partner = async (req, res) => {
         // Validate service areas if provided
         if (service_areas && service_areas.length > 0) {
             for (let area of service_areas) {
-                if (!area.place_name || !area.location || !area.location.type || !area.location.coordinates) {
+                if (!area.name || !area.location || !area.location.type || !area.location.coordinates) {
                     return res.status(400).json({
                         success: false,
                         message: 'Service areas must include place_name and location (type and coordinates).'
@@ -114,17 +114,33 @@ exports.create_heavy_vehicle_partner = async (req, res) => {
         }
 
         // Validate call timing
-        if (call_timing) {
-            const startTime = new Date(call_timing.start_time);
-            const endTime = new Date(call_timing.end_time);
+    
 
+        if (call_timing) {
+            const parseTime = (timeString) => {
+                const [time, modifier] = timeString.split(' ');
+                let [hours, minutes] = time.split(':').map(Number);
+        
+                if (modifier === 'PM' && hours !== 12) {
+                    hours += 12;
+                }
+                if (modifier === 'AM' && hours === 12) {
+                    hours = 0;
+                }
+        
+                return new Date(1970, 0, 1, hours, minutes, 0); // Using a fixed date
+            };
+        
+            const startTime = parseTime(call_timing.start_time);
+            const endTime = parseTime(call_timing.end_time);
+        
             if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Invalid date format for call timing.'
+                    message: 'Invalid time format for call timing.'
                 });
             }
-
+        
             if (startTime >= endTime) {
                 return res.status(400).json({
                     success: false,
@@ -132,7 +148,7 @@ exports.create_heavy_vehicle_partner = async (req, res) => {
                 });
             }
         }
-
+        
 
         const otp = generateOTP();
         const otp_expires = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
@@ -143,7 +159,7 @@ exports.create_heavy_vehicle_partner = async (req, res) => {
             name,
             email,
             phone_number,
-            vehicle_info,
+            vehicle_info:vehicle_info.map((item)=> item?.id),
             service_areas,
             call_timing,
             profile_image: `https://avatar.iran.liara.run/username?username=${name}`,
@@ -183,7 +199,7 @@ exports.verifyOTP = async (req, res) => {
     try {
         const { phone_number, otp, Bh_Id } = req.body;
 
-        if (!phone_number || !otp) {
+        if ( !otp) {
             return res.status(400).json({
                 success: false,
                 message: 'Phone number and OTP are required.'
@@ -260,12 +276,12 @@ exports.resendOTP = async (req, res) => {
     try {
         const { phone_number, Bh_Id } = req.body;
 
-        if (!phone_number) {
-            return res.status(400).json({
-                success: false,
-                message: 'Phone number is required.'
-            });
-        }
+        // if (!phone_number || !Bh_Id) {
+        //     return res.status(400).json({
+        //         success: false,
+        //         message: 'Phone number is required.'
+        //     });
+        // }
 
         // Find partner by phone number
         let partner = await Heavy_vehicle_partners.findOne({ phone_number });
