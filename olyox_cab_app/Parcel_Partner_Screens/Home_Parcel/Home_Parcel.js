@@ -151,7 +151,7 @@ export default function Home_Parcel({ navigation }) {
             const token = await AsyncStorage.getItem('auth_token_partner');
             if (!token) return;
 
-         const data = await fetch('http://192.168.1.3:3100/webhook/receive-location', {
+         const data = await fetch('https://demoapi.olyox.com/webhook/receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

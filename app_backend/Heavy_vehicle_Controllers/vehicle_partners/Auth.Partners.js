@@ -114,33 +114,33 @@ exports.create_heavy_vehicle_partner = async (req, res) => {
         }
 
         // Validate call timing
-    
+
 
         if (call_timing) {
             const parseTime = (timeString) => {
                 const [time, modifier] = timeString.split(' ');
                 let [hours, minutes] = time.split(':').map(Number);
-        
+
                 if (modifier === 'PM' && hours !== 12) {
                     hours += 12;
                 }
                 if (modifier === 'AM' && hours === 12) {
                     hours = 0;
                 }
-        
+
                 return new Date(1970, 0, 1, hours, minutes, 0); // Using a fixed date
             };
-        
+
             const startTime = parseTime(call_timing.start_time);
             const endTime = parseTime(call_timing.end_time);
-        
+
             if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
                 return res.status(400).json({
                     success: false,
                     message: 'Invalid time format for call timing.'
                 });
             }
-        
+
             if (startTime >= endTime) {
                 return res.status(400).json({
                     success: false,
@@ -148,7 +148,7 @@ exports.create_heavy_vehicle_partner = async (req, res) => {
                 });
             }
         }
-        
+
 
         const otp = generateOTP();
         const otp_expires = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
@@ -159,7 +159,7 @@ exports.create_heavy_vehicle_partner = async (req, res) => {
             name,
             email,
             phone_number,
-            vehicle_info:vehicle_info.map((item)=> item?.id),
+            vehicle_info: vehicle_info.map((item) => item?.id),
             service_areas,
             call_timing,
             profile_image: `https://avatar.iran.liara.run/username?username=${name}`,
@@ -199,7 +199,7 @@ exports.verifyOTP = async (req, res) => {
     try {
         const { phone_number, otp, Bh_Id } = req.body;
 
-        if ( !otp) {
+        if (!otp) {
             return res.status(400).json({
                 success: false,
                 message: 'Phone number and OTP are required.'
@@ -362,6 +362,7 @@ exports.updateProfile = async (req, res) => {
             profile_shows_at_position,
             is_working
         } = req.body;
+        console.log("vehicle_info",vehicle_info)
 
         // Create update object
         const updateData = {};
@@ -445,29 +446,19 @@ exports.updateProfile = async (req, res) => {
             updateData.profile_shows_at_position = profile_shows_at_position;
         }
 
-        // Handle vehicle info update if provided
-        if (vehicle_info && Array.isArray(vehicle_info)) {
-            // Validate all vehicle IDs
+        if (vehicle_info && vehicle_info.length > 0) {
             for (const vehicleId of vehicle_info) {
-                if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
-                    return res.status(400).json({
-                        success: false,
-                        message: `Invalid vehicle ID format: ${vehicleId}`
-                    });
-                }
-
-                const validVehicle = await Vehicle.findById(vehicleId);
+                const validVehicle = await Vehicle.findById(vehicleId?._id);
                 if (!validVehicle) {
                     return res.status(400).json({
                         success: false,
-                        message: `Vehicle not found with ID: ${vehicleId}`
+                        message: `Invalid Vehicle Type with ID: ${vehicleId?.id}.`
                     });
                 }
             }
-
             updateData.vehicle_info = vehicle_info;
         }
-
+    
         // Handle service areas update if provided
         if (service_areas && Array.isArray(service_areas)) {
             // Validate all service areas
@@ -492,13 +483,27 @@ exports.updateProfile = async (req, res) => {
 
         // Handle call timing update if provided
         if (call_timing) {
-            const startTime = new Date(call_timing.start_time);
-            const endTime = new Date(call_timing.end_time);
+            const parseTime = (timeString) => {
+                const [time, modifier] = timeString.split(' ');
+                let [hours, minutes] = time.split(':').map(Number);
+
+                if (modifier === 'PM' && hours !== 12) {
+                    hours += 12;
+                }
+                if (modifier === 'AM' && hours === 12) {
+                    hours = 0;
+                }
+
+                return new Date(1970, 0, 1, hours, minutes, 0); // Using a fixed date
+            };
+
+            const startTime = parseTime(call_timing.start_time);
+            const endTime = parseTime(call_timing.end_time);
 
             if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Invalid date format for call timing.'
+                    message: 'Invalid time format for call timing.'
                 });
             }
 
@@ -508,8 +513,6 @@ exports.updateProfile = async (req, res) => {
                     message: 'End time must be greater than start time.'
                 });
             }
-
-            updateData.call_timing = call_timing;
         }
 
 
@@ -534,6 +537,75 @@ exports.updateProfile = async (req, res) => {
         });
     }
 };
+
+exports.updateServiceAreaOnly = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { service_areas } = req.body;
+        console.log("service_areas",service_areas)
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid partner ID.'
+            });
+        }
+
+        // Find the partner by ID
+        const partner = await Heavy_vehicle_partners.findById(id);
+        if (!partner) {
+            return res.status(404).json({
+                success: false,
+                message: 'Partner not found.'
+            });
+        }
+
+        // Validate and update service areas if provided
+        if (service_areas && Array.isArray(service_areas) && service_areas.length > 0) {
+            for (let area of service_areas) {
+                if (!area.name || !area.location || !area.location.type || !area.location.coordinates) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Each service area must include a name and a location object (type and coordinates).'
+                    });
+                }
+
+                if (area.location.type !== 'Point' || area.location.coordinates.length !== 2) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Location must be a GeoJSON Point with 2 coordinates (longitude, latitude).'
+                    });
+                }
+            }
+
+            // Update or add service areas
+            partner.service_areas = service_areas;
+        }
+
+        // Update profile image based on the name
+        if (partner.name && !partner.profile_image) {
+            partner.profile_image = `https://avatar.iran.liara.run/username?username=${name}`;
+        }
+
+        // Save the updated partner
+        await partner.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Partner service areas and profile image updated successfully.',
+            data: partner
+        });
+
+    } catch (error) {
+        console.error('Error updating service areas:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error while updating service areas.',
+            error: error.message
+        });
+    }
+};
+
 
 
 exports.uploadDocuments = async (req, res) => {

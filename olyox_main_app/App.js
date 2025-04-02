@@ -102,12 +102,18 @@ const App = () => {
 
       let location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
+        activityType: Location.LocationActivityType.BestForNavigation,
+        showsBackgroundLocationIndicator: true,
+        accuracy: Location.Accuracy.BestForNavigation,
+        deferredUpdatesInterval: 3000,
+        deferredUpdatesDistance: 50,
+        showsBackgroundLocationIndicator: true,
       });
       // console.log("location have me ",location)
       setLocation(location);
       setErrorMsg(null);
     } catch (error) {
-      // console.error('Error fetching location:', error);
+      console.error('Error fetching location:', error);
       setErrorMsg('Failed to fetch location. Please try again.');
     } finally {
       setLoading(false);

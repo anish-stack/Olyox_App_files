@@ -95,6 +95,9 @@ const Heavy_vehicle_partners = new mongoose.Schema({
     otp_expires: {
         type: Date
     },
+    profile_image:{
+        url:String,
+    },
     is_working: {
         type: Boolean,
         default: false

@@ -14,9 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.olyoxuser.olyox",  
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app requires your location to provide better services.",
-        "CFBundleURLTypes": []
+        "CFBundleURLTypes": [],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -45,7 +47,8 @@
             "DEFAULT"
           ]
         }
-      ]
+      ],
+      "package": "com.happy_coding.olyox"
     },
     "web": {
       "favicon": "./assets/favicon.png",

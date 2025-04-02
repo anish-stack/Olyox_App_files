@@ -4,7 +4,7 @@ const upload = require('../../middleware/multerV2');
 const { createVehicle, getAllVehicles, getVehicle, updateVehicle, deleteVehicle, getcategoryIdVehicles } = require('../../Heavy_vehicle_Controllers/Vehicle_types/VehicleTypes');
 const Protect = require('../../middleware/Auth');
 const { createCategory, getAllCategories, getCategory, updateCategory, deleteCategory, toggleStatus } = require('../../Heavy_vehicle_Controllers/Vehicle_types/HeavyVehicleCategory');
-const { create_heavy_vehicle_partner, verifyOTP, resendOTP, updateProfile, uploadDocuments, getMyProfile, getAllProfiles, getPartnerById, delete_account, login } = require('../../Heavy_vehicle_Controllers/vehicle_partners/Auth.Partners');
+const { create_heavy_vehicle_partner, verifyOTP, resendOTP, updateProfile, uploadDocuments, getMyProfile, getAllProfiles, getPartnerById, delete_account, login, updateServiceAreaOnly } = require('../../Heavy_vehicle_Controllers/vehicle_partners/Auth.Partners');
 const HeveyPartnerProtect = require('../../middleware/HeavyPartnerAuth');
 
 const Heavy = express.Router();
@@ -33,6 +33,7 @@ Heavy.post('/heavy-vehicle-register', create_heavy_vehicle_partner);
 Heavy.post('/heavy-vehicle-verify-otp', verifyOTP);
 Heavy.post('/heavy-vehicle-resend-otp', resendOTP);
 Heavy.put('/heavy-vehicle-profile-update/:id', HeveyPartnerProtect, updateProfile);
+Heavy.post('/heavy-vehicle-services-area/:id', HeveyPartnerProtect, updateServiceAreaOnly);
 Heavy.post('/heavy-vehicle-profile-document/:id', upload.single('image'), HeveyPartnerProtect, uploadDocuments);
 Heavy.get('/heavy-vehicle-profile', HeveyPartnerProtect, getMyProfile);
 Heavy.get('/heavy-vehicle-all-profile', getAllProfiles);

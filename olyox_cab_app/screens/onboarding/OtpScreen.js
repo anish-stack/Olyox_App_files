@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Alert, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Alert, TouchableOpacity, ActivityIndicator, InteractionManager } from "react-native";
 import Input from "../../components/Input";
 import Button from "../../components/Button";
 import axios from 'axios';
@@ -27,46 +27,30 @@ const OtpScreen = ({ onVerify, number }) => {
   const handleOtpVerify = async () => {
     setLoading(true);
     try {
-      const response = await axios.post(
-        'https://demoapi.olyox.com/api/v1/parcel/login_parcel_otp_verify',
-        { otp, number }
-      );
+        InteractionManager.runAfterInteractions(async () => {
+            const response = await axios.post(
+                'https://demoapi.olyox.com/api/v1/parcel/login_parcel_otp_verify',
+                { otp, number }
+            );
 
-      if (response.data.success) {
-        const token = response.data.token;
-        const userId = response.data.user;
+            if (response.data.success) {
+                const token = response.data.token;
+                const userId = response.data.user;
 
-        await AsyncStorage.setItem('auth_token_partner', token);
-        console.log("OTP verified:", token);
-
-        let isConnected = false;
-        let retryCount = 0;
-        const maxRetries = 3;
-
-        while (!isConnected && retryCount < maxRetries) {
-          isConnected = await initializeSocket({ userType: "driver", userId });
-          if (!isConnected) {
-            retryCount++;
-            console.warn(`Socket connection failed. Retrying... (${retryCount}/${maxRetries})`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
-          }
-        }
-
-        if (!isConnected) {
-          Alert.alert('Error', 'Failed to connect to the server after multiple attempts.');
-        } else {
-          navigation.navigate('parcelHome');
-          onVerify();
-        }
-      } else {
-        Alert.alert("Error", response.data.message);
-      }
+                await AsyncStorage.setItem('auth_token_partner', token);
+                console.log("OTP verified:", token);
+                navigation.navigate('parcelHome');
+                onVerify();
+            } else {
+                Alert.alert("Error", response.data.message);
+            }
+        });
     } catch (error) {
-      Alert.alert('Error', error?.response?.data?.message || "Something went wrong");
+        Alert.alert('Error', error?.response?.data?.message || "Something went wrong");
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
 
   const handleResendOtp = async () => {
     try {

@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { LinearGradient } from "expo-linear-gradient"
 import BackButton from "../../components/BackButton"
 import OnboardingWelcome from "./OnboardingWelcome"
-import RegistrationForm from "./registration/RegistrationForm"
 import LoginForm from "./Login/LoginForm"
 import OtpScreen from "./OtpScreen"
 import axios from 'axios'
@@ -14,12 +13,6 @@ const OnboardingScreen = () => {
   const [loginNumber, setLoginNumber] = useState('')
   const [registrationStep, setRegistrationStep] = useState(1)
 const navigation = useNavigation()
-
- 
-
-
-
-  
 
   const handleNextStep = async () => {
     if (validateStep(registrationStep)) {
@@ -42,12 +35,6 @@ const navigation = useNavigation()
   }
 
   
-
-
-
-
-
-
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={["#fff5f5", "#ffe3e3"]} style={styles.gradient}>

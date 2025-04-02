@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import Input from "../../../components/Input";
 import Button from "../../../components/Button";
 import axios from "axios";
-
+import { InteractionManager } from "react-native";
 const LoginForm = ({ onLogin }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -14,22 +14,25 @@ const LoginForm = ({ onLogin }) => {
             setError("Phone number is required");
             return;
         }
-
+    
         try {
             setLoading(true);
             setError("");
-            const response = await axios.post(
-                "https://demoapi.olyox.com/api/v1/parcel/login_parcel_partner",
-                { number: phone }
-            );
-            console.log("response", response.data);
-
-            if (response.data.success) {
-                console.log("Login successful", response.data);
-                onLogin(phone);
-            } else {
-                setError(response.data.message || "Login failed");
-            }
+    
+            InteractionManager.runAfterInteractions(async () => {
+                const response = await axios.post(
+                    "https://demoapi.olyox.com/api/v1/parcel/login_parcel_partner",
+                    { number: phone }
+                );
+                console.log("response", response.data);
+    
+                if (response.data.success) {
+                    console.log("Login successful", response.data);
+                    onLogin(phone);
+                } else {
+                    setError(response.data.message || "Login failed");
+                }
+            });
         } catch (error) {
             const errorMessage = error?.response?.data?.message || "Something went wrong!";
             setError(errorMessage);
@@ -38,7 +41,8 @@ const LoginForm = ({ onLogin }) => {
             setLoading(false);
         }
     };
-
+    
+    
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Login</Text>
