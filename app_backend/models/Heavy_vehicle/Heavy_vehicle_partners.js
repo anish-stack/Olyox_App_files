@@ -84,6 +84,10 @@ const Heavy_vehicle_partners = new mongoose.Schema({
         type: mongoose.Types.ObjectId,
         ref: 'HeavyVehicleDocuments'
     }],
+    isAlldocumentsVerified:{
+        type: Boolean,
+        default: false
+    },
     profile_shows_at_position: {
         type: Number,
         

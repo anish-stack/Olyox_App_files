@@ -16,7 +16,7 @@ const HeavyVehicleDocumentsSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    documentFile_public_id: {  // Updated field name for clarity
+    documentFile_public_id: {  
         type: String,
         required: true
     },

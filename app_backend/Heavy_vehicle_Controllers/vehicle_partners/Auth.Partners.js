@@ -3,6 +3,7 @@ const HeavyVehicleDocuments = require('../../models/Heavy_vehicle/Heavy_vehicle_
 const Vehicle = require('../../models/Heavy_vehicle/Vehicle_types.model');
 const cloudinary = require('cloudinary').v2;
 const fs = require('fs');
+const cron = require('node-cron');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const SendWhatsAppMessage = require('../../utils/whatsapp_send');
@@ -362,7 +363,7 @@ exports.updateProfile = async (req, res) => {
             profile_shows_at_position,
             is_working
         } = req.body;
-        console.log("vehicle_info",vehicle_info)
+        console.log("vehicle_info", vehicle_info)
 
         // Create update object
         const updateData = {};
@@ -458,7 +459,7 @@ exports.updateProfile = async (req, res) => {
             }
             updateData.vehicle_info = vehicle_info;
         }
-    
+
         // Handle service areas update if provided
         if (service_areas && Array.isArray(service_areas)) {
             // Validate all service areas
@@ -542,7 +543,7 @@ exports.updateServiceAreaOnly = async (req, res) => {
     try {
         const { id } = req.params;
         const { service_areas } = req.body;
-        console.log("service_areas",service_areas)
+        console.log("service_areas", service_areas)
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({
@@ -611,50 +612,44 @@ exports.updateServiceAreaOnly = async (req, res) => {
 exports.uploadDocuments = async (req, res) => {
     try {
         const { id } = req.params;
-        const { document_type, document_number, expiry_date } = req.body;
+        const { documentType } = req.body;
 
+  
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid partner ID.'
+                message: 'Invalid vehicle partner ID.'
             });
         }
 
-        // Validate required fields
-        if (!document_type || !document_number || !expiry_date) {
+        if (!documentType) {
             return res.status(400).json({
                 success: false,
-                message: 'Document type, number, and expiry date are required.'
+                message: 'Document type is required.'
             });
         }
 
-        // Validate expiry date
-        const expiryDate = new Date(expiry_date);
-        if (isNaN(expiryDate.getTime())) {
-            return res.status(400).json({
+        const validDocumentTypes = [
+            'Registration', 'Insurance', 'Permit',
+            'Pollution Certificate', 'License', 'Aadhar'
+        ];
+        if (!validDocumentTypes.includes(documentType)) {
+            return res.status(422).json({
                 success: false,
-                message: 'Invalid expiry date format.'
+                message: `Invalid document type. Must be one of: ${validDocumentTypes.join(', ')}`
             });
         }
 
-        if (expiryDate < new Date()) {
-            return res.status(400).json({
-                success: false,
-                message: 'Expiry date must be in the future.'
-            });
-        }
-
-        // Find partner
-        const partner = await Heavy_vehicle_partners.findById(id);
-
-        if (!partner) {
+        // Check if the vehicle partner exists
+        const vehiclePartner = await Heavy_vehicle_partners.findById(id);
+        if (!vehiclePartner) {
             return res.status(404).json({
                 success: false,
-                message: 'Partner not found.'
+                message: 'Vehicle partner not found.'
             });
         }
 
-        // Check if document file was uploaded
+        // Check if the file was uploaded
         if (!req.file) {
             return res.status(400).json({
                 success: false,
@@ -662,44 +657,45 @@ exports.uploadDocuments = async (req, res) => {
             });
         }
 
-
+        // Upload the file to Cloudinary
         const result = await cloudinary.uploader.upload(req.file.path, {
             folder: 'heavy_vehicle_partners/documents'
         });
 
-        // Delete file from server after upload
+        // Delete the local file after uploading
         fs.unlinkSync(req.file.path);
 
-        // Create new document record
+        // Create a new document record
         const newDocument = new HeavyVehicleDocuments({
-            partner_id: id,
-            document_type,
-            document_number,
-            expiry_date,
-            document_url: result.secure_url,
-            document_public_id: result.public_id
+            vehicle_partner_Id: id,
+            documentType,
+            documentFile: result.secure_url,
+            documentFile_public_id: result.public_id,
+            document_status: 'Pending',
+            uploadedAt: new Date()
         });
 
+        // Save the new document and associate it with the vehicle partner
         await newDocument.save();
-
-
-        partner.documents.push(newDocument._id);
-        await partner.save();
+        vehiclePartner.documents.push(newDocument._id);
+        await vehiclePartner.save();
 
         return res.status(201).json({
             success: true,
             message: 'Document uploaded successfully',
             data: newDocument
         });
+
     } catch (error) {
         console.error('Error uploading document:', error);
         return res.status(500).json({
             success: false,
             message: 'Failed to upload document',
-            error: error.message
+            error: 'An unexpected error occurred while uploading the document.'
         });
     }
 };
+
 
 
 exports.getMyProfile = async (req, res) => {
@@ -709,7 +705,7 @@ exports.getMyProfile = async (req, res) => {
 
         const partner = await Heavy_vehicle_partners.findById(partnerId)
             .populate('vehicle_info', 'name vehicleType isAvailable')
-            .populate('documents', 'document_type document_number expiry_date document_url');
+            .populate('documents');
 
         if (!partner) {
             return res.status(404).json({
@@ -1086,3 +1082,14 @@ exports.login = async (req, res) => {
         });
     }
 };
+
+
+
+// Shuffle Position Of Partner At Every Night
+// cron.schedule('0 0 * * *', async () => {
+//     try {
+//         const AllPartners = await Heavy_vehicle_partners.find()
+//     } catch (error) {
+//         console.error("Cron job failed:", error);
+//     }
+// });
