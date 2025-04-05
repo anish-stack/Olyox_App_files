@@ -493,12 +493,12 @@ io.on('connection', (socket) => {
         try {
             console.log(`[${new Date().toISOString()}] Payment confirmation received:`, data);
 
-            if (!data || !data.ride || !data.ride.user) {
+            if (!data ) {
                 console.error(`[${new Date().toISOString()}] Invalid payment data`);
                 return;
             }
 
-            const collectResult = await collectCash(data.ride);
+            const collectResult = await collectCash(data._id);
 
             if (collectResult.success) {
                 console.log(`[${new Date().toISOString()}] Payment recorded successfully for user: ${data.ride.user}`);
