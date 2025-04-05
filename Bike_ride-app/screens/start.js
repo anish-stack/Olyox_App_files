@@ -47,6 +47,7 @@ Notifications.setNotificationHandler({
 
 // Storage helpers
 const saveRideToStorage = async (rideData) => {
+    console.log("rideDetails",rideData)
     try {
         await SecureStore.setItemAsync('activeRide', JSON.stringify(rideData));
     } catch (error) {
@@ -690,6 +691,7 @@ export default function RideDetailsScreen() {
     ]);
 
     // ===== EFFECTS =====
+    // console.log(params?.rideDetails)
     // Initialize component - runs only once
     useEffect(() => {
         if (!isInitialMount.current) return;
