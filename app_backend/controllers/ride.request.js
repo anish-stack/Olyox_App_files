@@ -346,7 +346,7 @@ exports.rideEnd = async ({ rideId, rider_id }) => {
         // Update ride details
         ride.ride_end_time = new Date();
         ride.rideStatus = "completed";
-        
+
         // Find the rider
         const rider = await Riders.findById(rider_id);
         if (!rider) {
@@ -360,7 +360,7 @@ exports.rideEnd = async ({ rideId, rider_id }) => {
         // Update rider statistics
         rider.TotalRides += 1;
         rider.rides.push(ride._id);
-        
+
         // Save both documents
         await Promise.all([ride.save(), rider.save()]);
 
@@ -370,6 +370,7 @@ exports.rideEnd = async ({ rideId, rider_id }) => {
             driverId: rider._id,
             message: 'Ride ended successfully',
             rideId: ride._id,
+            rideDetails: ride,
             completedAt: ride.ride_end_time
         };
     } catch (error) {
@@ -382,6 +383,47 @@ exports.rideEnd = async ({ rideId, rider_id }) => {
         };
     }
 };
+// exports.rideEnd = async ({rideId, rider_id}) => {
+//     try {
+//         const ride_id = await RideRequest.findById(rideId)
+//         if (!ride_id) {
+//             return {
+//                 success: false,
+//                 message: 'Ride not found'
+//             }
+//         }
+
+//         ride_id.ride_end_time = new Date()
+//         if (ride_id) {
+//             ride_id.rideStatus = "completed";
+//         }
+
+//         await ride_id.save()
+
+//         const findRider = await Riders.findById(rider_id)
+//         if (!findRider) {
+//             return {
+//                 success: false,
+//                 message: 'Rider not found'
+//             }
+//         }
+//         findRider.TotalRides += 1
+//         findRider.rides.push(ride_id._id)
+//         await findRider.save()
+
+//         return {
+//             success: true,
+//             driverId: findRider._id,
+//             rideDetails: RideRequest,
+//             message: 'Ride End successfully'
+//         }
+
+//     } catch (error) {
+//         // Log and handle the error
+//         console.error('Error in rideStart:', error.message);
+//         return error.message
+//     }
+// }
 
 
 exports.collectCash = async (data) => {
@@ -799,11 +841,11 @@ const calculateRidePriceForConfirmRide = async (data) => {
 
 
 
-exports.getAllRides = async (req,res) => {
+exports.getAllRides = async (req, res) => {
     try {
         const allRides = await RideRequest.find().populate('rider').populate('user')
-        if(!allRides){
-            return res.status(404).json({success:false,message:"No rides found"})
+        if (!allRides) {
+            return res.status(404).json({ success: false, message: "No rides found" })
         }
         res.status(200).json({
             success: true,
@@ -811,7 +853,7 @@ exports.getAllRides = async (req,res) => {
             data: allRides
         })
     } catch (error) {
-        console.log("Internal server error",error)
+        console.log("Internal server error", error)
         res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -820,12 +862,12 @@ exports.getAllRides = async (req,res) => {
     }
 }
 
-exports.getSingleRides = async (req,res) => {
+exports.getSingleRides = async (req, res) => {
     try {
-        const {id} = req.params;
+        const { id } = req.params;
         const allRides = await RideRequest.findById(id).populate('rider').populate('user')
-        if(!allRides){
-            return res.status(404).json({success:false,message:"No rides found"})
+        if (!allRides) {
+            return res.status(404).json({ success: false, message: "No rides found" })
         }
         res.status(200).json({
             success: true,
@@ -833,7 +875,7 @@ exports.getSingleRides = async (req,res) => {
             data: allRides
         })
     } catch (error) {
-        console.log("Internal server error",error)
+        console.log("Internal server error", error)
         res.status(500).json({
             success: false,
             message: 'Internal server error',
