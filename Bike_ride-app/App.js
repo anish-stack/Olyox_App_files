@@ -37,6 +37,7 @@ import * as Sentry from '@sentry/react-native';
 import ErrorBoundaryWrapper from './ErrorBoundary'
 
 import ActiveRideButton from './ActiveRideButton';
+import RechargeViaOnline from './screens/Recharge/RehcargeViaOnline';
 const Stack = createNativeStackNavigator();
 Sentry.init({
   dsn: 'https://cb37ba59c700e925974e3b36d10e8e5b@o4508691997261824.ingest.us.sentry.io/4508692015022080',
@@ -74,7 +75,7 @@ const App = () => {
   useEffect(() => {
     checkActiveRide();
   }, []);
-  console.log("activeRide", activeRide)
+
 
   useEffect(() => {
     const checkAuthToken = async () => {
@@ -84,7 +85,7 @@ const App = () => {
 
         if (token) {
           const response = await axios.get(
-            'https://demoapi.olyox.com/api/v1/rider/user-details',
+            'http://192.168.1.12:3100/api/v1/rider/user-details',
             { headers: { Authorization: `Bearer ${token}` } }
           );
 
@@ -148,7 +149,8 @@ const App = () => {
                     <Stack.Screen name="enter_bh" options={{ headerShown: false, title: 'My Profile' }} component={BhVerification} />
                     <Stack.Screen name="Register" options={{ headerShown: false, title: 'My Profile' }} component={RegisterWithBh} />
                     <Stack.Screen name="OtpVerify" options={{ headerShown: false, title: 'Otp Verification' }} component={BhOtpVerification} />
-                    <Stack.Screen name="Recharge" options={{ headerShown: true, title: 'Recharge' }} component={Recharge} />
+                    {/* <Stack.Screen name="Recharge" options={{ headerShown: true, title: 'Recharge' }} component={Recharge} /> */}
+                    <Stack.Screen name="Recharge" options={{ headerShown: true, title: 'Recharge' }} component={RechargeViaOnline} />
                     <Stack.Screen name="recharge-history" options={{ headerShown: true, title: 'Recharge History' }} component={RechargeHistory} />
                     <Stack.Screen name="WorkingData" options={{ headerShown: false, title: 'RechargeHistory' }} component={WorkingData} />
                     <Stack.Screen name="referral-history" options={{ headerShown: false, title: 'RechargeHistory' }} component={ReferalHistory} />

@@ -322,9 +322,9 @@ exports.rideStart = async (data) => {
     }
 }
 
-exports.rideEnd = async (data) => {
+exports.rideEnd = async ({_id,rider_id}) => {
     try {
-        const ride_id = await RideRequest.findById(data?._id)
+        const ride_id = await RideRequest.findById(_id)
         if (!ride_id) {
             return {
                 success: false,
@@ -339,7 +339,7 @@ exports.rideEnd = async (data) => {
         
         await ride_id.save()
 
-        const findRider = await Riders.findById(ride_id?.rider)
+        const findRider = await Riders.findById(rider_id)
         if (!findRider) {
             return {
                 success: false,

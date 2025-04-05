@@ -1,3 +1,5 @@
+const RiderModel = require('../models/Rider.model');
+
 const Settings =require('../models/Admin/Settings');
 const axios = require('axios')
 
@@ -71,3 +73,50 @@ exports.CheckTolls = async (origin, destination) => {
         throw new Error(error.message);
     }
 };
+
+
+exports.updateRechargeDetails = async ({ rechargePlan, expireData, approveRecharge, BH }) => {
+    try {
+      // Validate required fields
+      if (!BH) {
+        return { success: false, message: "BH is required." };
+      }
+  
+      // Find the rider by BH
+      const foundRider = await RiderModel.findOne({ BH });
+      if (!foundRider) {
+        return { success: false, message: "Rider not found." };
+      }
+  
+      // If approveRecharge is true, update the recharge details
+      if (approveRecharge) {
+        foundRider.RechargeData = {
+          rechargePlan,
+          expireData,
+          approveRecharge: true
+        };
+        foundRider.isPaid = true;
+  
+        await foundRider.save();
+  
+        return {
+          success: true,
+          message: "Recharge approved and rider marked as paid.",
+          data: foundRider
+        };
+      } else {
+        return {
+          success: false,
+          message: "Recharge approval is required."
+        };
+      }
+  
+    } catch (error) {
+      console.error("Error updating recharge details:", error);
+      return {
+        success: false,
+        message: "Internal server error.",
+        error: error.message
+      };
+    }
+  };

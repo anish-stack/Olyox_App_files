@@ -104,6 +104,52 @@ exports.getSingleRider = async (req, res) => {
     })
   }
 }
+exports.updateRechargeDetails = async (req, res) => {
+  try {
+    const { rechargePlan, expireData, approveRecharge, BH } = req.body || {};
+
+    console.log("Request body:", req.body);
+
+    // Validate required fields
+    if (!BH) {
+      return res.status(400).json({ success: false, message: "BH is required" });
+    }
+
+    // Find the rider by BH
+    const foundRider = await Rider.findOne({ BH });
+    if (!foundRider) {
+      return res.status(404).json({ success: false, message: "Rider not found" });
+    }
+
+    // If approveRecharge is true, update the recharge details
+    if (approveRecharge) {
+      foundRider.RechargeData = {
+        rechargePlan,
+        expireData,
+        approveRecharge: true
+      };
+      foundRider.isPaid = true;
+
+      await foundRider.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Recharge approved and rider marked as paid.",
+        data: foundRider
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Recharge approval is required."
+      });
+    }
+
+  } catch (error) {
+    console.error("Error updating recharge details:", error);
+    return res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
 
 exports.login = async (req, res) => {
   try {
@@ -433,7 +479,7 @@ exports.uploadDocuments = async (req, res) => {
 exports.uploadPaymentQr = async (req, res) => {
   try {
     const file = req.file || {}
-    console.log(file)
+
     const userId = req.user.userId;
     const findRider = await Rider.findById(userId);
 
@@ -624,9 +670,9 @@ exports.toggleWorkStatusOfRider = async (req, res) => {
 exports.markPaid = async (req, res) => {
   try {
     const { rechargePlan, expireData, approveRecharge, riderBh } = req.body || {};
-    console.log("rbody",req.body)
+    console.log("rbody", req.body)
     // Find the rider by ID
-    const findRider = await Rider.findOne({BH: riderBh });
+    const findRider = await Rider.findOne({ BH: riderBh });
 
     if (!findRider) {
       return res.status(404).json({ success: false, message: "Rider not found" });

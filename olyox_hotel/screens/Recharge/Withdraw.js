@@ -152,9 +152,7 @@ export function Withdraw() {
         setLoading(true);
         try {
 
-
-            // Uncomment this for actual API call
-            const response = await axios.post(`https://api.olyox.com/api/v1/create-withdrawal?_id=${parsed.data?._id}`, withdrawForm);
+             await axios.post(`https://api.olyox.com/api/v1/create-withdrawal?_id=${parsed.data?._id}`, withdrawForm);
 
             await new Promise(resolve => setTimeout(resolve, 1500));
 

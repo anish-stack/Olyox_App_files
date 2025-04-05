@@ -39,14 +39,14 @@ const HomeScreen = () => {
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
       const data = await fetchUserDetails()
-      // console.log("Data Of Rider", data)
+
     } catch (error) {
       console.error('Refresh failed:', error);
     } finally {
       setRefreshing(false);
     }
   }, []);
-  // console.log("socket from server", socket)
+
   const handleLogout = useCallback(async () => {
     try {
       await SecureStore.deleteItemAsync('auth_token_cab');
@@ -74,7 +74,7 @@ const HomeScreen = () => {
       })
 
       console.log("i am socket", isReconnectingHard)
-      // Reload the entire app
+
       await Updates.reloadAsync();
     } catch (error) {
       console.log("i am socket error", error)
@@ -91,10 +91,10 @@ const HomeScreen = () => {
       console.log(token)
       if (token) {
         const response = await axios.get(
-          'https://demoapi.olyox.com/api/v1/rider/user-details',
+          'http://192.168.1.12:3100/api/v1/rider/user-details',
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        // console.log("response.data.partner",response.data.partner)
+        console.log("User Details:", response.data.partner);
         if (response.data.partner) {
           setUserData(response.data.partner);
           await initializeSocket({
@@ -114,19 +114,42 @@ const HomeScreen = () => {
     fetchUserDetails()
   }, [])
 
-
   const toggleOnlineStatus = async () => {
     setLoading(true);
+
+    const expireDate = new Date(user_data?.RechargeData?.expireData);
+    const currentDate = new Date();
+
+    const goingOnline = !isOnline;
+
     try {
       const token = await SecureStore.getItemAsync("auth_token_cab");
+
+
+      if (goingOnline && expireDate < currentDate) {
+        Alert.alert(
+          "Recharge Expired",
+          "You have been set to offline due to expired recharge.",
+          [
+            {
+              text: "OK",
+              onPress: () => navigation.navigate("Recharge")
+            }
+          ]
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Always allow the API call if going OFFLINE regardless of recharge status
       const response = await axios.post(
-        "https://demoapi.olyox.com/api/v1/rider/toggleWorkStatusOfRider",
-        { status: !isOnline },
+        "http://192.168.1.12:3100/api/v1/rider/toggleWorkStatusOfRider",
+        { status: goingOnline },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const response_two = await axios.get(
-        "https://demoapi.olyox.com/api/v1/rider/user-details",
+        "http://192.168.1.12:3100/api/v1/rider/user-details",
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -134,29 +157,28 @@ const HomeScreen = () => {
       setUserData(partnerData);
 
       if (response.data.success) {
-        setIsOnline(!isOnline);
-        await SecureStore.setItemAsync("isOnline", (!isOnline).toString()); // Store the new status
+        setIsOnline(goingOnline);
+        await SecureStore.setItemAsync("isOnline", goingOnline.toString());
       }
     } catch (error) {
-      Alert.alert("Toggle status", error?.response?.data?.message || "Toggle status failed", [
-        { text: "OK" }
-      ]);
-      console.error(
-        "Toggle status failed:",
-        error?.response?.data?.message || error.message
+      Alert.alert(
+        "Toggle Status Failed",
+        error?.response?.data?.message || "Something went wrong",
+        [{ text: "OK" }]
       );
+      console.error("Toggle Status Error:", error?.response?.data?.message || error.message);
     } finally {
       setLoading(false);
     }
   };
+
   const formatToIST = (dateString) => {
     if (!dateString) return "N/A";
 
     const date = new Date(dateString);
     return date.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
   };
-  // console.log("user_data",user_data)
-  // console.log("isReconnecting",isReconnecting)
+
 
   const ConnectionStatus = () => (
     <View style={[
@@ -233,23 +255,23 @@ const HomeScreen = () => {
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Dashboard</Text>
-       <View style={{flexDirection:'row'}}>
-       <TouchableOpacity
-          onPress={() => setMenuVisible(true)}
-          style={styles.menuButton}
-        >
-          <MaterialCommunityIcons name="bell" size={24} color="#212121" />
-          <Text style={styles.count}>0</Text>
-        </TouchableOpacity>
-        
-       <TouchableOpacity
-          onPress={() => setMenuVisible(true)}
-          style={styles.menuButton}
-        >
-          <MaterialCommunityIcons name="dots-vertical" size={24} color="#212121" />
-        </TouchableOpacity>
-        
-       </View>
+        <View style={{ flexDirection: 'row' }}>
+          <TouchableOpacity
+            onPress={() => setMenuVisible(true)}
+            style={styles.menuButton}
+          >
+            <MaterialCommunityIcons name="bell" size={24} color="#212121" />
+            <Text style={styles.count}>0</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setMenuVisible(true)}
+            style={styles.menuButton}
+          >
+            <MaterialCommunityIcons name="dots-vertical" size={24} color="#212121" />
+          </TouchableOpacity>
+
+        </View>
       </View>
 
       <ScrollView
@@ -494,9 +516,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#f7de02", // Example border color
   },
-  count:{
-    position:'absolute',
-    right:0
+  count: {
+    position: 'absolute',
+    right: 0
 
   }
 });

@@ -42,6 +42,8 @@ const {
 } = require('./driver');
 const Protect = require('./middleware/Auth');
 const Heavy = require('./routes/Heavy_vehicle/Heavy.routes');
+const { connectwebDb } = require('./PaymentWithWebDb/db');
+const startExpiryCheckJob = require('./cron_jobs/RiderJobs');
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -61,6 +63,7 @@ const io = socketIo(server, {
 });
 
 // Connect to the database
+connectwebDb()
 connectDb();
 console.log('Attempting database connection...');
 
@@ -450,13 +453,16 @@ io.on('connection', (socket) => {
     socket.on('endRide', async (data) => {
         try {
             console.log(`[${new Date().toISOString()}] Ride end request:`, data);
-
-            if (!data || !data.ride) {
+         
+            if (!data) {
                 console.error(`[${new Date().toISOString()}] Invalid endRide data`);
                 return;
             }
 
-            const rideEndResult = await rideEnd(data.ride);
+            const rideEndResult = await rideEnd({
+                rideId: data?.rideDetails?._id || data.ride,
+                rider_id: data?.rideDetails?.rider?._id || data.ride?.rider?._id,
+            });
 
             if (rideEndResult.success) {
                 console.log(`[${new Date().toISOString()}] Ride ended successfully. Driver ID: ${rideEndResult.driverId}`);
@@ -1097,4 +1103,5 @@ app.post("/geo-code-distance", async (req, res) => {
 const PORT = 3100;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    // startExpiryCheckJob();
 });
