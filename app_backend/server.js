@@ -42,7 +42,7 @@ const {
 } = require('./driver');
 const Protect = require('./middleware/Auth');
 const Heavy = require('./routes/Heavy_vehicle/Heavy.routes');
-const { connectwebDb } = require('./PaymentWithWebDb/db');
+const {  connectwebDb } = require('./PaymentWithWebDb/db');
 const startExpiryCheckJob = require('./cron_jobs/RiderJobs');
 
 // Configure multer for file uploads
@@ -452,114 +452,36 @@ io.on('connection', (socket) => {
      */
     socket.on('endRide', async (data) => {
         try {
-            const timestamp = new Date().toISOString();
-            console.log(`[${timestamp}] Ride end request received:`, JSON.stringify(data));
+            console.log(`[${new Date().toISOString()}] Ride end request:`, data);
 
-            // Validate incoming data
-            if (!data) {
-                console.error(`[${timestamp}] Invalid endRide data: Received empty data`);
-                socket.emit('ride_error', {
-                    message: 'Invalid request data',
-                    details: 'No data provided'
-                });
+            if (!data || !data.ride) {
+                console.error(`[${new Date().toISOString()}] Invalid endRide data`);
                 return;
             }
 
-            // Extract ride ID and rider ID with proper fallbacks
-            const rideId = data?.rideDetails?._id || data?.ride?._id || data?.ride;
-            const riderId = data?.rideDetails?.rider?._id || data?.ride?.rider?._id || data?.riderId;
+            const rideEndResult = await rideEnd(data.ride);
 
-            // Validate extracted IDs
-            if (!rideId) {
-                console.error(`[${timestamp}] Missing ride ID in endRide request`);
-                socket.emit('ride_error', {
-                    message: 'Invalid request data',
-                    details: 'Missing ride ID'
-                });
-                return;
-            }
+            if (rideEndResult.success) {
+                console.log(`[${new Date().toISOString()}] Ride ended successfully. Driver ID: ${rideEndResult.driverId}`);
 
-            console.log(`[${timestamp}] Processing ride end: Ride ID: ${rideId}, Rider ID: ${riderId || 'Not provided'}`);
+                const driverSocketId = driverSocketMap.get(String(rideEndResult.driverId));
 
-            // Call the ride end service
-            const rideEndResult = await rideEnd({
-                rideId: rideId,
-                rider_id: riderId,
-            });
-
-            // Log the complete result for debugging
-            console.log(`[${timestamp}] Ride end result:`, JSON.stringify(rideEndResult));
-
-            // Handle the result
-            if (rideEndResult && rideEndResult.success) {
-                const driverId = rideEndResult.driverId;
-                console.log(`[${timestamp}] Ride ended successfully. Driver ID: ${driverId}`);
-
-                // Notify the driver if they're connected
-                if (driverId) {
-                    const driverSocketId = driverSocketMap.get(String(driverId));
-
-                    if (driverSocketId) {
-                        const riderDetails = {
-                            otp: rideEndResult.rideDetails?.RideOtp,
-                            eta: rideEndResult.rideDetails?.EtaOfRide,
-                            price: rideEndResult.rideDetails?.kmOfRide,
-                            rating: '4.8',
-                            is_done: rideEndResult.rideDetails?.rideStatus === 'completed',
-                            pickup: rideEndResult.rideDetails?.pickup_desc,
-                            trips: '150',
-                            dropoff: rideEndResult.rideDetails?.drop_desc
-                        };
-
-                        // Prepare response data
-                        const responseData = {
-                            message: 'Your ride has been completed. Please collect payment.',
-                            rideDetails: riderDetails,
-                            rideId: rideId,
-                            endedAt: new Date().toISOString()
-                        };
-
-                        // Send notification to driver
-                        io.to(driverSocketId).emit('ride_end', responseData);
-                        console.log(`[${timestamp}] End notification sent to driver: ${driverId} via socket: ${driverSocketId}`);
-
-                        // Acknowledge successful end to the requester
-                        socket.emit('ride_end_success', {
-                            message: 'Ride ended successfully',
-                            rideId: rideId
-                        });
-                    } else {
-                        console.log(`[${timestamp}] No active socket found for driver: ${driverId}`);
-                        // Still acknowledge the end even if driver notification fails
-                        socket.emit('ride_end_success', {
-                            message: 'Ride ended successfully, but driver is offline',
-                            rideId: rideId
-                        });
-                    }
-                } else {
-                    console.warn(`[${timestamp}] Driver ID missing in successful ride end response`);
-                    socket.emit('ride_end_success', {
-                        message: 'Ride ended successfully',
-                        rideId: rideId
+                if (driverSocketId) {
+                    io.to(driverSocketId).emit('ride_end', {
+                        message: 'Your ride has been completed. Please collect payment.',
+                        rideDetails: data,
                     });
+                    console.log(`[${new Date().toISOString()}] End notification sent to driver: ${rideEndResult.driverId}`);
+                } else {
+                    console.log(`[${new Date().toISOString()}] No active socket found for driver: ${rideEndResult.driverId}`);
                 }
             } else {
-                // Handle failure with more detailed error info
-                const errorMessage = rideEndResult?.error || rideEndResult?.message || 'Unknown error occurred';
-                console.error(`[${timestamp}] Error ending ride: ${errorMessage}`);
-                socket.emit('ride_error', {
-                    message: 'Failed to end ride',
-                    details: errorMessage
-                });
+                console.error(`[${new Date().toISOString()}] Error ending ride:`, rideEndResult.error);
+                socket.emit('ride_error', { message: 'Failed to end ride' });
             }
         } catch (error) {
-            const timestamp = new Date().toISOString();
-            console.error(`[${timestamp}] Exception in endRide handler:`, error);
-            console.error(`[${timestamp}] Error stack:`, error.stack);
-            socket.emit('ride_error', {
-                message: 'Failed to process ride end',
-                details: error.message
-            });
+            console.error(`[${new Date().toISOString()}] Error in endRide:`, error);
+            socket.emit('ride_error', { message: 'Failed to process ride end' });
         }
     });
 
