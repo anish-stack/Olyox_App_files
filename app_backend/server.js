@@ -499,20 +499,20 @@ io.on('connection', (socket) => {
             }
 
             const collectResult = await collectCash(data._id);
-
+console.log("collectResult.user",collectResult.user)
             if (collectResult.success) {
-                console.log(`[${new Date().toISOString()}] Payment recorded successfully for user: ${data.ride.user}`);
+                console.log(`[${new Date().toISOString()}] Payment recorded successfully for user: ${collectResult.user}`);
 
-                const userSocketId = userSocketMap.get(String(data.ride.user));
+                const userSocketId = userSocketMap.get(String(collectResult.user?._id));
 
                 if (userSocketId) {
                     io.to(userSocketId).emit('give-rate', {
                         message: 'Your payment has been received. Please rate your ride.',
                         rideDetails: data,
                     });
-                    console.log(`[${new Date().toISOString()}] Rating request sent to user: ${data.ride.user}`);
+                    console.log(`[${new Date().toISOString()}] Rating request sent to user: ${collectResult.user}`);
                 } else {
-                    console.log(`[${new Date().toISOString()}] No active socket found for user: ${data.ride.user}`);
+                    console.log(`[${new Date().toISOString()}] No active socket found for user: ${collectResult.user}`);
                 }
             } else {
                 console.error(`[${new Date().toISOString()}] Error recording payment:`, collectResult.error);

@@ -336,7 +336,7 @@ exports.rideEnd = async (data) => {
         if (ride_id) {
             ride_id.rideStatus = "completed";
         }
-        
+
         await ride_id.save()
 
         const findRider = await Riders.findById(ride_id?.rider)
@@ -364,7 +364,7 @@ exports.rideEnd = async (data) => {
 }
 exports.collectCash = async (data) => {
     try {
-        const ride_id = await RideRequest.findById(data?._id)
+        const ride_id = await RideRequest.findById(data).populate('user')
         if (!ride_id) {
             return {
                 success: false,
@@ -387,6 +387,7 @@ exports.collectCash = async (data) => {
 
         return {
             success: true,
+            user: ride_id?.user,
             message: 'Ride End and Payment Success successfully'
         }
 
@@ -777,11 +778,11 @@ const calculateRidePriceForConfirmRide = async (data) => {
 
 
 
-exports.getAllRides = async (req,res) => {
+exports.getAllRides = async (req, res) => {
     try {
         const allRides = await RideRequest.find().populate('rider').populate('user')
-        if(!allRides){
-            return res.status(404).json({success:false,message:"No rides found"})
+        if (!allRides) {
+            return res.status(404).json({ success: false, message: "No rides found" })
         }
         res.status(200).json({
             success: true,
@@ -789,7 +790,7 @@ exports.getAllRides = async (req,res) => {
             data: allRides
         })
     } catch (error) {
-        console.log("Internal server error",error)
+        console.log("Internal server error", error)
         res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -798,12 +799,12 @@ exports.getAllRides = async (req,res) => {
     }
 }
 
-exports.getSingleRides = async (req,res) => {
+exports.getSingleRides = async (req, res) => {
     try {
-        const {id} = req.params;
+        const { id } = req.params;
         const allRides = await RideRequest.findById(id).populate('rider').populate('user')
-        if(!allRides){
-            return res.status(404).json({success:false,message:"No rides found"})
+        if (!allRides) {
+            return res.status(404).json({ success: false, message: "No rides found" })
         }
         res.status(200).json({
             success: true,
@@ -811,7 +812,7 @@ exports.getSingleRides = async (req,res) => {
             data: allRides
         })
     } catch (error) {
-        console.log("Internal server error",error)
+        console.log("Internal server error", error)
         res.status(500).json({
             success: false,
             message: 'Internal server error',

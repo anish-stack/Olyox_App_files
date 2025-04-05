@@ -1,16 +1,13 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import {
     View,
-
     TouchableOpacity,
     Dimensions,
     Linking,
     Platform,
     Alert,
- 
     Animated,
     AppState,
- 
 } from "react-native";
 import { Text, Button, Divider, ActivityIndicator } from "react-native-paper";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
@@ -24,7 +21,6 @@ import * as SecureStore from 'expo-secure-store';
 import {
     FontAwesome5,
     MaterialIcons,
-  
 } from '@expo/vector-icons';
 import { useSocket } from "../context/SocketContext";
 import { Audio } from 'expo-av';
@@ -32,34 +28,6 @@ import * as Notifications from 'expo-notifications';
 import OtpModal from "./OtpMode";
 import CancelReasonsModal from "./CancelReasonsModal";
 
-const saveRideToStorage = async (rideData) => {
-    console.log("data which save",rideData)
-    try {
-        await SecureStore.setItemAsync('activeRide', JSON.stringify(rideData));
-    } catch (error) {
-        console.error('Error saving ride data:', error);
-    }
-};
-const getSave = async () => {
-    console.log("data which get")
-    try {
-      const data =   await SecureStore.getItemAsync('activeRide');
-      const pure =JSON.parse(data)
-      console.log("data which pure",pure)
-
-    } catch (error) {
-        console.error('Error saving ride data:', error);
-    }
-};
-
-// Add this function for cleanup
-const clearRideFromStorage = async () => {
-    try {
-        await SecureStore.getItemAsync('activeRide');
-    } catch (error) {
-        console.error('Error clearing ride data:', error);
-    }
-};
 // Constants
 const GOOGLE_MAPS_APIKEY = "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8";
 const { width, height } = Dimensions.get('window');
@@ -77,11 +45,24 @@ Notifications.setNotificationHandler({
     }),
 });
 
+// Storage helpers
+const saveRideToStorage = async (rideData) => {
+    try {
+        await SecureStore.setItemAsync('activeRide', JSON.stringify(rideData));
+    } catch (error) {
+        console.error('Error saving ride data:', error);
+    }
+};
 
+const clearRideFromStorage = async () => {
+    try {
+        await SecureStore.deleteItemAsync('activeRide');
+    } catch (error) {
+        console.error('Error clearing ride data:', error);
+    }
+};
 
 export default function RideDetailsScreen() {
-    // console.log('🟢 RideDetailsScreen: Component mounted');
-
     // ===== REFS =====
     const mapRef = useRef(null);
     const carIconAnimation = useRef(new Animated.Value(0)).current;
@@ -89,20 +70,21 @@ export default function RideDetailsScreen() {
     const appStateRef = useRef(AppState.currentState);
     const socketConnectionAttempts = useRef(0);
     const locationWatchId = useRef(null);
+    const isInitialMount = useRef(true);
+    const socketListenersSet = useRef(false);
+    const locationTrackingStarted = useRef(false);
 
     // ===== NAVIGATION & ROUTE =====
     const route = useRoute();
     const navigation = useNavigation();
     const { params } = route.params || {};
 
-    //  console.log("params",params)
-    console.log('🟢 RideDetailsScreen: Component mounted', params);
-
     // ===== SOCKET CONTEXT =====
     const { socket } = useSocket();
 
     // ===== STATE =====
-    const [appState, setAppState] = useState({
+    // Using a single state object to reduce re-renders
+    const [state, setState] = useState({
         loading: true,
         showOtpModal: false,
         otp: "",
@@ -112,7 +94,7 @@ export default function RideDetailsScreen() {
         mapReady: false,
         distanceToPickup: null,
         timeToPickup: null,
-        showDirectionsType: 'driver_to_pickup', // driver_to_pickup, pickup_to_drop
+        showDirectionsType: 'driver_to_pickup',
         errorMsg: null,
         cancelReasons: [],
         showCancelModal: false,
@@ -122,7 +104,8 @@ export default function RideDetailsScreen() {
     });
 
     // ===== RIDE DETAILS =====
-    const rideDetails = params?.rideDetails || {};
+    const rideDetails = useMemo(() => params?.rideDetails || {}, [params?.rideDetails]);
+    
     const {
         drop_desc,
         eta,
@@ -136,49 +119,56 @@ export default function RideDetailsScreen() {
     } = rideDetails;
 
     // ===== COORDINATES =====
-    const driverCoordinates = appState.currentLocation ||
+    const driverCoordinates = useMemo(() => 
+        state.currentLocation ||
         (rider?.location?.coordinates ? {
             latitude: rider.location.coordinates[1],
             longitude: rider.location.coordinates[0],
-        } : { latitude: 28.7041, longitude: 77.1025 });
+        } : { latitude: 28.7041, longitude: 77.1025 }),
+    [state.currentLocation, rider?.location?.coordinates]);
 
-    const pickupCoordinates = rideDetails?.pickupLocation ? {
-        latitude: rideDetails.pickupLocation.coordinates[1],
-        longitude: rideDetails.pickupLocation.coordinates[0],
-    } : { latitude: 28.7041, longitude: 77.1025 };
+    const pickupCoordinates = useMemo(() => 
+        rideDetails?.pickupLocation ? {
+            latitude: rideDetails.pickupLocation.coordinates[1],
+            longitude: rideDetails.pickupLocation.coordinates[0],
+        } : { latitude: 28.7041, longitude: 77.1025 },
+    [rideDetails?.pickupLocation]);
 
-    const dropCoordinates = rideDetails?.dropLocation ? {
-        latitude: rideDetails.dropLocation.coordinates[1],
-        longitude: rideDetails.dropLocation.coordinates[0],
-    } : { latitude: 28.6139, longitude: 77.2090 };
+    const dropCoordinates = useMemo(() => 
+        rideDetails?.dropLocation ? {
+            latitude: rideDetails.dropLocation.coordinates[1],
+            longitude: rideDetails.dropLocation.coordinates[0],
+        } : { latitude: 28.6139, longitude: 77.2090 },
+    [rideDetails?.dropLocation]);
 
     // ===== HELPER FUNCTIONS =====
-
-    // State updater function
-    const updateState = (newState) => {
-        setAppState(prevState => ({ ...prevState, ...newState }));
-    };
+    // State updater function - use functional updates to avoid stale state
+    const updateState = useCallback((newState) => {
+        setState(prevState => ({ ...prevState, ...newState }));
+    }, []);
 
     // Debug logger
-    const logDebug = (message, data = null) => {
-        if (data) {
-            console.log(`✔️ ${message}`, data);
-        } else {
-            console.log(`✔️ ${message}`);
+    const logDebug = useCallback((message, data = null) => {
+        if (__DEV__) {
+            if (data) {
+                console.log(`✔️ ${message}`, data);
+            } else {
+                console.log(`✔️ ${message}`);
+            }
         }
-    };
+    }, []);
 
     // Error logger
-    const logError = (message, error = null) => {
+    const logError = useCallback((message, error = null) => {
         if (error) {
             console.error(`❌ ${message}`, error);
         } else {
             console.error(`❌ ${message}`);
         }
-    };
+    }, []);
 
     // Send notification
-    const sendNotification = async (message) => {
+    const sendNotification = useCallback(async (message) => {
         logDebug('Sending notification', message);
         try {
             await Notifications.scheduleNotificationAsync({
@@ -194,19 +184,19 @@ export default function RideDetailsScreen() {
         } catch (error) {
             logError('Failed to send notification', error);
         }
-    };
+    }, [logDebug, logError]);
 
     // Reset navigation to home
-    const resetToHome = () => {
+    const resetToHome = useCallback(() => {
         logDebug('Resetting navigation to Home');
         navigation.reset({
             index: 0,
             routes: [{ name: "Home" }]
         });
-    };
+    }, [navigation, logDebug]);
 
     // Start notification sound
-    const startSound = async () => {
+    const startSound = useCallback(async () => {
         logDebug('Starting notification sound');
         try {
             if (soundRef.current) {
@@ -223,31 +213,29 @@ export default function RideDetailsScreen() {
 
             soundRef.current = sound;
             updateState({ sound });
+            
             setTimeout(() => {
-
-                console.log("⚠️ Showing Alert.alert now!");
                 Alert.alert(
                     "Ride Cancelled",
                     "The ride has been cancelled by the customer.",
                     [{
                         text: "OK",
                         onPress: () => {
-                            console.log("✅ Alert dismissed, navigating back.");
                             stopSound();
                             navigation.goBack();
                         }
                     }]
                 );
-
             }, 100);
+            
             logDebug('Sound started successfully');
         } catch (error) {
             logError('Error playing sound', error);
         }
-    };
+    }, [logDebug, logError, navigation, updateState]);
 
     // Stop sound
-    const stopSound = async () => {
+    const stopSound = useCallback(async () => {
         if (soundRef.current) {
             logDebug('Stopping sound');
             try {
@@ -258,24 +246,25 @@ export default function RideDetailsScreen() {
                 logError('Error stopping sound', error);
             }
         }
-    };
+    }, [logDebug, logError]);
 
     // ===== SOCKET MANAGEMENT =====
-
-    const showAlert = () => {
+    // Show alert for ride completion
+    const showAlert = useCallback(() => {
         Alert.alert(
             "Ride Completed",
             "The ride has been completed successfully!",
             [
                 {
                     text: "Collect Payment",
-                    onPress: () => navigation.navigate('collect_money', { data: data?.rideDetails })
+                    onPress: () => navigation.navigate('collect_money', { data: rideDetails })
                 }
             ]
         );
-    }
+    }, [navigation, rideDetails]);
+
     // Connect socket
-    const connectSocket = () => {
+    const connectSocket = useCallback(() => {
         if (!socket) {
             logError('Socket instance not available');
             return false;
@@ -310,11 +299,11 @@ export default function RideDetailsScreen() {
             updateState({ socketConnected: true });
             return true;
         }
-    };
+    }, [socket, logDebug, logError, updateState]);
 
     // Setup socket listeners
-    const setupSocketListeners = () => {
-        if (!socket) return;
+    const setupSocketListeners = useCallback(() => {
+        if (!socket || socketListenersSet.current) return;
 
         logDebug('Setting up socket listeners');
 
@@ -325,24 +314,13 @@ export default function RideDetailsScreen() {
         // Listen for ride end event
         socket.on('ride_end', (data) => {
             logDebug('Ride completed event received', data);
-            showAlert()
+            showAlert();
             updateState({ rideCompleted: true });
-            navigation.navigate('collect_money', { data: data?.rideDetails })
+            navigation.navigate('collect_money', { data: data?.rideDetails });
             sendNotification({
                 title: "Ride Completed",
                 body: "The ride has been completed successfully!"
             });
-
-            Alert.alert(
-                "Ride Completed",
-                "The ride has been completed successfully!",
-                [
-                    {
-                        text: "Collect Payment",
-                        onPress: () => navigation.navigate('collect_money', { data: data?.rideDetails })
-                    }
-                ]
-            );
         });
 
         // Listen for ride cancellation
@@ -354,30 +332,17 @@ export default function RideDetailsScreen() {
                 title: "🚨 Ride Cancelled",
                 body: "The ride has been cancelled by the customer."
             });
-
-            Alert.alert(
-                "Ride Cancelled",
-                "The ride has been cancelled by the customer.",
-                [{
-                    text: "OK",
-                    onPress: () => {
-                        stopSound();
-                        navigation.goBack();
-                    }
-                }]
-            );
         });
 
+        socketListenersSet.current = true;
         logDebug('Socket listeners setup complete');
-    };
+    }, [socket, logDebug, showAlert, updateState, navigation, sendNotification, startSound]);
 
     // ===== LOCATION MANAGEMENT =====
-
-    useEffect(() => {
-        setupSocketListeners()
-    }, [socket])
     // Start location tracking
-    const startLocationTracking = async () => {
+    const startLocationTracking = useCallback(async () => {
+        if (locationTrackingStarted.current) return;
+        
         logDebug('Starting location tracking');
         try {
             let { status } = await Location.requestForegroundPermissionsAsync();
@@ -423,7 +388,7 @@ export default function RideDetailsScreen() {
                     updateState({ currentLocation: updatedLocation });
 
                     // If map is ready and ride started, animate to new location
-                    if (mapRef.current && appState.mapReady) {
+                    if (mapRef.current && state.mapReady) {
                         mapRef.current.animateToRegion({
                             ...updatedLocation,
                             latitudeDelta: LATITUDE_DELTA / 2,
@@ -432,7 +397,7 @@ export default function RideDetailsScreen() {
                     }
 
                     // If ride started, emit location to socket
-                    if (appState.rideStarted && socket && socket.connected) {
+                    if (state.rideStarted && socket && socket.connected) {
                         logDebug('Emitting location update', { rideId, location: updatedLocation });
                         socket.emit("driver_location_update", {
                             rideId: rideId,
@@ -443,6 +408,7 @@ export default function RideDetailsScreen() {
             );
 
             locationWatchId.current = watchId;
+            locationTrackingStarted.current = true;
             logDebug('Location tracking started successfully');
 
         } catch (error) {
@@ -452,21 +418,21 @@ export default function RideDetailsScreen() {
                 loading: false
             });
         }
-    };
+    }, [logDebug, logError, updateState, state.mapReady, state.rideStarted, socket, rideId]);
 
     // Stop location tracking
-    const stopLocationTracking = () => {
+    const stopLocationTracking = useCallback(() => {
         if (locationWatchId.current) {
             logDebug('Stopping location tracking');
             locationWatchId.current.remove();
             locationWatchId.current = null;
+            locationTrackingStarted.current = false;
         }
-    };
+    }, [logDebug]);
 
     // ===== RIDE ACTIONS =====
-
     // Fetch cancel reasons
-    const fetchCancelReasons = async () => {
+    const fetchCancelReasons = useCallback(async () => {
         logDebug('Fetching cancel reasons');
         try {
             const { data } = await axios.get(`${API_BASE_URL}/admin/cancel-reasons?active=active`);
@@ -482,17 +448,15 @@ export default function RideDetailsScreen() {
             logError('Error fetching cancel reasons', error);
             updateState({ cancelReasons: [] });
         }
-    };
+    }, [logDebug, logError, updateState]);
 
-    
     // Handle OTP submission
-    const handleOtpSubmit = () => {
+    const handleOtpSubmit = useCallback(() => {
         const expectedOtp = RideOtp !== undefined && RideOtp !== null ? RideOtp : params?.RideOtp;
-        console.log("RideOtp:", RideOtp, "params.RideOtp:", params?.RideOtp);
 
-        logDebug('Submitting OTP', { entered: appState.otp, expected: expectedOtp });
+        logDebug('Submitting OTP', { entered: state.otp, expected: expectedOtp });
 
-        if (appState.otp === expectedOtp) {
+        if (state.otp === expectedOtp) {
             logDebug('OTP verified successfully');
             updateState({
                 showOtpModal: false,
@@ -528,15 +492,18 @@ export default function RideDetailsScreen() {
             logError('Incorrect OTP entered');
             Alert.alert("Incorrect OTP", "Please try again with the correct OTP.");
         }
-    };
-
+    }, [
+        RideOtp, params?.RideOtp, state.otp, logDebug, logError, 
+        updateState, socket, rideDetails, pickupCoordinates, 
+        dropCoordinates, sendNotification
+    ]);
 
     // Handle cancel ride
-    const handleCancelRide = async () => {
-        logDebug('Cancelling ride', { reason: appState.selectedReason });
+    const handleCancelRide = useCallback(async () => {
+        logDebug('Cancelling ride', { reason: state.selectedReason });
 
         try {
-            if (!appState.selectedReason) {
+            if (!state.selectedReason) {
                 Alert.alert("Cancel Ride", "Please select a reason to cancel.");
                 return;
             }
@@ -544,7 +511,7 @@ export default function RideDetailsScreen() {
             const data = {
                 cancelBy: "driver",
                 rideData: rideDetails,
-                reason: appState.selectedReason
+                reason: state.selectedReason
             };
 
             if (!socket || !socket.connected) {
@@ -578,10 +545,13 @@ export default function RideDetailsScreen() {
             logError('Error in handleCancelRide', error);
             Alert.alert("Error", "Something went wrong while canceling the ride.");
         }
-    };
+    }, [
+        state.selectedReason, logDebug, logError, rideDetails, 
+        socket, connectSocket, sendNotification, resetToHome, updateState
+    ]);
 
     // Complete ride
-    const handleCompleteRide = async() => {
+    const handleCompleteRide = useCallback(async () => {
         if (!rideDetails) {
             logError('Ride details not found for completion');
             Alert.alert("Error", "Ride details not found");
@@ -595,12 +565,15 @@ export default function RideDetailsScreen() {
                 { text: "Cancel", style: "cancel" },
                 {
                     text: "Complete",
-                    onPress: () => {
+                    onPress: async () => {
                         if (socket && socket.connected) {
                             logDebug('Emitting endRide event', { rideDetails });
-                            logDebug('Emitting endRide event 2', { ride: rideDetails?.ride });
-                            socket.emit('endRide', { rideDetails: params?.rideDetails, ride: params?.rideDetails?.ride });
+                            socket.emit('endRide', { 
+                                rideDetails: params?.rideDetails, 
+                                ride: params?.rideDetails?.ride 
+                            });
                             updateState({ rideCompleted: true });
+                            await clearRideFromStorage();
                         } else {
                             logError('Socket not connected for ride completion');
                             Alert.alert("Connection Error", "Please check your internet connection and try again.");
@@ -609,12 +582,14 @@ export default function RideDetailsScreen() {
                 }
             ]
         );
-        await clearRideFromStorage();
-    };
+    }, [
+        rideDetails, logError, logDebug, socket, 
+        params?.rideDetails, updateState
+    ]);
 
     // Open Google Maps for navigation
-    const openGoogleMapsDirections = () => {
-        const destination = appState.rideStarted ?
+    const openGoogleMapsDirections = useCallback(() => {
+        const destination = state.rideStarted ?
             `${dropCoordinates.latitude},${dropCoordinates.longitude}` :
             `${pickupCoordinates.latitude},${pickupCoordinates.longitude}`;
 
@@ -641,19 +616,22 @@ export default function RideDetailsScreen() {
                 }
             }
         });
-    };
+    }, [
+        state.rideStarted, dropCoordinates, pickupCoordinates, 
+        logDebug, logError
+    ]);
 
     // Handle map ready
-    const handleMapReady = () => {
+    const handleMapReady = useCallback(() => {
         logDebug('Map is ready');
         updateState({ mapReady: true });
 
         // Fit map to show current location and pickup/drop
-        if (mapRef.current && appState.currentLocation) {
+        if (mapRef.current && state.currentLocation) {
             setTimeout(() => {
                 const coordinates = [
-                    appState.currentLocation,
-                    appState.rideStarted ? dropCoordinates : pickupCoordinates
+                    state.currentLocation,
+                    state.rideStarted ? dropCoordinates : pickupCoordinates
                 ];
 
                 logDebug('Fitting map to coordinates', coordinates);
@@ -667,21 +645,64 @@ export default function RideDetailsScreen() {
                 );
             }, 1000);
         }
-    };
+    }, [
+        logDebug, updateState, state.currentLocation, 
+        state.rideStarted, dropCoordinates, pickupCoordinates
+    ]);
+
+    // Handle app state change
+    const handleAppStateChange = useCallback((nextAppState) => {
+        // Avoid excessive logging by only logging significant changes
+        const isSignificantChange = 
+            (appStateRef.current === 'active' && nextAppState !== 'active') ||
+            (appStateRef.current !== 'active' && nextAppState === 'active');
+            
+        if (isSignificantChange) {
+            logDebug(`AppState changed: ${appStateRef.current} → ${nextAppState}`);
+        }
+
+        if (appStateRef.current.match(/inactive|background/) && nextAppState === "active") {
+            logDebug('App is now active');
+
+            // Reconnect socket if disconnected
+            if (socket && !socket.connected) {
+                logDebug('Reconnecting socket after app became active');
+                connectSocket();
+            } else if (socket && socket.connected) {
+                logDebug('Socket is already connected');
+                if (!socketListenersSet.current) {
+                    setupSocketListeners();
+                }
+            }
+
+            // Restart location tracking if needed
+            if (!locationTrackingStarted.current) {
+                logDebug('Restarting location tracking after app became active');
+                startLocationTracking();
+            }
+        }
+
+        appStateRef.current = nextAppState;
+    }, [
+        logDebug, socket, connectSocket, 
+        setupSocketListeners, startLocationTracking
+    ]);
 
     // ===== EFFECTS =====
-
-    // Initialize component
+    // Initialize component - runs only once
     useEffect(() => {
+        if (!isInitialMount.current) return;
+        isInitialMount.current = false;
+        
         logDebug('Initializing component');
 
         // Connect socket
         connectSocket();
+        
+        // Save ride to storage if available
         if (params?.rideDetails) {
-            console.log("I am Syore")
             saveRideToStorage(rideDetails);
         }
-    
 
         // Start location tracking
         startLocationTracking();
@@ -725,22 +746,28 @@ export default function RideDetailsScreen() {
             if (socket) {
                 socket.off('ride_end');
                 socket.off('ride_cancelled');
+                socketListenersSet.current = false;
             }
         };
     }, []);
 
-    // Calculate distance and time to pickup
+    // Setup socket listeners when socket changes
     useEffect(() => {
-        if (appState.currentLocation && pickupCoordinates && !appState.rideStarted) {
-            // logDebug('Calculating distance to pickup');
+        if (socket && socket.connected && !socketListenersSet.current) {
+            setupSocketListeners();
+        }
+    }, [socket, setupSocketListeners]);
 
+    // Calculate distance and time to pickup - runs only once after location is obtained
+    useEffect(() => {
+        if (state.currentLocation && pickupCoordinates && !state.rideStarted && !state.distanceToPickup) {
             // Calculate straight-line distance (in km)
             const R = 6371; // Earth's radius in km
-            const dLat = (pickupCoordinates.latitude - appState.currentLocation.latitude) * Math.PI / 180;
-            const dLon = (pickupCoordinates.longitude - appState.currentLocation.longitude) * Math.PI / 180;
+            const dLat = (pickupCoordinates.latitude - state.currentLocation.latitude) * Math.PI / 180;
+            const dLon = (pickupCoordinates.longitude - state.currentLocation.longitude) * Math.PI / 180;
             const a =
                 Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(appState.currentLocation.latitude * Math.PI / 180) * Math.cos(pickupCoordinates.latitude * Math.PI / 180) *
+                Math.cos(state.currentLocation.latitude * Math.PI / 180) * Math.cos(pickupCoordinates.latitude * Math.PI / 180) *
                 Math.sin(dLon / 2) * Math.sin(dLon / 2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             const distance = R * c;
@@ -761,83 +788,42 @@ export default function RideDetailsScreen() {
                 timeToPickup: timeFormatted
             });
         }
-    }, []);
-
-    const handleAppStateChange = (nextAppState) => {
-        logDebug(`AppState changed: ${appStateRef.current} → ${nextAppState}`);
-
-        if (appStateRef.current.match(/inactive|background/) && nextAppState === "active") {
-            logDebug('App is now active');
-
-            // Reconnect socket if disconnected
-            if (socket && !socket.connected) {
-                logDebug('Reconnecting socket after app became active');
-                connectSocket();
-            } else {
-                logDebug('Socket is already connected');
-                setupSocketListeners();
-            }
-
-            // Restart location tracking if needed
-            if (!locationWatchId.current) {
-                logDebug('Restarting location tracking after app became active');
-                startLocationTracking();
-            }
-        }
-
-        appStateRef.current = nextAppState;
-    };
+    }, [state.currentLocation, pickupCoordinates, state.rideStarted, state.distanceToPickup, logDebug, updateState]);
 
     // Function to handle ride cancellation with debugging
-    const handleCancelRideByUser = async() => {
-        console.log("🚨 handleCancelRideByUser function executed.");
+    const handleCancelRideByUser = useCallback(async () => {
+        if (!socket) return;
+        
+        // We only need to set up this listener once
+        socket.off('ride_cancelled'); // Remove any existing listener
+        
+        socket.on('ride_cancelled', (data) => {
+            logDebug('Ride cancelled event received', data);
+            startSound();
 
-        if (socket) {
-            socket.on('ride_cancelled', (data) => {
-                logDebug('✅ Ride cancelled event received', data);
-                startSound();
-
-                // Debugging before notification
-                logDebug("📢 Sending notification for ride cancellation.");
-                sendNotification({
-                    title: "🚨 Ride Cancelled",
-                    body: "The ride has been cancelled by the customer."
-                });
-
-                // Debugging before showing alert
-                logDebug("🛑 Attempting to show Alert.alert...");
-
-
-                // Delay added to ensure proper UI execution
+            sendNotification({
+                title: "🚨 Ride Cancelled",
+                body: "The ride has been cancelled by the customer."
             });
-            await clearRideFromStorage();
-        } else {
-            logDebug("❌ Socket not available, cannot register 'ride_cancelled' event.");
-        }
-    };
+        });
+        
+        await clearRideFromStorage();
+    }, [socket, logDebug, startSound, sendNotification]);
 
-    // getSave()
-    // Listen to app state changes
+    // Set up ride cancellation listener
     useEffect(() => {
-        logDebug("🎧 useEffect running - Adding AppState listener and socket listener.");
-
-        const subscription = AppState.addEventListener("change", handleAppStateChange);
-        handleCancelRideByUser(); // Register ride cancel listener
-
+        handleCancelRideByUser();
+        
         return () => {
-            logDebug("🧹 Cleanup: Removing AppState listener and socket event.");
-            subscription.remove();
             if (socket) {
-                socket.off('ride_cancelled'); // Remove event listener on cleanup
+                socket.off('ride_cancelled');
             }
         };
-    }, []);
+    }, [handleCancelRideByUser, socket]);
+
     // ===== RENDER COMPONENTS =====
-
-    // OTP Modal
-
     // Loading screen
-    if (appState.loading) {
+    if (state.loading) {
         return (
             <View style={{
                 flex: 1,
@@ -852,7 +838,7 @@ export default function RideDetailsScreen() {
     }
 
     // Error screen
-    if (appState.errorMsg) {
+    if (state.errorMsg) {
         return (
             <View style={{
                 flex: 1,
@@ -862,7 +848,7 @@ export default function RideDetailsScreen() {
                 backgroundColor: '#fff'
             }}>
                 <MaterialIcons name="error" size={60} color="#FF3B30" />
-                <Text style={{ fontSize: 18, fontWeight: 'bold', marginTop: 20, textAlign: 'center' }}>{appState.errorMsg}</Text>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', marginTop: 20, textAlign: 'center' }}>{state.errorMsg}</Text>
                 <Button
                     mode="contained"
                     onPress={() => navigation.goBack()}
@@ -877,281 +863,171 @@ export default function RideDetailsScreen() {
     // Main screen
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-            {/* Map View */}
-            <View style={{ flex: 1 }}>
-                <MapView
-                    ref={mapRef}
-                    style={{ flex: 1 }}
-                    provider={PROVIDER_GOOGLE}
-                    initialRegion={{
-                        ...driverCoordinates,
-                        latitudeDelta: LATITUDE_DELTA,
-                        longitudeDelta: LONGITUDE_DELTA,
-                    }}
-                    onMapReady={handleMapReady}
-                >
-                    {/* Driver Marker */}
-                    {appState.currentLocation && (
-                        <Marker
-                            coordinate={appState.currentLocation}
-                            title="Your Location"
-                        >
-                            <Animated.View style={{
-                                transform: [{
-                                    scale: carIconAnimation.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [1, 1.1]
-                                    })
-                                }]
-                            }}>
-                                <FontAwesome5 name="car" size={24} color="#FF3B30" />
-                            </Animated.View>
-                        </Marker>
-                    )}
-
-                    {/* Pickup Marker */}
-                    {!appState.rideStarted && (
-                        <Marker
-                            coordinate={pickupCoordinates}
-                            title="Pickup Location"
-                            description={pickup_desc}
-                        >
-                            <View style={{
-                                backgroundColor: '#4CAF50',
-                                padding: 5,
-                                borderRadius: 10
-                            }}>
-                                <MaterialIcons name="location-on" size={24} color="white" />
-                            </View>
-                        </Marker>
-                    )}
-
-                    {/* Drop Marker */}
-                    <Marker
-                        coordinate={dropCoordinates}
-                        title="Drop Location"
-                        description={drop_desc}
-                    >
-                        <View style={{
-                            backgroundColor: '#F44336',
-                            padding: 5,
-                            borderRadius: 10
-                        }}>
-                            <MaterialIcons name="location-on" size={24} color="white" />
-                        </View>
-                    </Marker>
-
-                    {/* Directions */}
-                    {appState.mapReady && appState.currentLocation && (
-                        <MapViewDirections
-                            origin={appState.currentLocation}
-                            destination={appState.rideStarted ? dropCoordinates : pickupCoordinates}
-                            apikey={GOOGLE_MAPS_APIKEY}
-                            strokeWidth={4}
-                            strokeColor={appState.rideStarted ? "#FF3B30" : "#4CAF50"}
-                            onReady={(result) => {
-                                logDebug('Directions ready', {
-                                    distance: result.distance,
-                                    duration: result.duration
-                                });
-
-                                if (!appState.rideStarted) {
-                                    updateState({
-                                        distanceToPickup: result.distance.toFixed(1),
-                                        timeToPickup: Math.round(result.duration)
-                                    });
-                                }
-                            }}
-                        />
-                    )}
-                </MapView>
-
-                {/* Socket Status Indicator */}
-                <View style={{
-                    position: 'absolute',
-                    top: 10,
-                    right: 10,
-                    backgroundColor: appState.socketConnected ? '#4CAF50' : '#F44336',
-                    paddingHorizontal: 10,
-                    paddingVertical: 5,
-                    borderRadius: 15,
-                    flexDirection: 'row',
-                    alignItems: 'center'
+        {/* Map View */}
+        <View style={{ flex: 1 }}>
+          <MapView
+            ref={mapRef}
+            style={{ flex: 1 }}
+            provider={MapView.PROVIDER_GOOGLE}
+            initialRegion={{
+              ...driverCoordinates,
+              latitudeDelta: LATITUDE_DELTA,
+              longitudeDelta: LONGITUDE_DELTA,
+            }}
+            onMapReady={handleMapReady}
+          >
+            {state.currentLocation && (
+              <Marker coordinate={state.currentLocation} title="Your Location">
+                <Animated.View style={{
+                  transform: [{
+                    scale: carIconAnimation.interpolate({ inputRange: [0, 1], outputRange: [1, 1.1] })
+                  }]
                 }}>
-                    <MaterialIcons
-                        name={appState.socketConnected ? "wifi" : "wifi-off"}
-                        size={16}
-                        color="white"
-                    />
-                    <Text style={{ color: 'white', marginLeft: 5, fontSize: 12 }}>
-                        {appState.socketConnected ? "Connected" : "Disconnected"}
-                    </Text>
+                  <FontAwesome5 name="car" size={24} color="#FF3B30" />
+                </Animated.View>
+              </Marker>
+            )}
+  
+            {!state.rideStarted && (
+              <Marker coordinate={pickupCoordinates} title="Pickup Location" description={pickup_desc}>
+                <View style={{ backgroundColor: '#4CAF50', padding: 5, borderRadius: 10 }}>
+                  <MaterialIcons name="location-on" size={24} color="white" />
                 </View>
-
-                {/* Navigation Button */}
-                <TouchableOpacity
-                    style={{
-                        position: 'absolute',
-                        top: 10,
-                        left: 10,
-                        backgroundColor: 'white',
-                        padding: 10,
-                        borderRadius: 50,
-                        elevation: 5,
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.25,
-                        shadowRadius: 3.84
-                    }}
-                    onPress={openGoogleMapsDirections}
-                >
-                    <MaterialIcons name="directions" size={24} color="#FF3B30" />
-                </TouchableOpacity>
+              </Marker>
+            )}
+  
+            <Marker coordinate={dropCoordinates} title="Drop Location" description={drop_desc}>
+              <View style={{ backgroundColor: '#F44336', padding: 5, borderRadius: 10 }}>
+                <MaterialIcons name="location-on" size={24} color="white" />
+              </View>
+            </Marker>
+  
+            {state.mapReady && state.currentLocation && (
+              <MapViewDirections
+                origin={state.currentLocation}
+                destination={state.rideStarted ? dropCoordinates : pickupCoordinates}
+                apikey={GOOGLE_MAPS_APIKEY}
+                strokeWidth={4}
+                strokeColor={state.rideStarted ? "#FF3B30" : "#4CAF50"}
+                onReady={(result) => {
+                  updateState({
+                    distanceToPickup: result.distance.toFixed(1),
+                    timeToPickup: Math.round(result.duration)
+                  });
+                }}
+              />
+            )}
+          </MapView>
+  
+          <View style={{
+            position: 'absolute', top: 10, right: 10,
+            backgroundColor: state.socketConnected ? '#4CAF50' : '#F44336',
+            paddingHorizontal: 10, paddingVertical: 5,
+            borderRadius: 15, flexDirection: 'row', alignItems: 'center'
+          }}>
+            <MaterialIcons name={state.socketConnected ? "wifi" : "wifi-off"} size={16} color="white" />
+            <Text style={{ color: 'white', marginLeft: 5, fontSize: 12 }}>
+              {state.socketConnected ? "Connected" : "Disconnected"}
+            </Text>
+          </View>
+  
+          <TouchableOpacity
+            style={{
+              position: 'absolute', top: 10, left: 10,
+              backgroundColor: 'white', padding: 10,
+              borderRadius: 50, elevation: 5,
+              shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25, shadowRadius: 3.84
+            }}
+            onPress={openGoogleMapsDirections}
+          >
+            <MaterialIcons name="directions" size={24} color="#FF3B30" />
+          </TouchableOpacity>
+        </View>
+  
+        {/* Ride Info Panel */}
+        <View style={{
+          backgroundColor: 'white',
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          padding: 20,
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.1,
+          shadowRadius: 3
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+            <View>
+              <Text style={{ fontSize: 18, fontWeight: 'bold' }}>
+                {state.rideStarted ? "Ride in Progress" : "Heading to Pickup"}
+              </Text>
+              <Text style={{ color: '#666', marginTop: 5 }}>
+                {state.rideStarted ? `${kmOfRide} km total ride` : `${state.distanceToPickup || '0'} km to pickup`}
+              </Text>
             </View>
-
-            {/* Ride Info Panel */}
             <View style={{
-                backgroundColor: 'white',
-                borderTopLeftRadius: 20,
-                borderTopRightRadius: 20,
-                padding: 20,
-                elevation: 10,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: -3 },
-                shadowOpacity: 0.1,
-                shadowRadius: 3
+              backgroundColor: state.rideStarted ? '#4CAF50' : '#FF9800',
+              paddingHorizontal: 12, paddingVertical: 6,
+              borderRadius: 15
             }}>
-                {/* Ride Status */}
-                <View style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 15
-                }}>
-                    <View>
-                        <Text style={{ fontSize: 18, fontWeight: 'bold' }}>
-                            {appState.rideStarted ? "Ride in Progress" : "Heading to Pickup"}
-                        </Text>
-                        <Text style={{ color: '#666', marginTop: 5 }}>
-                            {appState.rideStarted ? `${kmOfRide} km total ride` : `${appState.distanceToPickup || '0'} km to pickup`}
-                        </Text>
-                    </View>
-
-                    <View style={{
-                        backgroundColor: appState.rideStarted ? '#4CAF50' : '#FF9800',
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 15
-                    }}>
-                        <Text style={{ color: 'white', fontWeight: 'bold' }}>
-                            {appState.rideStarted ? "In Progress" : params?.ride_is_started ? 'Pickup' : 'Progress'}
-                        </Text>
-                    </View>
-                </View>
-
-                <Divider style={{ marginVertical: 10 }} />
-
-                {/* Location Details */}
-                <View style={{ marginBottom: 15 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                        <View style={{
-                            backgroundColor: '#4CAF50',
-                            width: 10,
-                            height: 10,
-                            borderRadius: 5,
-                            marginRight: 10
-                        }} />
-                        <Text style={{ flex: 1 }}>{pickup_desc || params?.pickup_desc}</Text>
-                    </View>
-
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={{
-                            backgroundColor: '#F44336',
-                            width: 10,
-                            height: 10,
-                            borderRadius: 5,
-                            marginRight: 10
-                        }} />
-                        <Text style={{ flex: 1 }}>{drop_desc || params?.drop_desc}</Text>
-                    </View>
-                </View>
-
-                {/* ETA Info */}
-                {!appState.rideStarted && (
-                    <View style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: '#f0f0f0',
-                        padding: 10,
-                        borderRadius: 8,
-                        marginBottom: 15
-                    }}>
-                        <MaterialIcons name="access-time" size={24} color="#FF3B30" style={{ marginRight: 10 }} />
-                        <Text>
-                            Estimated time to pickup: <Text style={{ fontWeight: 'bold' }}>
-                                {appState.timeToPickup || '0'} min
-                            </Text>
-                        </Text>
-                    </View>
-                )}
-
-                {/* Action Buttons */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    {!appState.rideStarted ? (
-                        <>
-                            <TouchableOpacity
-                                style={{
-                                    flex: 1,
-                                    backgroundColor: '#f0f0f0',
-                                    padding: 15,
-                                    borderRadius: 8,
-                                    alignItems: 'center',
-                                    marginRight: 10
-                                }}
-                                onPress={() => updateState({ showCancelModal: true })}
-                            >
-                                <Text style={{ color: '#FF3B30', fontWeight: 'bold' }}>Cancel Ride</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={{
-                                    flex: 1,
-                                    backgroundColor: '#FF3B30',
-                                    padding: 15,
-                                    borderRadius: 8,
-                                    alignItems: 'center'
-                                }}
-                                onPress={() => updateState({ showOtpModal: true })}
-                            >
-                                <Text style={{ color: 'white', fontWeight: 'bold' }}>Enter OTP</Text>
-                            </TouchableOpacity>
-                        </>
-                    ) : (
-                        <TouchableOpacity
-                            style={{
-                                flex: 1,
-                                backgroundColor: '#4CAF50',
-                                padding: 15,
-                                borderRadius: 8,
-                                alignItems: 'center'
-                            }}
-                            onPress={handleCompleteRide}
-                        >
-                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Complete Ride</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
+              <Text style={{ color: 'white', fontWeight: 'bold' }}>
+                {state.rideStarted ? "In Progress" : params?.ride_is_started ? 'Pickup' : 'Progress'}
+              </Text>
             </View>
-
-            {/* Modals */}
-            <OtpModal appState={appState} updateState={updateState} handleOtpSubmit={handleOtpSubmit} />
-            <CancelReasonsModal
-                appState={appState}
-                updateState={updateState}
-                handleCancelRide={handleCancelRide}
-            />
-
-        </SafeAreaView>
+          </View>
+  
+          <Divider style={{ marginVertical: 10 }} />
+  
+          <View style={{ marginBottom: 15 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+              <View style={{ backgroundColor: '#4CAF50', width: 10, height: 10, borderRadius: 5, marginRight: 10 }} />
+              <Text style={{ flex: 1 }}>{pickup_desc || params?.pickup_desc}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ backgroundColor: '#F44336', width: 10, height: 10, borderRadius: 5, marginRight: 10 }} />
+              <Text style={{ flex: 1 }}>{drop_desc || params?.drop_desc}</Text>
+            </View>
+          </View>
+  
+          {!state.rideStarted && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', padding: 10, borderRadius: 8, marginBottom: 15 }}>
+              <MaterialIcons name="access-time" size={24} color="#FF3B30" style={{ marginRight: 10 }} />
+              <Text>
+                Estimated time to pickup: <Text style={{ fontWeight: 'bold' }}>{state.timeToPickup || '0'} min</Text>
+              </Text>
+            </View>
+          )}
+  
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            {!state.rideStarted ? (
+              <>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: '#f0f0f0', padding: 15, borderRadius: 8, alignItems: 'center', marginRight: 10 }}
+                  onPress={() => updateState({ showCancelModal: true })}
+                >
+                  <Text style={{ color: '#FF3B30', fontWeight: 'bold' }}>Cancel Ride</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: '#FF3B30', padding: 15, borderRadius: 8, alignItems: 'center' }}
+                  onPress={() => updateState({ showOtpModal: true })}
+                >
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>Enter OTP</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: '#4CAF50', padding: 15, borderRadius: 8, alignItems: 'center' }}
+                onPress={handleCompleteRide}
+              >
+                <Text style={{ color: 'white', fontWeight: 'bold' }}>Complete Ride</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+  
+        <OtpModal appState={state} updateState={updateState} handleOtpSubmit={handleOtpSubmit} />
+        <CancelReasonsModal appState={state} updateState={updateState} handleCancelRide={handleCancelRide} />
+      </SafeAreaView>
     );
 }
-
