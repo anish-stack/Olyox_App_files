@@ -251,16 +251,17 @@ export default function RideDetailsScreen() {
     // ===== SOCKET MANAGEMENT =====
     // Show alert for ride completion
     const showAlert = useCallback(() => {
-        Alert.alert(
-            "Ride Completed",
-            "The ride has been completed successfully!",
-            [
-                {
-                    text: "Collect Payment",
-                    onPress: () => navigation.navigate('collect_money', { data: rideDetails })
-                }
-            ]
-        );
+        console.log("rideDetails")
+        // Alert.alert(
+        //     "Ride Completed",
+        //     "The ride has been completed successfully!",
+        //     [
+        //         {
+        //             text: "Collect Payment",
+        //             onPress: () => navigation.navigate('collect_money', { data: rideDetails })
+        //         }
+        //     ]
+        // );
     }, [navigation, rideDetails]);
 
     // Connect socket
@@ -568,10 +569,10 @@ export default function RideDetailsScreen() {
                     onPress: async () => {
                         if (socket && socket.connected) {
                             logDebug('Emitting endRide event', { rideDetails });
-                            socket.emit('endRide', { 
-                                rideDetails: params?.rideDetails, 
-                                ride: params?.rideDetails?.ride 
-                            });
+                            // socket.emit('endRide', { 
+                            //     rideDetails: params?.rideDetails, 
+                            //     ride: params?.rideDetails?.ride 
+                            // });
                             updateState({ rideCompleted: true });
                             await clearRideFromStorage();
                         } else {

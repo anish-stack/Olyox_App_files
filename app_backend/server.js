@@ -493,26 +493,26 @@ io.on('connection', (socket) => {
         try {
             console.log(`[${new Date().toISOString()}] Payment confirmation received:`, data);
 
-            if (!data ) {
+            if (!data || !data.ride || !data.ride.user) {
                 console.error(`[${new Date().toISOString()}] Invalid payment data`);
                 return;
             }
 
-            const collectResult = await collectCash(data._id);
-console.log("collectResult.user",collectResult.user)
-            if (collectResult.success) {
-                console.log(`[${new Date().toISOString()}] Payment recorded successfully for user: ${collectResult.user}`);
+            const collectResult = await collectCash(data.ride);
 
-                const userSocketId = userSocketMap.get(String(collectResult.user?._id));
+            if (collectResult.success) {
+                console.log(`[${new Date().toISOString()}] Payment recorded successfully for user: ${data.ride.user}`);
+
+                const userSocketId = userSocketMap.get(String(data.ride.user));
 
                 if (userSocketId) {
                     io.to(userSocketId).emit('give-rate', {
                         message: 'Your payment has been received. Please rate your ride.',
                         rideDetails: data,
                     });
-                    console.log(`[${new Date().toISOString()}] Rating request sent to user: ${collectResult.user}`);
+                    console.log(`[${new Date().toISOString()}] Rating request sent to user: ${data.ride.user}`);
                 } else {
-                    console.log(`[${new Date().toISOString()}] No active socket found for user: ${collectResult.user}`);
+                    console.log(`[${new Date().toISOString()}] No active socket found for user: ${data.ride.user}`);
                 }
             } else {
                 console.error(`[${new Date().toISOString()}] Error recording payment:`, collectResult.error);
