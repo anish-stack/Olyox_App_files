@@ -66,7 +66,7 @@ const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-const API_BASE_URL = "http://192.168.1.12:3100/api/v1";
+const API_BASE_URL = "https://demoapi.olyox.com/api/v1";
 
 // Configure notifications
 Notifications.setNotificationHandler({

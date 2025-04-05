@@ -322,46 +322,68 @@ exports.rideStart = async (data) => {
     }
 }
 
-exports.rideEnd = async ({_id,rider_id}) => {
+exports.rideEnd = async ({ rideId, rider_id }) => {
     try {
-        const ride_id = await RideRequest.findById(_id)
-        if (!ride_id) {
+        // Input validation
+        if (!rideId) {
             return {
                 success: false,
-                message: 'Ride not found'
-            }
+                message: 'Ride ID is required',
+                error: 'Missing ride ID parameter'
+            };
         }
 
-        ride_id.ride_end_time = new Date()
-        if (ride_id) {
-            ride_id.rideStatus = "completed";
+        // Find the ride
+        const ride = await RideRequest.findById(rideId);
+        if (!ride) {
+            return {
+                success: false,
+                message: 'Ride not found',
+                error: `No ride found with ID: ${rideId}`
+            };
         }
+
+        // Update ride details
+        ride.ride_end_time = new Date();
+        ride.rideStatus = "completed";
         
-        await ride_id.save()
-
-        const findRider = await Riders.findById(rider_id)
-        if (!findRider) {
+        // Find the rider
+        const rider = await Riders.findById(rider_id);
+        if (!rider) {
             return {
                 success: false,
-                message: 'Rider not found'
-            }
+                message: 'Rider not found',
+                error: `No rider found with ID: ${rider_id}`
+            };
         }
-        findRider.TotalRides += 1
-        findRider.rides.push(ride_id._id)
-        await findRider.save()
 
+        // Update rider statistics
+        rider.TotalRides += 1;
+        rider.rides.push(ride._id);
+        
+        // Save both documents
+        await Promise.all([ride.save(), rider.save()]);
+
+        // Return success response
         return {
             success: true,
-            driverId: findRider._id,
-            message: 'Ride End successfully'
-        }
-
+            driverId: rider._id,
+            message: 'Ride ended successfully',
+            rideId: ride._id,
+            completedAt: ride.ride_end_time
+        };
     } catch (error) {
-        // Log and handle the error
-        console.error('Error in rideStart:', error.message);
-        return error.message
+        // Proper error handling
+        console.error('Error in rideEnd:', error.message, error.stack);
+        return {
+            success: false,
+            message: 'Failed to end ride',
+            error: error.message
+        };
     }
-}
+};
+
+
 exports.collectCash = async (data) => {
     try {
         const ride_id = await RideRequest.findById(data?._id)
