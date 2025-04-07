@@ -47,7 +47,8 @@
             "playInBackground": true
           }
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "extra": {
       "eas": {

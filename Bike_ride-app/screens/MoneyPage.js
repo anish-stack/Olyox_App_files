@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome } from '@expo/vector-icons';
 import { useSocket } from '../context/SocketContext';
 import { BlurView } from 'expo-blur';
+import { LocalRideStorage } from '../services/DatabaseService';
 
 const { width } = Dimensions.get('window');
 
@@ -78,7 +79,9 @@ export default function MoneyPage() {
     const handleISPay = async() => {
         setIsLoading(true);
         await SecureStore.deleteItemAsync('activeRide')
+        await LocalRideStorage.clearRide()
         setTimeout(() => {
+            
             socket.emit('isPay', data);
             setIsLoading(false);
             setIsRideRate(true);
@@ -86,9 +89,15 @@ export default function MoneyPage() {
     };
 
     useEffect(() => {
+
+        const clear = async()=>{
+            await LocalRideStorage.clearRide()
+        }
         socket.on('rating', (data) => {
+            clear()
             setRateValue(data?.rating || 0);
         });
+        
         return () => socket.off('rating');
     }, []);
 

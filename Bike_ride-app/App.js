@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { AppState, Platform, LogBox } from 'react-native';
+import { AppRegistry } from 'react-native';
+import { NavigationContainer ,useNavigationContainerRef} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -7,20 +9,28 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
-import { AppRegistry } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import * as BackgroundFetch from 'expo-background-fetch';
+import * as Sentry from '@sentry/react-native';
+
 import { name as appName } from './app.json';
 import { store } from './redux/store';
 import { SocketProvider } from './context/SocketContext';
 import { LocationProvider } from './context/LocationContext';
+import { registerBackgroundSocketTask } from './context/backgroundTasks/socketTask';
 
-import HomeScreen from './screens/HomeScreen';
-import StartScreen from './screens/start';
-import MoneyPage from './screens/MoneyPage';
+import Loading from './components/Loading';
+import ActiveRideButton from './ActiveRideButton';
+import ErrorBoundaryWrapper from './ErrorBoundary';
+
+// Screens
 import OnboardingScreen from './screens/onboarding/OnboardingScreen';
 import RegistrationForm from './screens/onboarding/registration/RegistrationForm';
 import Document from './screens/onboarding/registration/Document';
-import Loading from './components/Loading';
 import Wait_Screen from './screens/Wait_Screen/Wait_Screen';
+import HomeScreen from './screens/HomeScreen';
+import RideDetailsScreen from './screens/RideDetailsScreen';
+import MoneyPage from './screens/MoneyPage';
 import AllRides from './screens/All_Rides/AllRides';
 import Profile from './screens/Profile/Profile';
 import SupportScreen from './screens/Support/Support';
@@ -28,17 +38,18 @@ import UploadQr from './screens/Profile/UploadQr';
 import BhVerification from './screens/onboarding/BH_Re/BhVerification';
 import RegisterWithBh from './screens/onboarding/BH_Re/Bh_registeration';
 import BhOtpVerification from './screens/onboarding/BH_Re/BhOtpVerification';
-import Recharge from './screens/Recharge/Recharge';
+import RechargeViaOnline from './screens/Recharge/RehcargeViaOnline';
 import RechargeHistory from './screens/Profile/RechargeHistory';
 import WorkingData from './screens/WorkingData/WorkingData';
 import ReferalHistory from './screens/Profile/ReferalHistory';
 import Withdraw from './screens/Profile/Withdraw';
-import * as Sentry from '@sentry/react-native';
-import ErrorBoundaryWrapper from './ErrorBoundary'
+import { LocalRideStorage } from './services/DatabaseService';
 
-import ActiveRideButton from './ActiveRideButton';
-import RechargeViaOnline from './screens/Recharge/RehcargeViaOnline';
+LogBox.ignoreLogs(['Setting a timer']);
+
 const Stack = createNativeStackNavigator();
+
+// Sentry Initialization
 Sentry.init({
   dsn: 'https://cb37ba59c700e925974e3b36d10e8e5b@o4508691997261824.ingest.us.sentry.io/4508692015022080',
   environment: 'production',
@@ -46,40 +57,23 @@ Sentry.init({
   debug: false,
   tracesSampleRate: 1.0,
 });
+
+
+export async function getExpoPushToken() {
+  const tokenData = await Notifications.getExpoPushTokenAsync();
+  console.log("Expo Push Token:", tokenData.data);
+  return tokenData.data;
+}
+
 const App = () => {
-  const [userType, setUserType] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isDocumentUploaded, setIsDocumentUploaded] = useState(false);
-  const [isDocumentVerified, setIsDocumentVerified] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [initialRoute, setInitialRoute] = useState('Onboarding');
   const [activeRide, setActiveRide] = useState(null);
-
-
-
-  const checkActiveRide = async () => {
-    console.log("I am checking start")
-
-    try {
-      const rideData = await SecureStore.getItemAsync('activeRide');
-      console.log("I", rideData)
-
-      if (rideData) {
-        setActiveRide(JSON.parse(rideData));
-      }
-    } catch (error) {
-      console.error('Error checking active ride:', error);
-    }
-  };
-
-  useEffect(() => {
-    checkActiveRide();
-  }, []);
-
-
+  const navigationRef = useNavigationContainerRef();
+  const [currentRoute, setCurrentRoute] = useState(null);
+  // Handle authentication and user state
   useEffect(() => {
     const checkAuthToken = async () => {
-      setLoading(true);
       try {
         const token = await SecureStore.getItemAsync('auth_token_cab');
 
@@ -89,29 +83,20 @@ const App = () => {
             { headers: { Authorization: `Bearer ${token}` } }
           );
 
-          const partnerData = response.data.partner;
-          console.log("Token:", partnerData);
+          const partner = response.data.partner;
 
-          setIsDocumentUploaded(partnerData?.isDocumentUpload ?? false);
-          setIsDocumentVerified(partnerData?.DocumentVerify ?? false);
-          setUserType(partnerData?.type || '');
-          setIsAuthenticated(true);
-
-          // Determine initial route based on user conditions
-          if (!partnerData?.isDocumentUpload) {
+          if (!partner?.isDocumentUpload) {
             setInitialRoute('UploadDocuments');
-          } else if (!partnerData?.DocumentVerify) {
+          } else if (!partner?.DocumentVerify) {
             setInitialRoute('Wait_Screen');
           } else {
             setInitialRoute('Home');
           }
         } else {
-          setIsAuthenticated(false);
           setInitialRoute('Onboarding');
         }
       } catch (error) {
-        console.error('Error fetching user details:', error.response?.data?.message);
-        setIsAuthenticated(false);
+        console.error('Auth error:', error?.response?.data?.message || error.message);
         setInitialRoute('Onboarding');
       } finally {
         setLoading(false);
@@ -121,9 +106,84 @@ const App = () => {
     checkAuthToken();
   }, []);
 
-  if (loading) {
-    return <Loading />;
-  }
+  // Handle push notifications
+  useEffect(() => {
+    const setupNotifications = async () => {
+      const { status } = await Notifications.requestPermissionsAsync();
+      console.log("Notification", status)
+      if (status !== 'granted') {
+        alert('Notification permission not granted');
+        return;
+      }
+
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.HIGH,
+        });
+      }
+    };
+    getExpoPushToken()
+
+    setupNotifications();
+  }, []);
+  console.log("current screen",currentRoute)
+  console.log("navigationRef screen",navigationRef)
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (navigationRef.isReady()) {
+        setCurrentRoute(navigationRef.getCurrentRoute()?.name);
+      }
+    }, 100);
+    return () => clearTimeout(timeout);
+  }, [navigationRef]);
+
+  // Handle active ride from secure storage
+  useEffect(() => {
+    const checkActiveRide = async () => {
+      try {
+        const rideData = await LocalRideStorage.getRide()
+
+        if (rideData) {
+          setActiveRide(rideData);
+        }
+      } catch (err) {
+        console.error('Error loading active ride:', err);
+      }
+    };
+
+    checkActiveRide();
+  }, []);
+
+  console.log("activeRide", activeRide)
+
+
+  useEffect(() => {
+    const setupBackgroundTask = async () => {
+      const status = await BackgroundFetch.getStatusAsync();
+      if (status === BackgroundFetch.BackgroundFetchStatus.Available || status === BackgroundFetch.BackgroundFetchStatus.Restricted) {
+        await registerBackgroundSocketTask();
+      } else {
+        console.warn('⛔️ Background fetch not permitted');
+      }
+    };
+
+    setupBackgroundTask();
+  }, []);
+  const shouldHideActiveRideButton = ["start", "collect_money"].includes(currentRoute);
+  // Re-register background task on app going to background
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'background') {
+        registerBackgroundSocketTask();
+      }
+    });
+
+    return () => subscription?.remove();
+  }, []);
+
+  if (loading) return <Loading />;
 
   return (
     <Provider store={store}>
@@ -132,33 +192,32 @@ const App = () => {
           <LocationProvider>
             <GestureHandlerRootView style={{ flex: 1 }}>
               <SafeAreaProvider>
-                <NavigationContainer>
+                <NavigationContainer ref={navigationRef}>
                   <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="Onboarding" component={OnboardingScreen} />
                     <Stack.Screen name="register" component={RegistrationForm} />
                     <Stack.Screen name="UploadDocuments" component={Document} />
                     <Stack.Screen name="Wait_Screen" component={Wait_Screen} />
                     <Stack.Screen name="Home" component={HomeScreen} />
-                    <Stack.Screen name="start" component={StartScreen} />
+                    <Stack.Screen name="start" component={RideDetailsScreen} />
                     <Stack.Screen name="support" component={SupportScreen} />
                     <Stack.Screen name="collect_money" component={MoneyPage} />
-                    <Stack.Screen name="AllRides" options={{ headerShown: false, title: 'All Rides' }} component={AllRides} />
-                    <Stack.Screen name="Profile" options={{ headerShown: true, title: 'My Profile' }} component={Profile} />
-                    <Stack.Screen name="upload-qr" options={{ headerShown: false, title: 'My Profile' }} component={UploadQr} />
-                    {/* BhVerification */}
-                    <Stack.Screen name="enter_bh" options={{ headerShown: false, title: 'My Profile' }} component={BhVerification} />
-                    <Stack.Screen name="Register" options={{ headerShown: false, title: 'My Profile' }} component={RegisterWithBh} />
-                    <Stack.Screen name="OtpVerify" options={{ headerShown: false, title: 'Otp Verification' }} component={BhOtpVerification} />
-                    {/* <Stack.Screen name="Recharge" options={{ headerShown: true, title: 'Recharge' }} component={Recharge} /> */}
-                    <Stack.Screen name="Recharge" options={{ headerShown: true, title: 'Recharge' }} component={RechargeViaOnline} />
-                    <Stack.Screen name="recharge-history" options={{ headerShown: true, title: 'Recharge History' }} component={RechargeHistory} />
-                    <Stack.Screen name="WorkingData" options={{ headerShown: false, title: 'RechargeHistory' }} component={WorkingData} />
-                    <Stack.Screen name="referral-history" options={{ headerShown: false, title: 'RechargeHistory' }} component={ReferalHistory} />
-                    <Stack.Screen name="withdraw" options={{ headerShown: false, title: 'RechargeHistory' }} component={Withdraw} />
-
-
+                    <Stack.Screen name="AllRides" component={AllRides} />
+                    <Stack.Screen name="Profile" component={Profile} />
+                    <Stack.Screen name="upload-qr" component={UploadQr} />
+                    <Stack.Screen name="enter_bh" component={BhVerification} />
+                    <Stack.Screen name="Register" component={RegisterWithBh} />
+                    <Stack.Screen name="OtpVerify" component={BhOtpVerification} />
+                    <Stack.Screen name="Recharge" component={RechargeViaOnline} />
+                    <Stack.Screen name="recharge-history" component={RechargeHistory} />
+                    <Stack.Screen name="WorkingData" component={WorkingData} />
+                    <Stack.Screen name="referral-history" component={ReferalHistory} />
+                    <Stack.Screen name="withdraw" component={Withdraw} />
                   </Stack.Navigator>
-                  {activeRide && <ActiveRideButton rideDetails={activeRide} />}
+
+                  {activeRide && !shouldHideActiveRideButton && (
+                    <ActiveRideButton rideDetails={activeRide} />
+                  )}r
                 </NavigationContainer>
               </SafeAreaProvider>
             </GestureHandlerRootView>
@@ -167,13 +226,14 @@ const App = () => {
       </PaperProvider>
     </Provider>
   );
-}
+};
+
 const WrappedApp = Sentry.wrap(App);
 const RootApp = () => (
   <ErrorBoundaryWrapper>
     <WrappedApp />
   </ErrorBoundaryWrapper>
-)
+);
 
 AppRegistry.registerComponent(appName, () => RootApp);
 

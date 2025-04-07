@@ -147,7 +147,7 @@ export default function RideCome() {
         }
 
         const handleAppStateChange = (nextAppState) => {
-            console.log(`🔄 AppState changed: ${appState.current} ➡️ ${nextAppState}`);
+            console.log(`🔄 AppState changed ddd: ${appState.current} ➡️ ${nextAppState}`);
 
             if (appState.current.match(/inactive|background/) && nextAppState === "active") {
                 console.log("🟢 App is now active");

@@ -94,7 +94,7 @@ const HomeScreen = () => {
           'https://demoapi.olyox.com/api/v1/rider/user-details',
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        console.log("User Details:", response.data.partner);
+        // console.log("User Details:", response.data.partner);
         if (response.data.partner) {
           setUserData(response.data.partner);
           await initializeSocket({
