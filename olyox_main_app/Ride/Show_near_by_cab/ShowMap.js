@@ -260,22 +260,10 @@ export default function ShowMap() {
           </View>
         </View>
         <View style={styles.rideRight}>
-          <Text style={styles.fareItemValue}>10% Off</Text>
-
+        
           {fareInfo?.totalPrice ? (
             <View style={{ flexDirection: 'row', marginHorizontal: 4 }}>
-              {/* Display Final Ride Price */}
               <Text style={styles.ridePrice}>{formatPrice(fareInfo?.totalPrice)}</Text>
-
-              {/* Display Original Price with Strike-through (if applicable) */}
-              {ExtraFareInfo && (
-                <Text style={[styles.ridePrice, styles.strikeThrough]}>
-                  {formatPrice(ExtraFareInfo)}
-                </Text>
-              )}
-
-
-
             </View>
 
           ) : (
@@ -356,7 +344,7 @@ export default function ShowMap() {
             </View>
           )}
 
-          {/* Add extra space at bottom for scrolling past the book button */}
+          
           <View style={{ height: 80 }} />
         </ScrollView>
       </View>

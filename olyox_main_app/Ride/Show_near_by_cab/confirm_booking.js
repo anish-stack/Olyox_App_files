@@ -523,9 +523,9 @@ export function BookingConfirmation() {
                         timerRef.current = null;
                     }
                 }
-            }, 120000); // 2 minutes
+            }, 120000);
     
-            // Emit socket event to find drivers (with additional validation)
+         
             setTimeout(() => {
                 console.log("Preparing to emit socket event 🟢");
                 
@@ -638,7 +638,7 @@ export function BookingConfirmation() {
             >
                 <Icon name="arrow-left" size={24} color="#000" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Confirm your ride</Text>
+            <Text style={styles.headerTitle}>Confirm Your Ride</Text>  
             <View style={styles.placeholder} />
         </View>
     );
@@ -772,25 +772,21 @@ export function BookingConfirmation() {
                             Price for Distance ({fareDetails?.distanceInKm?.toFixed(2) || '0'} km)
                         </Text>
                         <Text style={styles.fareItemValue}>
-                            ₹{fareDetails?.totalPrice ? (fareDetails.totalPrice * 1.1).toFixed(0) : '0'}
+                            ₹{fareDetails?.totalPrice?.toFixed(0) || '0'}
                         </Text>
                     </View>
 
-                    {/* Olyox Discount */}
-                    <View style={styles.fareItem}>
-                        <Text style={styles.fareItemText}>Olyox Discount</Text>
-                        <Text style={styles.fareItemValue}>10% Off</Text>
-                    </View>
+                    
 
                     {/* Discounted Price */}
-                    <View style={styles.fareItem}>
+                    {/* <View style={styles.fareItem}>
                         <Text style={styles.fareItemText}>
                             Discounted Price ({fareDetails?.distanceInKm?.toFixed(2) || '0'} km)
                         </Text>
                         <Text style={styles.fareItemValue}>
                             ₹{fareDetails?.totalPrice?.toFixed(0) || '0'}
                         </Text>
-                    </View>
+                    </View> */}
 
                     {/* Total Price */}
                     <View style={[styles.fareItem, styles.fareTotal]}>

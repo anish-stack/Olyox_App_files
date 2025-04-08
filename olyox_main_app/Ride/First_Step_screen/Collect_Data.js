@@ -455,7 +455,7 @@ export default function Collect_Data() {
                                     <Input
                                         iconColour={COLORS.success}
                                         placeholder="Enter pickup location"
-                                        value={truncateText(pickup)}
+                                        value={pickup}
                                         onChangeText={(text) => {
                                             setPickup(text);
                                             setActiveInput('pickup');

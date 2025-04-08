@@ -1,4 +1,4 @@
-package com.hbsdevelopersteam.OlyoxDriverApp
+package com.happy_coding.OlyoxDriverApp
 
 import android.os.Build
 import android.os.Bundle

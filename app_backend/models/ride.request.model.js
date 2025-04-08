@@ -110,6 +110,20 @@ const RideRequestSchema = new Schema({
         type: Date,
 
     },
+    retryCount: {
+        type: Number,
+        default: 0
+    },
+    lastRetryAt: {
+        type: Date
+    },
+    maxSearchRadius:{
+        type: String
+    },
+    currentSearchRadius: {
+        type: Number,
+        default: 0
+    },
     rider: {
         type: Schema.Types.ObjectId,
         ref: 'Rider',

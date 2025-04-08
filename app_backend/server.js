@@ -382,7 +382,7 @@ io.on('connection', (socket) => {
             const riderData = await findRider(data.data._id, io);
 
             if (riderData) {
-                // Emit the ride details to all available drivers
+                
                 emitRideToDrivers(riderData);
 
                 // Confirm receipt to the requesting user

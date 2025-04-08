@@ -7,31 +7,21 @@ const Settings = require('../models/Admin/Settings');
 const RidesSuggestionModel = require('../models/Admin/RidesSuggestion.model');
 exports.createRequest = async (req, res) => {
     try {
-
-
         const user = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
-
-
         const { vehicleType, pickupLocation, dropLocation, currentLocation, pick_desc, drop_desc } = req.body;
-        console.log(req.body)
-        // Check if all required fields are provided
+
         if (!pickupLocation || !dropLocation || !pick_desc || !drop_desc) {
-            console.log("pickupLocation:", pickupLocation);
-            console.log("dropLocation:", dropLocation);
-            console.log("currentLocation:", currentLocation);
-            console.log("pick_desc:", pick_desc);
-            console.log("drop_desc:", drop_desc);
 
             return res.status(400).json({ error: 'All fields are required' });
         }
 
 
-        // Structure coordinates for pickupLocation, dropLocation, and currentLocation
+
         const pickup_coords = [pickupLocation.longitude, pickupLocation.latitude];
         const drop_coords = [dropLocation.longitude, dropLocation.latitude];
         const current_coords = [currentLocation.longitude, currentLocation.latitude];
 
-        // Create GeoJSON objects for geospatial queries
+
         const pickupLocationGeo = {
             type: 'Point',
             coordinates: pickup_coords
@@ -45,7 +35,7 @@ exports.createRequest = async (req, res) => {
             coordinates: current_coords
         };
 
-        // Create a new ride request document
+
         const newRideRequest = new RideRequest({
             vehicleType,
             user: user,
@@ -53,13 +43,12 @@ exports.createRequest = async (req, res) => {
             dropLocation: dropLocationGeo,
             currentLocation: currentLocationGeo,
             rideStatus: 'pending',
-            pickup_desc: pick_desc, // Used the correct field name
-            drop_desc: drop_desc,   // Used the correct field name
+            pickup_desc: pick_desc,
+            drop_desc: drop_desc,
         });
 
 
         await newRideRequest.save();
-        // console.log("ride save 0", newRideRequest)
 
         res.status(201).json({
             message: 'Ride request created successfully',
@@ -76,130 +65,340 @@ exports.createRequest = async (req, res) => {
 
 
 exports.findRider = async (id, io) => {
-    try {
-        const rideRequestId = id;
+    const MAX_RETRIES = 5;
+    const RETRY_DELAY_MS = 10000; // 10 seconds
+    const INITIAL_RADIUS = 2500; // 2.5 km initial radius
+    const RADIUS_INCREMENT = 500; // 500m increment per retry
+    let retryCount = 0;
 
-        const rideRequest = await RideRequest.findById(rideRequestId).populate("user");
-        if (!rideRequest) {
-            throw new Error("Ride request not found");
-        }
+    // Function to find riders with retry logic and expanding radius
+    const attemptFindRiders = async () => {
+        try {
+            const rideRequestId = id;
 
-        const { pickupLocation, pickup_desc, drop_desc, vehicleType, dropLocation, user } = rideRequest;
+            // Fetch and validate ride request
+            const rideRequest = await RideRequest.findById(rideRequestId)
+                .populate("user")
+                .lean();
 
-        if (!pickupLocation || !pickupLocation.coordinates || pickupLocation.coordinates.length !== 2) {
-            throw new Error("Invalid pickup location");
-        }
+            if (!rideRequest) {
+                throw new Error("Ride request not found");
+            }
 
-        const [longitude, latitude] = pickupLocation.coordinates;
+            const {
+                pickupLocation,
+                pickup_desc,
+                drop_desc,
+                vehicleType,
+                dropLocation,
+                user,
+                status
+            } = rideRequest;
 
-        const riders = await Riders.aggregate([
-            {
-                $geoNear: {
-                    near: { type: "Point", coordinates: [longitude, latitude] },
-                    distanceField: "distance",
-                    maxDistance: 2500,
-                    spherical: true,
+            // If ride request was canceled or completed during retry
+            if (status === 'cancelled' || status === 'completed') {
+                console.log(`Ride request ${rideRequestId} is ${status}. Stopping search.`);
+                return { message: `Ride request is ${status}` };
+            }
+
+            // Validate pickup location
+            if (!pickupLocation?.coordinates ||
+                !Array.isArray(pickupLocation.coordinates) ||
+                pickupLocation.coordinates.length !== 2) {
+                throw new Error("Invalid pickup location coordinates");
+            }
+
+            // Validate drop location
+            if (!dropLocation?.coordinates ||
+                !Array.isArray(dropLocation.coordinates) ||
+                dropLocation.coordinates.length !== 2) {
+                throw new Error("Invalid drop location coordinates");
+            }
+
+            const [longitude, latitude] = pickupLocation.coordinates;
+
+            // Calculate current search radius based on retry count
+            const currentRadius = INITIAL_RADIUS + (retryCount * RADIUS_INCREMENT);
+            console.log(`Search attempt ${retryCount + 1}/${MAX_RETRIES} with radius: ${currentRadius / 1000} km`);
+
+            // Find nearby available riders with matching vehicle type
+            const riders = await Riders.aggregate([
+                {
+                    $geoNear: {
+                        near: { type: "Point", coordinates: [longitude, latitude] },
+                        distanceField: "distance",
+                        maxDistance: currentRadius,
+                        spherical: true,
+                        query: {
+                            isAvailable: true,
+                            "RechargeData.expireData": { $gt: new Date() },
+                            "rideVehicleInfo.vehicleType": vehicleType,
+                            isOnline: true,
+                        }
+                    },
                 },
-            },
-            {
-                $match: {
-                    isAvailable: true,
-                    "rideVehicleInfo.vehicleType": vehicleType,
+                {
+                    $match: {
+                        rating: { $gte: 1.0 }
+                    }
                 },
-            },
-            {
-                $project: {
-                    name: 1,
-                    "rideVehicleInfo.vehicleName": 1,
-                    "rideVehicleInfo.VehicleNumber": 1,
-                    "rideVehicleInfo.PricePerKm": 1,
-                    "rideVehicleInfo.vehicleType": 1,
-                    distance: 1,
+                {
+                    $project: {
+                        name: 1,
+                        phoneNumber: 1,
+                        profileImage: 1,
+                        rating: 1,
+                        "rideVehicleInfo.vehicleName": 1,
+                        "rideVehicleInfo.vehicleImage": 1,
+                        "rideVehicleInfo.VehicleNumber": 1,
+                        "rideVehicleInfo.PricePerKm": 1,
+                        "rideVehicleInfo.vehicleType": 1,
+                        distance: 1,
+                    },
                 },
-            },
-        ]);
+                {
+                    $sort: {
+                        distance: 1, // Sort by distance ascending
+                        rating: -1   // Then by rating descending
+                    }
+                },
+                {
+                    $limit: 5 // Limit to top 5 closest and best-rated drivers
+                }
+            ]);
 
-        const origin = `${pickupLocation.coordinates[1]},${pickupLocation.coordinates[0]}`;
-        const destination = `${dropLocation.coordinates[1]},${dropLocation.coordinates[0]}`;
-        const response = await axios.get("https://maps.googleapis.com/maps/api/directions/json", {
-            params: {
-                origin: origin,
-                destination: destination,
-                key: "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8",
-                traffic_model: "best_guess",
-                departure_time: "now",
-            },
-        });
+            // Get route information from Google Maps API
+            const origin = `${latitude},${longitude}`;
+            const destLat = dropLocation.coordinates[1];
+            const destLng = dropLocation.coordinates[0];
+            const destination = `${destLat},${destLng}`;
 
-        const route = response.data.routes[0];
-        const distance = route.legs[0].distance.value / 1000;
-        const duration = route.legs[0].duration.value / 60;
-        const trafficDuration = route.legs[0].duration_in_traffic.value / 60;
-        const VehiclePrice = await RidesSuggestionModel.findOne({
-            name: vehicleType,
-        })
-        const ratePerKm = VehiclePrice.priceRange
-        const waitingTimeInMinutes = 0
-        // origin, destination, waitingTimeInMinutes = 0, ratePerKm 
-        const dataSend = {
-            pickupLocation,
-            dropLocation,
-            waitingTimeInMinutes,
-            ratePerKm
+            try {
+                const response = await axios.get("https://maps.googleapis.com/maps/api/directions/json", {
+                    params: {
+                        origin,
+                        destination,
+                        key: process.env.GOOGLE_MAPS_API_KEY || "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8",
+                        traffic_model: "best_guess",
+                        departure_time: "now",
+                        alternatives: true // Get alternative routes
+                    },
+                    timeout: 5000 // 5 second timeout
+                });
+
+                if (!response?.data?.routes || response.data.routes.length === 0) {
+                    throw new Error("No route found between pickup and drop locations");
+                }
+
+                // Get the fastest route considering traffic
+                const routes = response.data.routes;
+                const sortedRoutes = routes.sort((a, b) =>
+                    (a.legs[0].duration_in_traffic?.value || a.legs[0].duration.value) -
+                    (b.legs[0].duration_in_traffic?.value || b.legs[0].duration.value)
+                );
+
+                const fastestRoute = sortedRoutes[0];
+                const distance = fastestRoute.legs[0].distance.value / 1000; // km
+                const duration = fastestRoute.legs[0].duration.value / 60; // minutes
+                const trafficDuration =
+                    (fastestRoute.legs[0].duration_in_traffic?.value || fastestRoute.legs[0].duration.value) / 60; // minutes
+
+                // Get vehicle pricing
+                const vehiclePricing = await RidesSuggestionModel.findOne({
+                    name: vehicleType
+                }).lean();
+
+                if (!vehiclePricing) {
+                    throw new Error(`Pricing not found for vehicle type: ${vehicleType}`);
+                }
+
+                const ratePerKm = vehiclePricing.priceRange;
+                const waitingTimeInMinutes = 0;
+
+                // Calculate ride price
+                const priceCalculationData = {
+                    pickupLocation,
+                    dropLocation,
+                    waitingTimeInMinutes,
+                    ratePerKm,
+                    polyline: fastestRoute.overview_polyline?.points, // Add polyline for accurate toll calculation
+                    distance
+                };
+
+                console.log("Price calculation input:",
+                    JSON.stringify({
+                        ...priceCalculationData,
+                        pickupLocation: "...",
+                        dropLocation: "..."
+                    })
+                );
+
+                const priceData = await calculateRidePriceForConfirmRide(priceCalculationData);
+
+                if (!priceData) {
+                    throw new Error("Failed to calculate ride price");
+                }
+
+                console.log("Price calculation result:", JSON.stringify(priceData));
+
+                const eta = Math.round(trafficDuration);
+
+                // Check if riders are available
+                if (riders.length === 0) {
+                    if (retryCount < MAX_RETRIES) {
+                        console.log(`No riders available within ${currentRadius / 1000} km. Retry ${retryCount + 1}/${MAX_RETRIES} in ${RETRY_DELAY_MS / 1000}s with expanded radius`);
+                        retryCount++;
+
+                        // Update ride request with retry count and current radius
+                        await RideRequest.findByIdAndUpdate(rideRequestId, {
+                            $set: {
+                                retryCount,
+                                lastRetryAt: new Date(),
+                                currentSearchRadius: currentRadius + RADIUS_INCREMENT // Store next radius
+                            }
+                        });
+
+                        // Notify user about retry with expanded radius
+                        io.to(user._id.toString()).emit("finding_driver", {
+                            message: `Expanding search area... Attempt ${retryCount}/${MAX_RETRIES}`,
+                            retryCount,
+                            maxRetries: MAX_RETRIES,
+                            currentRadius: (currentRadius / 1000).toFixed(1),
+                            nextRadius: ((currentRadius + RADIUS_INCREMENT) / 1000).toFixed(1)
+                        });
+
+                        // Schedule retry after delay
+                        setTimeout(attemptFindRiders, RETRY_DELAY_MS);
+                        return null;
+                    } else {
+                        console.log(`No riders found after ${MAX_RETRIES} attempts with max radius of ${(INITIAL_RADIUS + (MAX_RETRIES - 1) * RADIUS_INCREMENT) / 1000} km`);
+
+                        // Update ride request status
+                        await RideRequest.findByIdAndUpdate(rideRequestId, {
+                            $set: {
+                                status: 'no_driver_found',
+                                maxSearchRadius: INITIAL_RADIUS + (MAX_RETRIES - 1) * RADIUS_INCREMENT
+                            }
+                        });
+
+                        // Notify user that no drivers were found
+                        io.to(user._id.toString()).emit("no_drivers_available", {
+                            message: `No drivers available within ${(INITIAL_RADIUS + (MAX_RETRIES - 1) * RADIUS_INCREMENT) / 1000} km of your location. Please try again later.`,
+                            rideRequestId,
+                            maxRadius: (INITIAL_RADIUS + (MAX_RETRIES - 1) * RADIUS_INCREMENT) / 1000
+                        });
+
+                        return {
+                            error: "No drivers available after maximum retries",
+                            rideRequestId,
+                            maxSearchRadius: (INITIAL_RADIUS + (MAX_RETRIES - 1) * RADIUS_INCREMENT) / 1000
+                        };
+                    }
+                }
+
+                // Format the riders information for the response
+                const ridersInfo = riders.map((rider) => ({
+                    id: rider._id,
+                    name: rider.name,
+                    phoneNumber: rider.phoneNumber,
+                    profileImage: rider.profileImage || null,
+                    rating: rider.rating || 4.5,
+                    rideRequestId,
+                    vehicleName: rider.rideVehicleInfo.vehicleName,
+                    vehicleImage: rider.rideVehicleInfo.vehicleImage || null,
+                    vehicleNumber: rider.rideVehicleInfo.VehicleNumber,
+                    pricePerKm: rider.rideVehicleInfo.PricePerKm,
+                    vehicleType: rider.rideVehicleInfo.vehicleType,
+                    distance: (rider.distance / 1000).toFixed(2), // Convert to km and format
+                    price: priceData?.totalPrice.toFixed(2),
+                    eta,
+                    rain: priceData?.rain || false,
+                    tollPrice: priceData?.tollPrice || 0,
+                    tolls: priceData.tolls !== undefined && priceData.tolls.length > 0,
+                    searchRadius: currentRadius / 1000 // Include the search radius that found this driver
+                }));
+
+                // Prepare complete ride information
+                const rideInfo = {
+                    message: "Nearby riders found successfully",
+                    riders: ridersInfo,
+                    user,
+                    pickup_desc,
+                    drop_desc,
+                    pickupLocation,
+                    dropLocation,
+                    polyline: fastestRoute.overview_polyline?.points,
+                    distance: distance.toFixed(2),
+                    duration: Math.round(duration),
+                    trafficDuration: Math.round(trafficDuration),
+                    price: priceData?.totalPrice.toFixed(2),
+                    currency: "INR", // Add currency code
+                    retryCount,
+                    searchRadius: currentRadius / 1000,
+                    timestamp: new Date(),
+                };
+
+                // Reset ride request retry count on success and store found radius
+                await RideRequest.findByIdAndUpdate(rideRequestId, {
+                    $set: {
+                        retryCount: 0,
+                        lastUpdatedAt: new Date(),
+                        searchRadiusUsed: currentRadius / 1000
+                    }
+                });
+
+                console.log(`Emitting ride_come event to clients. Found ${riders.length} riders at ${currentRadius / 1000} km radius.`);
+
+                // Emit to all drivers (could be optimized to emit only to nearby drivers)
+                io.emit("ride_come", {
+                    message: "A new ride request is nearby!",
+                    ...rideInfo,
+                });
+
+                // Emit success event to user
+                io.to(user._id.toString()).emit("drivers_found", {
+                    message: `Found ${riders.length} drivers within ${currentRadius / 1000} km of your location`,
+                    rideInfo
+                });
+
+                return rideInfo;
+
+            } catch (routeError) {
+                console.error("Route calculation error:", routeError);
+                throw new Error(`Failed to calculate route: ${routeError.message}`);
+            }
+
+        } catch (error) {
+            console.error(`Error in findRider attempt ${retryCount + 1}/${MAX_RETRIES}:`, error);
+
+            // Only retry for certain errors
+            const retryableErrors = [
+                "No riders available",
+                "Failed to calculate route",
+                "Network error"
+            ];
+
+            const shouldRetry = retryableErrors.some(msg => error.message.includes(msg));
+
+            if (shouldRetry && retryCount < MAX_RETRIES) {
+                console.log(`Retrying findRider due to error: ${error.message}`);
+                retryCount++;
+                setTimeout(attemptFindRiders, RETRY_DELAY_MS);
+                return null;
+            } else {
+                // Notify about error
+                io.emit("error", {
+                    message: error.message,
+                    retryCount,
+                    rideRequestId: id
+                });
+                return { error: error.message };
+            }
         }
-        console.log("dataSend", dataSend)
-        const data = await calculateRidePriceForConfirmRide(dataSend)
+    };
 
-        console.log("data of price", data)
-
-        const eta = Math.round(trafficDuration);
-
-        if (riders.length === 0) {
-            console.log("No riders available")
-            return
-        }
-
-        const rideInfo = {
-            message: "Nearby riders found successfully",
-            riders: riders.map((rider) => ({
-                name: rider.name,
-                id: rider._id,
-                rideRequestId,
-                vehicleName: rider.rideVehicleInfo.vehicleName,
-                vehicleNumber: rider.rideVehicleInfo.VehicleNumber,
-                pricePerKm: rider.rideVehicleInfo.PricePerKm,
-                vehicleType: rider.rideVehicleInfo.vehicleType,
-                distance: rider.distance,
-                price: data?.totalPrice.toFixed(2),
-                eta: eta,
-                rain: data?.rain,
-                tollPrice: data?.tollPrice,
-                tolls: data.tolls === undefined ? false : true
-
-            })),
-            user,
-            pickup_desc,
-            pickupLocation,
-            dropLocation,
-            drop_desc,
-            distance: distance.toFixed(2),
-            duration: Math.round(duration),
-            trafficDuration: Math.round(trafficDuration),
-        };
-
-
-        console.log("Emitting ride_come event to clients", rideInfo);
-        io.emit("ride_come", {
-            message: "A new ride request is nearby!",
-            ...rideInfo,
-        });
-
-        return rideInfo;
-    } catch (error) {
-        console.error(error);
-        io.emit("error", { message: error.message });
-        return { error: error.message };
-    }
+    // Start the initial attempt
+    return await attemptFindRiders();
 };
 
 
@@ -336,7 +535,7 @@ exports.rideEnd = async (data) => {
         if (ride_id) {
             ride_id.rideStatus = "completed";
         }
-        
+
         await ride_id.save()
 
         const findRider = await Riders.findById(ride_id?.rider)
@@ -777,11 +976,11 @@ const calculateRidePriceForConfirmRide = async (data) => {
 
 
 
-exports.getAllRides = async (req,res) => {
+exports.getAllRides = async (req, res) => {
     try {
         const allRides = await RideRequest.find().populate('rider').populate('user')
-        if(!allRides){
-            return res.status(404).json({success:false,message:"No rides found"})
+        if (!allRides) {
+            return res.status(404).json({ success: false, message: "No rides found" })
         }
         res.status(200).json({
             success: true,
@@ -789,7 +988,7 @@ exports.getAllRides = async (req,res) => {
             data: allRides
         })
     } catch (error) {
-        console.log("Internal server error",error)
+        console.log("Internal server error", error)
         res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -798,12 +997,12 @@ exports.getAllRides = async (req,res) => {
     }
 }
 
-exports.getSingleRides = async (req,res) => {
+exports.getSingleRides = async (req, res) => {
     try {
-        const {id} = req.params;
+        const { id } = req.params;
         const allRides = await RideRequest.findById(id).populate('rider').populate('user')
-        if(!allRides){
-            return res.status(404).json({success:false,message:"No rides found"})
+        if (!allRides) {
+            return res.status(404).json({ success: false, message: "No rides found" })
         }
         res.status(200).json({
             success: true,
@@ -811,7 +1010,7 @@ exports.getSingleRides = async (req,res) => {
             data: allRides
         })
     } catch (error) {
-        console.log("Internal server error",error)
+        console.log("Internal server error", error)
         res.status(500).json({
             success: false,
             message: 'Internal server error',
