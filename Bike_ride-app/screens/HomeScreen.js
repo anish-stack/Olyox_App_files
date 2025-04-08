@@ -21,7 +21,7 @@ import { useSocket } from "../context/SocketContext";
 
 import RideCome from "./Ride.come";
 import Report from "./Report/Report";
-import { useNavigation } from "@react-navigation/native";
+import { CommonActions, useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { initializeSocket } from "../context/socketService";
 
@@ -39,7 +39,12 @@ const HomeScreen = () => {
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
       const data = await fetchUserDetails()
-
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        })
+      );
     } catch (error) {
       console.error('Refresh failed:', error);
     } finally {

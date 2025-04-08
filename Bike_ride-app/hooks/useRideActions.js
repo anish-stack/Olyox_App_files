@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Alert, Linking, Platform } from "react-native"
 import * as IntentLauncher from "expo-intent-launcher"
 import axios from "axios"
@@ -11,11 +11,14 @@ const API_BASE_URL = "https://demoapi.olyox.com/api/v1"
 let otpDbCode
 export function useRideActions({ state, setState, rideDetails, socket, navigation, mapRef, soundRef }) {
   // Helper function to update state
+  
+  const [rideData,setRideData] = useState(null)
 
   useEffect(()=>{
     const fns = async()=>{
       const otpDb = await LocalRideStorage.getRide()
-      console.log("otpDb",otpDb?.RideOtp)
+      setRideData(otpDb)
+      console.log("otpDbs",otpDb)
       otpDbCode = otpDb?.RideOtp
     }
     fns()
@@ -42,6 +45,8 @@ export function useRideActions({ state, setState, rideDetails, socket, navigatio
       console.error(`❌ ${message}`)
     }
   }
+
+  console.log("rideDetails",rideData)
 
   // Start notification sound
   const startSound = useCallback(async () => {
@@ -261,35 +266,46 @@ export function useRideActions({ state, setState, rideDetails, socket, navigatio
 
   // Open Google Maps for navigation
   const openGoogleMapsDirections = useCallback(() => {
-    const destination = state.rideStarted
-      ? `${rideDetails.dropLocation.coordinates[1]},${rideDetails.dropLocation.coordinates[0]}`
-      : `${rideDetails.pickupLocation.coordinates[1]},${rideDetails.pickupLocation.coordinates[0]}`
-
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`
-
-    logDebug("Opening Google Maps with URL", url)
-
+    const pickup = rideDetails?.pickupLocation || rideData?.pickupLocation;
+    const drop = rideDetails?.dropLocation || rideData?.dropLocation;
+  
+    let destination;
+  
+    if (state.rideStarted && drop?.coordinates) {
+      // Navigate to drop location
+      destination = `${drop.coordinates[1]},${drop.coordinates[0]}`;
+    } else if (pickup?.coordinates) {
+      // Navigate to pickup location
+      destination = `${pickup.coordinates[1]},${pickup.coordinates[0]}`;
+    } else {
+      Alert.alert("Error", "No valid destination found.");
+      return;
+    }
+  
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+  
+    logDebug("Opening Google Maps with URL", url);
+  
     Linking.canOpenURL(url).then((supported) => {
       if (supported) {
-        Linking.openURL(url)
+        Linking.openURL(url);
       } else {
         if (Platform.OS === "android") {
-          // Try to open with intent launcher as fallback
           IntentLauncher.startActivityAsync("android.intent.action.VIEW", {
             data: url,
             flags: 268435456, // FLAG_ACTIVITY_NEW_TASK
           }).catch((err) => {
-            logError("Error opening Google Maps with Intent Launcher", err)
-            Alert.alert("Error", "Could not open Google Maps")
-          })
+            logError("Error opening Google Maps with Intent Launcher", err);
+            Alert.alert("Error", "Could not open Google Maps");
+          });
         } else {
-          logError("Cannot open Google Maps URL")
-          Alert.alert("Error", "Could not open Google Maps")
+          logError("Cannot open Google Maps URL");
+          Alert.alert("Error", "Could not open Google Maps");
         }
       }
-    })
-  }, [state.rideStarted, rideDetails])
-
+    });
+  }, [state.rideStarted, rideDetails, rideData]);
+  
   return {
     handleOtpSubmit,
     handleCancelRide,

@@ -53,16 +53,19 @@ export default function RideDetailsScreen() {
   const socketListenersSet = useRef(false);
 
 
-  const fns = async()=>{
+  const fns = async () => {
     const otpDb = await LocalRideStorage.getRide()
-   return otpDb
+    return otpDb
   }
 
 
   // ===== NAVIGATION & ROUTE =====
   const route = useRoute();
   const navigation = useNavigation();
-  const { params } = route.params || fns() || {};
+  const { params } = route.params || {}
+
+
+  // console.log("My Params ",  params.dropLocation.coordinates[])
 
   // ===== SOCKET CONTEXT =====
   const { socket } = useSocket();
@@ -87,6 +90,9 @@ export default function RideDetailsScreen() {
     socketConnected: socket?.connected || false,
   });
 
+  const [driverCoordinates, setDriverCoordinates] = useState(null);
+  const [pickupCoordinates, setPickupCoordinates] = useState(null);
+  const [dropCoordinates, setDropCoordinates] = useState(null);
   // ===== RIDE DETAILS =====
   const rideDetails = useMemo(() => params?.rideDetails || {}, [params?.rideDetails]);
 
@@ -109,6 +115,7 @@ export default function RideDetailsScreen() {
     stopLocationTracking
   } = useLocationTrackingTwo(socket, rideId, state.rideStarted);
 
+
   const {
     handleOtpSubmit,
     handleCancelRide,
@@ -127,30 +134,96 @@ export default function RideDetailsScreen() {
     soundRef
   });
 
+
+
   // ===== COORDINATES =====
-  const driverCoordinates = useMemo(() =>
-    currentLocation ||
-    (rider?.location?.coordinates ? {
-      latitude: rider.location.coordinates[1],
-      longitude: rider.location.coordinates[0],
-    } : { latitude: 28.7041, longitude: 77.1025 }),
-    [currentLocation, rider?.location?.coordinates]);
+  useEffect(() => {
+    const getCoordinates = () => {
+      if (rider) {
+        setDriverCoordinates(currentLocation || (
+          rider?.location?.coordinates
+            ? {
+              latitude: rider.location.coordinates[1],
+              longitude: rider.location.coordinates[0],
+            }
+            : { latitude: 28.7041, longitude: 77.1025 }
+        ));
 
-  const pickupCoordinates = useMemo(() =>
-    rideDetails?.pickupLocation ? {
-      latitude: rideDetails.pickupLocation.coordinates[1],
-      longitude: rideDetails.pickupLocation.coordinates[0],
-    } : { latitude: 28.7041, longitude: 77.1025 },
-    [rideDetails?.pickupLocation]);
+        setPickupCoordinates(
+          rideDetails?.pickupLocation
+            ? {
+              latitude: rideDetails.pickupLocation.coordinates[1],
+              longitude: rideDetails.pickupLocation.coordinates[0],
+            }
+            : { latitude: 28.7041, longitude: 77.1025 }
+        );
 
-  const dropCoordinates = useMemo(() =>
-    rideDetails?.dropLocation ? {
-      latitude: rideDetails.dropLocation.coordinates[1],
-      longitude: rideDetails.dropLocation.coordinates[0],
-    } : { latitude: 28.6139, longitude: 77.2090 },
-    [rideDetails?.dropLocation]);
+        setDropCoordinates(
+          rideDetails?.dropLocation
+            ? {
+              latitude: rideDetails.dropLocation.coordinates[1],
+              longitude: rideDetails.dropLocation.coordinates[0],
+            }
+            : { latitude: 28.6139, longitude: 77.2090 }
+        );
+      } else {
+        setDriverCoordinates(currentLocation || (
+          params?.rider?.location?.coordinates
+            ? {
+              latitude: params.rider.location.coordinates[1],
+              longitude: params.rider.location.coordinates[0],
+            }
+            : { latitude: 28.7041, longitude: 77.1025 }
+        ));
+
+        setPickupCoordinates(
+          params?.pickupLocation
+            ? {
+              latitude: params.pickupLocation.coordinates[1],
+              longitude: params.pickupLocation.coordinates[0],
+            }
+            : { latitude: 28.7041, longitude: 77.1025 }
+        );
+
+        setDropCoordinates(
+          params?.dropLocation
+            ? {
+              latitude: params.dropLocation.coordinates[1],
+              longitude: params.dropLocation.coordinates[0],
+            }
+            : { latitude: 28.6139, longitude: 77.2090 }
+        );
+      }
+    };
+
+    getCoordinates();
+  }, [rider, rideDetails, currentLocation, params]);
+
+  // const driverCoordinates = useMemo(() =>
+  //   currentLocation ||
+  //   (rider?.location?.coordinates ? {
+  //     latitude: rider.location.coordinates[1],
+  //     longitude: rider.location.coordinates[0],
+  //   } : { latitude: 28.7041, longitude: 77.1025 }),
+  //   [currentLocation, rider?.location?.coordinates]);
+
+  // const pickupCoordinates = useMemo(() =>
+  //   rideDetails?.pickupLocation ? {
+  //     latitude: rideDetails.pickupLocation.coordinates[1],
+  //     longitude: rideDetails.pickupLocation.coordinates[0],
+  //   } : { latitude: 28.7041, longitude: 77.1025 },
+  //   [rideDetails?.pickupLocation]);
+
+  // const dropCoordinates = useMemo(() =>
+  //   rideDetails?.dropLocation ? {
+  //     latitude: rideDetails.dropLocation.coordinates[1],
+  //     longitude: rideDetails.dropLocation.coordinates[0],
+  //   } : { latitude: 28.6139, longitude: 77.2090 },
+  //   [rideDetails?.dropLocation]);
 
   // ===== HELPER FUNCTIONS =====
+
+
   const updateState = useCallback((newState) => {
     setState(prevState => ({ ...prevState, ...newState }));
   }, []);

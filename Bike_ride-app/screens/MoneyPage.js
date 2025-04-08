@@ -9,7 +9,7 @@ import {
     Image,
     Animated,
 } from 'react-native';
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { CommonActions, useNavigation, useRoute } from "@react-navigation/native";
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -85,6 +85,12 @@ export default function MoneyPage() {
             socket.emit('isPay', data);
             setIsLoading(false);
             setIsRideRate(true);
+            navigation.dispatch(
+                    CommonActions.reset({
+                      index: 0,
+                      routes: [{ name: 'Home' }],
+                    })
+                  );
         }, 2000);
     };
 

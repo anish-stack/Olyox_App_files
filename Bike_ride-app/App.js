@@ -156,9 +156,6 @@ const App = () => {
     checkActiveRide();
   }, []);
 
-  console.log("activeRide", activeRide)
-
-
   useEffect(() => {
     const setupBackgroundTask = async () => {
       const status = await BackgroundFetch.getStatusAsync();
