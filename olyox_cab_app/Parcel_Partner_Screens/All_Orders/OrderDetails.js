@@ -40,7 +40,7 @@ export default function OrderDetails() {
                 return;
             }
 
-            const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/parcel/single_my_parcel?id=${id}`);
+            const { data } = await axios.get(`http://192.168.1.11:3100/api/v1/parcel/single_my_parcel?id=${id}`);
             setOrderData(data.data);
             await setupLocation();
         } catch (err) {

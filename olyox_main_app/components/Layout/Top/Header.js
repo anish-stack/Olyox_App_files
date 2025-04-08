@@ -124,7 +124,7 @@ const Header = () => {
     }
 
     try {
-      const { data } = await axios.post(`https://demoapi.olyox.com/Fetch-Current-Location`, {
+      const { data } = await axios.post(`http://192.168.1.11:3100/Fetch-Current-Location`, {
         lat: location?.coords?.latitude,
         lng: location?.coords?.longitude,
       })
@@ -147,7 +147,7 @@ const Header = () => {
   // Handle logout
   const handleLogout = async () => {
     try {
-      await axios.get("https://demoapi.olyox.com/api/v1/rider/logout", { withCredentials: true })
+      await axios.get("http://192.168.1.11:3100/api/v1/rider/logout", { withCredentials: true })
       await tokenCache.deleteToken("auth_token_db")
       setIsAuthenticated(false)
 

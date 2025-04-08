@@ -42,7 +42,7 @@ const {
 } = require('./driver');
 const Protect = require('./middleware/Auth');
 const Heavy = require('./routes/Heavy_vehicle/Heavy.routes');
-const {  connectwebDb } = require('./PaymentWithWebDb/db');
+const { connectwebDb } = require('./PaymentWithWebDb/db');
 const startExpiryCheckJob = require('./cron_jobs/RiderJobs');
 
 // Configure multer for file uploads
@@ -380,9 +380,9 @@ io.on('connection', (socket) => {
 
             // Find rider information for the ride
             const riderData = await findRider(data.data._id, io);
-
+            console.log("riderData", riderData)
             if (riderData) {
-                
+
                 emitRideToDrivers(riderData);
 
                 // Confirm receipt to the requesting user
@@ -450,6 +450,67 @@ io.on('connection', (socket) => {
      * Handle ride end event
      * Updates ride status to 'completed' and notifies the driver
      */
+
+    socket.on('ride_end_by_rider', async (data) => {
+        try {
+            const ride_id = data?.rideDetails?._id;
+            const user = data?.rideDetails?.user;
+
+            // 🚫 Invalid data check
+            if (!user || !ride_id) {
+                console.error(`[${new Date().toISOString()}] Invalid ride_end_by_rider data`, data);
+                return;
+            }
+
+            const userSocketId = userSocketMap.get(String(user));
+
+            if (userSocketId) {
+                io.to(userSocketId).emit('your_ride_is_mark_complete', {
+                    message: 'Rider marked your ride as complete. Please confirm if it’s correct.',
+                    rideId: ride_id,
+                });
+                console.log(`[${new Date().toISOString()}] Ride end confirmation sent to user: ${user}`);
+            } else {
+                console.log(`[${new Date().toISOString()}] No active socket found for user: ${user}`);
+            }
+        } catch (error) {
+            console.error(`[${new Date().toISOString()}] Error in ride_end_by_rider:`, error);
+        }
+    });
+
+
+    socket.on('ride_incorrect_mark_done', async (data) => {
+        try {
+
+
+            const rideId = data?._id;
+            const rider = data?.rider?._id;
+
+            if (!rideId || !rider) {
+                console.error(`[${new Date().toISOString()}] Invalid data in ride_incorrect_mark_done`, data);
+                return;
+            }
+            const driverSocketId = driverSocketMap.get(String(rider));
+
+            if (driverSocketId) {
+                io.to(driverSocketId).emit('mark_as_done_rejected', {
+                    message: 'User reported that the ride is not completed. Please verify.',
+                    rideId
+                });
+                console.log(`[${new Date().toISOString()}] End notification sent to driver: ${rider}`);
+            } else {
+                console.log(`[${new Date().toISOString()}] No active socket found for driver: ${rider}`);
+            }
+
+
+
+        } catch (error) {
+            console.error(`[${new Date().toISOString()}] Error in ride_incorrect_mark_done:`, error);
+        }
+    });
+
+
+
     socket.on('endRide', async (data) => {
         try {
             console.log(`[${new Date().toISOString()}] Ride end request:`, data);
@@ -484,6 +545,54 @@ io.on('connection', (socket) => {
             socket.emit('ride_error', { message: 'Failed to process ride end' });
         }
     });
+
+
+    socket.on('send_rider_location', async (data) => {
+        const { rider, user } = data || {};
+       
+        if (!rider || !user) {
+            console.error('[send_rider_location] Invalid data received:', data);
+            return;
+        }
+    
+        const riderId = rider?._id;
+        if (!riderId) {
+            console.error('[send_rider_location] Rider ID missing in data:', rider);
+            return;
+        }
+    
+        try {
+            const foundLiveLocation = await RiderModel.findById(riderId);
+            if (!foundLiveLocation) {
+                console.error(`[send_rider_location] Rider with ID ${riderId} not found`);
+                return;
+            }
+    
+            const reterviewdLocation = foundLiveLocation?.location;
+            if (!reterviewdLocation || reterviewdLocation.coordinates.length < 2) {
+                console.error(`[send_rider_location] Location not found or invalid for rider ID ${riderId}`);
+                return;
+            }
+    
+            const foundUserSocket = userSocketMap.get(String(user));
+            if (!foundUserSocket) {
+                console.error(`[send_rider_location] No active socket found for user ID ${user}`);
+                return;
+            }
+    
+            // Emit location to user
+            io.to(foundUserSocket).emit('rider_location', {
+                message: 'Rider location updated',
+                location: reterviewdLocation.coordinates,
+            });
+    
+            console.log(`[send_rider_location] Sent rider location to user ${user}`);
+    
+        } catch (error) {
+            console.error('[send_rider_location] Error handling location update:', error);
+        }
+    });
+    
 
     /**
      * Handle payment received event
@@ -874,7 +983,7 @@ app.post('/webhook/cab-receive-location', Protect, async (req, res) => {
     try {
         const { latitude, longitude } = req.body;
         const userId = req.user.userId;
-        //   console.log("user hits",req.user)
+        // console.log("user hits", req.user)
         //   console.log("body hits",req.body)
 
         const data = await RiderModel.findOneAndUpdate(
@@ -888,6 +997,7 @@ app.post('/webhook/cab-receive-location', Protect, async (req, res) => {
             },
             { upsert: true, new: true }
         );
+
         // console.log("data", data)
 
         res.status(200).json({ message: 'Location updated successfully' });

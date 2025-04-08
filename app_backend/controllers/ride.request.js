@@ -65,10 +65,10 @@ exports.createRequest = async (req, res) => {
 
 
 exports.findRider = async (id, io) => {
-    const MAX_RETRIES = 5;
-    const RETRY_DELAY_MS = 10000; // 10 seconds
-    const INITIAL_RADIUS = 2500; // 2.5 km initial radius
-    const RADIUS_INCREMENT = 500; // 500m increment per retry
+    const MAX_RETRIES = 2;
+    const RETRY_DELAY_MS = 10000; 
+    const INITIAL_RADIUS = 2500; 
+    const RADIUS_INCREMENT = 500; 
     let retryCount = 0;
 
     // Function to find riders with retry logic and expanding radius
@@ -129,56 +129,41 @@ exports.findRider = async (id, io) => {
                         distanceField: "distance",
                         maxDistance: currentRadius,
                         spherical: true,
-                        query: {
-                            isAvailable: true,
-                            "RechargeData.expireData": { $gt: new Date() },
-                            "rideVehicleInfo.vehicleType": vehicleType,
-                            isOnline: true,
-                        }
                     },
                 },
                 {
                     $match: {
-                        rating: { $gte: 1.0 }
-                    }
+                        isAvailable: true,
+                        "rideVehicleInfo.vehicleType": vehicleType,
+                    },
                 },
                 {
                     $project: {
                         name: 1,
-                        phoneNumber: 1,
-                        profileImage: 1,
-                        rating: 1,
                         "rideVehicleInfo.vehicleName": 1,
-                        "rideVehicleInfo.vehicleImage": 1,
                         "rideVehicleInfo.VehicleNumber": 1,
                         "rideVehicleInfo.PricePerKm": 1,
                         "rideVehicleInfo.vehicleType": 1,
                         distance: 1,
                     },
                 },
-                {
-                    $sort: {
-                        distance: 1, // Sort by distance ascending
-                        rating: -1   // Then by rating descending
-                    }
-                },
-                {
-                    $limit: 5 // Limit to top 5 closest and best-rated drivers
-                }
             ]);
+    
+    
+    
 
             // Get route information from Google Maps API
-            const origin = `${latitude},${longitude}`;
-            const destLat = dropLocation.coordinates[1];
-            const destLng = dropLocation.coordinates[0];
-            const destination = `${destLat},${destLng}`;
+            const origin = `${pickupLocation.coordinates[1]},${pickupLocation.coordinates[0]}`;
+            const destination = `${dropLocation.coordinates[1]},${dropLocation.coordinates[0]}`;
+
 
             try {
                 const response = await axios.get("https://maps.googleapis.com/maps/api/directions/json", {
                     params: {
                         origin,
                         destination,
-                        key: process.env.GOOGLE_MAPS_API_KEY || "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8",
+                        key: "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8",
+
                         traffic_model: "best_guess",
                         departure_time: "now",
                         alternatives: true // Get alternative routes
@@ -225,13 +210,13 @@ exports.findRider = async (id, io) => {
                     distance
                 };
 
-                console.log("Price calculation input:",
-                    JSON.stringify({
-                        ...priceCalculationData,
-                        pickupLocation: "...",
-                        dropLocation: "..."
-                    })
-                );
+                // console.log("Price calculation input:",
+                //     JSON.stringify({
+                //         ...priceCalculationData,
+                //         pickupLocation: "...",
+                //         dropLocation: "..."
+                //     })
+                // );
 
                 const priceData = await calculateRidePriceForConfirmRide(priceCalculationData);
 
@@ -239,7 +224,7 @@ exports.findRider = async (id, io) => {
                     throw new Error("Failed to calculate ride price");
                 }
 
-                console.log("Price calculation result:", JSON.stringify(priceData));
+                // console.log("Price calculation result:", JSON.stringify(priceData));
 
                 const eta = Math.round(trafficDuration);
 
@@ -276,11 +261,12 @@ exports.findRider = async (id, io) => {
                         // Update ride request status
                         await RideRequest.findByIdAndUpdate(rideRequestId, {
                             $set: {
-                                status: 'no_driver_found',
+                                rideStatus: 'no_driver_found',
                                 maxSearchRadius: INITIAL_RADIUS + (MAX_RETRIES - 1) * RADIUS_INCREMENT
                             }
                         });
 
+                        console.log("user._id",user._id)
                         // Notify user that no drivers were found
                         io.to(user._id.toString()).emit("no_drivers_available", {
                             message: `No drivers available within ${(INITIAL_RADIUS + (MAX_RETRIES - 1) * RADIUS_INCREMENT) / 1000} km of your location. Please try again later.`,

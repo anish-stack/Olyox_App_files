@@ -109,7 +109,7 @@ export const RideMap = React.memo(
         <TouchableOpacity
           style={{
             position: "absolute",
-            top: 10,
+            bottom: 10,
             left: 10,
             backgroundColor: "white",
             padding: 10,
@@ -122,7 +122,7 @@ export const RideMap = React.memo(
           }}
           onPress={openGoogleMapsDirections}
         >
-          <MaterialIcons name="directions" size={24} color="#FF3B30" />
+         <Text>Navigation</Text>
         </TouchableOpacity>
       </View>
     )

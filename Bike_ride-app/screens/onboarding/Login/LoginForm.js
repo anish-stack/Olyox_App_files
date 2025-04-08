@@ -13,7 +13,7 @@ const LoginForm = ({ onLogin }) => {
     const handleLogin = async () => {
         setLoading(true);
         try {
-            const response = await axios.post('https://demoapi.olyox.com/api/v1/rider/rider-login', { number: phone });
+            const response = await axios.post('http://192.168.1.11:3100/api/v1/rider/rider-login', { number: phone });
 
             if (response.data.success) {
                 console.log("Login successful", response.data);

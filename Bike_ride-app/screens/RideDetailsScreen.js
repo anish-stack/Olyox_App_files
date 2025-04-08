@@ -21,7 +21,7 @@ import {
   MaterialIcons,
 } from '@expo/vector-icons';
 import { useSocket } from "../context/SocketContext";
-import { Audio } from 'expo-av';
+
 import OtpModal from "./OtpModal";
 import CancelReasonsModal from "./CancelReasonsModal";
 import { RideMap } from "./RideMap";
@@ -37,7 +37,7 @@ const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-const API_BASE_URL = "https://demoapi.olyox.com/api/v1";
+const API_BASE_URL = "http://192.168.1.11:3100/api/v1";
 
 
 
@@ -290,11 +290,16 @@ export default function RideDetailsScreen() {
 
     logDebug('Setting up socket listeners');
 
-    // Remove existing listeners to prevent duplicates
+    // ✅ Always remove existing listeners first
     socket.off('ride_end');
+    // socket.off('mark_as_done_rejected');
     socket.off('ride_cancelled');
 
-    // Listen for ride end event
+    // socket.off('mark_as_done_rejected');
+    // socket.on('mark_as_done_rejected', (data) => {
+    //   Alert.alert("Report Completed", data?.message);
+    //   console.log("mark_as_done_rejected", data);
+    // });
     socket.on('ride_end', (data) => {
       logDebug('Ride completed event received', data);
       updateState({ rideCompleted: true });
@@ -302,7 +307,6 @@ export default function RideDetailsScreen() {
       showLocalNotification("Ride Completed", "The ride has been completed successfully!");
     });
 
-    // Listen for ride cancellation
     socket.on('ride_cancelled', (data) => {
       logDebug('Ride cancelled event received', data);
       startSound();

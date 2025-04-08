@@ -2,7 +2,8 @@
 
 import * as BackgroundFetch from "expo-background-fetch";
 import * as TaskManager from "expo-task-manager";
-import { initializeSocket, fetchUserData } from "../SocketContext";
+import { initializeSocket } from "../SocketContext";
+import { fetchUserData } from "../socketService";
 
 const BACKGROUND_SOCKET_TASK = "background-socket-task";
 

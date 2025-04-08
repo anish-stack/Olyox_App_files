@@ -24,6 +24,7 @@ import Report from "./Report/Report";
 import { CommonActions, useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { initializeSocket } from "../context/socketService";
+import { LocalRideStorage } from "../services/DatabaseService";
 
 const HomeScreen = () => {
   const { isSocketReady, socket, isReconnecting } = useSocket();
@@ -87,6 +88,16 @@ const HomeScreen = () => {
     }
   }
 
+  const hardClear = async () => {
+    await LocalRideStorage.clearRide()
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      })
+    );
+  }
+
 
 
   const fetchUserDetails = async () => {
@@ -96,7 +107,7 @@ const HomeScreen = () => {
       console.log(token)
       if (token) {
         const response = await axios.get(
-          'https://demoapi.olyox.com/api/v1/rider/user-details',
+          'http://192.168.1.11:3100/api/v1/rider/user-details',
           { headers: { Authorization: `Bearer ${token}` } }
         );
         // console.log("User Details:", response.data.partner);
@@ -148,13 +159,13 @@ const HomeScreen = () => {
 
       // Always allow the API call if going OFFLINE regardless of recharge status
       const response = await axios.post(
-        "https://demoapi.olyox.com/api/v1/rider/toggleWorkStatusOfRider",
+        "http://192.168.1.11:3100/api/v1/rider/toggleWorkStatusOfRider",
         { status: goingOnline },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const response_two = await axios.get(
-        "https://demoapi.olyox.com/api/v1/rider/user-details",
+        "http://192.168.1.11:3100/api/v1/rider/user-details",
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -268,7 +279,12 @@ const HomeScreen = () => {
             <MaterialCommunityIcons name="bell" size={24} color="#212121" />
             <Text style={styles.count}>0</Text>
           </TouchableOpacity>
-
+          <TouchableOpacity
+            onPress={() => hardClear()}
+            style={styles.menuButton}
+          >
+            <MaterialCommunityIcons name="reload" size={24} color="#212121" />
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setMenuVisible(true)}
             style={styles.menuButton}

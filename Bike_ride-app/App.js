@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppState, Platform, LogBox } from 'react-native';
 import { AppRegistry } from 'react-native';
-import { NavigationContainer ,useNavigationContainerRef} from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider } from 'react-redux';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -79,7 +79,7 @@ const App = () => {
 
         if (token) {
           const response = await axios.get(
-            'https://demoapi.olyox.com/api/v1/rider/user-details',
+            'http://192.168.1.11:3100/api/v1/rider/user-details',
             { headers: { Authorization: `Bearer ${token}` } }
           );
 
@@ -127,8 +127,7 @@ const App = () => {
 
     setupNotifications();
   }, []);
-  console.log("current screen",currentRoute)
-  console.log("navigationRef screen",navigationRef)
+
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -140,20 +139,26 @@ const App = () => {
   }, [navigationRef]);
 
   // Handle active ride from secure storage
-  useEffect(() => {
-    const checkActiveRide = async () => {
-      try {
-        const rideData = await LocalRideStorage.getRide()
-
-        if (rideData) {
-          setActiveRide(rideData);
-        }
-      } catch (err) {
-        console.error('Error loading active ride:', err);
+  const checkActiveRide = async () => {
+    try {
+      const rideData = await LocalRideStorage.getRide()
+      console.log("rideData", rideData)
+      if (rideData) {
+        setActiveRide(rideData);
       }
-    };
-
+    } catch (err) {
+      console.error('Error loading active ride:', err);
+    }
+  };
+  useEffect(() => {
     checkActiveRide();
+    const interval = setInterval(() => {
+      checkActiveRide();
+      console.log("I am check")
+    }, 10000); // 10000ms = 10 seconds
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -169,14 +174,12 @@ const App = () => {
     setupBackgroundTask();
   }, []);
   const shouldHideActiveRideButton = ["start", "collect_money"].includes(currentRoute);
-  // Re-register background task on app going to background
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'background') {
         registerBackgroundSocketTask();
       }
     });
-
     return () => subscription?.remove();
   }, []);
 

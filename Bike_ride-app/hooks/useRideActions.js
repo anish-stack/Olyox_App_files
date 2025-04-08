@@ -5,24 +5,27 @@ import * as IntentLauncher from "expo-intent-launcher"
 import axios from "axios"
 import { Audio } from "expo-av"
 import { LocalRideStorage } from "../services/DatabaseService"
+import { CommonActions, useNavigation } from '@react-navigation/native';
+const API_BASE_URL = "http://192.168.1.11:3100/api/v1"
 
-const API_BASE_URL = "https://demoapi.olyox.com/api/v1"
-
+let dataFound
 let otpDbCode
-export function useRideActions({ state, setState, rideDetails, socket, navigation, mapRef, soundRef }) {
+export function useRideActions({ state, setState, rideDetails, socket, mapRef, soundRef }) {
+  const navigation = useNavigation()
   // Helper function to update state
-  
-  const [rideData,setRideData] = useState(null)
 
-  useEffect(()=>{
-    const fns = async()=>{
+  const [rideData, setRideData] = useState(null)
+
+  useEffect(() => {
+    const fns = async () => {
       const otpDb = await LocalRideStorage.getRide()
       setRideData(otpDb)
-      console.log("otpDbs",otpDb)
+      console.log("otpDbs", otpDb)
+      dataFound = otpDb
       otpDbCode = otpDb?.RideOtp
     }
     fns()
-  },[])
+  }, [])
   const updateState = (newState) => {
     setState((prevState) => ({ ...prevState, ...newState }))
   }
@@ -46,41 +49,61 @@ export function useRideActions({ state, setState, rideDetails, socket, navigatio
     }
   }
 
-  console.log("rideDetails",rideData)
+  console.log("rideDetails", rideData)
 
   // Start notification sound
   const startSound = useCallback(async () => {
-    logDebug("Starting notification sound")
+    logDebug("Starting notification sound");
+
     try {
+      // Stop previous sound if it exists
       if (soundRef.current) {
-        await soundRef.current.stopAsync()
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync(); // ✅ unload to prevent memory leak
+        soundRef.current = null;
       }
 
-      const { sound } = await Audio.Sound.createAsync(require("../components/cancel.mp3"), {
-        shouldPlay: true,
-        isLooping: true,
-      })
+      // Load and play new sound
+      const { sound } = await Audio.Sound.createAsync(
+        require("./cancel.mp3"),
+        {
+          shouldPlay: true,
+          isLooping: true,
+        }
+      );
 
-      soundRef.current = sound
-      updateState({ sound })
+      soundRef.current = sound;
+      updateState({ sound });
 
+      // Wait a little and show alert
       setTimeout(() => {
-        Alert.alert("Ride Cancelled", "The ride has been cancelled by the customer.", [
-          {
-            text: "OK",
-            onPress: () => {
-              stopSound()
-              navigation.goBack()
+        Alert.alert(
+          "Ride Cancelled",
+          "The ride has been cancelled by the customer.",
+          [
+            {
+              text: "OK",
+              onPress: async () => {
+                stopSound?.(); // ✅ Use optional chaining just in case
+               
+                logDebug("LocalRideStorage clear sound");
+                navigation.dispatch(
+                  CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: "Home" }],
+                  })
+                );
+              },
             },
-          },
-        ])
-      }, 100)
+          ]
+        );
+      }, 100);
 
-      logDebug("Sound started successfully")
+      logDebug("Sound started successfully");
     } catch (error) {
-      logError("Error playing sound", error)
+      logError("❌ Error playing sound", error);
     }
-  }, [])
+  }, []);
 
   // Stop sound
   const stopSound = useCallback(async () => {
@@ -126,7 +149,7 @@ export function useRideActions({ state, setState, rideDetails, socket, navigatio
 
   // Handle OTP submission
   const handleOtpSubmit = useCallback(() => {
-   
+
     const expectedOtp = rideDetails?.RideOtp !== undefined && rideDetails?.RideOtp !== null ? rideDetails.RideOtp : otpDbCode
 
     logDebug("Submitting OTP", { entered: state.otp, expected: expectedOtp })
@@ -209,7 +232,7 @@ export function useRideActions({ state, setState, rideDetails, socket, navigatio
         return
       }
 
-      logDebug("Emitting ride-cancel-by-user event", data)
+      // logDebug("Emitting ride-cancel-by-user event", data)
       socket.emit("ride-cancel-by-user", data, (response) => {
         logDebug("Ride cancel response received", response)
       })
@@ -240,21 +263,23 @@ export function useRideActions({ state, setState, rideDetails, socket, navigatio
         text: "Complete",
         onPress: async () => {
           if (socket && socket.connected) {
-            logDebug("Emitting endRide event", { rideDetails })
-            socket.emit("endRide", {
-              rideDetails: rideDetails,
-            })
+            // logDebug("Emitting endRide event", { rideDetails })
+            // console.log("Emitting dataFound event", dataFound)
+            socket.emit("ride_end_by_rider", {
+              rideDetails:
+                rideDetails && Object.keys(rideDetails).length > 0 ? rideDetails : dataFound,
+            });
 
             // Update and save ride state
-            updateState({ rideCompleted: true })
-            LocalRideStorage.saveRideState({
-              otp: state.otp,
-              rideStarted: true,
-              rideCompleted: true,
-            })
+            // updateState({ rideCompleted: true })
+            // LocalRideStorage.saveRideState({
+            //   otp: state.otp,
+            //   rideStarted: true,
+            //   rideCompleted: true,
+            // })
 
-            await LocalRideStorage.clearRide()
-            navigation.navigate("collect_money", { data: rideDetails })
+            // await LocalRideStorage.clearRide()
+            // navigation.navigate("collect_money", { data: rideDetails })
           } else {
             logError("Socket not connected for ride completion")
             Alert.alert("Connection Error", "Please check your internet connection and try again.")
@@ -264,13 +289,25 @@ export function useRideActions({ state, setState, rideDetails, socket, navigatio
     ])
   }, [rideDetails, socket, navigation, state.otp])
 
+
+  useEffect(() => {
+    if (socket && socket.connected) {
+      console.log("connected connected", socket.connected)
+      socket.off('mark_as_done_rejected');
+      socket.on('mark_as_done_rejected', (data) => {
+        Alert.alert("Report Completed", data?.message);
+        console.log("mark_as_done_rejected", data);
+      });
+    }
+  }, [])
+
   // Open Google Maps for navigation
   const openGoogleMapsDirections = useCallback(() => {
     const pickup = rideDetails?.pickupLocation || rideData?.pickupLocation;
     const drop = rideDetails?.dropLocation || rideData?.dropLocation;
-  
+
     let destination;
-  
+
     if (state.rideStarted && drop?.coordinates) {
       // Navigate to drop location
       destination = `${drop.coordinates[1]},${drop.coordinates[0]}`;
@@ -281,11 +318,11 @@ export function useRideActions({ state, setState, rideDetails, socket, navigatio
       Alert.alert("Error", "No valid destination found.");
       return;
     }
-  
+
     const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
-  
+
     logDebug("Opening Google Maps with URL", url);
-  
+
     Linking.canOpenURL(url).then((supported) => {
       if (supported) {
         Linking.openURL(url);
@@ -305,7 +342,7 @@ export function useRideActions({ state, setState, rideDetails, socket, navigatio
       }
     });
   }, [state.rideStarted, rideDetails, rideData]);
-  
+
   return {
     handleOtpSubmit,
     handleCancelRide,

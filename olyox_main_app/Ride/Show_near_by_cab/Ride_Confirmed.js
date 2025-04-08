@@ -24,6 +24,9 @@ import * as Location from 'expo-location';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Sharing from 'expo-sharing';
 import { useSocket } from '../../context/SocketContext';
+import Ride_End_Model from './Ride_End_Model';
+import Map from '../Map/Map';
+import TrackMap from '../Map/TrackMap';
 
 const { width, height } = Dimensions.get('window');
 
@@ -45,12 +48,13 @@ export function RideConfirmed() {
     const [supportModalVisible, setSupportModalVisible] = useState(false);
     const [currentLocation, setCurrentLocation] = useState(null);
     const [driverLocation, setDriverLocation] = useState(null);
-    const [locationPermission, setLocationPermission] = useState(null);
+    const [locationPermission, setLocationPermission] = useState(true);
     const [cancelReason, setCancelReason] = useState([])
     const [cancelModel, setCancelModel] = useState(false)
     const [selectedReason, setSelectedReason] = useState(null)
-    const [locationUpdateInterval, setLocationUpdateInterval] = useState(null);
+    const [rideEndModel, setRideEndModel] = useState(false)
 
+    const [driverLocationCurrent, setDriverLocationCurrent] = useState([])
     const [rideDetails, setRideDetails] = useState({
         otp: driver?.otp || '1234',
         eta: driver?.eta || '5 mins',
@@ -63,10 +67,11 @@ export function RideConfirmed() {
     });
 
 
+    // console.log("currentLocation",currentLocation)
 
     const fetchReason = async () => {
         try {
-            const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/admin/cancel-reasons?active=active`)
+            const { data } = await axios.get(`http://192.168.1.11:3100/api/v1/admin/cancel-reasons?active=active`)
 
             if (data.data) {
                 setCancelReason(data.data)
@@ -78,6 +83,7 @@ export function RideConfirmed() {
             setCancelReason([])
         }
     }
+
     useEffect(() => {
         const socketInstance = socket();
 
@@ -129,7 +135,7 @@ export function RideConfirmed() {
                 return;
             }
 
-            const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/rides/find-ride_details?id=${rideId}`);
+            const { data } = await axios.get(`http://192.168.1.11:3100/api/v1/rides/find-ride_details?id=${rideId}`);
             if (data.data) {
                 setRideData(data.data);
                 setRideDetails(prev => ({
@@ -167,6 +173,7 @@ export function RideConfirmed() {
             setIsLoading(false);
         }
     };
+
     useEffect(() => {
         (async () => {
             let { status } = await Location.requestForegroundPermissionsAsync();
@@ -288,36 +295,64 @@ export function RideConfirmed() {
     };
 
 
-    // Listen for socket events
+    // 1. Initial fetch
     useEffect(() => {
         fetchRideDetailsFromDb();
+    }, []);
 
-        if (socket()) {
-            socket().on('ride_user_start', async (data) => {
-                console.log('ride_user_start', data);
-                setRideStart(true);
+    // 2. Socket setup when rideData is available
+    useEffect(() => {
+        if (!rideData) return; // Only run when rideData is set
 
-                try {
-                    await AsyncStorage.setItem('rideStart', JSON.stringify(data));
-                } catch (error) {
-                    console.error('Error storing ride start details:', error);
-                }
-            });
+        const currentSocket = socket();
 
+        console.log("rideData:", rideData);
 
+        // Send rider location every 5 seconds
+        const locationInterval = setInterval(() => {
+            currentSocket.emit('send_rider_location', rideData);
+        }, 5000);
 
-            socket().on('give-rate', (data) => {
-                console.log('isPay data come');
-                navigation.navigate('Rate_Your_ride', { data });
-            });
+        // Ride started
+        currentSocket.on('ride_user_start', async (data) => {
+            console.log('ride_user_start', data);
+            setRideStart(true);
+            try {
+                await AsyncStorage.setItem('rideStart', JSON.stringify(data));
+            } catch (error) {
+                console.error('Error storing ride start details:', error);
+            }
+        });
 
-            // Cleanup listeners
-            return () => {
-                socket().off('ride_user_start');
-                socket().off('give-rate');
-            };
-        }
-    }, [socket()]);
+        // Driver location
+        currentSocket.on('rider_location', (data) => {
+            console.log("Driver Live Location", data.location);
+            setDriverLocationCurrent(data.location);
+        });
+
+        // Ride complete
+        currentSocket.on('your_ride_is_mark_complete', (data) => {
+            console.log('your_ride_is_mark_complete', data);
+            setRideEndModel(!!data.rideId);
+        });
+
+        // Navigate to rating screen
+        currentSocket.on('give-rate', (data) => {
+            console.log('isPay data come');
+            navigation.navigate('Rate_Your_ride', { data });
+        });
+
+        // Cleanup
+        return () => {
+            clearInterval(locationInterval);
+            currentSocket.off('ride_user_start');
+            currentSocket.off('rider_location');
+            currentSocket.off('your_ride_is_mark_complete');
+            currentSocket.off('give-rate');
+        };
+
+    }, [rideData]); // Only run when rideData changes
+
 
     // Navigate to home if ride is done
     useEffect(() => {
@@ -470,70 +505,21 @@ export function RideConfirmed() {
         </View>
     );
 
-    // Map component
-    const LiveMap = () => (
-        <View style={styles.mapContainer}>
-            <Text style={styles.mapTitle}>Live Tracking</Text>
-            {locationPermission ? (
-                currentLocation && driverLocation ? (
-                    <MapView
-                        ref={mapRef}
-                        style={styles.map}
-                        provider={PROVIDER_GOOGLE}
-                        showsUserLocation
-                        showsCompass
-                        showsMyLocationButton
-                        showsTraffic
-                        showsBuildings
-                        shouldRasterizeIOS
+    const LiveMap = () => {
+        console.log("currentLocation:", currentLocation);
+        console.log("driverLocationCurrent:", driverLocationCurrent);
+        console.log("driverData:", driverData);
+        console.log("mapRef:", mapRef);
 
-                        initialRegion={{
-                            latitude: currentLocation.latitude,
-                            longitude: currentLocation.longitude,
-                            latitudeDelta: 0.01,
-                            longitudeDelta: 0.01,
-                        }}
-                    >
-                        <Marker
-                            coordinate={currentLocation}
-                            title="Your Location"
-                            description="You are here"
-                        >
-                            <View style={styles.markerContainer}>
-                                <MaterialCommunityIcons name="account" size={24} color="#C82333" />
-                            </View>
-                        </Marker>
+        return (
+            <View style={styles.mapContainer}>
+                <Text style={styles.mapTitle}>Live Tracking</Text>
 
-                        <Marker
-                            coordinate={driverLocation}
-                            title="Driver Location"
-                            description={`${driverData?.name || 'Driver'} is here`}
-                        >
-                            <View style={styles.markerContainer}>
-                                <MaterialCommunityIcons name="car" size={24} color="#10B981" />
-                            </View>
-                        </Marker>
-                    </MapView>
-                ) : (
-                    <View style={styles.mapLoading}>
-                        <ActivityIndicator size="large" color="#C82333" />
-                        <Text style={styles.mapLoadingText}>Loading map...</Text>
-                    </View>
-                )
-            ) : (
-                <View style={styles.mapPermissionDenied}>
-                    <MaterialCommunityIcons name="map-marker-off" size={48} color="#C82333" />
-                    <Text style={styles.mapPermissionText}>Location permission denied</Text>
-                    <TouchableOpacity
-                        style={styles.mapPermissionButton}
-                    // onPress={()=>startLocationTracking()}
-                    >
-                        <Text style={styles.mapPermissionButtonText}>Enable Location</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-        </View>
-    );
+                <TrackMap origin={currentLocation} destination={driverLocationCurrent} />
+            </View>
+        );
+    }
+
 
     // Support modal component
     const SupportModal = () => (
@@ -688,6 +674,9 @@ export function RideConfirmed() {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
 
+            <View>
+                <LiveMap />
+            </View>
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Ride Confirmed</Text>
                 <View style={styles.headerBadge}>
@@ -712,7 +701,17 @@ export function RideConfirmed() {
                 </TouchableOpacity>
             </ScrollView>
 
-            {rideStart ? (
+            <View style={styles.footer}>
+                <TouchableOpacity
+                    style={styles.supportButton}
+                    onPress={() => setSupportModalVisible(true)}
+                >
+                    <MaterialCommunityIcons name="headphones" size={20} color="#fff" />
+                    <Text style={styles.supportButtonText}>Need Support?</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* {rideStart ? (
                 <View style={styles.footer}>
                     <TouchableOpacity
                         onPress={handleEndRide}
@@ -723,20 +722,13 @@ export function RideConfirmed() {
                     </TouchableOpacity>
                 </View>
             ) : (
-                <View style={styles.footer}>
-                    <TouchableOpacity
-                        style={styles.supportButton}
-                        onPress={() => setSupportModalVisible(true)}
-                    >
-                        <MaterialCommunityIcons name="headphones" size={20} color="#fff" />
-                        <Text style={styles.supportButtonText}>Need Support?</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
+                
+            )} */}
 
             <SupportModal />
             <CancelReasonsModel />
             <LoadingOverlay />
+            <Ride_End_Model open={rideEndModel} close={() => setRideEndModel(false)} handleRideEnd={handleEndRide} data={rideData} />
         </SafeAreaView>
     );
 }

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { ClerkProvider, ClerkLoaded } from '@clerk/clerk-expo';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider } from 'react-redux';
@@ -14,7 +13,6 @@ import * as Sentry from '@sentry/react-native';
 import HomeScreen from './screens/HomeScreen';
 import Collect_Data from './Ride/First_Step_screen/Collect_Data';
 import Show_Cabs from './Ride/Show_near_by_cab/Show_Cabs';
-import { BookingConfirmation } from './Ride/Show_near_by_cab/confirm_booking';
 import { DriverMatching } from './Ride/Show_near_by_cab/Driver_matching';
 import { RideConfirmed } from './Ride/Show_near_by_cab/Ride_Confirmed';
 import Hotels_details from './Hotels/Hotel_Details/Hotels_details';
@@ -44,6 +42,7 @@ import Tiffins_Page from './Foods/Tiffins_Page/Tiffins_Page';
 import ErrorBoundaryWrapper from './context/ErrorBoundary';
 import { tokenCache } from './Auth/cache';
 import { StatusBar } from 'expo-status-bar';
+import BookingConfirmation from './Ride/Show_near_by_cab/confirm_booking';
 
 const Stack = createNativeStackNavigator();
 Sentry.init({
@@ -156,8 +155,7 @@ const App = () => {
           <SocketProvider>
             <LocationProvider>
               <SafeAreaProvider>
-                <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
-                  <ClerkLoaded>
+             
                     <ErrorBoundaryWrapper>
 
                       <NavigationContainer>
@@ -197,8 +195,7 @@ const App = () => {
 
                       </NavigationContainer>
                     </ErrorBoundaryWrapper>
-                  </ClerkLoaded>
-                </ClerkProvider>
+                
               </SafeAreaProvider>
             </LocationProvider>
           </SocketProvider>
