@@ -20,7 +20,7 @@ export default function OtpModal({
         style={styles.modalContainer}
       >
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Enter OTP</Text>
+          <Text style={styles.modalTitle}>Enter OTP (Send On whatsapp)</Text>
           <TextInput
             style={styles.input}
             placeholder="Enter OTP"

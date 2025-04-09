@@ -46,7 +46,7 @@ export default function OfferBanner() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const { data } = await axios.get('http://192.168.1.11:3100/api/v1/admin/get_home_slides')
+                const { data } = await axios.get('http://192.168.1.23:3100/api/v1/admin/get_home_slides')
                 if (data.data) {
                     const filterData = data.data.filter((item) => item.active === true)
                     setBanner(filterData)

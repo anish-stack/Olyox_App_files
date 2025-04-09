@@ -37,7 +37,7 @@ const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-const API_BASE_URL = "http://192.168.1.11:3100/api/v1";
+const API_BASE_URL = "http://192.168.1.23:3100/api/v1";
 
 
 
@@ -94,6 +94,23 @@ export default function RideDetailsScreen() {
   const [pickupCoordinates, setPickupCoordinates] = useState(null);
   const [dropCoordinates, setDropCoordinates] = useState(null);
   // ===== RIDE DETAILS =====
+  const { temp_ride_id } = params || {}
+
+  const foundRideDetails = async () => {
+    try {
+      const response = await axios.get(`http://192.168.1.23:3100/rider/${temp_ride_id}`)
+      console.log("hello", response.data)
+    } catch (error) {
+      console.log(error?.response.data)
+
+    }
+  }
+
+  useEffect(() => {
+    foundRideDetails()
+  }, [temp_ride_id])
+
+
   const rideDetails = useMemo(() => params?.rideDetails || {}, [params?.rideDetails]);
 
   const {
@@ -114,6 +131,9 @@ export default function RideDetailsScreen() {
     startLocationTracking,
     stopLocationTracking
   } = useLocationTrackingTwo(socket, rideId, state.rideStarted);
+
+
+
 
 
   const {
@@ -199,29 +219,6 @@ export default function RideDetailsScreen() {
     getCoordinates();
   }, [rider, rideDetails, currentLocation, params]);
 
-  // const driverCoordinates = useMemo(() =>
-  //   currentLocation ||
-  //   (rider?.location?.coordinates ? {
-  //     latitude: rider.location.coordinates[1],
-  //     longitude: rider.location.coordinates[0],
-  //   } : { latitude: 28.7041, longitude: 77.1025 }),
-  //   [currentLocation, rider?.location?.coordinates]);
-
-  // const pickupCoordinates = useMemo(() =>
-  //   rideDetails?.pickupLocation ? {
-  //     latitude: rideDetails.pickupLocation.coordinates[1],
-  //     longitude: rideDetails.pickupLocation.coordinates[0],
-  //   } : { latitude: 28.7041, longitude: 77.1025 },
-  //   [rideDetails?.pickupLocation]);
-
-  // const dropCoordinates = useMemo(() =>
-  //   rideDetails?.dropLocation ? {
-  //     latitude: rideDetails.dropLocation.coordinates[1],
-  //     longitude: rideDetails.dropLocation.coordinates[0],
-  //   } : { latitude: 28.6139, longitude: 77.2090 },
-  //   [rideDetails?.dropLocation]);
-
-  // ===== HELPER FUNCTIONS =====
 
 
   const updateState = useCallback((newState) => {

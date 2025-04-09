@@ -44,6 +44,8 @@ const Protect = require('./middleware/Auth');
 const Heavy = require('./routes/Heavy_vehicle/Heavy.routes');
 const { connectwebDb } = require('./PaymentWithWebDb/db');
 const startExpiryCheckJob = require('./cron_jobs/RiderJobs');
+const tempRideDetailsSchema = require('./models/tempRideDetailsSchema');
+const { default: mongoose } = require('mongoose');
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -256,7 +258,7 @@ io.on('connection', (socket) => {
      * Handle ride acceptance by user
      * Notifies the driver that the user has accepted the ride
      */
-    socket.on('rideAccepted_by_user', (data) => {
+    socket.on('rideAccepted_by_user', async (data) => {
         try {
             const { driver, ride } = data;
 
@@ -269,12 +271,68 @@ io.on('connection', (socket) => {
 
             const driverSocketId = driverSocketMap.get(ride.rider._id);
 
+            // Save ride and driver details in TempRideDetails collection
+            const dataSave = await new tempRideDetailsSchema({
+                driver: {
+                    name: driver.name,
+                    carModel: driver.carModel,
+                    carNumber: driver.carNumber,
+                    vehicleType: driver.vehicleType,
+                    rating: driver.rating,
+                    trips: driver.trips,
+                    distance: driver.distance,
+                    price: driver.price,
+                    otp: driver.otp,
+                    pickup_desc: driver.pickup_desc,
+                    drop_desc: driver.drop_desc,
+                    eta: driver.eta,
+                    rideStatus: driver.rideStatus,
+                },
+                rideDetails: {
+                    _id: ride._id,
+                    RideOtp: ride.RideOtp,
+                    rideStatus: ride.rideStatus,
+                    ride_is_started: ride.ride_is_started,
+                    eta: ride.eta,
+                    EtaOfRide: ride.EtaOfRide,
+                    is_ride_paid: ride.is_ride_paid,
+                    kmOfRide: ride.kmOfRide,
+                    pickup_desc: ride.pickup_desc,
+                    drop_desc: ride.drop_desc,
+                    createdAt: ride.createdAt,
+                    updatedAt: ride.updatedAt,
+                    currentLocation: ride.currentLocation,
+                    dropLocation: ride.dropLocation,
+                    pickupLocation: ride.pickupLocation,
+                    retryCount: ride.retryCount,
+                    currentSearchRadius: ride.currentSearchRadius,
+                    user: ride.user,
+                    rider: {
+                        _id: ride.rider._id,
+                        name: ride.rider.name,
+                        phone: ride.rider.phone,
+                        Ratings: ride.rider.Ratings,
+                        TotalRides: ride.rider.TotalRides,
+                        isActive: ride.rider.isActive,
+                        isAvailable: ride.rider.isAvailable,
+                        isPaid: ride.rider.isPaid,
+                        isProfileComplete: ride.rider.isProfileComplete,
+                        DocumentVerify: ride.rider.DocumentVerify,
+                        BH: ride.rider.BH,
+                        YourQrCodeToMakeOnline: ride.rider.YourQrCodeToMakeOnline,
+                    },
+                },
+                message: 'You can start this ride',
+            }).save();
+
             if (driverSocketId) {
                 io.to(driverSocketId).emit('ride_accepted_message', {
                     message: 'You can start this ride',
                     rideDetails: ride,
                     driver: driver,
+                    temp_ride_id: dataSave?._id
                 });
+
                 console.log(`[${new Date().toISOString()}] Message sent to driver: ${ride.rider._id}`);
             } else {
                 console.log(`[${new Date().toISOString()}] No active socket found for driver: ${ride.rider._id}`);
@@ -283,6 +341,7 @@ io.on('connection', (socket) => {
             console.error(`[${new Date().toISOString()}] Error in rideAccepted_by_user:`, error);
         }
     });
+
     /**
          * Handle ride cancel by user or driver
          * Notifies the driver that the user has cancel the ride same as user if rider cancel
@@ -549,50 +608,50 @@ io.on('connection', (socket) => {
 
     socket.on('send_rider_location', async (data) => {
         const { rider, user } = data || {};
-       
+
         if (!rider || !user) {
             console.error('[send_rider_location] Invalid data received:', data);
             return;
         }
-    
+
         const riderId = rider?._id;
         if (!riderId) {
             console.error('[send_rider_location] Rider ID missing in data:', rider);
             return;
         }
-    
+
         try {
             const foundLiveLocation = await RiderModel.findById(riderId);
             if (!foundLiveLocation) {
                 console.error(`[send_rider_location] Rider with ID ${riderId} not found`);
                 return;
             }
-    
+
             const reterviewdLocation = foundLiveLocation?.location;
             if (!reterviewdLocation || reterviewdLocation.coordinates.length < 2) {
                 console.error(`[send_rider_location] Location not found or invalid for rider ID ${riderId}`);
                 return;
             }
-    
+
             const foundUserSocket = userSocketMap.get(String(user));
             if (!foundUserSocket) {
                 console.error(`[send_rider_location] No active socket found for user ID ${user}`);
                 return;
             }
-    
+
             // Emit location to user
             io.to(foundUserSocket).emit('rider_location', {
                 message: 'Rider location updated',
                 location: reterviewdLocation.coordinates,
             });
-    
+
             console.log(`[send_rider_location] Sent rider location to user ${user}`);
-    
+
         } catch (error) {
             console.error('[send_rider_location] Error handling location update:', error);
         }
     });
-    
+
 
     /**
      * Handle payment received event
@@ -1042,6 +1101,27 @@ app.get('/rider', async (req, res) => {
         res.status(500).send('Error retrieving riders');
     }
 });
+app.get('/rider/:tempRide', async (req, res) => {
+    try {
+        const { tempRide } = req.params;
+
+        if (!tempRide || !mongoose.Types.ObjectId.isValid(tempRide)) {
+            return res.status(400).json({ error: 'Invalid ride ID' });
+        }
+
+        const ride = await tempRideDetailsSchema.findById(tempRide);
+
+        if (!ride) {
+            return res.status(404).json({ error: 'Ride not found' });
+        }
+
+        res.status(200).json({ ride });
+    } catch (err) {
+        console.error(`[${new Date().toISOString()}] Error fetching temp ride:`, err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 
 app.get('/', (req, res) => {
     res.status(201).json({

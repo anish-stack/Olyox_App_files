@@ -1,19 +1,21 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, Dimensions, AppState } from 'react-native';
-import { useSocket } from '../context/SocketContext';
+import { View, StyleSheet, Dimensions, AppState, ActivityIndicator, Image, ScrollView } from 'react-native';
 import { Text, Button, Surface, Portal, Modal } from 'react-native-paper';
 import { Audio } from 'expo-av';
-import { useNavigation } from '@react-navigation/native';
+import { CommonActions, useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
-
-import axios from 'axios';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useSocket } from '../context/SocketContext';
 import { useLocation } from '../context/LocationContext';
+import axios from 'axios';
+import { decode } from '@mapbox/polyline';
 
 const { width, height } = Dimensions.get('window');
 const RIDE_REQUEST_TIMEOUT = 120000;
+
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
@@ -21,8 +23,8 @@ Notifications.setNotificationHandler({
         shouldSetBadge: false,
     }),
 });
+
 const sendRideNotification = async (data) => {
-    console.log(data)
     await Notifications.scheduleNotificationAsync({
         content: {
             title: "🚖 New Ride Request!",
@@ -35,8 +37,9 @@ const sendRideNotification = async (data) => {
     });
 };
 
-export default function RideCome() {
+export default function RideRequestScreen() {
     const navigation = useNavigation();
+    const mapRef = useRef(null);
     const { driverLocation } = useLocation();
     const appState = useRef(AppState.currentState);
     const { socket, isSocketReady } = useSocket();
@@ -44,20 +47,47 @@ export default function RideCome() {
     const [riderDetails, setRiderDetails] = useState(null);
     const [sound, setSound] = useState();
     const [timeLeft, setTimeLeft] = useState(RIDE_REQUEST_TIMEOUT);
+    const [loading, setLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState(null);
+    const [showRideModal, setShowRideModal] = useState(false);
+    const [region, setRegion] = useState(null);
+    const [routeCoordinates, setRouteCoordinates] = useState([]);
     const timeoutRef = useRef(null);
     const soundLoopRef = useRef(null);
 
-    const [errorMsg, setErrorMsg] = useState(null);
-    const [showRideModal, setShowRideModal] = useState(false);
+    useEffect(() => {
+        if (rideData?.polyline) {
+            const decodedCoordinates = decode(rideData.polyline).map(([latitude, longitude]) => ({
+                latitude,
+                longitude
+            }));
+            setRouteCoordinates(decodedCoordinates);
 
-    // Location tracking logic
+            const { coordinates: pickupCoords } = rideData.pickupLocation;
+            const { coordinates: dropCoords } = rideData.dropLocation;
+
+            const midLat = (pickupCoords[1] + dropCoords[1]) / 2;
+            const midLng = (pickupCoords[0] + dropCoords[0]) / 2;
+
+            const latDelta = Math.abs(pickupCoords[1] - dropCoords[1]) * 2.5;
+            const lngDelta = Math.abs(pickupCoords[0] - dropCoords[0]) * 2.5;
+
+            const newRegion = {
+                latitude: midLat,
+                longitude: midLng,
+                latitudeDelta: Math.max(latDelta, 0.02),
+                longitudeDelta: Math.max(lngDelta, 0.02),
+            };
+
+            setRegion(newRegion);
+            mapRef.current?.animateToRegion(newRegion, 1000);
+        }
+    }, [rideData]);
+
     useEffect(() => {
         let interval;
         const getLocation = async () => {
-            if (!isSocketReady) {
-                console.log('Socket not connected, waiting...');
-                return;
-            }
+            if (!isSocketReady) return;
 
             let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
@@ -86,7 +116,7 @@ export default function RideCome() {
         if (!token) return;
 
         try {
-            const response = await fetch('http://192.168.1.11:3100/webhook/cab-receive-location', {
+            const response = await fetch('http://192.168.1.23:3100/webhook/cab-receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -94,8 +124,7 @@ export default function RideCome() {
                 },
                 body: JSON.stringify({ latitude, longitude }),
             });
-            const data = await response.json();
-            // console.log('Location data sent to server:', data);
+            await response.json();
         } catch (error) {
             console.error('Error sending location:', error);
         }
@@ -104,14 +133,13 @@ export default function RideCome() {
     const checkRider = async () => {
         try {
             const token = await SecureStore.getItemAsync('auth_token_cab');
-
             if (!token) {
                 console.warn("No auth token found");
                 return;
             }
 
             const response = await axios.get(
-                'http://192.168.1.11:3100/api/v1/rider/user-details',
+                'http://192.168.1.23:3100/api/v1/rider/user-details',
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
@@ -128,105 +156,31 @@ export default function RideCome() {
         checkRider();
     }, []);
 
-    useEffect(() => {
-        const handleRideRequest = (data) => {
-            console.log("🚖 New Ride Request:", data);
-            setRideData(data);
-            setShowRideModal(true);
-            setTimeLeft(RIDE_REQUEST_TIMEOUT);
-            startSound(); // 🔥 Play sound
-            sendRideNotification(data); // 🔥 Send local notification
-            startTimeout();
-        };
-
-
-        // Listen for `ride_come` when socket is ready
-        if (isSocketReady && socket) {
-            console.log("🎧 Listening for ride requests...");
-            socket.on("ride_come", handleRideRequest);
-        }
-
-        const handleAppStateChange = (nextAppState) => {
-            console.log(`🔄 AppState changed ddd: ${appState.current} ➡️ ${nextAppState}`);
-
-            if (appState.current.match(/inactive|background/) && nextAppState === "active") {
-                console.log("🟢 App is now active");
-
-                if (socket && !socket.connected) {
-                    console.log("🔌 Reconnecting socket...");
-                    socket.connect();
-                } else {
-                    console.log("✅ Socket is already connected.");
-                }
-            }
-
-            appState.current = nextAppState;
-        };
-
-        console.log("📡 Subscribing to AppState changes...");
-        const subscription = AppState.addEventListener("change", handleAppStateChange);
-
-        return () => {
-            console.log("🔄 Cleaning up event listeners...");
-            if (socket) socket.off("ride_come", handleRideRequest);
-            subscription.remove();
-        };
-    }, [isSocketReady, socket]);
-
-
-
-    const startTimeout = () => {
-        // Clear any existing timeout
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-        }
-
-        // Set new timeout
-        timeoutRef.current = setTimeout(() => {
-            handleRejectRide();
-        }, RIDE_REQUEST_TIMEOUT);
-
-        // Start countdown
-        const countdownInterval = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1000) {
-                    clearInterval(countdownInterval);
-                    return 0;
-                }
-                return prev - 1000;
-            });
-        }, 1000);
-    };
-
     const startSound = async () => {
         try {
-            console.log("🔊 Requesting audio focus...");
-
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: false,
-
+                playsInSilentModeIOS: true,
                 shouldDuckAndroid: true,
                 staysActiveInBackground: true,
                 playThroughEarpieceAndroid: false,
             });
 
-            console.log("🎵 Loading sound...");
             const { sound } = await Audio.Sound.createAsync(
                 require('./sound.mp3'),
-                { shouldPlay: true }
+                {
+                    shouldPlay: true,
+                    volume: 1.0
+                }
             );
 
             setSound(sound);
             soundLoopRef.current = sound;
-
-            console.log("▶️ Playing sound...");
-            await sound.playAsync(); // 🔥 Play the sound
-
+            await sound.playAsync();
         } catch (error) {
-            console.error("❌ Error playing sound:", error);
+            console.error("Error playing sound:", error);
         }
     };
-
 
     const stopSound = async () => {
         if (soundLoopRef.current) {
@@ -241,68 +195,144 @@ export default function RideCome() {
         }
     };
 
+    useEffect(() => {
+        const handleRideRequest = async (data) => {
+            console.log("🚖 New Ride Request:", data);
+            setRideData(data);
+            setShowRideModal(true);
+            setTimeLeft(RIDE_REQUEST_TIMEOUT);
+            await startSound();
+            await sendRideNotification(data);
+            startTimeout();
+        };
+
+        if (isSocketReady && socket) {
+            socket.on("ride_come", handleRideRequest);
+        }
+
+        const handleAppStateChange = (nextAppState) => {
+            if (appState.current.match(/inactive|background/) && nextAppState === "active") {
+                if (socket && !socket.connected) {
+                    socket.connect();
+                }
+            }
+            appState.current = nextAppState;
+        };
+
+        const subscription = AppState.addEventListener("change", handleAppStateChange);
+
+        return () => {
+            if (socket) {
+                socket.off("ride_come");
+                socket.off("ride_accepted_message");
+            }
+            subscription.remove();
+        };
+    }, [isSocketReady, socket]);
+
+    const startTimeout = () => {
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+        }
+
+        timeoutRef.current = setTimeout(() => {
+            handleRejectRide();
+        }, RIDE_REQUEST_TIMEOUT);
+
+        const countdownInterval = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1000) {
+                    clearInterval(countdownInterval);
+                    return 0;
+                }
+                return prev - 1000;
+            });
+        }, 1000);
+    };
+
     const handleRejectRide = async () => {
-        // Clear timeout
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
             timeoutRef.current = null;
         }
 
         await stopSound();
+
+        if (socket && rideData) {
+            socket.emit('ride_rejected', {
+                ride_id: rideData.id,
+                driver_id: riderDetails?.id,
+            });
+        }
+
         setShowRideModal(false);
         setRideData(null);
         setTimeLeft(RIDE_REQUEST_TIMEOUT);
     };
 
-    const matchedRider = rideData?.riders?.find((rider) => rider.name === riderDetails?.name);
-
     const handleAcceptRide = async () => {
-        // Clear timeout
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-            timeoutRef.current = null;
-        }
+        setLoading(true);
+        try {
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+            }
 
-        if (socket && matchedRider) {
-            socket.emit('ride_accepted', {
-                data: {
-                    rider_id: matchedRider?.id,
-                    ride_request_id: matchedRider.rideRequestId,
-                    user_id: rideData.user?._id || null,
-                    rider_name: matchedRider.name,
-                    vehicleName: matchedRider.vehicleName,
-                    vehicleNumber: matchedRider.vehicleNumber,
-                    vehicleType: matchedRider.vehicleType,
-                    price: matchedRider.price,
-                    eta: matchedRider.eta,
+            await stopSound();
+
+            if (socket && rideData) {
+                const matchedRider = rideData.riders?.find(
+                    (rider) => rider.name === riderDetails?.name
+                );
+
+                if (matchedRider) {
+                    socket.emit('ride_accepted', {
+                        data: {
+                            rider_id: matchedRider.id,
+                            ride_request_id: matchedRider.rideRequestId,
+                            user_id: rideData.user?._id || null,
+                            rider_name: matchedRider.name,
+                            vehicleName: matchedRider.vehicleName,
+                            vehicleNumber: matchedRider.vehicleNumber,
+                            vehicleType: matchedRider.vehicleType,
+                            price: matchedRider.price,
+                            eta: matchedRider.eta,
+                        }
+                    });
                 }
-            });
+            }
+
+            setShowRideModal(false);
+            setRideData(null);
+            setTimeLeft(RIDE_REQUEST_TIMEOUT);
+        } catch (error) {
+            console.error('Error accepting ride:', error);
+        } finally {
+            setLoading(false);
         }
-        await stopSound();
-        setShowRideModal(false);
-        setRideData(null);
-        setTimeLeft(RIDE_REQUEST_TIMEOUT);
     };
 
     useEffect(() => {
         if (socket) {
             socket.on('ride_accepted_message', (data) => {
-                const { rideDetails, driver } = data || {};
+                const { rideDetails, driver, temp_ride_id } = data || {};
+                console.log("ride_accepted_message", data)
                 if (driver && rideDetails) {
-                    navigation.navigate('start', {
-                        screen: 'ride_details',
-                        params: {
-                            rideDetails,
-                            driver,
-                        },
-                        index: 1,
-                    });
+                    navigation.dispatch(
+                        CommonActions.navigate({
+                            name: 'start',
+                            params: {
+                                screen: 'ride_details',
+                                params: { rideDetails, driver, temp_ride_id },
+                            },
+                        })
+                    );
+
                 }
             });
         }
     }, [socket]);
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (timeoutRef.current) {
@@ -312,87 +342,173 @@ export default function RideCome() {
         };
     }, []);
 
+    if (!rideData && !showRideModal) {
+        return (
+            <View style={styles.waitingContainer}>
+                <ActivityIndicator size="large" color="#6366F1" />
+                <Text style={styles.waitingText}>Waiting for ride requests...</Text>
+            </View>
+        );
+    }
+
     return (
-        <View style={styles.container}>
-            <Portal>
-                <Modal
-                    visible={showRideModal && !!rideData && !!matchedRider}
-                    onDismiss={handleRejectRide}
-                    contentContainerStyle={styles.modalContainer}
-                >
-                    <Surface style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>New Ride Request</Text>
-                        <Text style={styles.timerText}>
-                            Time remaining: {Math.ceil(timeLeft / 1000)}s
-                        </Text>
+        <ScrollView style={{ flex: 1 }}>
 
-                        <View style={styles.locationContainer}>
-                            <View style={styles.locationItem}>
-                                <MaterialCommunityIcons name="map-marker" size={24} color="#EF4444" />
-                                <View style={styles.locationText}>
-                                    <Text style={styles.locationLabel}>Pickup</Text>
-                                    <Text style={styles.locationDesc}>{rideData?.pickup_desc}</Text>
+            <View style={styles.container}>
+                <Portal>
+                    <Modal
+                        visible={showRideModal && !!rideData}
+                        onDismiss={handleRejectRide}
+                        contentContainerStyle={styles.modalContainer}
+                    >
+                        <Surface style={styles.modalContent}>
+                            {/* {region && (
+                                <View style={styles.mapContainer}>
+                                    <MapView
+                                        ref={mapRef}
+                                        provider={PROVIDER_GOOGLE}
+                                        style={styles.map}
+                                        initialRegion={region}
+                                        showsUserLocation
+                                    >
+                                        {rideData?.pickupLocation && (
+                                            <Marker
+                                                coordinate={{
+                                                    latitude: rideData.pickupLocation.coordinates[1],
+                                                    longitude: rideData.pickupLocation.coordinates[0]
+                                                }}
+                                                title="Pickup Location"
+                                                description={rideData.pickup_desc}
+                                            >
+                                                <MaterialCommunityIcons name="map-marker" size={40} color="#EF4444" />
+                                            </Marker>
+                                        )}
+                                        {rideData?.dropLocation && (
+                                            <Marker
+                                                coordinate={{
+                                                    latitude: rideData.dropLocation.coordinates[1],
+                                                    longitude: rideData.dropLocation.coordinates[0]
+                                                }}
+                                                title="Drop Location"
+                                                description={rideData.drop_desc}
+                                            >
+                                                <MaterialCommunityIcons name="flag-checkered" size={40} color="#22C55E" />
+                                            </Marker>
+                                        )}
+                                        {routeCoordinates.length > 0 && (
+                                            <Polyline
+                                                coordinates={routeCoordinates}
+                                                strokeWidth={3}
+                                                strokeColor="#6366F1"
+                                            />
+                                        )}
+                                    </MapView>
+                                </View>
+                            )} */}
+
+                            <View style={styles.userInfoContainer}>
+                                {rideData?.user?.profileImage?.image && (
+                                    <Image
+                                        source={{ uri: rideData.user.profileImage.image }}
+                                        style={styles.userImage}
+                                    />
+                                )}
+                                <View style={styles.userDetails}>
+                                    <Text style={styles.userName}>{rideData?.user?.name}</Text>
+                                    <Text style={styles.userContact}>{rideData?.user?.number}</Text>
+                                </View>
+                                <View style={styles.ratingContainer}>
+                                    <MaterialCommunityIcons name="star" size={20} color="#F59E0B" />
+                                    <Text style={styles.ratingText}>{rideData?.riders?.[0]?.rating}</Text>
                                 </View>
                             </View>
 
-                            <View style={styles.locationDivider} />
-
-                            <View style={styles.locationItem}>
-                                <MaterialCommunityIcons name="flag-checkered" size={24} color="#22C55E" />
-                                <View style={styles.locationText}>
-                                    <Text style={styles.locationLabel}>Drop-off</Text>
-                                    <Text style={styles.locationDesc}>{rideData?.drop_desc}</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        <View style={styles.detailsGrid}>
-                            <View style={styles.detailItem}>
-                                <MaterialCommunityIcons name="map-marker-distance" size={20} color="#6366F1" />
-                                <Text style={styles.detailLabel}>Distance</Text>
-                                <Text style={styles.detailValue}>{rideData?.distance} km</Text>
-                            </View>
-
-                            <View style={styles.detailItem}>
-                                <MaterialCommunityIcons name="clock-outline" size={20} color="#6366F1" />
-                                <Text style={styles.detailLabel}>Duration</Text>
-                                <Text style={styles.detailValue}>{rideData?.trafficDuration} min</Text>
-                            </View>
-
-                            <View style={styles.detailItem}>
-                                <MaterialCommunityIcons name="currency-inr" size={20} color="#6366F1" />
-                                <Text style={styles.detailLabel}>Fare</Text>
-                                <Text style={styles.detailValue}>₹{matchedRider?.price}</Text>
-                            </View>
-                        </View>
-                        <View style={{ padding: 10, backgroundColor: '#f8f9fa', borderRadius: 5 }}>
-                            <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#d9534f' }}>
-                                Note: <Text style={{ color: '#212529' }}>Road tax, state tax, and highway tolls are included.</Text>
-                                <Text style={{ color: '#d9534f' }}>(MCD tolls are not included.)</Text>
+                            <Text style={styles.timerText}>
+                                Time remaining: {Math.ceil(timeLeft / 1000)}s
                             </Text>
-                        </View>
-                        <View style={styles.buttonContainer}>
-                            <Button
-                                mode="contained"
-                                onPress={handleAcceptRide}
-                                style={[styles.actionButton, styles.acceptButton]}
-                                labelStyle={styles.buttonLabel}
-                            >
-                                Accept Ride
-                            </Button>
-                            <Button
-                                mode="outlined"
-                                onPress={handleRejectRide}
-                                style={[styles.actionButton, styles.rejectButton]}
-                                labelStyle={[styles.buttonLabel, styles.rejectButtonLabel]}
-                            >
-                                Decline
-                            </Button>
-                        </View>
-                    </Surface>
-                </Modal>
-            </Portal>
-        </View>
+
+                            <View style={styles.locationContainer}>
+                                <View style={styles.locationItem}>
+                                    <MaterialCommunityIcons name="map-marker" size={24} color="#EF4444" />
+                                    <View style={styles.locationText}>
+                                        <Text style={styles.locationLabel}>Pickup</Text>
+                                        <Text numberOfLines={2} style={styles.locationDesc}>{rideData?.pickup_desc}</Text>
+                                    </View>
+                                </View>
+
+                                <View style={styles.locationDivider} />
+
+                                <View style={styles.locationItem}>
+                                    <MaterialCommunityIcons name="flag-checkered" size={24} color="#22C55E" />
+                                    <View style={styles.locationText}>
+                                        <Text style={styles.locationLabel}>Drop-off</Text>
+                                        <Text numberOfLines={2} style={styles.locationDesc}>{rideData?.drop_desc}</Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={styles.detailsGrid}>
+                                <View style={styles.detailItem}>
+                                    <MaterialCommunityIcons name="map-marker-distance" size={20} color="#6366F1" />
+                                    <Text style={styles.detailLabel}>Distance</Text>
+                                    <Text style={styles.detailValue}>{rideData?.distance} km</Text>
+                                </View>
+
+                                <View style={styles.detailItem}>
+                                    <MaterialCommunityIcons name="clock-outline" size={20} color="#6366F1" />
+                                    <Text style={styles.detailLabel}>Duration</Text>
+                                    <Text style={styles.detailValue}>{rideData?.trafficDuration} min</Text>
+                                </View>
+
+                                <View style={styles.detailItem}>
+                                    <MaterialCommunityIcons name="currency-inr" size={20} color="#6366F1" />
+                                    <Text style={styles.detailLabel}>Fare</Text>
+                                    <Text style={styles.detailValue}>₹{rideData?.price}</Text>
+                                </View>
+                            </View>
+
+                            {rideData?.riders?.[0]?.tolls && (
+                                <View style={styles.tollInfo}>
+                                    <MaterialCommunityIcons name="toll" size={20} color="#6366F1" />
+                                    <Text style={styles.tollText}>
+                                        Toll charges: ₹{rideData.riders[0].tollPrice}
+                                    </Text>
+                                </View>
+                            )}
+
+                            <View style={styles.noteContainer}>
+                                <Text style={styles.noteText}>
+                                    Note: <Text style={styles.noteRegular}>Road tax, state tax, and highway tolls are included. </Text>
+                                    <Text style={styles.noteHighlight}>(MCD tolls are not included.)</Text>
+                                </Text>
+                            </View>
+
+                            <View style={styles.buttonContainer}>
+                                <Button
+                                    mode="contained"
+                                    onPress={handleAcceptRide}
+                                    style={[styles.actionButton, styles.acceptButton]}
+                                    labelStyle={styles.buttonLabel}
+                                    loading={loading}
+                                    disabled={loading}
+                                >
+                                    Accept Ride
+                                </Button>
+                                <Button
+                                    mode="outlined"
+                                    onPress={handleRejectRide}
+                                    style={[styles.actionButton, styles.rejectButton]}
+                                    labelStyle={[styles.buttonLabel, styles.rejectButtonLabel]}
+                                    disabled={loading}
+                                >
+                                    Decline
+                                </Button>
+                            </View>
+                        </Surface>
+                    </Modal>
+                </Portal>
+            </View>
+        </ScrollView>
     );
 }
 
@@ -400,16 +516,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F9FAFB',
-    },
-    mapContainer: {
-        width: '100%',
-        height: height * 0.5,
-        overflow: 'hidden',
-        borderRadius: 12,
-    },
-    map: {
-        width: '100%',
-        height: '100%',
     },
     waitingContainer: {
         flex: 1,
@@ -423,25 +529,63 @@ const styles = StyleSheet.create({
         color: '#4B5563',
         fontWeight: '500',
     },
-    markerContainer: {
-        padding: 8,
-        borderRadius: 20,
-        elevation: 4,
+    mapContainer: {
+        width: '100%',
+        height: height * 0.15,
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginBottom: 16,
+    },
+    map: {
+        width: '100%',
+        height: '100%',
     },
     modalContainer: {
-        padding: 20,
+        margin: 20,
     },
     modalContent: {
         backgroundColor: 'white',
         borderRadius: 16,
         padding: 20,
+        maxHeight: height * 1,
     },
-    modalTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
+    userInfoContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+        padding: 12,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 12,
+    },
+    userImage: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        marginRight: 12,
+    },
+    userDetails: {
+        flex: 1,
+    },
+    userName: {
+        fontSize: 16,
+        fontWeight: '600',
         color: '#111827',
-        marginBottom: 8,
-        textAlign: 'center',
+    },
+    userContact: {
+        fontSize: 14,
+        color: '#6B7280',
+    },
+    ratingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FEF3C7',
+        padding: 6,
+        borderRadius: 8,
+    },
+    ratingText: {
+        marginLeft: 4,
+        fontWeight: '600',
+        color: '#92400E',
     },
     timerText: {
         fontSize: 16,
@@ -471,7 +615,7 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     locationDesc: {
-        fontSize: 16,
+        fontSize: 14,
         color: '#111827',
         fontWeight: '500',
     },
@@ -483,7 +627,7 @@ const styles = StyleSheet.create({
     detailsGrid: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 24,
+        marginBottom: 20,
     },
     detailItem: {
         flex: 1,
@@ -503,6 +647,38 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#111827',
         marginTop: 4,
+    },
+    tollInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#EEF2FF',
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 16,
+    },
+    tollText: {
+        marginLeft: 8,
+        fontSize: 14,
+        color: '#4F46E5',
+        fontWeight: '500',
+    },
+    noteContainer: {
+        padding: 12,
+        backgroundColor: '#F8F9FA',
+        borderRadius: 8,
+        marginBottom: 20,
+    },
+    noteText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#D9534F',
+    },
+    noteRegular: {
+        color: '#212529',
+        fontWeight: 'normal',
+    },
+    noteHighlight: {
+        color: '#D9534F',
     },
     buttonContainer: {
         flexDirection: 'row',

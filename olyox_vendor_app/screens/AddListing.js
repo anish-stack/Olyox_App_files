@@ -23,7 +23,7 @@ export function AddListing() {
         }
 
         const { data } = await axios.get(
-          'http://192.168.1.11:3100/api/v1/tiffin/get_single_tiffin_profile',
+          'http://192.168.1.23:3100/api/v1/tiffin/get_single_tiffin_profile',
           {
             headers: {
               'Authorization': `Bearer ${storedToken}`
@@ -165,7 +165,7 @@ export function AddListing() {
     }
 
     const response = await axios.post(
-      "http://192.168.1.11:3100/api/v1/tiffin/register_listing",
+      "http://192.168.1.23:3100/api/v1/tiffin/register_listing",
       formD,
       {
         headers: {

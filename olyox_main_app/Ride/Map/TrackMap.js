@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, forwardRef } from 'react';
 import {
     View,
     Text,
@@ -14,212 +14,35 @@ import MapViewDirections from 'react-native-maps-directions';
 
 const GOOGLE_MAPS_APIKEY = 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8';
 
-const mapStyles = {
-    ios: [
-        // Zomato-inspired style for iOS
-        {
-            "elementType": "geometry",
-            "stylers": [{ "color": "#f9f9f9" }]
-        },
-        {
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#5d5d5d" }]
-        },
-        {
-            "elementType": "labels.text.stroke",
-            "stylers": [{ "color": "#ffffff" }]
-        },
-        {
-            "featureType": "administrative",
-            "elementType": "geometry.stroke",
-            "stylers": [{ "color": "#e9e9e9" }]
-        },
-        {
-            "featureType": "administrative.land_parcel",
-            "elementType": "geometry.stroke",
-            "stylers": [{ "color": "#e9e9e9" }]
-        },
-        {
-            "featureType": "poi",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#f2f2f2" }]
-        },
-        {
-            "featureType": "poi",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#cb202d" }]
-        },
-        {
-            "featureType": "poi.business",
-            "stylers": [{ "visibility": "simplified" }]
-        },
-        {
-            "featureType": "poi.park",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#e5f5e0" }]
-        },
-        {
-            "featureType": "poi.restaurant",
-            "stylers": [{ "visibility": "on" }]
-        },
-        {
-            "featureType": "road",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#ffffff" }]
-        },
-        {
-            "featureType": "road.arterial",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#ffffff" }]
-        },
-        {
-            "featureType": "road.highway",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#ffe0b2" }]
-        },
-        {
-            "featureType": "road.highway",
-            "elementType": "geometry.stroke",
-            "stylers": [{ "color": "#f8c967" }]
-        },
-        {
-            "featureType": "road.local",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#9e9e9e" }]
-        },
-        {
-            "featureType": "transit.line",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#e5e5e5" }]
-        },
-        {
-            "featureType": "transit.station",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#f2f2f2" }]
-        },
-        {
-            "featureType": "water",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#c3e6ff" }]
-        },
-        {
-            "featureType": "water",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#9e9e9e" }]
-        }
-    ],
-    android: [
-        // Ola-inspired style for Android
-        {
-            "elementType": "geometry",
-            "stylers": [{ "color": "#f5f5f5" }]
-        },
-        {
-            "elementType": "labels.icon",
-            "stylers": [{ "visibility": "off" }]
-        },
-        {
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#616161" }]
-        },
-        {
-            "elementType": "labels.text.stroke",
-            "stylers": [{ "color": "#f5f5f5" }]
-        },
-        {
-            "featureType": "administrative.land_parcel",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#bdbdbd" }]
-        },
-        {
-            "featureType": "poi",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#eeeeee" }]
-        },
-        {
-            "featureType": "poi",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#757575" }]
-        },
-        {
-            "featureType": "poi.park",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#e0f7e5" }]
-        },
-        {
-            "featureType": "poi.park",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#9e9e9e" }]
-        },
-        {
-            "featureType": "road",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#ffffff" }]
-        },
-        {
-            "featureType": "road.arterial",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#ffffff" }]
-        },
-        {
-            "featureType": "road.arterial",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#757575" }]
-        },
-        {
-            "featureType": "road.highway",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#d1e7ff" }]
-        },
-        {
-            "featureType": "road.highway",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#616161" }]
-        },
-        {
-            "featureType": "road.local",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#9e9e9e" }]
-        },
-        {
-            "featureType": "transit.line",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#e5e5e5" }]
-        },
-        {
-            "featureType": "transit.station",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#eeeeee" }]
-        },
-        {
-            "featureType": "water",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#abd1f7" }]
-        },
-        {
-            "featureType": "water",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#9e9e9e" }]
-        }
-    ]
-};
+const TrackMap = forwardRef(({ origin, destination }, ref) => {
 
-export default function TrackMap({ origin, destination }) {
-    console.log("origin",origin)
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [retryCount, setRetryCount] = useState(0);
     const [mapReady, setMapReady] = useState(false);
     const [directionsReady, setDirectionsReady] = useState(false);
-    const mapRef = useRef(null);
 
-    // Initial region that includes both origin and destination
+    const internalMapRef = useRef(null);
+    const mapRef = ref || internalMapRef;
+
+    const validDestination = Array.isArray(destination) && destination.length === 2
+        ? destination
+        : [77.1507, 28.6922]; 
+
+    const destinationCoord = {
+        latitude: validDestination[1],
+        longitude: validDestination[0],
+    };
+
+
     const [region, setRegion] = useState({
         latitude: (origin?.latitude + destination[1]) / 2,
         longitude: (origin?.longitude + destination[0]) / 2,
         latitudeDelta: Math.abs(origin?.latitude - destination[1]) * 1.5,
         longitudeDelta: Math.abs(origin?.longitude - destination[0]) * 1.5,
     });
+
+
 
     useEffect(() => {
         if (mapReady && directionsReady) {
@@ -274,7 +97,6 @@ export default function TrackMap({ origin, destination }) {
 
     const fitToCoordinates = (result) => {
         if (mapRef.current && result?.coordinates?.length > 0) {
-            // Add padding based on platform
             const edgePadding = {
                 top: Platform.OS === 'ios' ? 100 : 80,
                 right: Platform.OS === 'ios' ? 100 : 80,
@@ -319,7 +141,6 @@ export default function TrackMap({ origin, destination }) {
                 showsMyLocationButton={Platform.OS === 'android'}
                 showsCompass={true}
                 showsScale={true}
-                customMapStyle={Platform.OS === 'ios' ? mapStyles.ios : mapStyles.android}
                 onMapReady={() => setMapReady(true)}
                 onError={() => setError('Failed to load map.')}
             >
@@ -341,7 +162,7 @@ export default function TrackMap({ origin, destination }) {
 
                 <MapViewDirections
                     origin={origin}
-                    destination={destination}
+                    destination={destinationCoord}
                     apikey={GOOGLE_MAPS_APIKEY}
                     strokeWidth={5}
                     strokeColor={Platform.OS === 'ios' ? '#0066CC' : '#23527C'}
@@ -350,7 +171,6 @@ export default function TrackMap({ origin, destination }) {
                 />
             </MapView>
 
-            {/* Zoom controls - only Android needs these since iOS has built-in pinch zoom */}
             {Platform.OS === 'android' && (
                 <View style={styles.zoomControls}>
                     <TouchableOpacity style={styles.zoomButton} onPress={zoomIn}>
@@ -363,7 +183,9 @@ export default function TrackMap({ origin, destination }) {
             )}
         </View>
     );
-}
+});
+
+export default TrackMap;
 
 const styles = StyleSheet.create({
     container: {

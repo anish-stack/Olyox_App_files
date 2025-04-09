@@ -6,7 +6,7 @@ import axios from "axios"
 import { Audio } from "expo-av"
 import { LocalRideStorage } from "../services/DatabaseService"
 import { CommonActions, useNavigation } from '@react-navigation/native';
-const API_BASE_URL = "http://192.168.1.11:3100/api/v1"
+const API_BASE_URL = "http://192.168.1.23:3100/api/v1"
 
 let dataFound
 let otpDbCode
