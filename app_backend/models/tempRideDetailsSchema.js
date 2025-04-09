@@ -32,6 +32,7 @@ const tempRideDetailsSchema = new mongoose.Schema({
         createdAt: Date,
         ride_start_time:Date,
         otp_verify_time:Date,
+        isOtpVerify:Boolean,
         ride_end_time:Date,
         updatedAt: Date,
         currentLocation: {

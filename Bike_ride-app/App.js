@@ -68,7 +68,8 @@ export async function getExpoPushToken() {
 const App = () => {
   const [loading, setLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState('Onboarding');
-  const [activeRide, setActiveRide] = useState(null);
+  const [activeRide, setActiveRide] = useState(false);
+  const [activeRideData, setActiveRideData] = useState(false);
   const navigationRef = useNavigationContainerRef();
   const [currentRoute, setCurrentRoute] = useState(null);
   // Handle authentication and user state
@@ -79,11 +80,19 @@ const App = () => {
 
         if (token) {
           const response = await axios.get(
-            'http://192.168.1.23:3100/api/v1/rider/user-details',
+            'https://demoapi.olyox.com/api/v1/rider/user-details',
             { headers: { Authorization: `Bearer ${token}` } }
           );
 
           const partner = response.data.partner;
+          console.log("Hey Partner", partner)
+          if (partner.hasOwnProperty('on_ride_id') && partner.on_ride_id != null) {
+            setActiveRide(true);
+            await foundRideDetails(partner.on_ride_id);
+          } else {
+            setActiveRide(false);
+          }
+          
 
           if (!partner?.isDocumentUpload) {
             setInitialRoute('UploadDocuments');
@@ -106,6 +115,17 @@ const App = () => {
     checkAuthToken();
   }, []);
 
+  const foundRideDetails = async (temp_ride_id) => {
+    console.log("Temp",temp_ride_id)
+    try {
+      const response = await axios.get(`https://demoapi.olyox.com/rider/${temp_ride_id}`)
+      console.log("hello", response.data)
+      setActiveRideData(response.data)
+    } catch (error) {
+      console.log(error?.response.data)
+
+    }
+  }
   // Handle push notifications
   useEffect(() => {
     const setupNotifications = async () => {
@@ -138,29 +158,7 @@ const App = () => {
     return () => clearTimeout(timeout);
   }, [navigationRef]);
 
-  // Handle active ride from secure storage
-  const checkActiveRide = async () => {
-    try {
-      const rideData = await LocalRideStorage.getRide()
-      console.log("rideData", rideData)
-      if (rideData) {
-        setActiveRide(rideData);
-      }
-    } catch (err) {
-      console.error('Error loading active ride:', err);
-    }
-  };
-  useEffect(() => {
-    checkActiveRide();
-    const interval = setInterval(() => {
-      checkActiveRide();
-      console.log("I am check")
-    }, 10000); // 10000ms = 10 seconds
-
-    // Cleanup on unmount
-    return () => clearInterval(interval);
-  }, []);
-
+ 
   useEffect(() => {
     const setupBackgroundTask = async () => {
       const status = await BackgroundFetch.getStatusAsync();
@@ -173,7 +171,6 @@ const App = () => {
 
     setupBackgroundTask();
   }, []);
-  const shouldHideActiveRideButton = ["start", "collect_money"].includes(currentRoute);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'background') {
@@ -215,8 +212,8 @@ const App = () => {
                     <Stack.Screen name="withdraw" component={Withdraw} />
                   </Stack.Navigator>
 
-                  {activeRide && !shouldHideActiveRideButton && (
-                    <ActiveRideButton rideDetails={activeRide} />
+                  {activeRide && (
+                    <ActiveRideButton rideDetails={activeRideData} />
                   )}r
                 </NavigationContainer>
               </SafeAreaProvider>

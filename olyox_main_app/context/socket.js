@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-const SOCKET_URL = "http://192.168.1.23:3100";
+const SOCKET_URL = "https://demoapi.olyox.com";
 
 class SocketService {
   constructor() {

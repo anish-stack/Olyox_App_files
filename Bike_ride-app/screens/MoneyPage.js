@@ -17,6 +17,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import { useSocket } from '../context/SocketContext';
 import { BlurView } from 'expo-blur';
 import { LocalRideStorage } from '../services/DatabaseService';
+import * as Updates from "expo-updates";
 
 const { width } = Dimensions.get('window');
 
@@ -60,7 +61,7 @@ export default function MoneyPage() {
             const token = await SecureStore.getItemAsync('auth_token_cab');
             if (token) {
                 const response = await axios.get(
-                    'http://192.168.1.23:3100/api/v1/rider/user-details',
+                    'https://demoapi.olyox.com/api/v1/rider/user-details',
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 setUserData(response.data.partner);
@@ -76,23 +77,38 @@ export default function MoneyPage() {
         fetchUserDetails();
     }, []);
 
-    const handleISPay = async() => {
-        setIsLoading(true);
-        await SecureStore.deleteItemAsync('activeRide')
-        await LocalRideStorage.clearRide()
-        setTimeout(() => {
-            
-            socket.emit('isPay', data);
+    const handleISPay = async () => {
+        try {
+          setIsLoading(true);
+      
+          // Clear local storage items
+          await SecureStore.deleteItemAsync('activeRide');
+          await LocalRideStorage.clearRide();
+      
+          // Delay before next actions
+          setTimeout(async () => {
+            socket.emit('isPay', data); // Make sure 'data' is defined and correct
+      
             setIsLoading(false);
             setIsRideRate(true);
+      
+            // Reload app if needed
+            await Updates.reloadAsync();
+      
+            // Navigate to Home screen
             navigation.dispatch(
-                    CommonActions.reset({
-                      index: 0,
-                      routes: [{ name: 'Home' }],
-                    })
-                  );
-        }, 2000);
-    };
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Home' }],
+              })
+            );
+          }, 2000);
+        } catch (error) {
+          console.error('handleISPay error:', error);
+          setIsLoading(false);
+        }
+      };
+      
 
     useEffect(() => {
 

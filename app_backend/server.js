@@ -271,7 +271,7 @@ io.on('connection', (socket) => {
 
             const driverSocketId = driverSocketMap.get(ride.rider._id);
 
-            // Save ride and driver details in TempRideDetails collection
+
             const dataSave = await new tempRideDetailsSchema({
                 driver: {
                     name: driver.name,
@@ -324,6 +324,14 @@ io.on('connection', (socket) => {
                 },
                 message: 'You can start this ride',
             }).save();
+
+            const update_driver = await RiderModel.findById(ride.rider._id)
+            if (!update_driver) {
+                return res.status(404).send({ message: 'Driver not found' })
+            }
+            update_driver.on_ride_id = dataSave._id
+            await update_driver.save()
+
 
             if (driverSocketId) {
                 io.to(driverSocketId).emit('ride_accepted_message', {
@@ -439,7 +447,7 @@ io.on('connection', (socket) => {
 
             // Find rider information for the ride
             const riderData = await findRider(data.data._id, io);
-            console.log("riderData", riderData)
+
             if (riderData) {
 
                 emitRideToDrivers(riderData);
@@ -474,29 +482,29 @@ io.on('connection', (socket) => {
         try {
             console.log(`[${new Date().toISOString()}] Ride start request:`, data);
 
-            if (!data || !data.user) {
+            if (!data || !data.ride?.rideDetails?.user) {
                 console.error(`[${new Date().toISOString()}] Invalid ride_started data`);
                 return;
             }
 
-            const userSocketId = userSocketMap.get(String(data.user));
-            const rideStartResult = await rideStart(data);
+            const userId = String(data.ride.rideDetails.user);
+            const userSocketId = userSocketMap.get(userId);
+            const rideStartResult = await rideStart(data.ride);
 
             if (rideStartResult.success) {
-                console.log(`[${new Date().toISOString()}] Ride started successfully for user ${data.user}`);
+                console.log(`[${new Date().toISOString()}] Ride started successfully for user ${userId}`);
 
                 if (userSocketId) {
-                    // Notify the user that their ride has started
                     io.to(userSocketId).emit('ride_user_start', {
                         message: 'Your ride has started!',
                         rideDetails: data,
                     });
-                    console.log(`[${new Date().toISOString()}] Start notification sent to user: ${data.user}`);
+                    console.log(`[${new Date().toISOString()}] Start notification sent to user: ${userId}`);
                 } else {
-                    console.log(`[${new Date().toISOString()}] No active socket found for user: ${data.user}`);
+                    console.log(`[${new Date().toISOString()}] No active socket found for user: ${userId}`);
                 }
             } else {
-                console.error(`[${new Date().toISOString()}] Error starting ride:`, rideStartResult.error);
+                console.error(`[${new Date().toISOString()}] Error starting ride:`, rideStartResult);
                 socket.emit('ride_error', { message: 'Failed to start ride' });
             }
         } catch (error) {
@@ -505,15 +513,17 @@ io.on('connection', (socket) => {
         }
     });
 
+
     /**
      * Handle ride end event
      * Updates ride status to 'completed' and notifies the driver
      */
 
     socket.on('ride_end_by_rider', async (data) => {
+        console.log("End krdo",data)
         try {
-            const ride_id = data?.rideDetails?._id;
-            const user = data?.rideDetails?.user;
+            const ride_id = data?.rideDetails.ride?.rideDetails?._id;
+            const user = data?.rideDetails.ride?.rideDetails?.user;
 
             // 🚫 Invalid data check
             if (!user || !ride_id) {

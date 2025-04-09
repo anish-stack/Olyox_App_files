@@ -10,11 +10,11 @@ import {
   AppState,
 } from "react-native";
 import { Text, Button, Divider, ActivityIndicator } from "react-native-paper";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
-import MapViewDirections from "react-native-maps-directions";
+
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
 
 import {
   FontAwesome5,
@@ -28,19 +28,13 @@ import { RideMap } from "./RideMap";
 import { RideInfoPanel } from "./RideInfoPanel.js";
 import { useRideActions } from "../hooks/useRideActions";
 import { useLocationTrackingTwo } from "../hooks/useLocationTrackingTwo";
-import { LocalRideStorage } from '../services/DatabaseService'
-
 
 // Constants
-const GOOGLE_MAPS_APIKEY = "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8";
 const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-const API_BASE_URL = "http://192.168.1.23:3100/api/v1";
-
-
-
+const API_BASE_URL = "https://demoapi.olyox.com";
 
 export default function RideDetailsScreen() {
   // ===== REFS =====
@@ -51,21 +45,12 @@ export default function RideDetailsScreen() {
   const socketConnectionAttempts = useRef(0);
   const isInitialMount = useRef(true);
   const socketListenersSet = useRef(false);
-
-
-  const fns = async () => {
-    const otpDb = await LocalRideStorage.getRide()
-    return otpDb
-  }
-
+  const rideDataRef = useRef(null);
 
   // ===== NAVIGATION & ROUTE =====
   const route = useRoute();
   const navigation = useNavigation();
-  const { params } = route.params || {}
-
-
-  // console.log("My Params ",  params.dropLocation.coordinates[])
+  const { params } = route || {};
 
   // ===== SOCKET CONTEXT =====
   const { socket } = useSocket();
@@ -93,134 +78,9 @@ export default function RideDetailsScreen() {
   const [driverCoordinates, setDriverCoordinates] = useState(null);
   const [pickupCoordinates, setPickupCoordinates] = useState(null);
   const [dropCoordinates, setDropCoordinates] = useState(null);
-  // ===== RIDE DETAILS =====
-  const { temp_ride_id } = params || {}
+  const [rideDetails, setRideDetails] = useState({});
 
-  const foundRideDetails = async () => {
-    try {
-      const response = await axios.get(`http://192.168.1.23:3100/rider/${temp_ride_id}`)
-      console.log("hello", response.data)
-    } catch (error) {
-      console.log(error?.response.data)
-
-    }
-  }
-
-  useEffect(() => {
-    foundRideDetails()
-  }, [temp_ride_id])
-
-
-  const rideDetails = useMemo(() => params?.rideDetails || {}, [params?.rideDetails]);
-
-  const {
-    drop_desc,
-    eta,
-    rider,
-    RideOtp,
-    pickup_desc,
-    kmOfRide,
-    rideStatus,
-    vehicleType,
-    _id: rideId
-  } = rideDetails;
-
-  // ===== CUSTOM HOOKS =====
-  const {
-    currentLocation,
-    startLocationTracking,
-    stopLocationTracking
-  } = useLocationTrackingTwo(socket, rideId, state.rideStarted);
-
-
-
-
-
-  const {
-    handleOtpSubmit,
-    handleCancelRide,
-    handleCompleteRide,
-    openGoogleMapsDirections,
-    startSound,
-    stopSound,
-    fetchCancelReasons
-  } = useRideActions({
-    state,
-    setState,
-    rideDetails,
-    socket,
-    navigation,
-    mapRef,
-    soundRef
-  });
-
-
-
-  // ===== COORDINATES =====
-  useEffect(() => {
-    const getCoordinates = () => {
-      if (rider) {
-        setDriverCoordinates(currentLocation || (
-          rider?.location?.coordinates
-            ? {
-              latitude: rider.location.coordinates[1],
-              longitude: rider.location.coordinates[0],
-            }
-            : { latitude: 28.7041, longitude: 77.1025 }
-        ));
-
-        setPickupCoordinates(
-          rideDetails?.pickupLocation
-            ? {
-              latitude: rideDetails.pickupLocation.coordinates[1],
-              longitude: rideDetails.pickupLocation.coordinates[0],
-            }
-            : { latitude: 28.7041, longitude: 77.1025 }
-        );
-
-        setDropCoordinates(
-          rideDetails?.dropLocation
-            ? {
-              latitude: rideDetails.dropLocation.coordinates[1],
-              longitude: rideDetails.dropLocation.coordinates[0],
-            }
-            : { latitude: 28.6139, longitude: 77.2090 }
-        );
-      } else {
-        setDriverCoordinates(currentLocation || (
-          params?.rider?.location?.coordinates
-            ? {
-              latitude: params.rider.location.coordinates[1],
-              longitude: params.rider.location.coordinates[0],
-            }
-            : { latitude: 28.7041, longitude: 77.1025 }
-        ));
-
-        setPickupCoordinates(
-          params?.pickupLocation
-            ? {
-              latitude: params.pickupLocation.coordinates[1],
-              longitude: params.pickupLocation.coordinates[0],
-            }
-            : { latitude: 28.7041, longitude: 77.1025 }
-        );
-
-        setDropCoordinates(
-          params?.dropLocation
-            ? {
-              latitude: params.dropLocation.coordinates[1],
-              longitude: params.dropLocation.coordinates[0],
-            }
-            : { latitude: 28.6139, longitude: 77.2090 }
-        );
-      }
-    };
-
-    getCoordinates();
-  }, [rider, rideDetails, currentLocation, params]);
-
-
-
+  // ===== HELPER FUNCTIONS =====
   const updateState = useCallback((newState) => {
     setState(prevState => ({ ...prevState, ...newState }));
   }, []);
@@ -242,6 +102,192 @@ export default function RideDetailsScreen() {
       console.error(`❌ ${message}`);
     }
   }, []);
+
+  // ===== RIDE DETAILS =====
+  const checkAuthToken = useCallback(async () => {
+    try {
+      const token = await SecureStore.getItemAsync('auth_token_cab');
+
+      if (!token) {
+        logError('No auth token found');
+        return null;
+      }
+
+      const response = await axios.get(
+        `${API_BASE_URL}/api/v1/rider/user-details`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const partner = response.data.partner;
+
+      if (partner?.on_ride_id) {
+        logDebug('Found active ride ID from user details', partner.on_ride_id);
+        return partner.on_ride_id;
+      }
+
+      return null;
+    } catch (error) {
+      logError('Auth token check failed', error);
+      return null;
+    }
+  }, [logDebug, logError]);
+
+  // Get ride ID from params or auth check
+  const getRideId = useCallback(async () => {
+    // First check if we have an ID from params
+    if (params?.temp_ride_id) {
+      logDebug('Using ride ID from params', params.temp_ride_id);
+      return params.temp_ride_id;
+    }
+
+    // If not, check from auth token
+    const authRideId = await checkAuthToken();
+    if (authRideId) {
+      logDebug('Using ride ID from auth check', authRideId);
+      return authRideId;
+    }
+
+
+
+    return null;
+  }, [params, checkAuthToken, logDebug, logError, updateState]);
+
+  // Fetch ride details from API
+  const foundRideDetails = useCallback(async (rideId) => {
+    if (!rideId) {
+      logError('Cannot fetch ride details: No ride ID provided');
+      updateState({ loading: false });
+      return;
+    }
+
+    try {
+      logDebug('Fetching ride details', { rideId });
+      const response = await axios.get(`${API_BASE_URL}/rider/${rideId}`);
+      console.log('sssssssssssss', response.data)
+      if (!response.data) {
+        throw new Error('No ride data returned from API');
+      }
+
+      logDebug('Ride details fetched successfully');
+
+      // Save the complete ride data for use throughout component
+      setRideDetails(response.data);
+
+      // Save ride to local storage for persistence
+      // await LocalRideStorage.saveRide(response.data);
+
+      // Check if ride is already started
+
+      // Update component state
+      updateState({
+        loading: false,
+        rideStarted: !!response?.data?.ride?.rideDetails?.otp_verify_time,
+        showDirectionsType: !!response?.data?.ride?.rideDetails?.otp_verify_time 
+          ? "pickup_to_drop" 
+          : "driver_to_pickup",
+        // otp: response?.data?.ride?.rideDetails?.RideOtp || response?.data?.RideOtp || ""
+      });
+      
+      return response.data;
+    } catch (error) {
+      logError('Failed to fetch ride details', error);
+      updateState({
+        loading: false,
+        errorMsg: "Could not load ride details. Please try again."
+      });
+      return null;
+    }
+  }, [logDebug, logError, updateState]);
+
+  // Initialize ride data
+  useEffect(() => {
+    const initializeRideData = async () => {
+      // Get ride ID from any available source
+      const rideId = await getRideId();
+
+      if (rideId) {
+        // Fetch full ride details using the ID
+        const rideData = await foundRideDetails(rideId);
+        rideDataRef.current = rideData;
+      }
+    };
+
+    initializeRideData();
+  }, [getRideId, foundRideDetails]);
+
+  // ===== CUSTOM HOOKS =====
+  const {
+    currentLocation,
+    startLocationTracking,
+    stopLocationTracking
+  } = useLocationTrackingTwo(socket, rideDetails?._id, state.rideStarted);
+
+  const {
+    handleOtpSubmit,
+    handleCancelRide,
+    handleCompleteRide,
+    openGoogleMapsDirections,
+    openGoogleMapsDirectionsPickup,
+    startSound,
+    stopSound,
+    fetchCancelReasons
+  } = useRideActions({
+    state,
+    setState,
+    rideDetails,
+    socket,
+    navigation,
+    mapRef,
+    soundRef
+  });
+
+  // ===== COORDINATES =====
+  useEffect(() => {
+    if (!rideDetails) return;
+
+    const getCoordinates = () => {
+      // Driver/Rider coordinates
+      if (currentLocation) {
+        console.log("Current Location",currentLocation)
+        setDriverCoordinates(currentLocation);
+      } else if (rideDetails?.rider?.location?.coordinates) {
+        console.log("Coordinated",rideDetails?.rider?.location?.coordinates)
+        setDriverCoordinates({
+          latitude: rideDetails.rider.location.coordinates[1],
+          longitude: rideDetails.rider.location.coordinates[0],
+        });
+      } else {
+        // Default coordinates
+        setDriverCoordinates({ latitude: 28.7041, longitude: 77.1025 });
+      }
+
+      // Pickup coordinates
+      if (rideDetails?.ride?.rideDetails.pickupLocation?.coordinates) {
+        setPickupCoordinates({
+          latitude: rideDetails?.ride?.rideDetails.pickupLocation.coordinates[1],
+          longitude: rideDetails?.ride?.rideDetails.pickupLocation.coordinates[0],
+        });
+      } else {
+        // Default coordinates
+        setPickupCoordinates({ latitude: 28.7041, longitude: 77.1025 });
+      }
+
+      // Drop coordinates
+      if (rideDetails?.ride?.rideDetails.dropLocation?.coordinates) {
+        setDropCoordinates({
+          latitude: rideDetails?.ride?.rideDetails.dropLocation.coordinates[1],
+          longitude: rideDetails?.ride?.rideDetails.dropLocation.coordinates[0],
+        });
+      } else {
+        // Default coordinates
+        setDropCoordinates({ latitude: 28.6139, longitude: 77.2090 });
+      }
+    };
+
+    getCoordinates();
+  }, [rideDetails, currentLocation]);
+
+
 
   // ===== SOCKET MANAGEMENT =====
   const connectSocket = useCallback(() => {
@@ -289,14 +335,8 @@ export default function RideDetailsScreen() {
 
     // ✅ Always remove existing listeners first
     socket.off('ride_end');
-    // socket.off('mark_as_done_rejected');
     socket.off('ride_cancelled');
 
-    // socket.off('mark_as_done_rejected');
-    // socket.on('mark_as_done_rejected', (data) => {
-    //   Alert.alert("Report Completed", data?.message);
-    //   console.log("mark_as_done_rejected", data);
-    // });
     socket.on('ride_end', (data) => {
       logDebug('Ride completed event received', data);
       updateState({ rideCompleted: true });
@@ -391,44 +431,6 @@ export default function RideDetailsScreen() {
       Alert.alert(title, body);
     }, 500);
   }, []);
-  const loadSavedData = async () => {
-    try {
-
-      const savedRide = await LocalRideStorage.getRide()
-      console.log("savedRides", savedRide)
-
-      const rideToUse = params?.rideDetails || savedRide
-      console.log("rideToUse", rideToUse)
-      if (rideToUse) {
-
-        const savedState = await LocalRideStorage.getRideState()
-        console.log("savedState", savedState)
-
-        updateState({
-          loading: false,
-          rideStarted: savedState.rideStarted,
-          rideCompleted: savedState.rideCompleted,
-          otp: savedState.otp,
-          showDirectionsType: savedState.rideStarted ? "pickup_to_drop" : "driver_to_pickup",
-        })
-
-        // If this is a new ride from params, save it
-        if (params?.rideDetails) {
-          await LocalRideStorage.saveRide(rideDetails)
-        }
-      } else {
-        updateState({ loading: false })
-      }
-    } catch (error) {
-      logError("Error loading saved ride data", error)
-      updateState({ loading: false })
-    }
-  }
-
-  useEffect(() => {
-    loadSavedData()
-  }, [])
-
 
   // ===== EFFECTS =====
   // Initialize component - runs only once
@@ -438,18 +440,8 @@ export default function RideDetailsScreen() {
 
     logDebug('Initializing component');
 
-
     // Connect socket
     connectSocket();
-
-    // Save ride to storage if available
-    if (params?.rideDetails) {
-
-      const savedata = async () => {
-        await LocalRideStorage.saveRide(rideDetails);
-      }
-      savedata()
-    }
 
     // Start location tracking
     startLocationTracking();
@@ -549,8 +541,6 @@ export default function RideDetailsScreen() {
       startSound();
       showLocalNotification("🚨 Ride Cancelled", "The ride has been cancelled by the customer.");
     });
-
-    // await dbService.clearRideFromStorage();
   }, [socket, logDebug, startSound, showLocalNotification]);
 
   // Set up ride cancellation listener
@@ -566,19 +556,19 @@ export default function RideDetailsScreen() {
 
   // ===== RENDER COMPONENTS =====
   // Loading screen
-  // if (state.loading) {
-  //   return (
-  //     <View style={{
-  //       flex: 1,
-  //       justifyContent: 'center',
-  //       alignItems: 'center',
-  //       backgroundColor: '#fff'
-  //     }}>
-  //       <ActivityIndicator size="large" color="#FF3B30" />
-  //       <Text style={{ marginTop: 20, fontSize: 16 }}>Loading ride details...</Text>
-  //     </View>
-  //   );
-  // }
+  if (state.loading) {
+    return (
+      <View style={{
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff'
+      }}>
+        <ActivityIndicator size="large" color="#FF3B30" />
+        <Text style={{ marginTop: 20, fontSize: 16 }}>Loading ride details...</Text>
+      </View>
+    );
+  }
 
   // Error screen
   if (state.errorMsg) {
@@ -603,6 +593,15 @@ export default function RideDetailsScreen() {
     );
   }
 
+  // Extract needed properties from ride details
+  const {
+    drop_desc = rideDetails?.ride?.driver?.drop_desc || rideDetails?.ride?.driver?.rideDetails?.ride?.driver?.drop_desc || "",
+    pickup_desc = rideDetails?.ride?.driver?.pickup_desc || rideDetails?.ride?.driver?.rideDetails?.ride?.driver?.pickup_desc || "",
+    kmOfRide = rideDetails?.ride?.driver?.kmOfRide || rideDetails?.ride?.driver?.rideDetails?.ride?.driver?.kmOfRide || "0",
+    RideOtp = rideDetails?.ride?.driver?.otp || rideDetails?.ride?.driver?.otp || "",
+  } = rideDetails;
+
+  console.log("drop_desc rideDetails?.drop_desc", rideDetails?.ride?.driver?.otp)
   // Main screen
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -617,6 +616,7 @@ export default function RideDetailsScreen() {
         socketConnected={state.socketConnected}
         carIconAnimation={carIconAnimation}
         handleMapReady={handleMapReady}
+    openGoogleMapsDirectionsPickup={openGoogleMapsDirectionsPickup}
         openGoogleMapsDirections={openGoogleMapsDirections}
         pickup_desc={pickup_desc}
         drop_desc={drop_desc}
@@ -632,13 +632,15 @@ export default function RideDetailsScreen() {
         timeToPickup={state.timeToPickup}
         pickup_desc={pickup_desc}
         drop_desc={drop_desc}
-        params={params}
+        params={{ rideDetails }}
         handleCompleteRide={handleCompleteRide}
       />
 
       <OtpModal
         appState={state}
         updateState={updateState}
+        riderDetails={rideDetails}
+        update={foundRideDetails}
         handleOtpSubmit={handleOtpSubmit}
       />
 
@@ -650,4 +652,3 @@ export default function RideDetailsScreen() {
     </SafeAreaView>
   );
 }
-

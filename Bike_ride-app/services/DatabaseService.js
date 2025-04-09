@@ -19,7 +19,6 @@ export const LocalRideStorage = {
   async getRide() {
     try {
       const rideString = await AsyncStorage.getItem(RIDE_STORAGE_KEY)
-      console.log("rideString")
       if (rideString) {
         const rideData = JSON.parse(rideString)
         console.log("📦 Retrieved ride from storage:", rideData)

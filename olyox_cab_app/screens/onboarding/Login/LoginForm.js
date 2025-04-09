@@ -21,7 +21,7 @@ const LoginForm = ({ onLogin }) => {
     
             InteractionManager.runAfterInteractions(async () => {
                 const response = await axios.post(
-                    "http://192.168.1.23:3100/api/v1/parcel/login_parcel_partner",
+                    "https://demoapi.olyox.com/api/v1/parcel/login_parcel_partner",
                     { number: phone }
                 );
                 console.log("response", response.data);

@@ -2,7 +2,7 @@ import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-const SOCKET_URL = "http://192.168.1.23:3100";
+const SOCKET_URL = "https://demoapi.olyox.com";
 let socket = null;
 
 export const fetchUserData = async () => {
@@ -14,7 +14,7 @@ export const fetchUserData = async () => {
         }
 
         const response = await axios.get(
-            "http://192.168.1.23:3100/api/v1/parcel/user-details",
+            "https://demoapi.olyox.com/api/v1/parcel/user-details",
             {
                 headers: { Authorization: `Bearer ${token}` },
             }

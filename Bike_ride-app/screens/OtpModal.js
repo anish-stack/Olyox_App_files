@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity } from 'react-native';
 
-const OtpModal = React.memo(({ appState, updateState, handleOtpSubmit }) => {
+const OtpModal = React.memo(({ appState, updateState, handleOtpSubmit,update,riderDetails }) => {
     return useMemo(() => (
         <Modal
             animationType="slide"
@@ -35,7 +35,7 @@ const OtpModal = React.memo(({ appState, updateState, handleOtpSubmit }) => {
 
                         <TouchableOpacity
                             style={styles.verifyButton}
-                            onPress={handleOtpSubmit}
+                            onPress={()=>handleOtpSubmit()}
                         >
                             <Text style={styles.verifyText}>Verify</Text>
                         </TouchableOpacity>

@@ -166,6 +166,10 @@ const RiderSchema = new Schema({
     BH: {
         type: String
     },
+    on_ride_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'TempRideDetails'
+    },
     YourQrCodeToMakeOnline: {
         type: String,
         default: null

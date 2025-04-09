@@ -23,6 +23,7 @@ export const RideMap = React.memo(
     carIconAnimation,
     handleMapReady,
     openGoogleMapsDirections,
+    openGoogleMapsDirectionsPickup,
     pickup_desc,
     drop_desc,
     updateState,
@@ -120,9 +121,27 @@ export const RideMap = React.memo(
             shadowOpacity: 0.25,
             shadowRadius: 3.84,
           }}
+          onPress={openGoogleMapsDirectionsPickup}
+        >
+         <Text>Navigation To Pickup Point</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{
+            position: "absolute",
+            bottom: 70,
+            left: 10,
+            backgroundColor: "red",
+            padding: 10,
+            borderRadius: 50,
+            elevation: 5,
+            shadowColor: "#fff",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+          }}
           onPress={openGoogleMapsDirections}
         >
-         <Text>Navigation</Text>
+         <Text style={{color:'#fff'}}>Navigation to Drop Point</Text>
         </TouchableOpacity>
       </View>
     )

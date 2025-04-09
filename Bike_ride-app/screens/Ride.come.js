@@ -116,7 +116,7 @@ export default function RideRequestScreen() {
         if (!token) return;
 
         try {
-            const response = await fetch('http://192.168.1.23:3100/webhook/cab-receive-location', {
+            const response = await fetch('https://demoapi.olyox.com/webhook/cab-receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -139,7 +139,7 @@ export default function RideRequestScreen() {
             }
 
             const response = await axios.get(
-                'http://192.168.1.23:3100/api/v1/rider/user-details',
+                'https://demoapi.olyox.com/api/v1/rider/user-details',
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
@@ -346,7 +346,7 @@ export default function RideRequestScreen() {
         return (
             <View style={styles.waitingContainer}>
                 <ActivityIndicator size="large" color="#6366F1" />
-                <Text style={styles.waitingText}>Waiting for ride requests...</Text>
+                <Text style={styles.waitingText}>Waiting for New ride requests...</Text>
             </View>
         );
     }
@@ -518,13 +518,14 @@ const styles = StyleSheet.create({
         backgroundColor: '#F9FAFB',
     },
     waitingContainer: {
+        marginVertical: 16,
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#F3F4F6',
     },
     waitingText: {
-        marginTop: 16,
+        marginVertical: 16,
         fontSize: 16,
         color: '#4B5563',
         fontWeight: '500',
