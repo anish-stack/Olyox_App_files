@@ -33,7 +33,6 @@ const tempRideDetailsSchema = new mongoose.Schema({
         ride_start_time:Date,
         otp_verify_time:Date,
         ride_end_time:Date,
-        
         updatedAt: Date,
         currentLocation: {
             type: {
@@ -71,7 +70,6 @@ const tempRideDetailsSchema = new mongoose.Schema({
         retryCount: { type: Number, default: 0 },
         currentSearchRadius: { type: Number, default: 0 },
         user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-
         rider: {
             _id: mongoose.Schema.Types.ObjectId,
             name: String,
