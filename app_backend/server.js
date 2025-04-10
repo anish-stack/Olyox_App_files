@@ -725,7 +725,7 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            const collectResult = await collectCash({data:data.ride,paymentMethod});
+            const collectResult = await collectCash({data:data.ride,paymentMethod:data?.paymentMethod});
 
             if (collectResult.success) {
                 console.log(`[${new Date().toISOString()}] Payment recorded successfully for user: ${data.ride.user}`);
