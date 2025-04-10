@@ -6,12 +6,14 @@ import * as Location from 'expo-location';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
-import { ActivityIndicator, View, Text, StyleSheet, Linking, Image, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, View, Text, StyleSheet, Linking, Image, TouchableOpacity, Platform } from 'react-native';
 import { store } from './redux/store';
 import { SocketProvider } from './context/SocketContext';
 import * as Sentry from '@sentry/react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as IntentLauncher from 'expo-intent-launcher';
+import { AppRegistry } from 'react-native';
+import { name as appName } from './app.json';
 
 // Import screens
 import HomeScreen from './screens/HomeScreen';
@@ -22,8 +24,6 @@ import { RideConfirmed } from './Ride/Show_near_by_cab/Ride_Confirmed';
 import Hotels_details from './Hotels/Hotel_Details/Hotels_details';
 import Single_Hotel_details from './Hotels/Hotel_Details/Single_Hotel_details';
 import BookingSuccess from './Hotels/Hotel_Details/BookingSuccess';
-import { AppRegistry } from 'react-native';
-import { name as appName } from './app.json';
 import Onboarding from './onboarding/Onboarding';
 import Ride_Rating from './Ride/Show_near_by_cab/Ride_Rating';
 import FloatingRide from './Ride/Floating_ride/Floating.ride';
@@ -59,7 +59,6 @@ Sentry.init({
 // Define location error types
 const ERROR_TYPES = {
   PERMISSION_DENIED: 'PERMISSION_DENIED',
-  BACKGROUND_PERMISSION_DENIED: 'BACKGROUND_PERMISSION_DENIED',
   LOCATION_UNAVAILABLE: 'LOCATION_UNAVAILABLE',
   TIMEOUT: 'TIMEOUT',
   UNKNOWN: 'UNKNOWN',
@@ -81,11 +80,6 @@ const App = () => {
       } catch (error) {
         console.error('Error fetching tokens:', error);
         Sentry.captureException(error);
-      } finally {
-        // Only finish loading when location is also handled
-        if (!loading) {
-          setLoading(false);
-        }
       }
     };
 
@@ -94,226 +88,123 @@ const App = () => {
 
   // Open device settings
   const openSettings = useCallback(async () => {
-    if (Platform.OS === 'ios') {
-      await Linking.openURL('app-settings:');
-    } else {
-      await IntentLauncher.startActivityAsync(
-        IntentLauncher.ActivityAction.LOCATION_SOURCE_SETTINGS
-      );
+    try {
+      if (Platform.OS === 'ios') {
+        await Linking.openURL('app-settings:');
+      } else {
+        await IntentLauncher.startActivityAsync(
+          IntentLauncher.ActivityAction.LOCATION_SOURCE_SETTINGS
+        );
+      }
+    } catch (error) {
+      console.error('Error opening settings:', error);
+      Sentry.captureException(error);
     }
   }, []);
 
-  // Get location with improved error handling
-  const getCurrentLocation = useCallback(async () => {
+  // Get high accuracy location
+  const getHighAccuracyLocation = useCallback(async () => {
+    let watchSubscription = null;
     try {
       setLoading(true);
   
-      // Check if location services are enabled
+      // Step 1: Check if location services are enabled
       const isLocationEnabled = await Location.hasServicesEnabledAsync();
+      console.log("🔍 Location services enabled:", isLocationEnabled);
       if (!isLocationEnabled) {
         setErrorType(ERROR_TYPES.LOCATION_UNAVAILABLE);
         setLoading(false);
         return;
       }
   
-      // Request foreground permissions
-      const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
-      console.log("foregroundStatus", foregroundStatus);
+      // Step 2: Request permissions
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      console.log("🔐 Location permission status:", status);
   
-      if (foregroundStatus !== 'granted') {
+      if (status !== 'granted') {
         setErrorType(ERROR_TYPES.PERMISSION_DENIED);
         setLoading(false);
         return;
       }
   
-      // Request background permissions
-      const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-      console.log("backgroundStatus", backgroundStatus);
+      // Step 3: Get high accuracy location with timeout handling
+      try {
+        const currentLocation = await Promise.race([
+          Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Highest,
+            maximumAge: 1000,
+            mayShowUserSettingsDialog: true,
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Location request timed out')), 600000) // 10 sec timeout
+          )
+        ]);
   
-      if (backgroundStatus !== 'granted') {
-        setErrorType(ERROR_TYPES.BACKGROUND_PERMISSION_DENIED);
-        // Continue anyway since foreground is granted
-      }
+        console.log("📍 Got initial location:", currentLocation);
+        setLocation(currentLocation);
+        setErrorType(null);
+        setLocationFetchRetries(0);
   
-      // Add optional debug info about providers
-      const providerStatus = await Location.getProviderStatusAsync();
-      console.log('Provider Status:', providerStatus);
-  
-      // Wrap watchPositionAsync with timeout
-      const locationPromise = new Promise(async (resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Location fetch timeout'));
-        }, 30000); // 30 sec timeout
-  
-        const subscription = await Location.watchPositionAsync(
+        // Step 4: Start watching position for better updates
+        watchSubscription = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.High,
-            timeInterval: 1000,
-            distanceInterval: 1,
+            accuracy: Location.Accuracy.BestForNavigation,
+            timeInterval: 3000,
+            distanceInterval: 1, // meters
           },
-          (location) => {
-            clearTimeout(timeout);
-            subscription.remove(); // stop watching after first fix
-            resolve(location);
+          (newLocation) => {
+            console.log("📡 Location update:", newLocation);
+            setLocation(newLocation);
           }
         );
-      });
   
-      const fetchedLocation = await locationPromise;
-      console.log("fetchedLocation", fetchedLocation);
+      } catch (error) {
+        console.error('❌ Error getting high accuracy location:', error);
   
-      setLocation(fetchedLocation);
-      setErrorType(null);
-      setLoading(false);
-      setLocationFetchRetries(0);
+        if (error.message && error.message.includes('timeout')) {
+          setErrorType(ERROR_TYPES.TIMEOUT);
+        } else {
+          setErrorType(ERROR_TYPES.UNKNOWN);
+        }
   
-    } catch (error) {
-      console.error('Error fetching location have come from app:', error);
-      Sentry.captureException(error);
-  
-      if (error.message === 'Location fetch timeout') {
-        setErrorType(ERROR_TYPES.TIMEOUT);
-      } else {
-        setErrorType(ERROR_TYPES.UNKNOWN);
+        setLocationFetchRetries(prev => prev + 1);
       }
   
-      setLocationFetchRetries(prev => prev + 1);
+    } catch (error) {
+      console.error('❗ Error in location service:', error);
+      Sentry?.captureException?.(error);
+      setErrorType(ERROR_TYPES.UNKNOWN);
+  
+    } finally {
       setLoading(false);
     }
+  
+    return () => {
+      // Cleanup location watcher when component unmounts
+      if (watchSubscription) {
+        watchSubscription.remove();
+        console.log("🧹 Cleaned up location watcher.");
+      }
+    };
   }, [locationFetchRetries]);
 
   // Initial location fetch
   useEffect(() => {
-    getCurrentLocation();
-  }, []);
+    getHighAccuracyLocation();
+  }, [getHighAccuracyLocation]);
 
-  // Auto-retry location fetch up to 3 times with increasing delays
+  // Auto-retry location fetch up to 3 times
   useEffect(() => {
-    if (errorType === ERROR_TYPES.TIMEOUT || errorType === ERROR_TYPES.UNKNOWN) {
-      if (locationFetchRetries <= 3) {
-        const retryDelay = locationFetchRetries * 5000; // Increasing delay
-        const retryTimer = setTimeout(() => {
-          getCurrentLocation();
-        }, retryDelay);
-        
-        return () => clearTimeout(retryTimer);
-      }
-    }
-  }, [errorType, locationFetchRetries, getCurrentLocation]);
-
-  // Background location tracking setup
-  useEffect(() => {
-    if (location && !errorType) {
-      // Set up background location tracking when we have permissions and initial location
-      const setupBackgroundTracking = async () => {
-        try {
-          await Location.startLocationUpdatesAsync('background-location-task', {
-            accuracy: Location.Accuracy.Balanced,
-            timeInterval: 10000,
-            distanceInterval: 100,
-            foregroundService: {
-              notificationTitle: "Location Active",
-              notificationBody: "Your location is being tracked for ride services",
-            },
-          });
-        } catch (error) {
-          console.error('Failed to start background location updates:', error);
-          Sentry.captureException(error);
-          // Continue app operation even if background tracking fails
-        }
-      };
+    if ((errorType === ERROR_TYPES.TIMEOUT || errorType === ERROR_TYPES.UNKNOWN) && 
+        locationFetchRetries <= 3) {
+      const retryDelay = locationFetchRetries * 2000; // 2s, 4s, 6s
+      const retryTimer = setTimeout(() => {
+        getHighAccuracyLocation();
+      }, retryDelay);
       
-      if (errorType !== ERROR_TYPES.BACKGROUND_PERMISSION_DENIED) {
-        setupBackgroundTracking();
-      }
+      return () => clearTimeout(retryTimer);
     }
-  }, [location, errorType]);
-
-  // Loading screen
-  if (loading) {
-    return (
-      <View style={styles.loaderContainer}>
-        <StatusBar style="auto" />
-        <ActivityIndicator size="large" color="#00aaa9" />
-        <Text style={styles.loadingText}>Fetching your location...</Text>
-      </View>
-    );
-  }
-
-  // Error screen with action button to fix
-  if (errorType) {
-    let errorMessage = '';
-    let buttonText = '';
-    let buttonAction = getCurrentLocation;
-    let iconSource = `https://res.cloudinary.com/dglihfwse/image/upload/v1744271215/pin_zpnnjn.png`; // Assume this exists
-    
-    switch (errorType) {
-      case ERROR_TYPES.PERMISSION_DENIED:
-        errorMessage = 'Location access is required to use this app. Please grant location permissions.';
-        buttonText = 'Open Settings';
-        buttonAction = openSettings;
-        break;
-        
-      case ERROR_TYPES.BACKGROUND_PERMISSION_DENIED:
-        // We continue with app anyway, this is just a warning
-        return (
-          <Provider store={store}>
-            <PaperProvider>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <SocketProvider>
-                  <LocationProvider initialLocation={location}>
-                    <SafeAreaProvider>
-                      <ErrorBoundaryWrapper>
-                        <NavigationContainer>
-                          <Stack.Navigator initialRouteName={isLogin ? 'Home' : 'Onboarding'}>
-                            {/* All routes... */}
-                            {renderRoutes()}
-                          </Stack.Navigator>
-                        </NavigationContainer>
-                      </ErrorBoundaryWrapper>
-                    </SafeAreaProvider>
-                  </LocationProvider>
-                </SocketProvider>
-              </GestureHandlerRootView>
-            </PaperProvider>
-          </Provider>
-        );
-        
-      case ERROR_TYPES.LOCATION_UNAVAILABLE:
-        errorMessage = 'Location services are disabled on your device. Please enable location services.';
-        buttonText = 'Open Settings';
-        buttonAction = openSettings;
-        break;
-        
-      case ERROR_TYPES.TIMEOUT:
-        errorMessage = 'Could not get your location in time. Please check your connection and try again.';
-        buttonText = 'Try Again';
-        break;
-        
-      default:
-        errorMessage = 'There was a problem determining your location. Please try again.';
-        buttonText = 'Try Again';
-    }
-
-    return (
-      <View style={styles.errorContainer}>
-        <StatusBar style="auto" />
-        <Image 
-          source={{uri:iconSource}}
-          style={styles.errorIcon} 
-          resizeMode="contain"
-        />
-        <Text style={styles.errorTitle}>Location Required</Text>
-        <Text style={styles.errorText}>{errorMessage}</Text>
-        <TouchableOpacity 
-          style={styles.actionButton} 
-          onPress={buttonAction}
-        >
-          <Text style={styles.buttonText}>{buttonText}</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  }, [errorType, locationFetchRetries, getHighAccuracyLocation]);
 
   // Helper function to render all routes
   const renderRoutes = () => (
@@ -349,6 +240,67 @@ const App = () => {
       <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={Onboarding} />
     </>
   );
+
+  // Loading screen
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <StatusBar style="auto" />
+        <ActivityIndicator size="large" color="#00aaa9" />
+        <Text style={styles.loadingText}>Fetching your location...</Text>
+      </View>
+    );
+  }
+
+  // Error screen with action button to fix
+  if (errorType) {
+    let errorMessage = '';
+    let buttonText = '';
+    let buttonAction = getHighAccuracyLocation;
+    let iconSource = `https://res.cloudinary.com/dglihfwse/image/upload/v1744271215/pin_zpnnjn.png`;
+    
+    switch (errorType) {
+      case ERROR_TYPES.PERMISSION_DENIED:
+        errorMessage = 'Location access is required to use this app. Please grant location permissions.';
+        buttonText = 'Open Settings';
+        buttonAction = openSettings;
+        break;
+        
+      case ERROR_TYPES.LOCATION_UNAVAILABLE:
+        errorMessage = 'Location services are disabled on your device. Please enable location services.';
+        buttonText = 'Open Settings';
+        buttonAction = openSettings;
+        break;
+        
+      case ERROR_TYPES.TIMEOUT:
+        errorMessage = 'Could not get your location in time. Please check your connection and try again.';
+        buttonText = 'Try Again';
+        break;
+        
+      default:
+        errorMessage = 'There was a problem determining your location. Please try again.';
+        buttonText = 'Try Again';
+    }
+
+    return (
+      <View style={styles.errorContainer}>
+        <StatusBar style="auto" />
+        <Image 
+          source={{uri: iconSource}}
+          style={styles.errorIcon} 
+          resizeMode="contain"
+        />
+        <Text style={styles.errorTitle}>Location Required</Text>
+        <Text style={styles.errorText}>{errorMessage}</Text>
+        <TouchableOpacity 
+          style={styles.actionButton} 
+          onPress={buttonAction}
+        >
+          <Text style={styles.buttonText}>{buttonText}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   // Main app when everything is ready
   return (
@@ -424,6 +376,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
+    marginBottom: 15,
+    width: '80%',
+    alignItems: 'center',
   },
   buttonText: {
     color: '#fff',

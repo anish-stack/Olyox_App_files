@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import * as Location from "expo-location";
 
 const LocationContext = createContext();
@@ -6,24 +6,82 @@ const LocationContext = createContext();
 export const LocationProvider = ({ children }) => {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [locationHistory, setLocationHistory] = useState([]);
+  const locationWatcher = useRef(null);
 
-  useEffect(() => {
-    async function getCurrentLocation() {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+  const ACCURACY_THRESHOLD = 700; // only accept if accuracy is under 50m
+  const MAX_HISTORY_LENGTH = 5;  // rolling average from last 5 updates
+
+  // Optional: Smoothen location using rolling average
+  const getSmoothedLocation = (coords) => {
+    const updatedHistory = [...locationHistory, coords].slice(-MAX_HISTORY_LENGTH);
+    setLocationHistory(updatedHistory);
+
+    const avgLat = updatedHistory.reduce((sum, loc) => sum + loc.latitude, 0) / updatedHistory.length;
+    const avgLng = updatedHistory.reduce((sum, loc) => sum + loc.longitude, 0) / updatedHistory.length;
+
+    return {
+      ...coords,
+      latitude: avgLat,
+      longitude: avgLng,
+    };
+  };
+
+  const startWatchingLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         setErrorMsg("Permission to access location was denied");
         return;
       }
 
-      try {
-        let location = await Location.getCurrentPositionAsync({});
-        setLocation(location);
-      } catch (error) {
-        setErrorMsg("Error fetching location");
+      const isLocationEnabled = await Location.hasServicesEnabledAsync();
+      if (!isLocationEnabled) {
+        setErrorMsg("Location services are disabled");
+        return;
       }
-    }
 
-    getCurrentLocation();
+      const watcher = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 2000,
+          distanceInterval: 1,
+          mayShowUserSettingsDialog: true,
+        },
+        (loc) => {
+          const { coords } = loc;
+
+          console.log("📡 Location update:", coords);
+
+          if (coords.accuracy <= ACCURACY_THRESHOLD) {
+            // Optional: Use smoothed location
+            // const smoothedCoords = getSmoothedLocation(coords);
+            // setLocation({ coords: smoothedCoords });
+
+            // OR: use raw good coords
+            setLocation(loc);
+            setErrorMsg(null);
+          } else {
+            console.log("❌ Ignored (Low Accuracy):", coords.accuracy);
+          }
+        }
+      );
+
+      locationWatcher.current = watcher;
+    } catch (error) {
+      console.error("Error setting up location watcher:", error);
+      setErrorMsg("Error watching location");
+    }
+  };
+
+  useEffect(() => {
+    startWatchingLocation();
+
+    return () => {
+      if (locationWatcher.current) {
+        locationWatcher.current.remove();
+      }
+    };
   }, []);
 
   return (
@@ -33,5 +91,5 @@ export const LocationProvider = ({ children }) => {
   );
 };
 
-// Custom hook to access location
+// Custom hook to use location
 export const useLocation = () => useContext(LocationContext);

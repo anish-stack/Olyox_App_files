@@ -20,6 +20,7 @@ export default StyleSheet.create({
   backButton: {
     padding: 8,
   },
+  
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',

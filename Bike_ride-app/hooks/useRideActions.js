@@ -66,11 +66,7 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
 
   // Get ride ID from params or auth check
   const getRideId = useCallback(async () => {
-    // First check if we have an ID from params
-    if (params?.temp_ride_id) {
-      logDebug('Using ride ID from params', params.temp_ride_id);
-      return params.temp_ride_id;
-    }
+   
 
     // If not, check from auth token
     const authRideId = await checkAuthToken();

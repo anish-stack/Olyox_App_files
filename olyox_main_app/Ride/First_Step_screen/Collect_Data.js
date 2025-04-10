@@ -27,7 +27,7 @@ const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
+const CACHE_EXPIRY = 1 * 60 * 1000; // 5 minutes
 
 const Collect_Data = () => {
     const mapRef = useRef(null);
@@ -56,10 +56,10 @@ const Collect_Data = () => {
     });
 
     const [region, setRegion] = useState({
-        latitude: 37.78825,
-        longitude: -122.4324,
-        latitudeDelta: LATITUDE_DELTA,
-        longitudeDelta: LONGITUDE_DELTA,
+        latitude: 22.9734,
+        longitude: 78.6569,
+        latitudeDelta: 20, // Controls zoom level
+        longitudeDelta: 20,
     });
 
     useEffect(() => {
@@ -286,6 +286,13 @@ const Collect_Data = () => {
                     provider={PROVIDER_GOOGLE}
                     style={styles.map}
                     region={region}
+                    // initialRegion={{
+                    //     latitude: 22.9734, 
+                    //     longitude: 78.6569,
+                    //     latitudeDelta: 20,
+                    //     longitudeDelta: 20,
+                    // }}
+
                     onRegionChangeComplete={handleMapRegionChange}
                     showsUserLocation
                     showsMyLocationButton
