@@ -145,17 +145,37 @@ exports.findRider = async (id, io) => {
                         "rideVehicleInfo.VehicleNumber": 1,
                         "rideVehicleInfo.PricePerKm": 1,
                         "rideVehicleInfo.vehicleType": 1,
+                        "RechargeData.expireData": 1,
+                        on_ride_id: 1,
                         distance: 1,
                     },
                 },
             ]);
+            console.log("riders part", riders)
 
             riders = riders.filter((rider) => {
                 const expire = rider?.RechargeData?.expireData;
-                return expire && new Date(expire) >= currentDate;
-              });
-              
-            
+                const currentDate = new Date();
+                const hasValidRecharge = expire && new Date(expire) >= currentDate;
+                const isFreeRider = rider?.on_ride_id === null || rider?.on_ride_id === undefined;
+
+                return hasValidRecharge && isFreeRider;
+            });
+
+
+            if (!riders || riders.length === 0) {
+                console.log("No available riders found");
+                console.log(user._id)
+                // io.to(user._id.toString()).emit("sorry_no_rider_available", {
+                //     message: "Sorry, no riders are currently available nearby. Please try again shortly.",
+                //     retrySuggestion: "You can retry in a few moments."
+                // });
+
+                return;
+            }
+
+
+            // console.log("riders",riders.length)
 
 
             // Get route information from Google Maps API
@@ -652,14 +672,15 @@ exports.AddRating = async (data, rate) => {
 
 exports.cancelRideByAnyOne = async (cancelBy, rideData, reason) => {
     try {
-        if (!rideData || !rideData._id) {
+        let rideId = rideData?._id || rideData?.ride?.rideDetails?._id
+        if (!rideId) {
             return {
                 success: false,
                 message: "Invalid ride data",
             };
         }
 
-        const ride = await RideRequest.findById(rideData._id);
+        const ride = await RideRequest.findById(rideId);
         if (!ride) {
             return {
                 success: false,
@@ -667,13 +688,13 @@ exports.cancelRideByAnyOne = async (cancelBy, rideData, reason) => {
             };
         }
 
-        // Prevent re-canceling a ride that is already cancelled or completed
         if (ride.rideStatus === "cancelled") {
             return {
                 success: false,
                 message: "Ride is already cancelled",
             };
         }
+
         if (ride.rideStatus === "completed") {
             return {
                 success: false,
@@ -681,28 +702,24 @@ exports.cancelRideByAnyOne = async (cancelBy, rideData, reason) => {
             };
         }
 
-        // Update ride details
         ride.rideCancelBy = cancelBy;
         ride.rideCancelReason = reason;
         ride.rideStatus = "cancelled";
         ride.rideCancelTime = new Date();
 
-        const foundRider = await Riders.findById(ride.rider?._id)
+        const foundRider = await Riders.findById(ride.rider?._id);
         if (!foundRider) {
             return {
                 success: false,
                 message: "Rider not found",
-            }
-        }
-        // Ensure the rider exists before modifying availability
-        if (foundRider !== undefined) {
-            foundRider.isAvailable = true;
+            };
         }
 
-        await ride.save(); // Save updated ride data
-        if (foundRider) {
-            await foundRider.save(); // Save updated rider details
-        }
+        foundRider.isAvailable = true;
+        foundRider.on_ride_id = null;
+
+        await ride.save();
+        await foundRider.save();
 
         return {
             success: true,
@@ -718,7 +735,6 @@ exports.cancelRideByAnyOne = async (cancelBy, rideData, reason) => {
         };
     }
 };
-
 
 
 

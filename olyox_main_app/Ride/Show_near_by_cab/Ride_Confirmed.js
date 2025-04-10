@@ -25,6 +25,7 @@ import Ride_End_Model from './Ride_End_Model';
 import axios from 'axios';
 
 const { width, height } = Dimensions.get('window');
+const API_BASE_URL = 'https://demoapi.olyox.com/api/v1';
 
 export function RideConfirmed() {
     const route = useRoute();
@@ -38,6 +39,7 @@ export function RideConfirmed() {
     const [rideStart, setRideStart] = useState(false);
     const [driverData, setDriverData] = useState(driver);
     const [isLoading, setIsLoading] = useState(false);
+    const [rideEndLoading, setRideEndLoading] = useState(false);
     const [rideData, setRideData] = useState({});
     const [supportModalVisible, setSupportModalVisible] = useState(false);
     const [currentLocation, setCurrentLocation] = useState(null);
@@ -49,18 +51,7 @@ export function RideConfirmed() {
     const [locationPermission, setLocationPermission] = useState(true);
     const [error, setError] = useState(null);
 
-    // Memoized ride details to prevent unnecessary re-renders
-    // const rideDetails = useMemo(() => ({
-    //     otp: driverData?.otp || '1234',
-    //     eta: driverData?.eta || '5 mins',
-    //     price: driverData?.price || '₹225',
-    //     rating: driverData?.rating || '4.8',
-    //     is_done: rideData?.is_ride_paid || false,
-    //     pickup: driverData?.pickup_desc || 'Pickup Location',
-    //     trips: driverData?.trips || '150',
-    //     dropoff: driverData?.drop_desc || 'Drop Location',
-    // }), [driverData, rideData]);
-
+    // Initialize ride details with default values
     const [rideDetails, setRideDetails] = useState({
         otp: driver?.otp || '1234',
         eta: driver?.eta || '5 mins',
@@ -70,16 +61,23 @@ export function RideConfirmed() {
         pickup: driver?.pickup_desc || 'Pickup Location',
         trips: driver?.trips || '150',
         dropoff: driver?.drop_desc || 'Drop Location',
-        drop_cord:driver?.drop_cord  || 'Drop Cords',
-        pickupLocation:driver?.pickupLocation  || 'pickupLocation'
+        drop_cord: driver?.drop_cord || 'Drop Cords',
+        pickupLocation: driver?.pickupLocation || 'pickupLocation'
     });
+
+    // Helper function to reset navigation
+    const resetToHome = useCallback(() => {
+        navigation.reset({
+            index: 0,
+            routes: [{ name: "Home" }]
+        });
+    }, [navigation]);
 
     // Fetch cancellation reasons
     const fetchReason = useCallback(async () => {
         try {
             setIsLoading(true);
-            const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/admin/cancel-reasons?active=active`);
-            console.log("data", data.data)
+            const { data } = await axios.get(`${API_BASE_URL}/admin/cancel-reasons?active=active`);
             setCancelReason(data.data || []);
         } catch (error) {
             console.log("Error Fetching in Reasons", error);
@@ -91,8 +89,9 @@ export function RideConfirmed() {
     }, []);
 
     // Fetch ride details from database
-    const fetchRideDetailsFromDb = async () => {
+    const fetchRideDetailsFromDb = useCallback(async () => {
         try {
+            setIsLoading(true);
             const rideId = ride?._id || await AsyncStorage.getItem('rideId');
 
             if (!rideId) {
@@ -100,9 +99,8 @@ export function RideConfirmed() {
                 return;
             }
 
-
-            const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/rides/find-ride_details?id=${rideId}`);
-            console.log("rideId",  data.data.dropLocation)
+            const { data } = await axios.get(`${API_BASE_URL}/rides/find-ride_details?id=${rideId}`);
+            
             if (data.data) {
                 setRideData(data.data);
                 setRideDetails(prev => ({
@@ -111,63 +109,45 @@ export function RideConfirmed() {
                     eta: data.data.EtaOfRide || prev.eta,
                     price: data.data.kmOfRide || prev.price,
                     rating: data.data.rating || prev.rating,
-                    is_done: data?.data?.is_ride_paid || prev?.is_done,
+                    is_done: data.data.is_ride_paid || prev.is_done,
                     pickup: data.data.pickup_desc || prev.pickup,
                     trips: data.data.RatingOfRide || prev.trips,
                     dropoff: data.data.drop_desc || prev.dropoff,
-                    drop_cord: data.data.dropLocation || prev.dropLocation,
+                    drop_cord: data.data.dropLocation || prev.drop_cord,
                     pickupLocation: data.data.pickupLocation || prev.pickupLocation
                 }));
                 setDriverData(data.data.rider);
                 setRideStart(data.data.ride_is_started);
             }
-
         } catch (error) {
             console.error('Error fetching ride details:', error);
+            setError("Failed to load ride details");
+        } finally {
+            setIsLoading(false);
         }
-    };
+    }, [ride]);
 
-
-
-    // const handleCompleteRide = useCallback(async () => {
-    //     const currentRideDetails = await getCurrentRideDetails();
-    //     if (!currentRideDetails) {
-    //       Alert.alert("Error", "Could not find ride details to complete.");
-    //       return;
-    //     }
-    
-    //     Alert.alert("Complete Ride", "Are you sure you want to complete this ride?", [
-    //       { text: "Cancel", style: "cancel" },
-    //       {
-    //         text: "Complete",
-    //         onPress: async () => {
-    //           if (socket && socket.connected) {
-    //             socket.emit("ride_end_by_rider", {
-    //               rideDetails: currentRideDetails
-    //             }, (response) => {
-    //               if (response && response.error) {
-    //                 Alert.alert("Error", response.error || "Failed to complete ride. Please try again.");
-    //                 return;
-    //               }
-    
-    //               // Handle successful completion
-    //               Alert.alert("Success", "Ride completed successfully.", [
-    //                 { text: "OK", onPress: () => resetToHome() }
-    //               ]);
-    //             })
-    //           } else {
-    //             logError("Socket not connected for ride completion")
-    //             Alert.alert("Connection Error", "Please check your internet connection and try again.");
-    //           }
-    //         },
-    //       },
-    //     ])
-    //   }, [getCurrentRideDetails, socket, navigation])
-    
     // Handle ending the ride
     const handleEndRide = useCallback(async () => {
-        setIsLoading(true);
         try {
+            setRideEndLoading(true);
+            const socketInstance = socket();
+            if (socketInstance) {
+                socketInstance.emit('ride_end_by_user_', { rideDetails, ride: rideData });
+            } else {
+                Alert.alert('Connection Error', 'Unable to connect to server. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error ending the ride:', error);
+            Alert.alert('Error', 'Failed to end ride. Please try again.');
+        }
+    }, [socket, rideDetails, rideData]);
+
+
+
+    const handlePaymentEndRide = useCallback(async () => {
+        try {
+          
             const socketInstance = socket();
             if (socketInstance) {
                 socketInstance.emit('endRide', { rideDetails, ride: rideData });
@@ -178,7 +158,7 @@ export function RideConfirmed() {
             console.error('Error ending the ride:', error);
             Alert.alert('Error', 'Failed to end ride. Please try again.');
         } finally {
-            setIsLoading(false);
+            setRideEndLoading(false);
         }
     }, [socket, rideDetails, rideData]);
 
@@ -213,15 +193,7 @@ export function RideConfirmed() {
             console.error("⚠️ Error in handleCancelRide:", error);
             Alert.alert("Error", "Something went wrong while canceling the ride.");
         }
-    }, [selectedReason, rideData, socket]);
-
-    // Helper function to reset navigation
-    const resetToHome = useCallback(() => {
-        navigation.reset({
-            index: 0,
-            routes: [{ name: "Home" }]
-        });
-    }, [navigation]);
+    }, [selectedReason, rideData, socket, resetToHome]);
 
     // Save ride ID in AsyncStorage
     useEffect(() => {
@@ -239,6 +211,8 @@ export function RideConfirmed() {
 
     // Setup location tracking
     useEffect(() => {
+        let locationWatcher = null;
+        
         (async () => {
             try {
                 let { status } = await Location.requestForegroundPermissionsAsync();
@@ -249,7 +223,7 @@ export function RideConfirmed() {
                 }
 
                 // Track location in real-time
-                await Location.watchPositionAsync(
+                locationWatcher = await Location.watchPositionAsync(
                     {
                         accuracy: Location.Accuracy.High,
                         timeInterval: 5000,
@@ -264,6 +238,13 @@ export function RideConfirmed() {
                 setError("Failed to setup location tracking");
             }
         })();
+        
+        // Cleanup location watcher
+        return () => {
+            if (locationWatcher) {
+                locationWatcher.remove();
+            }
+        };
     }, []);
 
     // Setup socket listeners for ride events
@@ -281,10 +262,35 @@ export function RideConfirmed() {
                 );
             };
 
+            // Handle incorrect ride completion
+            const handleIncorrectRideCompletion = (data) => {
+                Alert.alert(
+                    '⚠️ Incorrect Ride Completion',
+                    data?.message || 'You have marked the ride as completed incorrectly. Please reach out to support if needed.',
+                    [
+                        {
+                            text: 'Contact Support',
+                            onPress: () => {
+                                console.log('Support contacted');
+                            },
+                            style: 'default'
+                        },
+                        {
+                            text: 'OK',
+                            style: 'cancel',
+                            onPress: () => setRideEndLoading(false)
+                        }
+                    ],
+                    { cancelable: true }
+                );
+            };
+
             socketInstance.on("ride_cancelled_message", handleRideCancelled);
+            socketInstance.on('ride_incorrect_mark_done_user_done', handleIncorrectRideCompletion);
 
             return () => {
                 socketInstance.off("ride_cancelled_message", handleRideCancelled);
+                socketInstance.off('ride_incorrect_mark_done_user_done', handleIncorrectRideCompletion);
             };
         }
     }, [socket, resetToHome]);
@@ -307,7 +313,7 @@ export function RideConfirmed() {
         }, 5000);
 
         // Ride started
-        currentSocket.on('ride_user_start', async (data) => {
+        const handleRideStart = async (data) => {
             console.log('ride_user_start', data);
             setRideStart(true);
             try {
@@ -315,47 +321,47 @@ export function RideConfirmed() {
             } catch (error) {
                 console.error('Error storing ride start details:', error);
             }
-        });
+        };
 
         // Driver location
-        currentSocket.on('rider_location', (data) => {
+        const handleDriverLocation = (data) => {
             if (data && data.location) {
                 setDriverLocationCurrent(data.location);
             }
-        });
+        };
 
         // Ride complete
-        currentSocket.on('your_ride_is_mark_complete', (data) => {
+        const handleRideComplete = (data) => {
             console.log('your_ride_is_mark_complete', data);
             setRideEndModel(!!data.rideId);
-        });
+        };
 
         // Navigate to rating screen
-        currentSocket.on('give-rate', (data) => {
+        const handleRateRide = (data) => {
             console.log('isPay data come');
             navigation.navigate('Rate_Your_ride', { data });
-        });
+        };
+
+        currentSocket.on('ride_user_start', handleRideStart);
+        currentSocket.on('rider_location', handleDriverLocation);
+        currentSocket.on('your_ride_is_mark_complete', handleRideComplete);
+        currentSocket.on('give-rate', handleRateRide);
 
         // Cleanup
         return () => {
             clearInterval(locationInterval);
-            currentSocket.off('ride_user_start');
-            currentSocket.off('rider_location');
-            currentSocket.off('your_ride_is_mark_complete');
-            currentSocket.off('give-rate');
+            currentSocket.off('ride_user_start', handleRideStart);
+            currentSocket.off('rider_location', handleDriverLocation);
+            currentSocket.off('your_ride_is_mark_complete', handleRideComplete);
+            currentSocket.off('give-rate', handleRateRide);
         };
     }, [rideData, currentLocation, socket, navigation]);
 
-    useEffect(() => {
-        fetchRideDetailsFromDb();
-    }, [])
     // Initial data fetch
     useEffect(() => {
         fetchReason();
-        if (!driver) {
-            fetchRideDetailsFromDb();
-        }
-    }, [driver, fetchReason]);
+        fetchRideDetailsFromDb();
+    }, [fetchReason, fetchRideDetailsFromDb]);
 
     // Navigate to home if ride is done
     useEffect(() => {
@@ -405,6 +411,7 @@ export function RideConfirmed() {
             <SupportModal
                 rideStart={rideStart}
                 visible={supportModalVisible}
+                rideLoadingEnd={rideEndLoading}
                 handleEndRide={handleEndRide}
                 setVisible={setSupportModalVisible}
                 driverData={driverData}
@@ -426,6 +433,7 @@ export function RideConfirmed() {
                 open={rideEndModel}
                 close={() => setRideEndModel(false)}
                 handleRideEnd={handleEndRide}
+                handlePaymentEndRide={handlePaymentEndRide}
                 data={rideData}
             />
 

@@ -13,7 +13,7 @@ import { Check, Clock, CreditCard } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
-export default function RideEndModal({ open, close, handleRideEnd, data }) {
+export default function RideEndModal({ open, close, handleRideEnd, handlePaymentEndRide,data }) {
   const scaleAnim = React.useRef(new Animated.Value(0)).current;
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -34,7 +34,7 @@ export default function RideEndModal({ open, close, handleRideEnd, data }) {
       ]).start();
 
       const timer = setTimeout(async () => {
-        await handleRideEnd();
+        await handlePaymentEndRide();
         close();
       }, 3000);
 

@@ -333,6 +333,8 @@ export default function RideDetailsScreen() {
 
     logDebug('Setting up socket listeners');
 
+
+
     // ✅ Always remove existing listeners first
     socket.off('ride_end');
     socket.off('ride_cancelled');
@@ -343,6 +345,8 @@ export default function RideDetailsScreen() {
       navigation.navigate('collect_money', { data: data?.rideDetails });
       showLocalNotification("Ride Completed", "The ride has been completed successfully!");
     });
+
+
 
     socket.on('ride_cancelled', (data) => {
       logDebug('Ride cancelled event received', data);
@@ -543,6 +547,50 @@ export default function RideDetailsScreen() {
     });
   }, [socket, logDebug, startSound, showLocalNotification]);
 
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('your_ride_is_mark_complete_by_user', (data) => {
+      console.log('✔️ Ride completed event received', data);
+      Alert.alert(
+        'Ride Complete Confirmation',
+        data?.message || 'User marked your ride as complete. Is that correct?',
+        [
+          {
+            text: 'No',
+            onPress: async () => {
+              try {
+                console.log('❌ Driver denied ride completion');
+                const rideId = await getRideId(); // You must have this defined
+                if (rideId) {
+                  const rideData = await foundRideDetails(rideId); // You must have this defined
+                  socketInstance.emit('ride_incorrect_mark_done_user', { rideData });
+                }
+              } catch (error) {
+                console.error('❌ Error while denying ride completion:', error);
+              }
+            },
+            style: 'cancel',
+          },
+          {
+            text: 'Yes',
+            onPress: () => {
+              console.log('✅ Driver confirmed ride completion');
+              handleCompleteRide(); // You must have this function defined
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+    });
+
+    return () => {
+      socket.off('your_ride_is_mark_complete_by_user');
+    };
+  }, []);
+
+  
   // Set up ride cancellation listener
   useEffect(() => {
     handleCancelRideByUser();

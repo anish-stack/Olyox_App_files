@@ -255,7 +255,9 @@ export default function BookingConfirmation() {
         };
     }, [loading, pulseAnim, fadeAnim, bookingStep]);
 
-    // Socket event listener for ride confirmation
+
+
+
     useEffect(() => {
         if (!socket) {
             console.error("Socket function is not available");
@@ -376,7 +378,7 @@ export default function BookingConfirmation() {
         try {
             socketInstance.on('ride_accepted_message', handleRideConfirm);
             socketInstance.on('ride_rejected_message', handleRideRejected);
-            socketInstance.on('no_drivers_available', handleNoDrivers);
+            socketInstance.on('sorry_no_rider_available', handleNoDrivers);
             socketInstance.on('error', handleSocketError);
         } catch (err) {
             console.error("Error attaching socket event listeners:", err);

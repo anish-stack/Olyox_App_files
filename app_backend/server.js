@@ -459,12 +459,21 @@ io.on('connection', (socket) => {
                     riderData
                 });
             } else {
-                console.error(`[${new Date().toISOString()}] Rider not found for ID: ${data.data._id}`);
-                socket.emit('message_response', {
-                    success: false,
-                    error: "Rider not found"
-                });
+                const userSocketId = userSocketMap.get(data.data.user);
+
+                console.error(`[${new Date().toISOString()}] Rider not found for user ID: ${data.data.user}, request ID: ${data.data._id}`);
+
+                if (userSocketId) {
+                    io.to(userSocketId).emit('sorry_no_rider_available', {
+                        success: false,
+                        message: "Sorry, no riders are currently available nearby. Please try again shortly.",
+                        retrySuggestion: "You can retry in a few moments."
+                    });
+                } else {
+                    console.warn(`Socket ID not found for user: ${data.data.user}`);
+                }
             }
+
         } catch (error) {
             console.error(`[${new Date().toISOString()}] Error processing ride request:`, error);
             socket.emit('message_response', {
@@ -520,7 +529,7 @@ io.on('connection', (socket) => {
      */
 
     socket.on('ride_end_by_rider', async (data) => {
-        console.log("End krdo",data)
+        // console.log("End krdo", data)
         try {
             const ride_id = data?.rideDetails.ride?.rideDetails?._id;
             const user = data?.rideDetails.ride?.rideDetails?.user;
@@ -547,36 +556,76 @@ io.on('connection', (socket) => {
         }
     });
 
-
-    socket.on('ride_incorrect_mark_done', async (data) => {
+    socket.on('ride_end_by_user_', async (data) => {
         try {
+            const { ride } = data || {};
 
 
-            const rideId = data?._id;
-            const rider = data?.rider?._id;
+            if (!ride?.rider?._id || !ride?._id) {
+                console.error(`[${new Date().toISOString()}] ❌ Invalid ride_end_by_user data`, data);
 
-            if (!rideId || !rider) {
-                console.error(`[${new Date().toISOString()}] Invalid data in ride_incorrect_mark_done`, data);
+                io.to(socket.id).emit('ride_end_error', {
+                    success: false,
+                    message: 'Invalid ride details provided. Please try again or contact support.',
+                });
+
                 return;
             }
-            const driverSocketId = driverSocketMap.get(String(rider));
 
-            if (driverSocketId) {
-                io.to(driverSocketId).emit('mark_as_done_rejected', {
-                    message: 'User reported that the ride is not completed. Please verify.',
-                    rideId
+            const driverSocketIds = driverSocketMap.get(String(ride.rider._id));
+            const userSocketId = userSocketMap.get(String(ride.user));
+
+            if (driverSocketIds) {
+                io.to(driverSocketIds).emit('your_ride_is_mark_complete_by_user', {
+                    message: 'User marked your ride as complete. Please confirm if it’s correct.',
+                    rideId: ride._id,
                 });
-                console.log(`[${new Date().toISOString()}] End notification sent to driver: ${rider}`);
+                console.log(`[${new Date().toISOString()}] ✅ Ride end confirmation sent to Driver: ${ride.rider._id}`);
             } else {
-                console.log(`[${new Date().toISOString()}] No active socket found for driver: ${rider}`);
+                console.warn(`[${new Date().toISOString()}] ⚠️ No active socket found for rider: ${ride.rider._id}`);
+                io.to(userSocketId).emit('ride_end_error', {
+                    success: false,
+                    message: 'The driver is currently offline. Please wait or try again shortly.',
+                });
             }
 
-
-
         } catch (error) {
-            console.error(`[${new Date().toISOString()}] Error in ride_incorrect_mark_done:`, error);
+            console.error(`[${new Date().toISOString()}] ❌ Error in ride_end_by_user_`, error);
+            io.to(userSocketId).emit('ride_end_error', {
+                success: false,
+                message: 'Something went wrong while ending the ride. Please try again later.',
+                error: error.message,
+            });
         }
     });
+
+
+
+    socket.on('ride_incorrect_mark_done_user', async (data) => {
+        try {
+            console.log(data)
+            const user = data?.rideDetails?.ride?.rideDetails?.user;
+    
+            if (!user) {
+                console.error(`[${new Date().toISOString()}] ❌ Invalid ride_incorrect_mark_done_user: Missing user`);
+                return;
+            }
+    
+            const userSocketId = userSocketMap.get(String(user));
+    
+            if (userSocketId) {
+                io.to(userSocketId).emit('ride_incorrect_mark_done_user_done', {
+                    message: 'You have marked the ride as complete incorrectly. If you have any problem or concern, please talk to support.',
+                });
+            } else {
+                console.warn(`[${new Date().toISOString()}] ⚠️ No active socket for user: ${user}`);
+            }
+    
+        } catch (error) {
+            console.error(`[${new Date().toISOString()}] ❌ Error in ride_incorrect_mark_done_user:`, error);
+        }
+    });
+    
 
 
 

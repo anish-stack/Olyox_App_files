@@ -22,6 +22,7 @@ export const SupportModal = React.memo(({
     visible,
     handleEndRide,
     rideStart,
+    rideLoadingEnd,
     setVisible,
     driverData,
     rideDetails,
@@ -173,7 +174,7 @@ export const SupportModal = React.memo(({
                             onPress={handleEndRide}
                         >
                             <MaterialCommunityIcons name="car" size={20} color="#fff" />
-                            <Text style={styles.shareLocationText}>End Your Ride</Text>
+                            <Text style={styles.shareLocationText}> {rideLoadingEnd ? 'Please Wait While We Confirm With Rider ...':'Mark Your Ride Complete'}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
