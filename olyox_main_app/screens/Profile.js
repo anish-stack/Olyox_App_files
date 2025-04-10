@@ -70,12 +70,12 @@ export default function UserProfile() {
 
         if (!result.canceled && result.assets?.length > 0) {
             const imageUri = result.assets[0].uri;
-          
+
             setImage(imageUri);
-            
+
         }
     };
-   
+
     const uploadImage = async () => {
 
         try {
@@ -83,7 +83,7 @@ export default function UserProfile() {
             const gmail_token = await tokenCache.getToken('auth_token');
             const db_token = await tokenCache.getToken('auth_token_db');
             const token = db_token || gmail_token;
-           
+
 
             const form = new FormData();
             form.append('image', {
@@ -91,7 +91,7 @@ export default function UserProfile() {
                 name: 'image.jpg',
                 type: 'image/jpeg',
             });
-          
+
 
             const response = await axios.post('https://demoapi.olyox.com/api/v1/user/update-profile', form, {
                 headers: {
@@ -115,26 +115,26 @@ export default function UserProfile() {
     const updateDetails = async ({ name, email }) => {
         try {
             setLoading(true);
-    
+
             // Retrieve token from cache
             const gmail_token = await tokenCache.getToken('auth_token');
             const db_token = await tokenCache.getToken('auth_token_db');
             const token = db_token || gmail_token;
-    
+
             // Initialize FormData
             const form = new FormData();
-            
+
             // Only append non-empty fields
             if (name) form.append('name', name);
             if (email) form.append('email', email);
-    
+
             // Check if there's anything to send in the form
             if (!name && !email) {
                 Alert.alert('No changes detected', 'Please provide a name or email to update.');
                 setLoading(false);
                 return;
             }
-    
+
             // Send the request to update profile
             const response = await axios.post('https://demoapi.olyox.com/api/v1/user/update-profile', form, {
                 headers: {
@@ -142,26 +142,26 @@ export default function UserProfile() {
                     Authorization: `Bearer ${token}`,
                 },
             });
-    
+
             console.log("response", response.data);
-    
+
             // Refresh the data after the update
             fetchData();
-    
+
             // Optionally reset image state if needed
             setImage(null);
-    
+
             // Provide feedback and reset loading state
             Alert.alert('Profile updated successfully');
             setLoading(false);
-            
+
         } catch (error) {
             console.error('Error updating profile:', error);
             Alert.alert('Error', 'There was an issue updating your profile. Please try again.');
             setLoading(false);
         }
     };
-    
+
 
     useEffect(() => {
         if (image) {
@@ -264,7 +264,7 @@ export default function UserProfile() {
                                 <Text style={styles.locationText}>{ride.drop_desc}</Text>
                             </View>
                             <View style={styles.rideStats}>
-                                <Text style={styles.statItem}>Distance: {ride.kmOfRide} km</Text>
+                                <Text style={styles.statItem}> Fare: Rs {ride.kmOfRide} </Text>
                                 <Text style={styles.statItem}>ETA: {ride.EtaOfRide}</Text>
                             </View>
                             {ride.rideStatus !== "cancelled" && ride.rideStatus !== "completed" && (

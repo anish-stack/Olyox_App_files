@@ -52,6 +52,8 @@ const {
 } = require('../../Admin Controllers/OnboardFnc/HomeScreenSlide');
 const { markPaid } = require('../../controllers/rider.controller');
 const { createNotification, getNotifications, getNotificationById, markAsRead, deleteNotification } = require('../../Admin Controllers/settings/notificationController');
+const { createPolicy, updatePolicy, getPolicyById, findPolicyByTitle, deletePolicy, getPolicies } = require('../../Admin Controllers/settings/privacyPolicyController');
+const { createReport, getAllReports, getSingleReport, updateReport, deleteReport } = require('../../Admin Controllers/Bugs/LoginBugsReportsController');
 
 const admin = express.Router();
 
@@ -107,11 +109,11 @@ admin.delete('/delete_home_slide/:id', delete_homeslide_slide);
 admin.post('/mark-paid', markPaid);
 
 //notification
-admin.post("/create-notification",createNotification);
-admin.get("/all-notification",getNotifications);
-admin.get("/notification/:id",getNotificationById);
-admin.put("/mark-read-notification/:id",markAsRead);
-admin.delete("/delete-notification/:id",deleteNotification);
+admin.post("/create-notification", createNotification);
+admin.get("/all-notification", getNotifications);
+admin.get("/notification/:id", getNotificationById);
+admin.put("/mark-read-notification/:id", markAsRead);
+admin.delete("/delete-notification/:id", deleteNotification);
 
 
 // Coupon routes here 
@@ -122,5 +124,23 @@ admin.get('/getSingleCoupon/:id', getCouponById);
 admin.put('/updateCoupon/:id', updateCoupon);
 admin.delete('/deleteCoupon/:id', deleteCoupon);
 admin.put('/updateCouponStatus/:id', updateIsActiveStatus);
+
+// policy routes here 
+admin.post('/policy', createPolicy);
+admin.get('/policies', getPolicies);
+admin.put('/policy/:id', updatePolicy);
+admin.get('/policy/:id', getPolicyById);
+admin.get('/policies/search', findPolicyByTitle);
+admin.delete('/policy/:id', deletePolicy);
+
+
+//Login register  bugs
+admin.post('/report',upload.single('image'), createReport);
+admin.get('/reports', getAllReports);
+admin.get('/report/:id', getSingleReport);
+admin.put('/report/:id', updateReport);
+admin.delete('/report/:id', deleteReport);
+
+
 
 module.exports = admin;

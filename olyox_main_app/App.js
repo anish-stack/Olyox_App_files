@@ -24,7 +24,7 @@ import { RideConfirmed } from './Ride/Show_near_by_cab/Ride_Confirmed';
 import Hotels_details from './Hotels/Hotel_Details/Hotels_details';
 import Single_Hotel_details from './Hotels/Hotel_Details/Single_Hotel_details';
 import BookingSuccess from './Hotels/Hotel_Details/BookingSuccess';
-import Onboarding from './onboarding/Onboarding';
+import OnboardingScreen from './onboarding/Onboarding';
 import Ride_Rating from './Ride/Show_near_by_cab/Ride_Rating';
 import FloatingRide from './Ride/Floating_ride/Floating.ride';
 import AllHotel from './Hotels/Hotel_Details/AllHotel';
@@ -45,6 +45,8 @@ import Tiffins_Page from './Foods/Tiffins_Page/Tiffins_Page';
 import ErrorBoundaryWrapper from './context/ErrorBoundary';
 import { tokenCache } from './Auth/cache';
 import BookingConfirmation from './Ride/Show_near_by_cab/confirm_booking';
+import Policy from './policy/Policy';
+import Help_On from './onboarding/Help/Help_On';
 
 const Stack = createNativeStackNavigator();
 
@@ -237,7 +239,12 @@ const App = () => {
       <Stack.Screen name="Book-Parcel" options={{ headerShown: false }} component={BookParcel} />
       <Stack.Screen name="Parcel" options={{ headerShown: false }} component={Parcel_Orders} />
       <Stack.Screen name="OrderDetails" options={{ headerShown: false }} component={OrderDetails} />
-      <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={Onboarding} />
+      <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={OnboardingScreen} />
+
+      {/* App Policy */}
+      <Stack.Screen name="policy" options={{ headerShown: true, title: "Olyox App Polices" }} component={Policy} />
+      <Stack.Screen name="policyauth" options={{ headerShown: true, title: "Olyox App Polices" }} component={Policy} />
+      <Stack.Screen name="Help_me" options={{ headerShown: true, title:"Olyox Center"}} component={Help_On} />
     </>
   );
 

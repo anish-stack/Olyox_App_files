@@ -111,13 +111,16 @@ export default function MoneyPage() {
     }, []);
 
     // Helper Functions
-    const showErrorAlert = useCallback((title, message) => {
+    const showErrorAlert = useCallback((title, message, fnc) => {
         Alert.alert(
             title,
             message,
-            [{ text: 'OK', style: 'default' }]
+            [
+                { text: 'OK', onPress: () => fnc?.(), style: 'default' }
+            ]
         );
     }, []);
+
 
     const triggerHapticFeedback = useCallback(() => {
         if (Platform.OS !== 'web') {
@@ -154,15 +157,29 @@ export default function MoneyPage() {
                 SecureStore.deleteItemAsync('activeRide'),
                 LocalRideStorage.clearRide()
             ]);
-            const sendData = {...data,paymentMethod:state?.paymentMethod}
 
-            // Emit socket event
-            socket.emit('isPay', sendData);
-            
-            // Show success animation
+            const sendData = { ...data, paymentMethod: state?.paymentMethod };
+
+            // Emit isPay event
+            socket.emit('isPay', sendData, (response) => {
+                console.log('isPay emit response:', response);
+            });
+
+            // Wait for a short time for possible 'payment_error'
+            const waitForError = new Promise((resolve, reject) => {
+                socket.once('payment_error', (errorMessage) => {
+                    reject(new Error(errorMessage || 'Payment failed'));
+                });
+
+                // Optional: Timeout for error event (assume no error if none received in 2s)
+                setTimeout(resolve, 2000);
+            });
+
+            await waitForError;
+
+            // No error, proceed to success
             setState(prev => ({ ...prev, isRideRate: true }));
-            
-            // Reload and reset navigation
+
             setTimeout(async () => {
                 await Updates.reloadAsync();
                 navigation.dispatch(
@@ -173,16 +190,28 @@ export default function MoneyPage() {
                 );
             }, 2000);
         } catch (error) {
-            console.error('Payment completion error:', error);
-            showErrorAlert(
-                'Payment Error',
-                'Failed to process payment. Please try again.'
-            );
+            const errorMsg =
+                typeof error === 'string'
+                    ? error
+                    : error?.message || JSON.stringify(error);
+
+            async function reload() {
+                await Updates.reloadAsync();
+                navigation.dispatch(
+                    CommonActions.reset({
+                        index: 0,
+                        routes: [{ name: 'Home' }],
+                    })
+                );
+            }
+            console.error('Payment completion error:', errorMsg);
+            showErrorAlert('Payment Error', 'Unable to complete the payment. Kindly collect cash and mark the ride as complete.', reload);
             shakeAnimation();
         } finally {
             setState(prev => ({ ...prev, isLoading: false }));
         }
-    }, [data, navigation, socket]);
+    }, [data, navigation, socket, state?.paymentMethod]);
+
 
     // Rating Handlers
     const handleRating = useCallback((rate) => {
@@ -215,14 +244,14 @@ export default function MoneyPage() {
                 ]}
                 onPress={() => setState(prev => ({ ...prev, paymentMethod: 'cash' }))}
             >
-                <MaterialCommunityIcons 
-                    name="cash" 
-                    size={24} 
-                    color={state.paymentMethod === 'cash' ? '#10B981' : '#FFFFFF'} 
+                <MaterialCommunityIcons
+                    name="cash"
+                    size={24}
+                    color={state.paymentMethod === 'cash' ? '#10B981' : '#FFFFFF'}
                 />
                 <Text style={styles.paymentMethodText}>Cash</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
                 style={[
                     styles.paymentMethod,
@@ -230,10 +259,10 @@ export default function MoneyPage() {
                 ]}
                 onPress={() => setState(prev => ({ ...prev, paymentMethod: 'online' }))}
             >
-                <MaterialCommunityIcons 
-                    name="qrcode-scan" 
-                    size={24} 
-                    color={state.paymentMethod === 'online' ? '#10B981' : '#FFFFFF'} 
+                <MaterialCommunityIcons
+                    name="qrcode-scan"
+                    size={24}
+                    color={state.paymentMethod === 'online' ? '#10B981' : '#FFFFFF'}
                 />
                 <Text style={styles.paymentMethodText}>Online</Text>
             </TouchableOpacity>
@@ -246,7 +275,7 @@ export default function MoneyPage() {
                 colors={['#4F46E5', '#7C3AED']}
                 style={styles.gradientContainer}
             >
-                <Animated.View 
+                <Animated.View
                     style={[
                         styles.ratingContainer,
                         {
@@ -256,10 +285,10 @@ export default function MoneyPage() {
                     ]}
                 >
                     <BlurView intensity={80} style={styles.blurContainer}>
-                        <MaterialCommunityIcons 
-                            name="star-circle" 
-                            size={64} 
-                            color="#FFD700" 
+                        <MaterialCommunityIcons
+                            name="star-circle"
+                            size={64}
+                            color="#FFD700"
                             style={styles.ratingIcon}
                         />
                         <Text style={styles.ratingTitle}>How was your ride?</Text>
@@ -280,8 +309,8 @@ export default function MoneyPage() {
                             ))}
                         </View>
                         <Text style={styles.ratingSubtitle}>
-                            {state.rateValue > 0 
-                                ? `You rated ${state.rateValue} star${state.rateValue > 1 ? 's' : ''}` 
+                            {state.rateValue > 0
+                                ? `You rated ${state.rateValue} star${state.rateValue > 1 ? 's' : ''}`
                                 : 'Tap to rate'}
                         </Text>
                         <TouchableOpacity
@@ -301,7 +330,7 @@ export default function MoneyPage() {
             colors={['#4F46E5', '#7C3AED']}
             style={styles.gradientContainer}
         >
-            <Animated.View 
+            <Animated.View
                 style={[
                     styles.mainContainer,
                     {
@@ -325,19 +354,19 @@ export default function MoneyPage() {
 
                     {state.paymentMethod === 'online' && state.userData?.YourQrCodeToMakeOnline && (
                         <View style={styles.qrWrapper}>
-                            <Image 
+                            <Image
                                 source={{ uri: state.userData.YourQrCodeToMakeOnline }}
                                 style={styles.qrCode}
-                                onError={() => setState(prev => ({ 
-                                    ...prev, 
-                                    error: 'Failed to load QR code' 
+                                onError={() => setState(prev => ({
+                                    ...prev,
+                                    error: 'Failed to load QR code'
                                 }))}
                             />
                         </View>
                     )}
 
                     <Text style={styles.instructions}>
-                        {state.paymentMethod === 'online' 
+                        {state.paymentMethod === 'online'
                             ? 'Scan QR code to complete payment'
                             : 'Collect cash payment from customer'}
                     </Text>
