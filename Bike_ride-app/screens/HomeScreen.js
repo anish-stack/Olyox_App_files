@@ -173,7 +173,7 @@ const HomeScreen = () => {
 
       const partnerData = response_two.data.partner;
       setUserData(partnerData);
-
+      console.log("response.data",response.data.cabRider?.status)
       if (response.data.success) {
         setIsOnline(goingOnline);
         await SecureStore.setItemAsync("isOnline", goingOnline.toString());
@@ -189,6 +189,8 @@ const HomeScreen = () => {
       setLoading(false);
     }
   };
+
+  console.log("setIsOnline",isOnline)
 
   const formatToIST = (dateString) => {
     if (!dateString) return "N/A";
@@ -372,7 +374,10 @@ const HomeScreen = () => {
                   {isSocketReady ? "Connected" : "Offline"}
                 </Text>
               </TouchableOpacity>
+              {isOnline && (
+
               <RideCome isRefresh={refreshing} />
+              )}
             </View>
           </View>
 

@@ -656,6 +656,7 @@ exports.toggleWorkStatusOfRider = async (req, res) => {
     await cabRider.save();
 
     return res.status(200).json({
+      success:true,
       message: `Status updated to ${newStatus ? 'Available (Online)' : 'Unavailable (Offline)'} successfully`,
       cabRider
     });
