@@ -71,6 +71,9 @@ const RideRequestSchema = new Schema({
         enum: ['pending', 'accepted', 'in_progress', 'completed', 'cancelled'],
         default: 'pending'
     },
+    paymentMethod:{
+        type:String,
+    },
     rideCancelBy: {
         type: String,
     },

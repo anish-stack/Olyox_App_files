@@ -607,7 +607,7 @@ exports.rideEnd = async (data) => {
     }
 };
 
-exports.collectCash = async (data) => {
+exports.collectCash = async ({data,paymentMethod}) => {
     try {
         const ride_id = await RideRequest.findById(data?._id)
         if (!ride_id) {
@@ -618,6 +618,7 @@ exports.collectCash = async (data) => {
         }
 
         ride_id.is_ride_paid = true
+        ride_id.paymentMethod =paymentMethod
         await ride_id.save()
 
         const findRider = await Riders.findById(ride_id?.rider)

@@ -46,7 +46,7 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
       }
 
       const response = await axios.get(
-        `${API_BASE_URL}/api/v1/rider/user-details`,
+        `${API_BASE_URL}/rider/user-details`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -70,6 +70,7 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
 
     // If not, check from auth token
     const authRideId = await checkAuthToken();
+    console.log(authRideId)
     if (authRideId) {
       logDebug('Using ride ID from auth check', authRideId);
       return authRideId;
@@ -89,7 +90,7 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
 
     try {
       logDebug('Fetching ride details', { rideId });
-      const response = await axios.get(`${API_BASE_URL}/rider/${rideId}`);
+      const response = await axios.get(`https://demoapi.olyox.com/rider/${rideId}`);
 
       if (!response.data) {
         throw new Error('No ride data returned from API');
@@ -373,6 +374,7 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
 
   // Complete ride
   const handleCompleteRide = useCallback(async () => {
+
     const currentRideDetails = await getCurrentRideDetails();
     if (!currentRideDetails) {
       Alert.alert("Error", "Could not find ride details to complete.");

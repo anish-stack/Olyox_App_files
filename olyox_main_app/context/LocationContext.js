@@ -9,10 +9,9 @@ export const LocationProvider = ({ children }) => {
   const [locationHistory, setLocationHistory] = useState([]);
   const locationWatcher = useRef(null);
 
-  const ACCURACY_THRESHOLD = 700; // only accept if accuracy is under 50m
-  const MAX_HISTORY_LENGTH = 5;  // rolling average from last 5 updates
+  const ACCURACY_THRESHOLD = 700;
+  const MAX_HISTORY_LENGTH = 5;  
 
-  // Optional: Smoothen location using rolling average
   const getSmoothedLocation = (coords) => {
     const updatedHistory = [...locationHistory, coords].slice(-MAX_HISTORY_LENGTH);
     setLocationHistory(updatedHistory);
@@ -55,11 +54,8 @@ export const LocationProvider = ({ children }) => {
 
           if (coords.accuracy <= ACCURACY_THRESHOLD) {
             // Optional: Use smoothed location
-            // const smoothedCoords = getSmoothedLocation(coords);
-            // setLocation({ coords: smoothedCoords });
-
-            // OR: use raw good coords
-            setLocation(loc);
+            const smoothedCoords = getSmoothedLocation(coords);
+            setLocation({ coords: smoothedCoords });
             setErrorMsg(null);
           } else {
             console.log("❌ Ignored (Low Accuracy):", coords.accuracy);

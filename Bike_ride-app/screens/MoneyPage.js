@@ -154,9 +154,10 @@ export default function MoneyPage() {
                 SecureStore.deleteItemAsync('activeRide'),
                 LocalRideStorage.clearRide()
             ]);
+            const sendData = {...data,paymentMethod:state?.paymentMethod}
 
             // Emit socket event
-            socket.emit('isPay', data);
+            socket.emit('isPay', sendData);
             
             // Show success animation
             setState(prev => ({ ...prev, isRideRate: true }));

@@ -173,11 +173,6 @@ export default function RideDetailsScreen() {
       // Save the complete ride data for use throughout component
       setRideDetails(response.data);
 
-      // Save ride to local storage for persistence
-      // await LocalRideStorage.saveRide(response.data);
-
-      // Check if ride is already started
-
       // Update component state
       updateState({
         loading: false,
@@ -191,10 +186,7 @@ export default function RideDetailsScreen() {
       return response.data;
     } catch (error) {
       logError('Failed to fetch ride details', error);
-      updateState({
-        loading: false,
-        errorMsg: "Could not load ride details. Please try again."
-      });
+     
       return null;
     }
   }, [logDebug, logError, updateState]);
@@ -571,7 +563,7 @@ export default function RideDetailsScreen() {
                   console.log("rideDatrideDataa",rideData)
 
                   setTimeout(()=>{
-                    socketInstance.emit('ride_incorrect_mark_done_user', { rideDetails:   rideData });
+                    socketInstance.emit('ride_incorrect_mark_done_user', { rideDetails:rideData });
                     console.log("i am send")
                   },1500)
                 }
