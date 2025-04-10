@@ -216,7 +216,7 @@ export default function RechargeViaOnline() {
         description: 'Recharge Wallet',
         image: 'https://www.olyox.com/assets/logo-CWkwXYQ_.png',
         currency: response.data.order.currency,
-        key: 'rzp_test_Yiemqpugk5YVNl',
+        key: 'rzp_live_zD1yAIqb2utRwp',
         amount: response.data.order.amount,
         name: 'Olyox',
         order_id: response.data.order.id,

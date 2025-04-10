@@ -182,12 +182,12 @@ export default function RideDetailsScreen() {
       updateState({
         loading: false,
         rideStarted: !!response?.data?.ride?.rideDetails?.otp_verify_time,
-        showDirectionsType: !!response?.data?.ride?.rideDetails?.otp_verify_time 
-          ? "pickup_to_drop" 
+        showDirectionsType: !!response?.data?.ride?.rideDetails?.otp_verify_time
+          ? "pickup_to_drop"
           : "driver_to_pickup",
         // otp: response?.data?.ride?.rideDetails?.RideOtp || response?.data?.RideOtp || ""
       });
-      
+
       return response.data;
     } catch (error) {
       logError('Failed to fetch ride details', error);
@@ -248,10 +248,10 @@ export default function RideDetailsScreen() {
     const getCoordinates = () => {
       // Driver/Rider coordinates
       if (currentLocation) {
-        console.log("Current Location",currentLocation)
+        console.log("Current Location", currentLocation)
         setDriverCoordinates(currentLocation);
       } else if (rideDetails?.rider?.location?.coordinates) {
-        console.log("Coordinated",rideDetails?.rider?.location?.coordinates)
+        console.log("Coordinated", rideDetails?.rider?.location?.coordinates)
         setDriverCoordinates({
           latitude: rideDetails.rider.location.coordinates[1],
           longitude: rideDetails.rider.location.coordinates[0],
@@ -601,7 +601,7 @@ export default function RideDetailsScreen() {
     RideOtp = rideDetails?.ride?.driver?.otp || rideDetails?.ride?.driver?.otp || "",
   } = rideDetails;
 
-  console.log("drop_desc rideDetails?.drop_desc", rideDetails?.ride?.driver?.otp)
+  // console.log("drop_desc rideDetails?.drop_desc", rideDetails?.ride?.driver?.otp)
   // Main screen
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -616,7 +616,7 @@ export default function RideDetailsScreen() {
         socketConnected={state.socketConnected}
         carIconAnimation={carIconAnimation}
         handleMapReady={handleMapReady}
-    openGoogleMapsDirectionsPickup={openGoogleMapsDirectionsPickup}
+        openGoogleMapsDirectionsPickup={openGoogleMapsDirectionsPickup}
         openGoogleMapsDirections={openGoogleMapsDirections}
         pickup_desc={pickup_desc}
         drop_desc={drop_desc}
