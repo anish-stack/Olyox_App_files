@@ -70,6 +70,8 @@ export function RideConfirmed() {
         pickup: driver?.pickup_desc || 'Pickup Location',
         trips: driver?.trips || '150',
         dropoff: driver?.drop_desc || 'Drop Location',
+        drop_cord:driver?.drop_cord  || 'Drop Cords',
+        pickupLocation:driver?.pickupLocation  || 'pickupLocation'
     });
 
     // Fetch cancellation reasons
@@ -77,7 +79,7 @@ export function RideConfirmed() {
         try {
             setIsLoading(true);
             const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/admin/cancel-reasons?active=active`);
-            console.log("data",data.data)
+            console.log("data", data.data)
             setCancelReason(data.data || []);
         } catch (error) {
             console.log("Error Fetching in Reasons", error);
@@ -92,7 +94,7 @@ export function RideConfirmed() {
     const fetchRideDetailsFromDb = async () => {
         try {
             const rideId = ride?._id || await AsyncStorage.getItem('rideId');
-        
+
             if (!rideId) {
                 console.warn('No ride ID available for fetching details');
                 return;
@@ -100,7 +102,7 @@ export function RideConfirmed() {
 
 
             const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/rides/find-ride_details?id=${rideId}`);
-            console.log("rideId",data.data)
+            console.log("rideId",  data.data.dropLocation)
             if (data.data) {
                 setRideData(data.data);
                 setRideDetails(prev => ({
@@ -113,11 +115,13 @@ export function RideConfirmed() {
                     pickup: data.data.pickup_desc || prev.pickup,
                     trips: data.data.RatingOfRide || prev.trips,
                     dropoff: data.data.drop_desc || prev.dropoff,
+                    drop_cord: data.data.dropLocation || prev.dropLocation,
+                    pickupLocation: data.data.pickupLocation || prev.pickupLocation
                 }));
                 setDriverData(data.data.rider);
                 setRideStart(data.data.ride_is_started);
             }
-          
+
         } catch (error) {
             console.error('Error fetching ride details:', error);
         }
@@ -125,7 +129,41 @@ export function RideConfirmed() {
 
 
 
-
+    // const handleCompleteRide = useCallback(async () => {
+    //     const currentRideDetails = await getCurrentRideDetails();
+    //     if (!currentRideDetails) {
+    //       Alert.alert("Error", "Could not find ride details to complete.");
+    //       return;
+    //     }
+    
+    //     Alert.alert("Complete Ride", "Are you sure you want to complete this ride?", [
+    //       { text: "Cancel", style: "cancel" },
+    //       {
+    //         text: "Complete",
+    //         onPress: async () => {
+    //           if (socket && socket.connected) {
+    //             socket.emit("ride_end_by_rider", {
+    //               rideDetails: currentRideDetails
+    //             }, (response) => {
+    //               if (response && response.error) {
+    //                 Alert.alert("Error", response.error || "Failed to complete ride. Please try again.");
+    //                 return;
+    //               }
+    
+    //               // Handle successful completion
+    //               Alert.alert("Success", "Ride completed successfully.", [
+    //                 { text: "OK", onPress: () => resetToHome() }
+    //               ]);
+    //             })
+    //           } else {
+    //             logError("Socket not connected for ride completion")
+    //             Alert.alert("Connection Error", "Please check your internet connection and try again.");
+    //           }
+    //         },
+    //       },
+    //     ])
+    //   }, [getCurrentRideDetails, socket, navigation])
+    
     // Handle ending the ride
     const handleEndRide = useCallback(async () => {
         setIsLoading(true);
@@ -308,9 +346,9 @@ export function RideConfirmed() {
         };
     }, [rideData, currentLocation, socket, navigation]);
 
-    useEffect(()=>{
+    useEffect(() => {
         fetchRideDetailsFromDb();
-    },[])
+    }, [])
     // Initial data fetch
     useEffect(() => {
         fetchReason();
@@ -365,7 +403,9 @@ export function RideConfirmed() {
 
             {/* Modals */}
             <SupportModal
+                rideStart={rideStart}
                 visible={supportModalVisible}
+                handleEndRide={handleEndRide}
                 setVisible={setSupportModalVisible}
                 driverData={driverData}
                 rideDetails={rideDetails}

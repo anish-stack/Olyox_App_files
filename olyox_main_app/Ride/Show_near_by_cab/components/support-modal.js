@@ -12,19 +12,25 @@ import {
     Platform,
 } from 'react-native';
 import { MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import useSettings from '../../../hooks/Settings';
+import { COLORS } from '../../../constants/colors';
 
 const { height } = Dimensions.get('window');
 
 
-export const SupportModal = React.memo(({ 
-    visible, 
-    setVisible, 
-    driverData, 
+export const SupportModal = React.memo(({
+    visible,
+    handleEndRide,
+    rideStart,
+    setVisible,
+    driverData,
     rideDetails,
     currentLocation,
     setCancelModel
 }) => {
-    
+
+    const { settings } = useSettings()
+
     // Call emergency services
     const callEmergency = (type) => {
         let phoneNumber = '';
@@ -37,7 +43,7 @@ export const SupportModal = React.memo(({
                 phoneNumber = '108';
                 break;
             case 'support':
-                phoneNumber = '1800123456'; // Replace with actual support number
+                phoneNumber = settings?.support_number || "7217619794"; // Replace with actual support number
                 break;
             default:
                 phoneNumber = '112'; // General emergency
@@ -117,7 +123,7 @@ export const SupportModal = React.memo(({
                             </View>
                             <Text style={styles.emergencyText}>Call Support</Text>
                         </TouchableOpacity>
-                        
+
                         <TouchableOpacity
                             style={styles.emergencyOption}
                             onPress={() => {
@@ -161,7 +167,17 @@ export const SupportModal = React.memo(({
                             <Text style={styles.rideInfoValue}>{rideDetails.dropoff}</Text>
                         </View>
                     </View>
+                    {rideStart && (
+                        <TouchableOpacity
+                            style={[styles.shareLocationButton, { backgroundColor: COLORS.error }]}
+                            onPress={handleEndRide}
+                        >
+                            <MaterialCommunityIcons name="car" size={20} color="#fff" />
+                            <Text style={styles.shareLocationText}>End Your Ride</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
+
             </View>
         </Modal>
     );

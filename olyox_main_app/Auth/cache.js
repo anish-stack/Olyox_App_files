@@ -37,6 +37,37 @@ const createTokenCache = () => {
             }
         },
 
+        save_location: async(key,location)=>{
+            try {
+                console.log("save key:", key);
+                console.log("save location:", location);
+                
+                await SecureStore.setItemAsync(key, location);
+                
+                console.log("location successfully saved! 🔐");
+
+                
+                return location; // Explicitly return the token
+            } catch (error) {
+                console.error("Error saving location:", error);
+                return null;
+            }
+        },
+        get_location: async(key)=>{
+            try {
+                const item = await SecureStore.getItemAsync(key);
+                if (item) {
+                    console.log(`${key} was used 🔐 \n`);
+                } else {
+                    console.log('No values stored under key: ' + key);
+                }
+                return item;
+            } catch (error) {
+                console.error('Secure store get item error: ', error);
+                return null;
+            }
+        },
+
         // Delete a token from Secure Store
         deleteToken: async (key) => {
             try {

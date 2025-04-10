@@ -9,7 +9,7 @@ import TopFood from '../Foods/Top_Foods/TopFood';
 import BookARide from '../components/Book_A_Ride/BookARide';
 import Food_Cats from '../Foods/Food_Cats/Food_Cats';
 import SkeletonLoader from './SkeletonLoader';
-
+import * as Updates from 'expo-updates';
 const HomeScreen = () => {
     const isMounted = useRef(false); // Prevent multiple fetch calls
     const [loading, setLoading] = useState(true);
@@ -37,9 +37,16 @@ const HomeScreen = () => {
     }, []);
 
     // Refresh function
-    const onRefresh = useCallback(() => {
-        setRefreshing(true);
-        fetchData().then(() => setRefreshing(false));
+    const onRefresh = useCallback(async () => {
+        try {
+            setRefreshing(true);
+            await Updates.reloadAsync();
+            await fetchData();
+        } catch (error) {
+            console.error('Refresh error:', error);
+        } finally {
+            setRefreshing(false);
+        }
     }, []);
 
     // Show skeleton loader while loading
@@ -56,6 +63,8 @@ const HomeScreen = () => {
     return (
         <Layout>
             <ScrollView
+                showsVerticalScrollIndicator={false}
+                scrollEventThrottle={16}
                 contentContainerStyle={styles.scrollViewContent}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />

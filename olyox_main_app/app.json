@@ -51,7 +51,7 @@
       "package": "com.happy_coding.olyox"
     },
     "web": {
-      "favicon": "./assets/favicon.png",
+      "favicon": "./assets/ic_launcher-web.png",
       "build": {
         "publicPath": "/"
       }

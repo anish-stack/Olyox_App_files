@@ -9,14 +9,14 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 
-export const RideFooter = React.memo(({ 
-    rideStart, 
-    handleEndRide, 
-    setSupportModalVisible 
+export const RideFooter = React.memo(({
+    rideStart,
+    handleEndRide,
+    setSupportModalVisible
 }) => {
     return (
         <View style={styles.footer}>
-            {rideStart ? (
+            {/* {rideStart ? (
                 <TouchableOpacity
                     onPress={handleEndRide}
                     style={styles.endRideButton}
@@ -32,7 +32,15 @@ export const RideFooter = React.memo(({
                     <MaterialCommunityIcons name="headphones" size={20} color="#fff" />
                     <Text style={styles.supportButtonText}>Need Support?</Text>
                 </TouchableOpacity>
-            )}
+            )} */}
+
+            <TouchableOpacity
+                style={styles.supportButton}
+                onPress={() => setSupportModalVisible(true)}
+            >
+                <MaterialCommunityIcons name="headphones" size={20} color="#fff" />
+                <Text style={styles.supportButtonText}>Need Support?</Text>
+            </TouchableOpacity>
         </View>
     );
 });

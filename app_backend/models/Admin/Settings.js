@@ -13,6 +13,9 @@ const SettingsSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    ride_percentage_off:{
+        type: Number
+    },
     maintenanceMode: {
         type: Boolean,
         default: false

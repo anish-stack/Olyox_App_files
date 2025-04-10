@@ -1,16 +1,19 @@
-import { StyleSheet } from "react-native";
-import { COLORS } from "../../constants/colors";
+import { StyleSheet, Dimensions, Platform } from 'react-native';
 
-const styles = StyleSheet.create({
+const { width, height } = Dimensions.get('window');
+
+export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
+  },
+  scrollView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
@@ -21,185 +24,140 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     marginLeft: 16,
-    color: '#333',
-  },
-  card: {
-    margin: 16,
-    flex: 1,
-  },
-  locationCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   inputsContainer: {
-    position: 'relative',
+    padding: 16,
+    backgroundColor: '#fff',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   inputWrapper: {
-    marginVertical: 8,
-  },
-  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#f8f8f8',
+    borderWidth: 1,
+    borderColor: '#eee',
   },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
-  },
-  inputContent: {
+  input: {
     flex: 1,
+    marginHorizontal: 8,
+    fontSize: 16,
+    color: '#000',
+    paddingVertical: 8,
   },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 4,
-  },
-  mapButton: {
-    padding: 8,
-    marginLeft: 8,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#eee',
-    marginVertical: 12,
-    marginLeft: 24,
-  },
-  loaderContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  loaderText: {
-    marginTop: 8,
-    color: '#666',
-    fontSize: 14,
+  loader: {
+    marginVertical: 20,
   },
   suggestionsContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    marginTop: 16,
-    maxHeight: 300,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginHorizontal: 0,
+    marginTop: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  suggestionPressed: {
-    backgroundColor: '#f5f5f5',
+    borderBottomColor: '#eee',
   },
   suggestionText: {
     marginLeft: 12,
     fontSize: 14,
-    color: '#333',
+    color: '#000',
+  },
+  mapContainer: {
     flex: 1,
+    position: 'relative',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  centerMarker: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -20 }, { translateY: -40 }],
+  },
+  mapHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+  },
+  mapHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 16,
+  },
+  mapFooter: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  mapAddressText: {
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  confirmButton: {
+    backgroundColor: '#DC4C47',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   previewMapContainer: {
-    marginTop: 16,
     height: 200,
-    borderRadius: 12,
+    margin: 16,
+    borderRadius: 8,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   previewMap: {
     width: '100%',
     height: '100%',
   },
   submitButton: {
-    backgroundColor: COLORS.zom,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#DA2D29',
+    margin: 16,
     padding: 16,
-    borderRadius: 12,
-    marginTop: 16,
-    shadowColor: COLORS.zom,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  submitIcon: {
-    marginRight: 8,
+    borderRadius: 8,
   },
   submitButtonText: {
-    color: 'white',
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  map: {
-    width: '100%',
-    flex: 1,
-  },
-  mapHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  mapHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 16,
-    color: '#333',
-  },
-  mapFooter: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  mapAddressText: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: 700,
-    marginBottom: 12,
-  },
-  confirmButton: {
-    backgroundColor: COLORS.zom,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  confirmButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    marginLeft: 8,
   },
 });
-
-
-export default styles;

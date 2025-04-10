@@ -6,550 +6,438 @@ import {
     ActivityIndicator,
     ScrollView,
     Pressable,
-    StyleSheet,
     Dimensions,
-    Alert
+    Alert,
+    Platform,
+    Keyboard,
+    TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Input from '../../components/forms/Input';
-import { COLORS } from '../../constants/colors';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
-import styles from './Styles'
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import styles from './Styles';
+
 const GOOGLE_MAPS_APIKEY = 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8';
 const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
+const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
 
-export default function Collect_Data() {
-    // Refs
+const Collect_Data = () => {
     const mapRef = useRef(null);
-    const timeoutRef = useRef(null);
-
-    // Navigation
+    const pickupInputRef = useRef(null);
+    const dropoffInputRef = useRef(null);
+    const debounceTimer = useRef(null);
     const navigation = useNavigation();
 
-    // State variables
-    const [pickup, setPickup] = useState('');
-    const [dropoff, setDropoff] = useState('');
-    const [suggestions, setSuggestions] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [activeInput, setActiveInput] = useState(null);
-    const [showMap, setShowMap] = useState(false);
-    const [mapType, setMapType] = useState(null); // 'pickup' or 'dropoff'
+    const [state, setState] = useState({
+        pickup: '',
+        dropoff: '',
+        suggestions: [],
+        loading: false,
+        error: '',
+        activeInput: null,
+        showMap: false,
+        mapType: null,
+        isFetchingLocation: false,
+        locationPermissionGranted: false,
+        inputHeight: 70,
+    });
+
     const [rideData, setRideData] = useState({
         pickup: { latitude: 0, longitude: 0, description: '' },
-        dropoff: { latitude: 0, longitude: 0, description: '' },
+        dropoff: { latitude: 0, longitude: 0, description: '' }
     });
+
     const [region, setRegion] = useState({
         latitude: 37.78825,
         longitude: -122.4324,
         latitudeDelta: LATITUDE_DELTA,
         longitudeDelta: LONGITUDE_DELTA,
     });
-    const [isFetchingLocation, setIsFetchingLocation] = useState(false);
-    const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
 
-    // Check location permissions on mount
     useEffect(() => {
-        (async () => {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status === 'granted') {
-                setLocationPermissionGranted(true);
-                fetchCurrentLocation();
-            } else {
-                Alert.alert(
-                    "Permission Denied",
-                    "Location permission is required to use this feature.",
-                    [{ text: "OK" }]
-                );
-            }
-        })();
-
+        checkLocationPermission();
         return () => {
-            // Clear any pending timeouts when component unmounts
-            if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-            }
+            if (debounceTimer.current) clearTimeout(debounceTimer.current);
         };
     }, []);
 
-    // Fetch current location with better error handling
-    const fetchCurrentLocation = async () => {
-        setIsFetchingLocation(true);
-        setError('');
-
+    const checkLocationPermission = async () => {
         try {
-            // Get current position with high accuracy and timeout
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            setState(prev => ({ ...prev, locationPermissionGranted: status === 'granted' }));
+            if (status === 'granted') {
+                await getCachedOrCurrentLocation();
+            }
+        } catch (error) {
+            console.error('Permission error:', error);
+        }
+    };
+
+    const getCachedOrCurrentLocation = async () => {
+        try {
+            const cachedLocation = await AsyncStorage.getItem('lastKnownLocation');
+            if (cachedLocation) {
+                const { location, timestamp } = JSON.parse(cachedLocation);
+                if (Date.now() - timestamp < CACHE_EXPIRY) {
+                    updateLocationData(location);
+                    return;
+                }
+            }
+            await fetchCurrentLocation();
+        } catch (error) {
+            console.error('Location cache error:', error);
+            await fetchCurrentLocation();
+        }
+    };
+
+    const fetchCurrentLocation = async () => {
+        setState(prev => ({ ...prev, isFetchingLocation: true, error: '' }));
+        try {
             const location = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.High,
-                timeInterval: 5000,
-                mayShowUserSettingsDialog: true
+                accuracy: Location.Accuracy.Balanced,
             });
 
-            if (location) {
-                // Update map region
-                const newRegion = {
+            await AsyncStorage.setItem('lastKnownLocation', JSON.stringify({
+                location,
+                timestamp: Date.now()
+            }));
+
+            await updateLocationData(location);
+        } catch (error) {
+            console.error('Location error:', error);
+            setState(prev => ({
+                ...prev,
+                error: 'Location unavailable. Please enter manually.',
+                isFetchingLocation: false
+            }));
+        }
+    };
+
+    const updateLocationData = async (location) => {
+        try {
+            const response = await axios.post('https://api.srtutorsbureau.com/Fetch-Current-Location', {
+                lat: location.coords.latitude,
+                lng: location.coords.longitude,
+            });
+
+            const address = response?.data?.data?.address?.completeAddress;
+
+            setRegion({
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+                latitudeDelta: LATITUDE_DELTA,
+                longitudeDelta: LONGITUDE_DELTA,
+            });
+
+            setState(prev => ({
+                ...prev,
+                pickup: address,
+                isFetchingLocation: false
+            }));
+
+            setRideData(prev => ({
+                ...prev,
+                pickup: {
                     latitude: location.coords.latitude,
                     longitude: location.coords.longitude,
-                    latitudeDelta: LATITUDE_DELTA,
-                    longitudeDelta: LONGITUDE_DELTA,
-                };
-
-                setRegion(newRegion);
-
-                // Reverse geocode to get address
-                const response = await axios.post('https://api.srtutorsbureau.com/Fetch-Current-Location', {
-                    lat: location.coords.latitude,
-                    lng: location.coords.longitude,
-                });
-
-                const currentLocation = response?.data?.data?.address?.completeAddress;
-
-                if (currentLocation) {
-                    setPickup(currentLocation);
-                    setRideData(prev => ({
-                        ...prev,
-                        pickup: {
-                            latitude: location.coords.latitude,
-                            longitude: location.coords.longitude,
-                            description: currentLocation
-                        }
-                    }));
-                } else {
-                    throw new Error('Could not determine address from coordinates');
+                    description: address
                 }
-            }
+            }));
         } catch (error) {
-            console.error('Error fetching location:', error);
-            setError('Failed to get your current location. Please enter it manually.');
-        } finally {
-            setIsFetchingLocation(false);
+            console.error('Address fetch error:', error);
+            setState(prev => ({
+                ...prev,
+                isFetchingLocation: false,
+                error: 'Failed to get address. Please enter manually.'
+            }));
         }
     };
 
-    // Debounced search for location suggestions
-    const fetchSuggestions = (input) => {
-        if (!input || input.length < 3) {
-            setSuggestions([]);
-            return;
-        }
+    const handleMapRegionChange = async (newRegion) => {
+        setRegion(newRegion);
+        const { latitude, longitude } = newRegion;
 
-        // Clear previous timeout
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-        }
-
-        setLoading(true);
-
-        // Debounce API calls
-        timeoutRef.current = setTimeout(async () => {
-            try {
-                const { data } = await axios.get('https://api.srtutorsbureau.com/autocomplete', {
-                    params: { input },
-                });
-                setSuggestions(data || []);
-            } catch (err) {
-                console.error('Suggestion error:', err);
-                setError('Failed to fetch locations. Please try again.');
-            } finally {
-                setLoading(false);
-            }
-        }, 300);
-    };
-
-    // Handle location selection from suggestions
-    const handleLocationSelect = async (location) => {
         try {
-            if (activeInput === 'pickup') {
-                setPickup(location);
-
-                // Geocode the selected location
-                const pickupData = await axios.get(`https://api.srtutorsbureau.com/geocode?address=${encodeURIComponent(location)}`);
-
-                if (pickupData.data?.latitude) {
-                    setRideData(prev => ({
-                        ...prev,
-                        pickup: {
-                            latitude: pickupData.data.latitude,
-                            longitude: pickupData.data.longitude,
-                            description: location
-                        }
-                    }));
-                }
-            } else {
-                setDropoff(location);
-
-                // Geocode the selected location
-                const dropoffData = await axios.get(`https://api.srtutorsbureau.com/geocode?address=${encodeURIComponent(location)}`);
-
-                if (dropoffData.data?.latitude) {
-                    setRideData(prev => ({
-                        ...prev,
-                        dropoff: {
-                            latitude: dropoffData.data.latitude,
-                            longitude: dropoffData.data.longitude,
-                            description: location
-                        }
-                    }));
-                }
-            }
-        } catch (error) {
-            console.error('Geocoding error:', error);
-            setError('Failed to get coordinates for the selected location.');
-        }
-
-        setSuggestions([]);
-        setActiveInput(null);
-    };
-
-    // Open map for location selection
-    const openMapForSelection = (type) => {
-        setMapType(type);
-        setShowMap(true);
-
-        // Set initial map region based on existing data
-        if (type === 'pickup' && rideData.pickup.latitude) {
-            setRegion({
-                latitude: rideData.pickup.latitude,
-                longitude: rideData.pickup.longitude,
-                latitudeDelta: LATITUDE_DELTA,
-                longitudeDelta: LONGITUDE_DELTA,
-            });
-        } else if (type === 'dropoff' && rideData.dropoff.latitude) {
-            setRegion({
-                latitude: rideData.dropoff.latitude,
-                longitude: rideData.dropoff.longitude,
-                latitudeDelta: LATITUDE_DELTA,
-                longitudeDelta: LONGITUDE_DELTA,
-            });
-        }
-    };
-
-    // Handle map marker drag end
-    const handleMarkerDragEnd = async (e) => {
-        try {
-            if (!e?.nativeEvent?.coordinate) {
-                console.error("Invalid marker event");
-                return;
-            }
-
-            const { latitude, longitude } = e.nativeEvent.coordinate;
-            console.log("Dragged Coordinates:", latitude, longitude);
-
-            // Show loading
-            setLoading(true);
-
-            // Reverse geocode the coordinates
             const response = await axios.post('https://api.srtutorsbureau.com/Fetch-Current-Location', {
                 lat: latitude,
                 lng: longitude,
             });
 
-            const address = response?.data?.data?.address?.completeAddress || "Unknown location";
+            const address = response?.data?.data?.address?.completeAddress;
 
-            if (mapType === 'pickup') {
-                setPickup(address);
+            if (state.mapType === 'pickup') {
+                setState(prev => ({ ...prev, pickup: address }));
+                setRideData(prev => ({
+                    ...prev,
+                    pickup: { latitude, longitude, description: address }
+                }));
+            } else {
+                setState(prev => ({ ...prev, dropoff: address }));
+                setRideData(prev => ({
+                    ...prev,
+                    dropoff: { latitude, longitude, description: address }
+                }));
+            }
+        } catch (error) {
+            console.error('Region change error:', error);
+        }
+    };
+
+    const fetchSuggestions = (input, type) => {
+        if (!input || input.length < 2) {
+            setState(prev => ({ ...prev, suggestions: [] }));
+            return;
+        }
+
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+        setState(prev => ({ ...prev, loading: true }));
+
+        debounceTimer.current = setTimeout(async () => {
+            try {
+                const { data } = await axios.get('https://api.srtutorsbureau.com/autocomplete', {
+                    params: { input }
+                });
+                setState(prev => ({
+                    ...prev,
+                    suggestions: data || [],
+                    loading: false,
+                    activeInput: type
+                }));
+            } catch (error) {
+                console.error('Suggestion error:', error);
+                setState(prev => ({
+                    ...prev,
+                    loading: false,
+                    error: 'Failed to fetch suggestions'
+                }));
+            }
+        }, 300);
+    };
+
+    const handleLocationSelect = async (location) => {
+        try {
+            const endpoint = `https://api.srtutorsbureau.com/geocode?address=${encodeURIComponent(location)}`;
+            const response = await axios.get(endpoint);
+
+            if (state.activeInput === 'pickup') {
+                setState(prev => ({ ...prev, pickup: location, suggestions: [] }));
                 setRideData(prev => ({
                     ...prev,
                     pickup: {
-                        latitude,
-                        longitude,
-                        description: address
+                        latitude: response.data.latitude,
+                        longitude: response.data.longitude,
+                        description: location
                     }
                 }));
             } else {
-                setDropoff(address);
+                setState(prev => ({ ...prev, dropoff: location, suggestions: [] }));
                 setRideData(prev => ({
                     ...prev,
                     dropoff: {
-                        latitude,
-                        longitude,
-                        description: address
+                        latitude: response.data.latitude,
+                        longitude: response.data.longitude,
+                        description: location
                     }
                 }));
             }
-
         } catch (error) {
-            console.error('Reverse geocoding error:', error);
-            Alert.alert("Location Error", "Failed to fetch address. Please try again.");
-        } finally {
-            // Hide loading
-            setLoading(false);
+            console.error('Location select error:', error);
+            Alert.alert('Error', 'Failed to get location coordinates');
         }
+
+        setState(prev => ({ ...prev, activeInput: null }));
+        Keyboard.dismiss();
     };
 
-
-    // Confirm map selection
-    const confirmMapSelection = () => {
-        setShowMap(false);
-    };
-
-    // Handle form submission
     const handleSubmit = () => {
-        if (!pickup || !dropoff) {
-            setError('Please select both pickup and drop-off locations');
-            return;
-        }
-
         if (!rideData.pickup.latitude || !rideData.dropoff.latitude) {
-            setError('Location coordinates are missing. Please try again.');
+            Alert.alert('Error', 'Please select both pickup and drop-off locations');
             return;
         }
-
-        // Navigate to next screen with ride data
         navigation.navigate('second_step_of_booking', { data: rideData });
     };
 
-    // Fit map to show both markers
-    const fitMapToMarkers = () => {
-        if (mapRef.current && rideData.pickup.latitude && rideData.dropoff.latitude) {
-            mapRef.current.fitToCoordinates(
-                [
-                    { latitude: rideData.pickup.latitude, longitude: rideData.pickup.longitude },
-                    { latitude: rideData.dropoff.latitude, longitude: rideData.dropoff.longitude }
-                ],
-                {
-                    edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-                    animated: true,
-                }
-            );
-        }
-    };
+    const renderMapView = () => (
+        <SafeAreaView style={styles.container}>
+            <View style={styles.mapHeader}>
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => setState(prev => ({ ...prev, showMap: false }))}
+                >
+                    <Icon name="arrow-left" size={24} color="#000" />
+                </TouchableOpacity>
+                <Text style={styles.mapHeaderTitle}>
+                    Select {state.mapType === 'pickup' ? 'Pickup' : 'Drop-off'} Location
+                </Text>
+            </View>
 
-    // Effect to fit map when both locations are set
-    useEffect(() => {
-        if (rideData.pickup.latitude && rideData.dropoff.latitude) {
-            timeoutRef.current = setTimeout(() => {
-                fitMapToMarkers();
-            }, 500);
-        }
-    }, [rideData.pickup.latitude, rideData.dropoff.latitude]);
-
-    // Truncate text for display
-    const truncateText = (text, maxLength = 30) => {
-        if (!text) return '';
-        return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-    };
-
-    // Render map view
-    if (showMap) {
-        return (
-            <SafeAreaView style={styles.container}>
-                <View style={styles.mapHeader}>
-                    <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={() => setShowMap(false)}
-                    >
-                        <Icon name="arrow-left" size={24} color={COLORS.zom} />
-                    </TouchableOpacity>
-                    <Text style={styles.mapHeaderTitle}>
-                        Select {mapType === 'pickup' ? 'Pickup' : 'Drop-off'} Location
-                    </Text>
-                </View>
-
+            <View style={styles.mapContainer}>
                 <MapView
                     ref={mapRef}
                     provider={PROVIDER_GOOGLE}
                     style={styles.map}
                     region={region}
+                    onRegionChangeComplete={handleMapRegionChange}
                     showsUserLocation
                     showsMyLocationButton
-                    onRegionChangeComplete={setRegion}
                 >
                     <Marker
                         coordinate={{
                             latitude: region.latitude,
                             longitude: region.longitude
                         }}
-                        draggable
-                        onPress={(e) => {
-                            console.log("Marker clicked:", e.nativeEvent.coordinate);
-                            handleMarkerDragEnd(e);
-                        }}
-                        onDragEnd={(e) => {
-                            console.log("Marker dragged:", e.nativeEvent.coordinate);
-                            handleMarkerDragEnd(e);
-                        }}
-                        pinColor={mapType === 'pickup' ? 'green' : 'red'}
+                        pinColor={state.mapType === 'pickup' ? 'green' : 'red'}
                     />
-
-
-                    {/* Show both markers and directions if both locations exist */}
-                    {!mapType && rideData.pickup.latitude && rideData.dropoff.latitude && (
-                        <>
-                            <Marker
-                                coordinate={{
-                                    latitude: rideData.pickup.latitude,
-                                    longitude: rideData.pickup.longitude
-                                }}
-                                pinColor="green"
-                                title="Pickup"
-                            />
-                            <Marker
-                                coordinate={{
-                                    latitude: rideData.dropoff.latitude,
-                                    longitude: rideData.dropoff.longitude
-                                }}
-                                pinColor="red"
-                                title="Drop-off"
-                            />
-                            <MapViewDirections
-                                origin={{
-                                    latitude: rideData.pickup.latitude,
-                                    longitude: rideData.pickup.longitude
-                                }}
-                                destination={{
-                                    latitude: rideData.dropoff.latitude,
-                                    longitude: rideData.dropoff.longitude
-                                }}
-                                apikey={GOOGLE_MAPS_APIKEY}
-                                strokeWidth={3}
-                                strokeColor={COLORS.zom}
-                            />
-                        </>
-                    )}
                 </MapView>
-
-                <View style={styles.mapFooter}>
-                    <Text style={styles.mapAddressText}>
-                        {mapType === 'pickup' ? pickup : dropoff || 'Move the pin to and tap on marker location'}
-                    </Text>
-                    <TouchableOpacity
-                        style={styles.confirmButton}
-                        onPress={confirmMapSelection}
-                    >
-                        <Text style={styles.confirmButtonText}>Confirm Location</Text>
-                    </TouchableOpacity>
+                <View style={styles.centerMarker}>
+                    <Icon name="map-marker" size={40} color={state.mapType === 'pickup' ? 'green' : 'red'} />
                 </View>
-            </SafeAreaView>
-        );
-    }
-
-    // Render main location picker view
-    return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                    <Icon name="arrow-left" size={24} color="#333" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Where to?</Text>
             </View>
 
-            <View style={styles.card}>
-                {/* Location inputs */}
-                <View style={styles.locationCard}>
-                    <View style={styles.inputsContainer}>
-                        {/* Pickup input */}
-                        <View style={styles.inputWrapper}>
-                            <View style={styles.inputRow}>
-                                <View style={[styles.dot, { backgroundColor: COLORS.success }]} />
-                                <View style={styles.inputContent}>
-                                    <Text style={styles.inputLabel}>PICKUP</Text>
-                                    <Input
-                                        iconColour={COLORS.success}
-                                        placeholder="Enter pickup location"
-                                        value={pickup}
-                                        onChangeText={(text) => {
-                                            setPickup(text);
-                                            setActiveInput('pickup');
-                                            fetchSuggestions(text);
-                                        }}
-                                        error={activeInput === 'pickup' && error}
-                                    />
-                                </View>
-                                <TouchableOpacity
-                                    style={styles.mapButton}
-                                    onPress={() => openMapForSelection('pickup')}
-                                >
-                                    <Icon name="map-marker" size={24} color={COLORS.zom} />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+            <View style={styles.mapFooter}>
+                <Text numberOfLines={2} style={styles.mapAddressText}>
+                    {state.mapType === 'pickup' ? state.pickup : state.dropoff || 'Move map to select location'}
+                </Text>
+                <TouchableOpacity
+                    style={styles.confirmButton}
+                    onPress={() => setState(prev => ({ ...prev, showMap: false }))}
+                >
+                    <Text style={styles.confirmButtonText}>Confirm Location</Text>
+                </TouchableOpacity>
+            </View>
+        </SafeAreaView>
+    );
 
-                        <View style={styles.divider} />
+    if (state.showMap) return renderMapView();
 
-                        {/* Dropoff input */}
-                        <View style={styles.inputWrapper}>
-                            <View style={styles.inputRow}>
-                                <View style={[styles.dot, { backgroundColor: COLORS.error }]} />
-                                <View style={styles.inputContent}>
-                                    <Text style={styles.inputLabel}>DROP-OFF</Text>
-                                    <Input
-                                        iconColour={COLORS.error}
-                                        placeholder="Enter drop-off location"
-                                        value={truncateText(dropoff)}
-                                        onChangeText={(text) => {
-                                            setDropoff(text);
-                                            setActiveInput('dropoff');
-                                            fetchSuggestions(text);
-                                        }}
-                                        error={activeInput === 'dropoff' && error}
-                                    />
-                                </View>
-                                <TouchableOpacity
-                                    style={styles.mapButton}
-                                    onPress={() => openMapForSelection('dropoff')}
-                                >
-                                    <Icon name="map-marker" size={24} color={COLORS.zom} />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+    return (
+        <SafeAreaView style={styles.container}>
+            <ScrollView
+                style={styles.scrollView}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
+                <View style={styles.header}>
+                    <TouchableOpacity
+                        style={styles.backButton}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Icon name="arrow-left" size={24} color="#000" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Where to?</Text>
+                </View>
+
+                <View style={styles.inputsContainer}>
+                    <View style={styles.inputWrapper}>
+                        <Icon name="circle-small" size={24} color="green" />
+                        <TextInput
+                            ref={pickupInputRef}
+                            style={[styles.input, { height: Math.max(70, state.inputHeight) }]}
+                            placeholder="Enter pickup location"
+                            value={state.pickup}
+                            onChangeText={(text) => {
+                                setState(prev => ({ ...prev, pickup: text }));
+                                fetchSuggestions(text, 'pickup');
+                            }}
+                            onContentSizeChange={(event) => {
+                                const contentSize = event?.nativeEvent?.contentSize;
+                                // console.log("contentSize",contentSize)
+                                if (contentSize) {
+                                    setState(prev => ({
+                                        ...prev,
+                                        inputHeight: contentSize.height,
+                                    }));
+                                }
+                            }}
+                            multiline
+                        />
+
+                        <TouchableOpacity
+                            onPress={() => {
+                                setState(prev => ({
+                                    ...prev,
+                                    showMap: true,
+                                    mapType: 'pickup'
+                                }));
+                            }}
+                        >
+                            <Icon name="map-marker" size={24} color="#35C14F" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.inputWrapper}>
+                        <Icon name="circle-small" size={24} color="red" />
+                        <TextInput
+                            ref={dropoffInputRef}
+                            style={[styles.input, { height: Math.max(70, state.inputHeight) }]}
+                            placeholder="Enter drop-off location"
+                            value={state.dropoff}
+                            onChangeText={(text) => {
+                                setState(prev => ({ ...prev, dropoff: text }));
+                                fetchSuggestions(text, 'dropoff');
+                            }}
+                            onContentSizeChange={(event) => {
+                                const contentSize = event?.nativeEvent?.contentSize;
+                                if (contentSize) {
+                                    setState(prev => ({
+                                        ...prev,
+                                        inputHeight: contentSize.height,
+                                    }));
+                                }
+                            }}
+                            multiline
+                        />
+                        <TouchableOpacity
+                            onPress={() => {
+                                setState(prev => ({
+                                    ...prev,
+                                    showMap: true,
+                                    mapType: 'dropoff'
+                                }));
+                            }}
+                        >
+                            <Icon name="map-marker" size={24} color="red" />
+                        </TouchableOpacity>
                     </View>
                 </View>
 
-                {/* Loading indicators */}
-                {isFetchingLocation ? (
-                    <View style={styles.loaderContainer}>
-                        <ActivityIndicator size="large" color={COLORS.zom} />
-                        <Text style={styles.loaderText}>Fetching your current location...</Text>
-                    </View>
-                ) : loading ? (
-                    <View style={styles.loaderContainer}>
-                        <ActivityIndicator size="large" color={COLORS.zom} />
-                        <Text style={styles.loaderText}>Finding locations...</Text>
-                    </View>
-                ) : null}
-
-                {/* Location suggestions */}
-                {suggestions.length > 0 && (
-                    <ScrollView style={styles.suggestionsContainer} showsVerticalScrollIndicator={false}>
-                        {suggestions.map((suggestion, index) => (
-                            <Pressable
-                                key={index}
-                                style={({ pressed }) => [
-                                    styles.suggestionItem,
-                                    pressed && styles.suggestionPressed
-                                ]}
-                                onPress={() => handleLocationSelect(suggestion.description)}
-                            >
-                                <Icon name="map-marker" size={20} color={COLORS.zom} />
-                                <Text style={styles.suggestionText}>{suggestion.description}</Text>
-                            </Pressable>
-                        ))}
-                    </ScrollView>
+                {state.loading && (
+                    <ActivityIndicator style={styles.loader} size="large" color="#000" />
                 )}
 
-                {/* Preview map when both locations are set */}
-                {rideData.pickup.latitude > 0 && rideData.dropoff.latitude > 0 && !suggestions.length && (
+                {state.suggestions.length > 0 && (
+                    <View style={styles.suggestionsContainer}>
+                        {state.suggestions.map((suggestion, index) => (
+                            <Pressable
+                                key={index}
+                                style={styles.suggestionItem}
+                                onPress={() => handleLocationSelect(suggestion.description)}
+                                android_ripple={{ color: '#eee' }}
+                            >
+                                <Icon name="map-marker" size={20} color="#D93A2D" />
+                                <Text numberOfLines={1} style={styles.suggestionText}>{suggestion.description}</Text>
+                            </Pressable>
+                        ))}
+                    </View>
+                )}
+
+                {rideData.pickup.latitude && rideData.dropoff.latitude && !state.suggestions.length && (
                     <View style={styles.previewMapContainer}>
                         <MapView
                             ref={mapRef}
                             provider={PROVIDER_GOOGLE}
                             style={styles.previewMap}
-                            initialRegion={{
-                                latitude: rideData.pickup.latitude,
-                                longitude: rideData.pickup.longitude,
-                                latitudeDelta: LATITUDE_DELTA,
-                                longitudeDelta: LONGITUDE_DELTA,
-                            }}
-                            onMapReady={fitMapToMarkers}
+                            region={region}
+                            showsUserLocation
                         >
                             <Marker
                                 coordinate={{
@@ -557,7 +445,6 @@ export default function Collect_Data() {
                                     longitude: rideData.pickup.longitude
                                 }}
                                 pinColor="green"
-                                title="Pickup"
                             />
                             <Marker
                                 coordinate={{
@@ -565,38 +452,30 @@ export default function Collect_Data() {
                                     longitude: rideData.dropoff.longitude
                                 }}
                                 pinColor="red"
-                                title="Drop-off"
                             />
                             <MapViewDirections
-                                origin={{
-                                    latitude: rideData.pickup.latitude,
-                                    longitude: rideData.pickup.longitude
-                                }}
-                                destination={{
-                                    latitude: rideData.dropoff.latitude,
-                                    longitude: rideData.dropoff.longitude
-                                }}
+                                origin={rideData.pickup}
+                                destination={rideData.dropoff}
                                 apikey={GOOGLE_MAPS_APIKEY}
                                 strokeWidth={3}
-                                strokeColor={COLORS.zom}
+                                strokeColor="#000"
                             />
                         </MapView>
                     </View>
                 )}
 
-                {/* Submit button */}
-                {rideData.pickup.latitude > 0 && rideData.dropoff.latitude > 0 && !suggestions.length && (
+                {rideData.pickup.latitude && rideData.dropoff.latitude && !state.suggestions.length && (
                     <TouchableOpacity
                         style={styles.submitButton}
                         onPress={handleSubmit}
-                        activeOpacity={0.8}
                     >
-                        <Icon name="car" size={24} color="white" style={styles.submitIcon} />
-                        <Text style={styles.submitButtonText}>Find Riders Heading to Your Destination</Text>
+                        <Icon name="car" size={24} color="white" />
+                        <Text style={styles.submitButtonText}>Find Riders</Text>
                     </TouchableOpacity>
                 )}
-            </View>
+            </ScrollView>
         </SafeAreaView>
     );
-}
+};
 
+export default Collect_Data;

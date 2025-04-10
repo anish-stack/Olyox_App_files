@@ -67,9 +67,9 @@ exports.createRequest = async (req, res) => {
 
 exports.findRider = async (id, io) => {
     const MAX_RETRIES = 2;
-    const RETRY_DELAY_MS = 10000; 
-    const INITIAL_RADIUS = 2500; 
-    const RADIUS_INCREMENT = 500; 
+    const RETRY_DELAY_MS = 10000;
+    const INITIAL_RADIUS = 2500;
+    const RADIUS_INCREMENT = 500;
     let retryCount = 0;
 
     // Function to find riders with retry logic and expanding radius
@@ -123,7 +123,7 @@ exports.findRider = async (id, io) => {
             console.log(`Search attempt ${retryCount + 1}/${MAX_RETRIES} with radius: ${currentRadius / 1000} km`);
 
             // Find nearby available riders with matching vehicle type
-            const riders = await Riders.aggregate([
+            let riders = await Riders.aggregate([
                 {
                     $geoNear: {
                         near: { type: "Point", coordinates: [longitude, latitude] },
@@ -149,9 +149,14 @@ exports.findRider = async (id, io) => {
                     },
                 },
             ]);
-    
-    
-    
+
+            riders = riders.filter((rider) => {
+                const expire = rider?.RechargeData?.expireData;
+                return expire && new Date(expire) >= currentDate;
+              });
+              
+            
+
 
             // Get route information from Google Maps API
             const origin = `${pickupLocation.coordinates[1]},${pickupLocation.coordinates[0]}`;
@@ -267,7 +272,7 @@ exports.findRider = async (id, io) => {
                             }
                         });
 
-                        console.log("user._id",user._id)
+                        console.log("user._id", user._id)
                         // Notify user that no drivers were found
                         io.to(user._id.toString()).emit("no_drivers_available", {
                             message: `No drivers available within ${(INITIAL_RADIUS + (MAX_RETRIES - 1) * RADIUS_INCREMENT) / 1000} km of your location. Please try again later.`,
@@ -486,11 +491,11 @@ exports.ChangeRideRequestByRider = async (io, data) => {
 
 exports.rideStart = async (data) => {
     try {
-      
+
         const ride_id = await RideRequest.findById(data?.rideDetails?._id);
- 
+
         const ride_id_temp = await tempRideDetailsSchema.findById(data?._id);
-        console.log("ride_id_temp",ride_id_temp)
+        console.log("ride_id_temp", ride_id_temp)
 
         if (!ride_id) {
             return {

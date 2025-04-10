@@ -14,9 +14,11 @@ import {
 } from "react-native"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import Map from "../Map/Map"
+import { Video } from 'expo-av';
 import axios from "axios"
 import { AntDesign, MaterialIcons, Ionicons } from "@expo/vector-icons"
 import useShowRiders from "../../hooks/Show_Riders"
+import useSettings from "../../hooks/Settings";
 
 export default function ShowMap() {
   const route = useRoute()
@@ -27,6 +29,7 @@ export default function ShowMap() {
   const [fareDetails, setFareDetails] = useState([])
   const [error, setError] = useState(null)
   const navigation = useNavigation()
+  const {settings}= useSettings()
 
   // Extract data from route params or use defaults
   const data = route?.params?.data || {}
@@ -47,7 +50,7 @@ export default function ShowMap() {
   const { riders, loading: riderLoading, error: riderError } = useShowRiders(origin);
 
 
-// console.log("riders",riders)
+  // console.log("riders",riders)
   // Initial loading simulation
   useEffect(() => {
     setTimeout(() => setLoading(false), 2000)
@@ -208,11 +211,20 @@ export default function ShowMap() {
 
   // Ride option component
   const RideOption = ({ ride }) => {
+   
     const isSelected = selectedRide?._id === ride._id
-    const fareInfo = ride.fareInfo
-    const ExtraFareInfo = (ride.fareInfo?.totalPrice * 1.1).toFixed(2)
-
-
+    const fareInfo = ride.fareInfo;
+    const ridePercentage = parseFloat(settings?.ride_percentage_off) || 0;
+    
+    // Convert percentage to decimal and add it to total price
+    const extraFareAmount = (fareInfo?.totalPrice * ridePercentage / 100).toFixed(2);
+    
+    // Add that amount to the totalPrice
+    const updatedTotalPrice = (fareInfo?.totalPrice + parseFloat(extraFareAmount)).toFixed(2);
+    
+    // console.log("Base Price:", fareInfo?.totalPrice);
+    // console.log("Extra Fare (Percentage):", extraFareAmount);
+    // console.log("Total with Extra:", updatedTotalPrice);
     // Get vehicle icon based on type
     const getVehicleIcon = () => {
       switch (ride.name.toUpperCase()) {
@@ -240,9 +252,17 @@ export default function ShowMap() {
         activeOpacity={0.7}
       >
         <View style={styles.rideLeft}>
-          <View style={styles.rideIconContainer}>
-            <Text style={styles.rideIcon}>{getVehicleIcon()}</Text>
-          </View>
+          {ride?.icons_image?.url ? (
+            <View style={styles.rideIconContainer}>
+              <Image source={{uri:ride?.icons_image?.url}}  resizeMode="contain" width={40} height={40} />
+            </View>
+
+          ):(
+
+            <View style={styles.rideIconContainer}>
+              <Text style={styles.rideIcon}>{getVehicleIcon()}</Text>
+            </View>
+          )}
           <View style={styles.rideInfo}>
             <Text style={styles.rideName}>{ride.name}</Text>
             <Text style={styles.rideDescription}>{ride.description}</Text>
@@ -260,7 +280,7 @@ export default function ShowMap() {
           </View>
         </View>
         <View style={styles.rideRight}>
-        
+
           {fareInfo?.totalPrice ? (
             <View style={{ flexDirection: 'row', marginHorizontal: 4 }}>
               <Text style={styles.ridePrice}>{formatPrice(fareInfo?.totalPrice)}</Text>
@@ -269,8 +289,10 @@ export default function ShowMap() {
           ) : (
             <ActivityIndicator size="small" color="#00BCD4" />
           )}
+          <Text style={[styles.ridePrice, styles.strikeThrough]}>{formatPrice(updatedTotalPrice)}</Text>
           <View style={[styles.selectIndicator, isSelected && styles.selectedIndicator]} />
         </View>
+
 
       </TouchableOpacity>
     )
@@ -316,7 +338,7 @@ export default function ShowMap() {
     <SafeAreaView style={styles.container}>
       <Header />
       <View style={styles.mapWrapper}>
-        <Map origin={origin} destination={destination} />
+        <Map isFakeRiderShow={true} origin={origin} destination={destination} />
       </View>
       <View style={styles.contentWrapper}>
         <ScrollView style={styles.contentContainer} showsVerticalScrollIndicator={false}>
@@ -344,7 +366,7 @@ export default function ShowMap() {
             </View>
           )}
 
-          
+
           <View style={{ height: 80 }} />
         </ScrollView>
       </View>

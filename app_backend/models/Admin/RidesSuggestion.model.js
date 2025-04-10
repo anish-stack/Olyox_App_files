@@ -27,6 +27,14 @@ const RidesSuggestionSchema = new Schema({
         type: Boolean,
         default: false
       
+    },
+    icons_image:{
+        url:{
+            type: String,
+        },
+        public_id:{
+            type: String,
+        }
     }
 });
 
