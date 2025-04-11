@@ -331,7 +331,6 @@ exports.login = async (req, res) => {
 exports.findAllOrders = async (req, res) => {
     try {
         const userData = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
-        console.log("userd", userData)
         if (!userData?._id) {
             return res.status(400).json({
                 success: false,

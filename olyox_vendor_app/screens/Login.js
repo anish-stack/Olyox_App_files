@@ -25,7 +25,7 @@ export function Login() {
 
         setLoading(true);
         try {
-            const response = await fetch('https://demoapi.olyox.com/api/v1/tiffin/tiffin_login', {
+            const response = await fetch('http://192.168.1.9:3100/api/v1/tiffin/tiffin_login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID }),
@@ -61,7 +61,7 @@ export function Login() {
         setTimeout(() => setResendDisabled(false), 30000); // Re-enable after 30s
 
         try {
-            const response = await fetch('https://demoapi.olyox.com/api/v1/tiffin/resend-otp', {
+            const response = await fetch('http://192.168.1.9:3100/api/v1/tiffin/resend-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID }),
@@ -88,7 +88,7 @@ export function Login() {
 
         setLoading(true);
         try {
-            const response = await fetch('https://demoapi.olyox.com/api/v1/tiffin/verify_otp', {
+            const response = await fetch('http://192.168.1.9:3100/api/v1/tiffin/verify_otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID, otp }),

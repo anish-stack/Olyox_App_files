@@ -5,7 +5,7 @@ import axios from "axios"
 import { Audio } from "expo-av"
 import { CommonActions, useNavigation } from '@react-navigation/native'
 import * as SecureStore from 'expo-secure-store'
-const API_BASE_URL = "https://demoapi.olyox.com/api/v1"
+const API_BASE_URL = "http://192.168.1.9:3100/api/v1"
 
 export function useRideActions({ state, setState, rideDetails, socket, mapRef, soundRef }) {
   const navigation = useNavigation()
@@ -90,7 +90,7 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
 
     try {
       logDebug('Fetching ride details', { rideId });
-      const response = await axios.get(`https://demoapi.olyox.com/rider/${rideId}`);
+      const response = await axios.get(`http://192.168.1.9:3100/rider/${rideId}`);
 
       if (!response.data) {
         throw new Error('No ride data returned from API');

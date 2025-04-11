@@ -178,6 +178,15 @@ const RiderSchema = new Schema({
     JsonData: {
         type: Object
     },
+    ridesRejected: {
+        type: Number,
+        default: 0
+    },
+    recentRejections: [{
+        rideId: { type: mongoose.Schema.Types.ObjectId, ref: 'RideRequest' },
+        timestamp: { type: Date, default: Date.now }
+      }],
+      
     isBlockByAdmin: {
         type: Boolean,
         default: false

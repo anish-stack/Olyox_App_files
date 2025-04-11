@@ -60,7 +60,7 @@ export default function ShowMap() {
   const fetchRidesVehicle = async () => {
     try {
       setInitialLoading(true)
-      const { data } = await axios.get(`https://demoapi.olyox.com/api/v1/admin/getAllSuggestions`)
+      const { data } = await axios.get(`http://192.168.1.9:3100/api/v1/admin/getAllSuggestions`)
       if (data?.data?.length) {
         setRides(data.data)
       } else {
@@ -89,7 +89,7 @@ export default function ShowMap() {
 
         try {
           const response = await axios.post(
-            "https://demoapi.olyox.com/api/v1/rider/get-fare-info",
+            "http://192.168.1.9:3100/api/v1/rider/get-fare-info",
             {
               origin,
               destination,

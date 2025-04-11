@@ -31,7 +31,10 @@ const {
     rideEnd,
     collectCash,
     AddRating,
-    cancelRideByAnyOne
+    cancelRideByAnyOne,
+    cancelRideForOtherDrivers,
+    updateRideRejectionStatus,
+    findNextAvailableDriver
 } = require('./controllers/ride.request');
 const {
     update_parcel_request,
@@ -219,25 +222,26 @@ io.on('connection', (socket) => {
     socket.on('ride_accepted', async (data) => {
         try {
             console.log(`[${new Date().toISOString()}] Ride acceptance request:`, data);
-
+    
             if (!data || !data.data) {
                 console.error(`[${new Date().toISOString()}] Invalid ride acceptance data`);
                 return;
             }
-
+    
             // Process the data and change ride request status
             const updatedRide = await ChangeRideRequestByRider(io, data.data);
             console.log(`[${new Date().toISOString()}] Ride status updated:`, updatedRide.rideStatus);
-
+    
+            console.log("updatedRide",updatedRide?.temp_ride_id)
+            console.log("updatedRide temp_ride_id",updatedRide)
             if (updatedRide.rideStatus === 'accepted') {
-                // Get the socket ID of the user who made the ride request
+                // === Notify User ===
                 const userId = String(updatedRide.user);
                 const userSocketId = userSocketMap.get(userId);
-
+    
                 console.log(`[${new Date().toISOString()}] Notifying user ${userId}, socket found: ${Boolean(userSocketId)}`);
-
+    
                 if (userSocketId) {
-                    // Emit a message only to the specific user's socket ID
                     io.to(userSocketId).emit('ride_accepted_message', {
                         message: 'Your ride request has been accepted!',
                         rideDetails: updatedRide,
@@ -246,11 +250,62 @@ io.on('connection', (socket) => {
                 } else {
                     console.log(`[${new Date().toISOString()}] No active socket found for user: ${userId}`);
                 }
+    
+                // === Notify Rider (Driver) ===
+                const riderId = String(updatedRide.rider?._id); // assuming this field holds the rider's ID
+                const riderSocketId = driverSocketMap.get(riderId); // or whatever map holds the driver's sockets
+    
+                console.log(`[${new Date().toISOString()}] Notifying rider ${riderId}, socket found: ${Boolean(riderSocketId)}`);
+    
+                if (riderSocketId) {
+                    io.to(riderSocketId).emit('rider_confirm_message', {
+                        message: 'You have successfully accepted the ride!',
+                        rideDetails: updatedRide,
+                    });
+                    console.log(`[${new Date().toISOString()}] Confirmation sent to rider: ${riderId}`);
+                } else {
+                    console.log(`[${new Date().toISOString()}] No active socket found for rider: ${riderId}`);
+                }
+    
+                // === Cancel the ride for all other drivers ===
+                await cancelRideForOtherDrivers(io, updatedRide.ride_request_id, driverSocketMap || updatedRide._id, data.data.rider_id, driverSocketMap);
             }
         } catch (error) {
             console.error(`[${new Date().toISOString()}] Error handling ride_accepted event:`, error);
-            // Consider sending an error notification back to the driver
             socket.emit('ride_error', { message: 'Failed to process ride acceptance' });
+        }
+    });
+    
+
+
+    socket.on('ride_rejected', async (data) => {
+        try {
+            console.log(`[${new Date().toISOString()}] Ride rejection request:`, data);
+            
+            if (!data || !data.ride_id || !data.driver_id) {
+                console.error(`[${new Date().toISOString()}] Invalid ride rejection data: Missing required fields`);
+                return socket.emit('ride_error', { message: 'Invalid rejection data. Please provide ride_id and driver_id.' });
+            }
+            
+            const { ride_id, driver_id } = data;
+            
+            // Update the ride request notification status
+            await updateRideRejectionStatus(ride_id, driver_id);
+            
+            // If needed, find the next available driver
+            await findNextAvailableDriver(io, ride_id);
+            
+            // Send confirmation to the driver
+            socket.emit('rejection_confirmed', {
+                message: 'Ride rejection recorded successfully',
+                ride_id: ride_id,
+                timestamp: new Date()
+            });
+            
+            console.log(`[${new Date().toISOString()}] Successfully processed ride rejection for ride: ${ride_id} by driver: ${driver_id}`);
+        } catch (error) {
+            console.error(`[${new Date().toISOString()}] Error handling ride_rejected event:`, error);
+            socket.emit('ride_error', { message: 'Failed to process ride rejection' });
         }
     });
 
@@ -437,51 +492,51 @@ io.on('connection', (socket) => {
      */
     socket.on('send_message', async (data) => {
         try {
-            console.log(`[${new Date().toISOString()}] New ride request received:`, data);
-
-            if (!data || !data.data || !data.data._id) {
-                console.error(`[${new Date().toISOString()}] Invalid ride data: Missing required fields`);
-                socket.emit('message_response', { success: false, error: "Invalid ride data" });
-                return;
-            }
-
-            // Find rider information for the ride
-            const riderData = await findRider(data.data._id, io);
-
-            if (riderData) {
-
-                emitRideToDrivers(riderData);
-
-                // Confirm receipt to the requesting user
-                socket.emit('message_response', {
-                    success: true,
-                    message: "Ride request sent to drivers",
-                    riderData
-                });
-            } else {
-                const userSocketId = userSocketMap.get(data.data.user);
-
-                console.error(`[${new Date().toISOString()}] Rider not found for user ID: ${data.data.user}, request ID: ${data.data._id}`);
-
-                if (userSocketId) {
-                    io.to(userSocketId).emit('sorry_no_rider_available', {
-                        success: false,
-                        message: "Sorry, no riders are currently available nearby. Please try again shortly.",
-                        retrySuggestion: "You can retry in a few moments."
-                    });
-                } else {
-                    console.warn(`Socket ID not found for user: ${data.data.user}`);
-                }
-            }
-
-        } catch (error) {
-            console.error(`[${new Date().toISOString()}] Error processing ride request:`, error);
+          console.log(`[${new Date().toISOString()}] New ride request received:`, data);
+          
+          if (!data || !data.data || !data.data._id) {
+            console.error(`[${new Date().toISOString()}] Invalid ride data: Missing required fields`);
+            socket.emit('message_response', { success: false, error: "Invalid ride data" });
+            return;
+          }
+          
+          // Find rider information for the ride
+          // The findRider function already emits to drivers, so we don't need to do it again
+          const riderData = await findRider(data.data._id, io, app);
+          
+          if (riderData && riderData.success) {
+            // Don't call emitRideToDrivers here as findRider already emits to drivers
+            
+            // Confirm receipt to the requesting user
             socket.emit('message_response', {
-                success: false,
-                error: 'Failed to process the ride request',
+              success: true,
+              message: "Ride request sent to drivers",
+              riderData
             });
+          } else {
+            const userSocketId = userSocketMap.get(data.data.user);
+            
+            console.error(`[${new Date().toISOString()}] Rider not found for user ID: ${data.data.user}, request ID: ${data.data._id}`);
+            
+            if (userSocketId) {
+              io.to(userSocketId).emit('sorry_no_rider_available', {
+                success: false,
+                message: "Sorry, no riders are currently available nearby. Please try again shortly.",
+                retrySuggestion: "You can retry in a few moments."
+              });
+            } else {
+              console.warn(`Socket ID not found for user: ${data.data.user}`);
+            }
+          }
+          
+        } catch (error) {
+          console.error(`[${new Date().toISOString()}] Error processing ride request:`, error);
+          socket.emit('message_response', {
+            success: false,
+            error: 'Failed to process the ride request',
+          });
         }
-    });
+      });
 
     /**
      * Handle ride start event
@@ -1101,7 +1156,7 @@ app.post('/webhook/cab-receive-location', Protect, async (req, res) => {
     try {
         const { latitude, longitude } = req.body;
         const userId = req.user.userId;
-        // console.log("user hits", req.user)
+     
         //   console.log("body hits",req.body)
 
         const data = await RiderModel.findOneAndUpdate(
@@ -1116,7 +1171,7 @@ app.post('/webhook/cab-receive-location', Protect, async (req, res) => {
             { upsert: true, new: true }
         );
 
-        // console.log("data", data)
+        console.log("data of rider updated")
 
         res.status(200).json({ message: 'Location updated successfully' });
     } catch (error) {
@@ -1152,6 +1207,7 @@ app.post('/webhook/receive-location', Protect, async (req, res) => {
 
 
 
+
 app.get('/rider', async (req, res) => {
     try {
         const riders = await RiderModel.find({ isAvailable: true });
@@ -1168,7 +1224,12 @@ app.get('/rider/:tempRide', async (req, res) => {
             return res.status(400).json({ error: 'Invalid ride ID' });
         }
 
-        const ride = await tempRideDetailsSchema.findById(tempRide);
+        const ride = await tempRideDetailsSchema.findOne({
+            $or: [
+                { _id: tempRide },
+                { "rideDetails._id": new mongoose.Types.ObjectId(tempRide) }
+            ]
+        });
 
         if (!ride) {
             return res.status(404).json({ error: 'Ride not found' });

@@ -25,7 +25,7 @@ import Ride_End_Model from './Ride_End_Model';
 import axios from 'axios';
 
 const { width, height } = Dimensions.get('window');
-const API_BASE_URL = 'https://demoapi.olyox.com/api/v1';
+const API_BASE_URL = 'http://192.168.1.9:3100/api/v1';
 
 export function RideConfirmed() {
     const route = useRoute();

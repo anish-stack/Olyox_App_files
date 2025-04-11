@@ -399,7 +399,7 @@ const CollectData = () => {
       const db_token = await tokenCache.getToken("auth_token_db")
       const token = db_token || gmail_token
 
-      const response = await axios.get("https://demoapi.olyox.com/api/v1/user/find-Orders-details", {
+      const response = await axios.get("http://192.168.1.9:3100/api/v1/user/find-Orders-details", {
         headers: { Authorization: `Bearer ${token}` },
       })
 

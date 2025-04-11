@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, Dimensions, AppState, ActivityIndicator, Image, ScrollView } from 'react-native';
-import { Text, Button, Surface, Portal, Modal } from 'react-native-paper';
+import { View, StyleSheet, Dimensions, AppState, ActivityIndicator, Image, ScrollView, Alert } from 'react-native';
+import { Text, Button, Surface, Portal, Modal, Snackbar } from 'react-native-paper';
 import { Audio } from 'expo-av';
 import { CommonActions, useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -52,8 +52,11 @@ export default function RideRequestScreen() {
     const [showRideModal, setShowRideModal] = useState(false);
     const [region, setRegion] = useState(null);
     const [routeCoordinates, setRouteCoordinates] = useState([]);
+    const [snackbarVisible, setSnackbarVisible] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
     const timeoutRef = useRef(null);
     const soundLoopRef = useRef(null);
+    const countdownIntervalRef = useRef(null);
 
     useEffect(() => {
         if (rideData?.polyline) {
@@ -102,7 +105,7 @@ export default function RideRequestScreen() {
                 } catch (error) {
                     console.error("Error fetching location:", error);
                 }
-            }, 20000);
+            }, 9000000000000);
         };
 
         getLocation();
@@ -116,7 +119,7 @@ export default function RideRequestScreen() {
         if (!token) return;
 
         try {
-            const response = await fetch('https://demoapi.olyox.com/webhook/cab-receive-location', {
+            const response = await fetch('http://192.168.1.9:3100/webhook/cab-receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -139,7 +142,7 @@ export default function RideRequestScreen() {
             }
 
             const response = await axios.get(
-                'https://demoapi.olyox.com/api/v1/rider/user-details',
+                'http://192.168.1.9:3100/api/v1/rider/user-details',
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
@@ -195,6 +198,11 @@ export default function RideRequestScreen() {
         }
     };
 
+    const showSnackbar = (message) => {
+        setSnackbarMessage(message);
+        setSnackbarVisible(true);
+    };
+
     useEffect(() => {
         const handleRideRequest = async (data) => {
             console.log("🚖 New Ride Request:", data);
@@ -206,14 +214,52 @@ export default function RideRequestScreen() {
             startTimeout();
         };
 
+        const handleRideCancellation = (data) => {
+            console.log("Ride cancelled:", data);
+            
+            // If this is the currently displayed ride, clear it
+            if (rideData && data.ride_request_id === rideData.id) {
+                cleanupRideRequest();
+                showSnackbar("This ride has been accepted by another driver");
+            }
+        };
+
+        const handleRejectionConfirmed = (data) => {
+            console.log("Rejection confirmed:", data);
+            showSnackbar("Ride rejection processed successfully");
+        };
+
+        const handleRideError = (data) => {
+            console.log("Ride error:", data);
+            showSnackbar(data.message || "An error occurred with this ride");
+            
+            // If there's an active ride request, clean it up
+            if (showRideModal && rideData) {
+                cleanupRideRequest();
+            }
+        };
+
         if (isSocketReady && socket) {
             socket.on("ride_come", handleRideRequest);
+            socket.on("ride_cancelled", handleRideCancellation);
+            socket.on("rejection_confirmed", handleRejectionConfirmed);
+            socket.on("ride_error", handleRideError);
+            
+            // Let the server know we're connected as a driver
+            if (riderDetails?.id) {
+                socket.emit('driver_connected', { driverId: riderDetails.id });
+            }
         }
 
         const handleAppStateChange = (nextAppState) => {
             if (appState.current.match(/inactive|background/) && nextAppState === "active") {
                 if (socket && !socket.connected) {
                     socket.connect();
+                    
+                    // Reconnect as driver
+                    if (riderDetails?.id) {
+                        socket.emit('driver_connected', { driverId: riderDetails.id });
+                    }
                 }
             }
             appState.current = nextAppState;
@@ -225,24 +271,43 @@ export default function RideRequestScreen() {
             if (socket) {
                 socket.off("ride_come");
                 socket.off("ride_accepted_message");
+                socket.off("ride_cancelled");
+                socket.off("rejection_confirmed");
+                socket.off("ride_error");
             }
             subscription.remove();
         };
-    }, [isSocketReady, socket]);
+    }, [isSocketReady, socket, riderDetails, rideData]);
+
+
+
+
+
+    // Effect to emit driver_connected when rider details are loaded
+    useEffect(() => {
+        if (isSocketReady && socket && riderDetails?.id) {
+            socket.emit('driver_connected', { driverId: riderDetails.id });
+            console.log("Emitted driver_connected with ID:", riderDetails.id);
+        }
+    }, [isSocketReady, socket, riderDetails]);
 
     const startTimeout = () => {
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
         }
 
+        if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+        }
+
         timeoutRef.current = setTimeout(() => {
-            handleRejectRide();
+            handleRejectRide(true); // true indicates timeout rejection
         }, RIDE_REQUEST_TIMEOUT);
 
-        const countdownInterval = setInterval(() => {
+        countdownIntervalRef.current = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1000) {
-                    clearInterval(countdownInterval);
+                    clearInterval(countdownIntervalRef.current);
                     return 0;
                 }
                 return prev - 1000;
@@ -250,36 +315,51 @@ export default function RideRequestScreen() {
         }, 1000);
     };
 
-    const handleRejectRide = async () => {
+    const cleanupRideRequest = () => {
+        // Clear all timers and sounds
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
             timeoutRef.current = null;
         }
-
-        await stopSound();
-
-        if (socket && rideData) {
-            socket.emit('ride_rejected', {
-                ride_id: rideData.id,
-                driver_id: riderDetails?.id,
-            });
+        
+        if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
         }
-
+        
+        stopSound();
+        
+        // Reset UI state
         setShowRideModal(false);
         setRideData(null);
         setTimeLeft(RIDE_REQUEST_TIMEOUT);
+        setLoading(false);
+    };
+
+    const handleRejectRide = async (isTimeout = false) => {
+        try {
+            if (socket && rideData) {
+                console.log("Reject Data ",rideData)
+                console.log("Reject riderDetails ",riderDetails)
+                socket.emit('ride_rejected', {
+                    ride_id: rideData?.requestId,
+                    driver_id: riderDetails?._id,
+                });
+                
+                if (isTimeout) {
+                    showSnackbar("Ride request timed out");
+                }
+            }
+        } catch (error) {
+            console.error('Error rejecting ride:', error);
+        } finally {
+            cleanupRideRequest();
+        }
     };
 
     const handleAcceptRide = async () => {
         setLoading(true);
         try {
-            if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-                timeoutRef.current = null;
-            }
-
-            await stopSound();
-
             if (socket && rideData) {
                 const matchedRider = rideData.riders?.find(
                     (rider) => rider.name === riderDetails?.name
@@ -299,46 +379,63 @@ export default function RideRequestScreen() {
                             eta: matchedRider.eta,
                         }
                     });
+                    
+                    showSnackbar("Ride accepted successfully");
+                } else {
+                    throw new Error("Could not match rider details");
                 }
             }
-
-            setShowRideModal(false);
-            setRideData(null);
-            setTimeLeft(RIDE_REQUEST_TIMEOUT);
         } catch (error) {
             console.error('Error accepting ride:', error);
+            showSnackbar("Failed to accept ride. Please try again.");
         } finally {
-            setLoading(false);
+            cleanupRideRequest();
         }
     };
 
     useEffect(() => {
         if (socket) {
-            socket.on('ride_accepted_message', (data) => {
-                const { rideDetails, driver, temp_ride_id } = data || {};
-                console.log("ride_accepted_message", data)
-                if (driver && rideDetails) {
-                    navigation.dispatch(
-                        CommonActions.navigate({
-                            name: 'start',
-                            params: {
-                                screen: 'ride_details',
-                                params: { rideDetails, driver, temp_ride_id },
-                            },
-                        })
-                    );
-
+            socket.on('rider_confirm_message', (data) => {
+                try {
+                    console.log("Socket event received: rider_confirm_message");
+                    console.log("Full data payload:", JSON.stringify(data));
+    
+                    const { rideDetails } = data || {};
+                    const driver = rideDetails?.driver;
+    
+                    // Use temp_ride_id first, fallback to on_ride_id
+                    const temp_ride_id = rideDetails?.temp_ride_id || driver?.on_ride_id;
+    
+                    console.log("Parsed values =>", { driver });
+                    console.log("Parsed temp_ride_id =>", { temp_ride_id });
+                    console.log("Parsed rideDetails =>", { rideDetails });
+    
+                    if (driver && rideDetails) {
+                        console.log("rider_confirm_message i am inside");
+    
+                        navigation.dispatch(
+                            CommonActions.navigate({
+                                name: 'start',
+                                params: {
+                                    screen: 'ride_details',
+                                    params: { rideDetails, driver, temp_ride_id },
+                                },
+                            })
+                        );
+                    } else {
+                        console.warn("driver or rideDetails missing in rider_confirm_message");
+                    }
+                } catch (err) {
+                    console.error("Error handling rider_confirm_message:", err);
                 }
             });
         }
-    }, [socket]);
+    }, [socket, navigation]);
+    
 
     useEffect(() => {
         return () => {
-            if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-            }
-            stopSound();
+            cleanupRideRequest();
         };
     }, []);
 
@@ -347,64 +444,29 @@ export default function RideRequestScreen() {
             <View style={styles.waitingContainer}>
                 <ActivityIndicator size="large" color="#6366F1" />
                 <Text style={styles.waitingText}>Waiting for New ride requests...</Text>
+                <Snackbar
+                    visible={snackbarVisible}
+                    onDismiss={() => setSnackbarVisible(false)}
+                    duration={3000}
+                    style={styles.snackbar}
+                >
+                    {snackbarMessage}
+                </Snackbar>
             </View>
         );
     }
 
     return (
         <ScrollView style={{ flex: 1 }}>
-
             <View style={styles.container}>
                 <Portal>
                     <Modal
                         visible={showRideModal && !!rideData}
-                        onDismiss={handleRejectRide}
+                        onDismiss={() => handleRejectRide()}
                         contentContainerStyle={styles.modalContainer}
                     >
                         <Surface style={styles.modalContent}>
-                            {/* {region && (
-                                <View style={styles.mapContainer}>
-                                    <MapView
-                                        ref={mapRef}
-                                        provider={PROVIDER_GOOGLE}
-                                        style={styles.map}
-                                        initialRegion={region}
-                                        showsUserLocation
-                                    >
-                                        {rideData?.pickupLocation && (
-                                            <Marker
-                                                coordinate={{
-                                                    latitude: rideData.pickupLocation.coordinates[1],
-                                                    longitude: rideData.pickupLocation.coordinates[0]
-                                                }}
-                                                title="Pickup Location"
-                                                description={rideData.pickup_desc}
-                                            >
-                                                <MaterialCommunityIcons name="map-marker" size={40} color="#EF4444" />
-                                            </Marker>
-                                        )}
-                                        {rideData?.dropLocation && (
-                                            <Marker
-                                                coordinate={{
-                                                    latitude: rideData.dropLocation.coordinates[1],
-                                                    longitude: rideData.dropLocation.coordinates[0]
-                                                }}
-                                                title="Drop Location"
-                                                description={rideData.drop_desc}
-                                            >
-                                                <MaterialCommunityIcons name="flag-checkered" size={40} color="#22C55E" />
-                                            </Marker>
-                                        )}
-                                        {routeCoordinates.length > 0 && (
-                                            <Polyline
-                                                coordinates={routeCoordinates}
-                                                strokeWidth={3}
-                                                strokeColor="#6366F1"
-                                            />
-                                        )}
-                                    </MapView>
-                                </View>
-                            )} */}
+                         
 
                             <View style={styles.userInfoContainer}>
                                 {rideData?.user?.profileImage?.image && (
@@ -496,7 +558,7 @@ export default function RideRequestScreen() {
                                 </Button>
                                 <Button
                                     mode="outlined"
-                                    onPress={handleRejectRide}
+                                    onPress={() => handleRejectRide()}
                                     style={[styles.actionButton, styles.rejectButton]}
                                     labelStyle={[styles.buttonLabel, styles.rejectButtonLabel]}
                                     disabled={loading}
@@ -507,6 +569,15 @@ export default function RideRequestScreen() {
                         </Surface>
                     </Modal>
                 </Portal>
+                
+                <Snackbar
+                    visible={snackbarVisible}
+                    onDismiss={() => setSnackbarVisible(false)}
+                    duration={3000}
+                    style={styles.snackbar}
+                >
+                    {snackbarMessage}
+                </Snackbar>
             </View>
         </ScrollView>
     );
@@ -702,5 +773,10 @@ const styles = StyleSheet.create({
     },
     rejectButtonLabel: {
         color: '#EF4444',
+    },
+    snackbar: {
+        backgroundColor: '#4B5563',
+        borderRadius: 8,
+        marginBottom: 16,
     },
 });

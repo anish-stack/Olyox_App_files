@@ -38,7 +38,7 @@ export default function RechargeHistory() {
 
         // First fetch user details
         const userResponse = await axios.get(
-            'https://demoapi.olyox.com/api/v1/rider/user-details',
+            'http://192.168.1.9:3100/api/v1/rider/user-details',
             { headers: { Authorization: `Bearer ${token}` } }
         );
 

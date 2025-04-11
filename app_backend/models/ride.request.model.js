@@ -71,14 +71,21 @@ const RideRequestSchema = new Schema({
         enum: ['pending', 'accepted', 'in_progress', 'completed', 'cancelled'],
         default: 'pending'
     },
-    paymentMethod:{
-        type:String,
+    paymentMethod: {
+        type: String,
     },
     rideCancelBy: {
         type: String,
     },
     rideCancelTime: {
         type: Date,
+    },
+    lastError: {
+        type: String,
+
+    },
+    lastErrorAt: {
+        type: Date
     },
     rideCancelReason: {
         type: Schema.Types.ObjectId,
@@ -120,12 +127,24 @@ const RideRequestSchema = new Schema({
     lastRetryAt: {
         type: Date
     },
-    maxSearchRadius:{
+    maxSearchRadius: {
         type: String
     },
     currentSearchRadius: {
         type: Number,
         default: 0
+    },
+    rejectedByDrivers: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Riders'
+    }],
+    searchRadius: {
+        type: Number,
+        default: 5
+    },
+    autoIncreaseRadius: {
+        type: Boolean,
+        default: true
     },
     rider: {
         type: Schema.Types.ObjectId,
