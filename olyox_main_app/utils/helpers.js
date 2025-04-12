@@ -46,14 +46,12 @@ export const resend_otp = async (formdata) => {
 export const find_me = async () => {
   try {
     const token = await tokenCache.getToken('auth_token_db')
-    console.log("sssss toke ", token)
     const data = await axios.get(`https://demoapi.olyox.com/api/v1/user/find_me`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     })
     console.log(data.data)
-
     return data.data
 
   } catch (error) {

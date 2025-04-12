@@ -9,7 +9,6 @@ import {
 } from "react-native";
 
 const EditModal = ({ previousData, visible, onClose, onSubmit }) => {
-    console.log("onSubmit",onSubmit)
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
 
@@ -20,13 +19,9 @@ const EditModal = ({ previousData, visible, onClose, onSubmit }) => {
         console.log("Name:", name);
         console.log("Email:", email);
     
-        // Check if onSubmit is a valid function
-        console.log("onSubmit function:", typeof onSubmit);
-    
-       
-    
+ 
         // Debugging the call to onSubmit
-        console.log("Submitting:", { name, email });
+        // console.log("Submitting:", { name, email });
         
         // Call onSubmit and onClose
         onSubmit({ name, email });

@@ -6,6 +6,9 @@ const send_token = require('../utils/send_token');
 const SendWhatsAppMessage = require('../utils/whatsapp_send');
 const axios = require('axios')
 const cloudinary = require('cloudinary').v2
+const moment = require('moment');
+
+
 const fs = require('fs');
 cloudinary.config({
   cloud_name: 'dsd8nepa5',
@@ -235,6 +238,53 @@ exports.login = async (req, res) => {
     });
   }
 };
+
+exports.logoutRider = async (req, res) => {
+  try {
+    const { rider_id } = req.params || {};
+
+    const foundRider = await Rider.findById(rider_id);
+    if (!foundRider) {
+      return res.status(401).json({
+        success: false,
+        message: "Please log in to access this feature.",
+      });
+    }
+
+    // Prevent logout if there's an active ride
+    if (foundRider.on_ride_id) {
+      return res.status(402).json({
+        success: false,
+        message: "You currently have an ongoing ride. Please complete the ride before logging out.",
+      });
+    }
+
+    // Update rider status
+    foundRider.isAvailable = false;
+    foundRider.on_ride_id = null;
+    await foundRider.save(); // important to persist the changes
+
+    // Clear authentication token
+    res.clearCookie('auth_token', {
+      httpOnly: true,
+      secure: true, // set to true in production
+      sameSite: 'None',
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "You have been logged out successfully. See you next time!",
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Oops! Something went wrong while logging out. Please try again later.",
+    });
+  }
+};
+
+
 
 exports.resendOtp = async (req, res) => {
   try {
@@ -592,10 +642,11 @@ exports.getMyAllRides = async (req, res) => {
   }
 };
 
-const moment = require('moment');
+
 exports.toggleWorkStatusOfRider = async (req, res) => {
   try {
     const user_id = req.user?.userId;
+
     if (!user_id) {
       return res.status(401).json({ message: "User ID is required" });
     }
@@ -607,14 +658,26 @@ exports.toggleWorkStatusOfRider = async (req, res) => {
     }
 
     if (!rider.isPaid) {
-      return res.status(400).json({ message: "Oops! It looks like your account isn’t recharged. Please top up to proceed." });
+      return res.status(400).json({
+        message: "Oops! It looks like your account isn’t recharged. Please top up to proceed."
+      });
     }
 
     // Toggle the status dynamically
     const newStatus = !rider.isAvailable;
 
+    // Check if rider is trying to go offline while having an active ride
+    if (!newStatus && rider.on_ride_id) {
+      return res.status(400).json({
+        message: "You currently have an active ride. Please complete the ride before going offline."
+      });
+    }
+
     // Update rider's isAvailable status
-    const toggleStatus = await Rider.updateOne({ _id: user_id }, { $set: { isAvailable: newStatus } });
+    const toggleStatus = await Rider.updateOne(
+      { _id: user_id },
+      { $set: { isAvailable: newStatus } }
+    );
 
     if (toggleStatus.modifiedCount !== 1) {
       return res.status(400).json({ message: "Status update failed" });
@@ -648,16 +711,17 @@ exports.toggleWorkStatusOfRider = async (req, res) => {
       const lastSession = cabRider.sessions[cabRider.sessions.length - 1];
       if (lastSession && !lastSession.offlineTime) {
         lastSession.offlineTime = new Date();
-        // Calculate duration in minutes
-        lastSession.duration = Math.round((new Date() - new Date(lastSession.onlineTime)) / 60000);
+        lastSession.duration = Math.round(
+          (new Date() - new Date(lastSession.onlineTime)) / 60000
+        );
       }
     }
 
     await cabRider.save();
 
     return res.status(200).json({
-      success:true,
-      message: `Status updated to ${newStatus ? 'Available (Online)' : 'Unavailable (Offline)'} successfully`,
+      success: true,
+      message: `Status updated to ${newStatus ? 'Available (Online)' : 'Unavailable (Offline)'} successfully.`,
       cabRider
     });
 
@@ -666,6 +730,7 @@ exports.toggleWorkStatusOfRider = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 
 exports.markPaid = async (req, res) => {

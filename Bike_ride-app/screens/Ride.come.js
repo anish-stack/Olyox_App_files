@@ -452,7 +452,7 @@ export default function RideRequestScreen() {
         return (
             <View style={styles.waitingContainer}>
                 <LottieView
-                    source={require("./waitings.json")}
+                    source={require("./waitings2.json")}
                     autoPlay
                     loop
                     style={styles.waitingAnimation}

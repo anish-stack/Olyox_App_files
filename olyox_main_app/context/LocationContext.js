@@ -43,7 +43,7 @@ export const LocationProvider = ({ children }) => {
       const watcher = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.BestForNavigation,
-          timeInterval: 2000,
+          timeInterval: 10000,
           distanceInterval: 1,
           mayShowUserSettingsDialog: true,
         },

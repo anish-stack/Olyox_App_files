@@ -40,7 +40,6 @@ export default function TopFood({ show = false, refreshing, onRefresh }) {
                     const cacheAgeHours = (Date.now() - cacheTime) / (1000 * 60 * 60);
                     
                     if (cacheAgeHours < 24) {
-                        console.log("Using cached location");
                         latitude = cachedLocation.latitude;
                         longitude = cachedLocation.longitude;
                     }
@@ -93,7 +92,7 @@ export default function TopFood({ show = false, refreshing, onRefresh }) {
             }
             
             setLoadingText('Finding restaurants near you...');
-            console.log("Using location:", latitude, longitude);
+            // console.log("Using location:", latitude, longitude);
             
             // Fetch restaurants based on location
             const response = await axios.get(`https://demoapi.olyox.com/api/v1/tiffin/find_RestaurantTop`, {

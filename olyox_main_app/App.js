@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider } from 'react-redux';
@@ -6,7 +6,7 @@ import * as Location from 'expo-location';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
-import { ActivityIndicator, View, Text, StyleSheet, Linking, Image, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, Linking, Image, TouchableOpacity, Platform } from 'react-native';
 import { store } from './redux/store';
 import { SocketProvider } from './context/SocketContext';
 import * as Sentry from '@sentry/react-native';
@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { AppRegistry } from 'react-native';
 import { name as appName } from './app.json';
+import LottieView from 'lottie-react-native'; // Import Lottie
 
 // Import screens
 import HomeScreen from './screens/HomeScreen';
@@ -26,7 +27,6 @@ import Single_Hotel_details from './Hotels/Hotel_Details/Single_Hotel_details';
 import BookingSuccess from './Hotels/Hotel_Details/BookingSuccess';
 import OnboardingScreen from './onboarding/Onboarding';
 import Ride_Rating from './Ride/Show_near_by_cab/Ride_Rating';
-import FloatingRide from './Ride/Floating_ride/Floating.ride';
 import AllHotel from './Hotels/Hotel_Details/AllHotel';
 import AllFoods from './Foods/Top_Foods/AllFoods';
 import { LocationProvider } from './context/LocationContext';
@@ -47,6 +47,7 @@ import { tokenCache } from './Auth/cache';
 import BookingConfirmation from './Ride/Show_near_by_cab/confirm_booking';
 import Policy from './policy/Policy';
 import Help_On from './onboarding/Help/Help_On';
+import LocationErrorScreen from './LocationError';
 
 const Stack = createNativeStackNavigator();
 
@@ -58,6 +59,9 @@ Sentry.init({
   tracesSampleRate: 1.0,
 });
 
+// Maximum loading screen time before proceeding anyway
+const MAX_LOADING_TIME = 5000; // 5 seconds max loading time
+
 // Define location error types
 const ERROR_TYPES = {
   PERMISSION_DENIED: 'PERMISSION_DENIED',
@@ -66,12 +70,35 @@ const ERROR_TYPES = {
   UNKNOWN: 'UNKNOWN',
 };
 
+// Helper function to determine if locations are significantly different
+const isSignificantLocationChange = (prevLocation, newLocation) => {
+  if (!prevLocation || !newLocation) return true;
+
+  const prevCoords = prevLocation.coords || prevLocation;
+  const newCoords = newLocation.coords || newLocation;
+
+  // Calculate distance between points (simple approximation)
+  const latDiff = Math.abs(prevCoords.latitude - newCoords.latitude);
+  const lngDiff = Math.abs(prevCoords.longitude - newCoords.longitude);
+
+  // Only update if moved more than ~10 meters (approximately)
+  return (latDiff > 0.0001 || lngDiff > 0.0001);
+};
+
 const App = () => {
   const [isLogin, setIsLogin] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [location, setLocation] = useState(null);
-  const [errorType, setErrorType] = useState(null);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [locationError, setLocationError] = useState(null);
   const [locationFetchRetries, setLocationFetchRetries] = useState(0);
+
+  // Use refs to avoid unnecessary renders
+  const locationRef = useRef(null);
+  const watchSubscriptionRef = useRef(null);
+  const lastLocationUpdateTimeRef = useRef(0);
+  const locationLoadingRef = useRef(true);
+
+  // Minimum time between location updates to state (in milliseconds)
+  const MIN_UPDATE_INTERVAL = 10000; // 10 seconds
 
   // Check login status
   useEffect(() => {
@@ -86,6 +113,13 @@ const App = () => {
     };
 
     checkLoginStatus();
+
+    // Set timeout to proceed regardless of location status
+    const timer = setTimeout(() => {
+      setInitialLoading(false);
+    }, MAX_LOADING_TIME);
+
+    return () => clearTimeout(timer);
   }, []);
 
   // Open device settings
@@ -104,18 +138,45 @@ const App = () => {
     }
   }, []);
 
-  // Get high accuracy location
-  const getHighAccuracyLocation = useCallback(async () => {
-    let watchSubscription = null;
+  // Throttled location update function
+  const updateLocationState = useCallback((newLocation) => {
+    const now = Date.now();
+
+    // Store latest location in ref regardless of whether we update state
+    locationRef.current = newLocation;
+
+    // Only update state if it's been at least MIN_UPDATE_INTERVAL since the last update
+    // OR if the location has changed significantly
+    if (now - lastLocationUpdateTimeRef.current >= MIN_UPDATE_INTERVAL ||
+      isSignificantLocationChange(locationRef.current, newLocation)) {
+
+      console.log("📍 Updating location state:", newLocation);
+      lastLocationUpdateTimeRef.current = now;
+    } else {
+      // Still log but don't update state
+      console.log("📡 Location update (not updating state):", newLocation);
+    }
+
+    // Mark location as loaded (even if approximate)
+    locationLoadingRef.current = false;
+    setInitialLoading(false);
+  }, []);
+
+  // Get location in background
+  const getLocationInBackground = useCallback(async () => {
     try {
-      setLoading(true);
+      // Cleanup any existing subscription
+      if (watchSubscriptionRef.current) {
+        watchSubscriptionRef.current.remove();
+        watchSubscriptionRef.current = null;
+      }
 
       // Step 1: Check if location services are enabled
       const isLocationEnabled = await Location.hasServicesEnabledAsync();
       console.log("🔍 Location services enabled:", isLocationEnabled);
       if (!isLocationEnabled) {
-        setErrorType(ERROR_TYPES.LOCATION_UNAVAILABLE);
-        setLoading(false);
+        setLocationError(ERROR_TYPES.LOCATION_UNAVAILABLE);
+        locationLoadingRef.current = false;
         return;
       }
 
@@ -124,92 +185,105 @@ const App = () => {
       console.log("🔐 Location permission status:", status);
 
       if (status !== 'granted') {
-        setErrorType(ERROR_TYPES.PERMISSION_DENIED);
-        setLoading(false);
+        setLocationError(ERROR_TYPES.PERMISSION_DENIED);
+        locationLoadingRef.current = false;
         return;
       }
 
-      // Step 3: Get high accuracy location with timeout handling
+      // Step 3: Get quick but less accurate location first to reduce waiting time
       try {
-        const currentLocation = await Promise.race([
-          Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Highest,
-            maximumAge: 1000,
-            mayShowUserSettingsDialog: true,
-          }),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Location request timed out')), 600000) // 10 sec timeout
-          )
-        ]);
+        const quickLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Low, // Get fast result first
+          maximumAge: 60000, // Accept cached locations up to 1 minute old
+        });
 
-        console.log("📍 Got initial location:", currentLocation);
-        setLocation(currentLocation);
-        setErrorType(null);
-        setLocationFetchRetries(0);
+        console.log("📍 Got quick initial location:", quickLocation);
+        updateLocationState(quickLocation);
 
-        // Step 4: Start watching position for better updates
-        watchSubscription = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.BestForNavigation,
-            timeInterval: 10000,
-            distanceInterval: 1, // meters
-          },
-          (newLocation) => {
-            console.log("📡 Location update:", newLocation);
-            setLocation(newLocation);
-          }
-        );
+        // Then get more accurate location in background
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Highest,
+        }).then(accurateLocation => {
+          console.log("📍 Got accurate location:", accurateLocation);
+          updateLocationState(accurateLocation);
+        }).catch(error => {
+          console.log("Could not get accurate location:", error);
+          // Already have quick location, so no need to set error
+        });
 
       } catch (error) {
-        console.error('❌ Error getting high accuracy location:', error);
+        console.error('❌ Error getting location:', error);
 
-        if (error.message && error.message.includes('timeout')) {
-          setErrorType(ERROR_TYPES.TIMEOUT);
-        } else {
-          setErrorType(ERROR_TYPES.UNKNOWN);
+        // Try to get last known location as fallback
+        try {
+          const lastKnownLocation = await Location.getLastKnownPositionAsync();
+          if (lastKnownLocation) {
+            console.log("📍 Using last known location:", lastKnownLocation);
+            updateLocationState(lastKnownLocation);
+            setLocationError(null);
+          } else {
+            throw new Error("No last known location");
+          }
+        } catch (fallbackError) {
+          if (error.message && error.message.includes('timeout')) {
+            setLocationError(ERROR_TYPES.TIMEOUT);
+          } else {
+            setLocationError(ERROR_TYPES.UNKNOWN);
+          }
+          setLocationFetchRetries(prev => prev + 1);
+          locationLoadingRef.current = false;
         }
-
-        setLocationFetchRetries(prev => prev + 1);
       }
+
+      // Step 4: Start watching position for updates
+      watchSubscriptionRef.current = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 30000,
+          distanceInterval: 10,
+        },
+        (newLocation) => {
+          updateLocationState(newLocation);
+        }
+      );
 
     } catch (error) {
       console.error('❗ Error in location service:', error);
       Sentry?.captureException?.(error);
-      setErrorType(ERROR_TYPES.UNKNOWN);
-
-    } finally {
-      setLoading(false);
+      setLocationError(ERROR_TYPES.UNKNOWN);
+      locationLoadingRef.current = false;
     }
+  }, [updateLocationState]);
 
+  // Initial location fetch in background
+  useEffect(() => {
+    getLocationInBackground();
+
+    // Cleanup function
     return () => {
-      // Cleanup location watcher when component unmounts
-      if (watchSubscription) {
-        watchSubscription.remove();
+      if (watchSubscriptionRef.current) {
+        watchSubscriptionRef.current.remove();
+        watchSubscriptionRef.current = null;
         console.log("🧹 Cleaned up location watcher.");
       }
     };
-  }, [locationFetchRetries]);
-
-  // Initial location fetch
-  useEffect(() => {
-    getHighAccuracyLocation();
-  }, [getHighAccuracyLocation]);
+  }, [getLocationInBackground]);
 
   // Auto-retry location fetch up to 3 times
   useEffect(() => {
-    if ((errorType === ERROR_TYPES.TIMEOUT || errorType === ERROR_TYPES.UNKNOWN) &&
+    if ((locationError === ERROR_TYPES.TIMEOUT || locationError === ERROR_TYPES.UNKNOWN) &&
       locationFetchRetries <= 3) {
-      const retryDelay = locationFetchRetries * 2000; // 2s, 4s, 6s
+      const retryDelay = locationFetchRetries * 5000; // 5s, 10s, 15s
       const retryTimer = setTimeout(() => {
-        getHighAccuracyLocation();
+        getLocationInBackground();
       }, retryDelay);
 
       return () => clearTimeout(retryTimer);
     }
-  }, [errorType, locationFetchRetries, getHighAccuracyLocation]);
+  }, [locationError, locationFetchRetries, getLocationInBackground]);
 
-  // Helper function to render all routes
-  const renderRoutes = () => (
+  // Memoize routes to prevent unnecessary re-renders
+  const routes = React.useMemo(() => (
     <>
       <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
       {/* Booking Ride Screens */}
@@ -244,85 +318,70 @@ const App = () => {
       {/* App Policy */}
       <Stack.Screen name="policy" options={{ headerShown: true, title: "Olyox App Polices" }} component={Policy} />
       <Stack.Screen name="policyauth" options={{ headerShown: true, title: "Olyox App Polices" }} component={Policy} />
-      <Stack.Screen name="Help_me" options={{ headerShown: true, title:"Olyox Center"}} component={Help_On} />
-    </>
-  );
+      <Stack.Screen name="Help_me" options={{ headerShown: true, title: "Olyox Center" }} component={Help_On} />
 
-  // Loading screen
-  if (loading) {
+      {/* Error Screen - Only show if explicitly navigated to */}
+      <Stack.Screen
+        name="LocationError"
+        options={{ headerShown: false }}
+        children={(props) => (
+          <LocationErrorScreen
+            {...props}
+            getLocationInBackground={getLocationInBackground}
+            locationError={locationError}
+            openSettings={openSettings}
+          />
+        )}
+      />
+
+    </>
+  ), []);
+
+  // Loading screen with Lottie animation
+  if (initialLoading) {
     return (
       <View style={styles.loaderContainer}>
         <StatusBar style="auto" />
-        <ActivityIndicator size="large" color="#00aaa9" />
-        <Text style={styles.loadingText}>Fetching your location...</Text>
-      </View>
-    );
-  }
-
-  // Error screen with action button to fix
-  if (errorType) {
-    let errorMessage = '';
-    let buttonText = '';
-    let buttonAction = getHighAccuracyLocation;
-    let iconSource = `https://res.cloudinary.com/dglihfwse/image/upload/v1744271215/pin_zpnnjn.png`;
-
-    switch (errorType) {
-      case ERROR_TYPES.PERMISSION_DENIED:
-        errorMessage = 'Location access is required to use this app. Please grant location permissions.';
-        buttonText = 'Open Settings';
-        buttonAction = openSettings;
-        break;
-
-      case ERROR_TYPES.LOCATION_UNAVAILABLE:
-        errorMessage = 'Location services are disabled on your device. Please enable location services.';
-        buttonText = 'Open Settings';
-        buttonAction = openSettings;
-        break;
-
-      case ERROR_TYPES.TIMEOUT:
-        errorMessage = 'Could not get your location in time. Please check your connection and try again.';
-        buttonText = 'Try Again';
-        break;
-
-      default:
-        errorMessage = 'There was a problem determining your location. Please try again.';
-        buttonText = 'Try Again';
-    }
-
-    return (
-      <View style={styles.errorContainer}>
-        <StatusBar style="auto" />
-        <Image
-          source={{ uri: iconSource }}
-          style={styles.errorIcon}
-          resizeMode="contain"
+        <LottieView
+          source={require('./location.json')} // Update path to your actual Lottie file
+          autoPlay
+          loop
+          style={styles.lottieAnimation}
         />
-        <Text style={styles.errorTitle}>Location Required</Text>
-        <Text style={styles.errorText}>{errorMessage}</Text>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={buttonAction}
-        >
-          <Text style={styles.buttonText}>{buttonText}</Text>
-        </TouchableOpacity>
+        <Text style={styles.loadingText}>Getting ready...</Text>
       </View>
     );
   }
 
-  // Main app when everything is ready
+  // Define Location Error Screen as a separate component to avoid remounting issues
+
+
+  // Main app when everything is ready - use the location ref directly
   return (
     <Provider store={store}>
       <PaperProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <SocketProvider>
-            <LocationProvider initialLocation={location}>
+            <LocationProvider initialLocation={locationRef.current}>
               <SafeAreaProvider>
                 <StatusBar style="auto" />
                 <ErrorBoundaryWrapper>
                   <NavigationContainer>
                     <Stack.Navigator initialRouteName={isLogin ? 'Home' : 'Onboarding'}>
-                      {renderRoutes()}
+                      {routes}
                     </Stack.Navigator>
+
+                    {/* Overlay error banner if there's a location error but we're proceeding anyway */}
+                    {locationError && (
+                      <TouchableOpacity
+                        style={styles.errorBanner}
+                        onPress={() => navigation.navigate('LocationError')}
+                      >
+                        <Text style={styles.errorBannerText}>
+                          Location service issue. Tap to fix.
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </NavigationContainer>
                 </ErrorBoundaryWrapper>
               </SafeAreaProvider>
@@ -342,55 +401,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 20,
   },
+  lottieAnimation: {
+    width: 200,
+    height: 200,
+  },
   loadingText: {
     marginTop: 15,
     fontSize: 16,
     color: '#555',
     textAlign: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 30,
-  },
-  errorIcon: {
-    width: 120,
-    height: 120,
-    marginBottom: 20,
-  },
-  errorTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#ff3b30',
-    marginBottom: 10,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#555',
-    textAlign: 'center',
-    marginBottom: 30,
-    lineHeight: 24,
-  },
-  actionButton: {
-    backgroundColor: '#00aaa9',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 25,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    marginBottom: 15,
-    width: '80%',
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   }
 });
 

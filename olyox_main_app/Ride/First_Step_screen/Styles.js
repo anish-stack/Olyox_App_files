@@ -27,6 +27,9 @@ export default StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollViewContent: {
+    paddingBottom: 100, // Space for the sticky button
+  },
   inputsContainer: {
     padding: 16,
     backgroundColor: "#FFFFFF",
@@ -47,6 +50,11 @@ export default StyleSheet.create({
     borderBottomColor: "#F0F0F0",
     paddingBottom: 12,
   },
+  inputIconContainer: {
+    width: 24,
+    alignItems: "center",
+    marginRight: 12,
+  },
   input: {
     flex: 1,
     fontSize: 16,
@@ -54,8 +62,34 @@ export default StyleSheet.create({
     paddingVertical: 8,
     minHeight: 40,
   },
-  loader: {
-    marginTop: 16,
+  mapButton: {
+    padding: 8,
+  },
+  errorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFEEEE",
+    padding: 12,
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginTop: 8,
+  },
+  errorText: {
+    color: "#D93A2D",
+    marginLeft: 8,
+    fontSize: 14,
+  },
+  smallLoaderContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 12,
+    marginTop: 8,
+  },
+  smallLoaderText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#666666",
   },
   suggestionsContainer: {
     backgroundColor: "#FFFFFF",
@@ -82,6 +116,34 @@ export default StyleSheet.create({
     fontSize: 15,
     color: "#333333",
   },
+  pastRidesContainer: {
+    backgroundColor: "#F9F9F9",
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 12,
+  },
+  pastRidesTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666666",
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  pastRideItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  pastRideText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 14,
+    color: "#333333",
+  },
   previewMapContainer: {
     height: 300,
     marginHorizontal: 16,
@@ -97,17 +159,53 @@ export default StyleSheet.create({
   previewMap: {
     ...StyleSheet.absoluteFillObject,
   },
-  submitButton: {
+  mapOverlayInfo: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    right: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 8,
+    padding: 12,
+  },
+  mapInfoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  mapInfoText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: "#333333",
+  },
+  mapInfoDivider: {
+    height: 1,
+    backgroundColor: "#E0E0E0",
+    marginVertical: 8,
+  },
+  findRiderButtonContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  findRiderButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#000000",
+    backgroundColor: "#951235",
     borderRadius: 12,
     paddingVertical: 16,
-    marginHorizontal: 16,
-    marginTop: 16,
   },
-  submitButtonText: {
+  findRiderButtonText: {
     color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "600",
@@ -140,6 +238,14 @@ export default StyleSheet.create({
     marginTop: -40,
     alignItems: "center",
   },
+  markerShadow: {
+    position: "absolute",
+    bottom: 0,
+    width: 16,
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+  },
   mapFooter: {
     backgroundColor: "#FFFFFF",
     padding: 16,
@@ -162,4 +268,30 @@ export default StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  mapLoadingContainer: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 8,
+    padding: 8,
+    zIndex: 1,
+  },
+  mapLoadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#666666",
+  },
+  customMarker: {
+    padding: 8,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#000000",
+    alignItems: "center",
+    justifyContent: "center",
+  }
 })

@@ -1,10 +1,8 @@
 import axios from 'axios'
 
 export const findMyNearHotels = async (lat, lng) => {
-    console.log("I am start")
     try {
         const response = await axios.get(`https://demoapi.olyox.com/api/v1/hotels/find-near-by-hotels?lat=${lat}&lng=${lng}`)
-        console.log("I am End")
 
         return response.data.data
     } catch (error) {

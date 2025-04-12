@@ -27,6 +27,7 @@ import { useNavigation } from "@react-navigation/native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { find_me } from "../../utils/helpers"
 import { tokenCache } from "../../Auth/cache"
+import Styles from "./Styles"
 
 const GOOGLE_MAPS_APIKEY = "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8"
 const { width, height } = Dimensions.get("window")
@@ -264,7 +265,7 @@ const CollectData = () => {
     setState((prev) => ({ ...prev, isFetchingLocation: true, error: "" }))
     try {
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High, // Use high accuracy
+        accuracy: Location.Accuracy.Highest, 
         timeInterval: 5000, // Update every 5 seconds
         distanceInterval: 10, // Update every 10 meters
       })
@@ -561,28 +562,28 @@ const CollectData = () => {
   }
 
   const renderMapView = () => (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={Styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <View style={styles.mapHeader}>
-        <TouchableOpacity style={styles.backButton} onPress={() => setState((prev) => ({ ...prev, showMap: false }))}>
+      <View style={Styles.mapHeader}>
+        <TouchableOpacity style={Styles.backButton} onPress={() => setState((prev) => ({ ...prev, showMap: false }))}>
           <Icon name="arrow-left" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.mapHeaderTitle}>Select {state.mapType === "pickup" ? "Pickup" : "Drop-off"} Location</Text>
+        <Text style={Styles.mapHeaderTitle}>Select {state.mapType === "pickup" ? "Pickup" : "Drop-off"} Location</Text>
       </View>
 
-      <View style={styles.mapContainer}>
+      <View style={Styles.mapContainer}>
         {state.loading && (
-          <View style={styles.mapLoadingContainer}>
+          <View style={Styles.mapLoadingContainer}>
             <ActivityIndicator size="small" color={state.mapType === "pickup" ? "#35C14F" : "#D93A2D"} />
-            <Text style={styles.mapLoadingText}>Getting address...</Text>
+            <Text style={Styles.mapLoadingText}>Getting address...</Text>
           </View>
         )}
 
         <MapView
           ref={mapRef}
           provider={PROVIDER_GOOGLE}
-          style={styles.map}
+          style={Styles.map}
           region={region}
           customMapStyle={mapStyle}
           onRegionChangeComplete={handleMapRegionChange}
@@ -603,21 +604,21 @@ const CollectData = () => {
         </MapView>
 
         {/* Custom centered marker */}
-        <View style={styles.centerMarker}>
-          <View style={styles.markerShadow} />
+        <View style={Styles.centerMarker}>
+          <View style={Styles.markerShadow} />
           <Icon name="map-marker" size={40} color={state.mapType === "pickup" ? "#35C14F" : "#D93A2D"} />
         </View>
       </View>
 
-      <View style={styles.mapFooter}>
-        <Text numberOfLines={2} style={styles.mapAddressText}>
+      <View style={Styles.mapFooter}>
+        <Text numberOfLines={2} style={Styles.mapAddressText}>
           {state.mapType === "pickup" ? state.pickup : state.dropoff || "Move map to select location"}
         </Text>
         <TouchableOpacity
-          style={[styles.confirmButton, { backgroundColor: state.mapType === "pickup" ? "#35C14F" : "#D93A2D" }]}
+          style={[Styles.confirmButton, { backgroundColor: state.mapType === "pickup" ? "#35C14F" : "#D93A2D" }]}
           onPress={() => setState((prev) => ({ ...prev, showMap: false }))}
         >
-          <Text style={styles.confirmButtonText}>Confirm Location</Text>
+          <Text style={Styles.confirmButtonText}>Confirm Location</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -630,20 +631,20 @@ const CollectData = () => {
     if (!suggestions || suggestions.length === 0) return null
 
     return (
-      <View style={styles.pastRidesContainer}>
-        <Text style={styles.pastRidesTitle}>
+      <View style={Styles.pastRidesContainer}>
+        <Text style={Styles.pastRidesTitle}>
           {state.activeInput === "pickup" ? "🔄 Recent pickup locations" : "🔄 Recent drop-off locations"}
         </Text>
 
         {suggestions.map((item, index) => (
           <Pressable
             key={index}
-            style={styles.pastRideItem}
+            style={Styles.pastRideItem}
             onPress={() => handleLocationSelect(item.description, item.coordinates)}
             android_ripple={{ color: "#f0f0f0" }}
           >
             <Icon name="history" size={20} color={state.activeInput === "pickup" ? "#35C14F" : "#D93A2D"} />
-            <Text numberOfLines={1} style={styles.pastRideText}>
+            <Text numberOfLines={1} style={Styles.pastRideText}>
               {item.description}
             </Text>
           </Pressable>
@@ -655,33 +656,33 @@ const CollectData = () => {
   if (state.showMap) return renderMapView()
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={Styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+      <View style={Styles.header}>
+        <TouchableOpacity style={Styles.backButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Where to?</Text>
+        <Text style={Styles.headerTitle}>Where to?</Text>
       </View>
 
       <ScrollView
         ref={scrollViewRef}
-        style={styles.scrollView}
+        style={Styles.scrollView}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollViewContent}
+        contentContainerStyle={Styles.scrollViewContent}
       >
-        <View style={styles.inputsContainer}>
+        <View style={Styles.inputsContainer}>
           {/* Pickup Input */}
-          <View style={styles.inputWrapper}>
-            <View style={styles.inputIconContainer}>
+          <View style={Styles.inputWrapper}>
+            <View style={Styles.inputIconContainer}>
               <Icon name="circle" size={12} color="#35C14F" />
             </View>
 
             <TextInput
               ref={pickupInputRef}
-              style={styles.input}
+              style={Styles.input}
               placeholder="Enter pickup location"
               placeholderTextColor="#999"
               value={state.pickup}
@@ -716,7 +717,7 @@ const CollectData = () => {
               </Animated.View>
             ) : (
               <TouchableOpacity
-                style={styles.mapButton}
+                style={Styles.mapButton}
                 onPress={() => {
                   setState((prev) => ({
                     ...prev,
@@ -731,14 +732,14 @@ const CollectData = () => {
           </View>
 
           {/* Dropoff Input */}
-          <View style={styles.inputWrapper}>
-            <View style={styles.inputIconContainer}>
+          <View style={Styles.inputWrapper}>
+            <View style={Styles.inputIconContainer}>
               <Icon name="square" size={12} color="#D93A2D" />
             </View>
 
             <TextInput
               ref={dropoffInputRef}
-              style={styles.input}
+              style={Styles.input}
               placeholder="Enter drop-off location"
               placeholderTextColor="#999"
               value={state.dropoff}
@@ -773,7 +774,7 @@ const CollectData = () => {
               </Animated.View>
             ) : (
               <TouchableOpacity
-                style={styles.mapButton}
+                style={Styles.mapButton}
                 onPress={() => {
                   setState((prev) => ({
                     ...prev,
@@ -790,17 +791,17 @@ const CollectData = () => {
 
         {/* Error message */}
         {state.error ? (
-          <View style={styles.errorContainer}>
+          <View style={Styles.errorContainer}>
             <Icon name="alert-circle" size={18} color="#D93A2D" />
-            <Text style={styles.errorText}>{state.error}</Text>
+            <Text style={Styles.errorText}>{state.error}</Text>
           </View>
         ) : null}
 
         {/* Loading indicator for suggestions */}
         {state.loading && !state.suggestions.length && (
-          <View style={styles.smallLoaderContainer}>
+          <View style={Styles.smallLoaderContainer}>
             <ActivityIndicator size="small" color={state.activeInput === "pickup" ? "#35C14F" : "#D93A2D"} />
-            <Text style={styles.smallLoaderText}>Finding locations...</Text>
+            <Text style={Styles.smallLoaderText}>Finding locations...</Text>
           </View>
         )}
 
@@ -809,16 +810,16 @@ const CollectData = () => {
 
         {/* Location suggestions */}
         {state.suggestions.length > 0 && (
-          <View style={styles.suggestionsContainer}>
+          <View style={Styles.suggestionsContainer}>
             {state.suggestions.map((suggestion, index) => (
               <Pressable
                 key={index}
-                style={styles.suggestionItem}
+                style={Styles.suggestionItem}
                 onPress={() => handleLocationSelect(suggestion.description)}
                 android_ripple={{ color: "#f0f0f0" }}
               >
                 <Icon name="map-marker" size={20} color={state.activeInput === "pickup" ? "#35C14F" : "#D93A2D"} />
-                <Text numberOfLines={2} style={styles.suggestionText}>
+                <Text numberOfLines={2} style={Styles.suggestionText}>
                   {suggestion.description}
                 </Text>
               </Pressable>
@@ -828,11 +829,11 @@ const CollectData = () => {
 
         {/* Map preview when both locations are set */}
         {rideData.pickup.latitude && rideData.dropoff.latitude && !state.suggestions.length && !state.activeInput && (
-          <View style={styles.previewMapContainer}>
+          <View style={Styles.previewMapContainer}>
             <MapView
               ref={mapRef}
               provider={PROVIDER_GOOGLE}
-              style={styles.previewMap}
+              style={Styles.previewMap}
               initialRegion={region}
               customMapStyle={mapStyle}
               showsUserLocation
@@ -851,7 +852,7 @@ const CollectData = () => {
                 title="Pickup"
                 description={rideData.pickup.description}
               >
-                <View style={styles.customMarker}>
+                <View style={Styles.customMarker}>
                   <Icon name="circle" size={12} color="#35C14F" />
                 </View>
               </Marker>
@@ -865,7 +866,7 @@ const CollectData = () => {
                 title="Drop-off"
                 description={rideData.dropoff.description}
               >
-                <View style={styles.customMarker}>
+                <View style={Styles.customMarker}>
                   <Icon name="square" size={12} color="#D93A2D" />
                 </View>
               </Marker>
@@ -893,17 +894,17 @@ const CollectData = () => {
               />
             </MapView>
 
-            <View style={styles.mapOverlayInfo}>
-              <View style={styles.mapInfoItem}>
+            <View style={Styles.mapOverlayInfo}>
+              <View style={Styles.mapInfoItem}>
                 <Icon name="circle" size={10} color="#35C14F" />
-                <Text numberOfLines={1} style={styles.mapInfoText}>
+                <Text numberOfLines={1} style={Styles.mapInfoText}>
                   {rideData.pickup.description}
                 </Text>
               </View>
-              <View style={styles.mapInfoDivider} />
-              <View style={styles.mapInfoItem}>
+              <View style={Styles.mapInfoDivider} />
+              <View style={Styles.mapInfoItem}>
                 <Icon name="square" size={10} color="#D93A2D" />
-                <Text numberOfLines={1} style={styles.mapInfoText}>
+                <Text numberOfLines={1} style={Styles.mapInfoText}>
                   {rideData.dropoff.description}
                 </Text>
               </View>
@@ -914,10 +915,10 @@ const CollectData = () => {
 
       {/* Sticky Find Riders button */}
       {rideData.pickup.latitude && rideData.dropoff.latitude && !state.suggestions.length && (
-        <View style={styles.findRiderButtonContainer}>
-          <TouchableOpacity style={styles.findRiderButton} onPress={handleSubmit} activeOpacity={0.8}>
+        <View style={Styles.findRiderButtonContainer}>
+          <TouchableOpacity style={Styles.findRiderButton} onPress={handleSubmit} activeOpacity={0.8}>
             <Icon name="car" size={24} color="white" />
-            <Text style={styles.findRiderButtonText}>Find Riders</Text>
+            <Text style={Styles.findRiderButtonText}>Find Riders</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -925,298 +926,6 @@ const CollectData = () => {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginLeft: 12,
-    color: "#000000",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollViewContent: {
-    paddingBottom: 100, // Space for the sticky button
-  },
-  inputsContainer: {
-    padding: 16,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginTop: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-    paddingBottom: 12,
-  },
-  inputIconContainer: {
-    width: 24,
-    alignItems: "center",
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: "#000000",
-    paddingVertical: 8,
-    minHeight: 40,
-  },
-  mapButton: {
-    padding: 8,
-  },
-  errorContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFEEEE",
-    padding: 12,
-    borderRadius: 8,
-    marginHorizontal: 16,
-    marginTop: 8,
-  },
-  errorText: {
-    color: "#D93A2D",
-    marginLeft: 8,
-    fontSize: 14,
-  },
-  smallLoaderContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 12,
-    marginTop: 8,
-  },
-  smallLoaderText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: "#666666",
-  },
-  suggestionsContainer: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginTop: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    overflow: "hidden",
-  },
-  suggestionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  suggestionText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 15,
-    color: "#333333",
-  },
-  pastRidesContainer: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginTop: 16,
-    padding: 12,
-  },
-  pastRidesTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666666",
-    marginBottom: 8,
-    paddingHorizontal: 4,
-  },
-  pastRideItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  pastRideText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 14,
-    color: "#333333",
-  },
-  previewMapContainer: {
-    height: 300,
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 12,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  previewMap: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  mapOverlayInfo: {
-    position: "absolute",
-    top: 12,
-    left: 12,
-    right: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 8,
-    padding: 12,
-  },
-  mapInfoItem: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  mapInfoText: {
-    marginLeft: 8,
-    fontSize: 12,
-    color: "#333333",
-  },
-  mapInfoDivider: {
-    height: 1,
-    backgroundColor: "#E0E0E0",
-    marginVertical: 8,
-  },
-  findRiderButtonContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 8,
-  },
-  findRiderButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#951235",
-    borderRadius: 12,
-    paddingVertical: 16,
-  },
-  findRiderButtonText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 12,
-  },
-  mapContainer: {
-    flex: 1,
-    position: "relative",
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  mapHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "#FFFFFF",
-  },
-  mapHeaderTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 12,
-    color: "#000000",
-  },
-  centerMarker: {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    marginLeft: -20,
-    marginTop: -40,
-    alignItems: "center",
-  },
-  markerShadow: {
-    position: "absolute",
-    bottom: 0,
-    width: 16,
-    height: 8,
-    borderRadius: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
-  },
-  mapFooter: {
-    backgroundColor: "#FFFFFF",
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
-  },
-  mapAddressText: {
-    fontSize: 16,
-    color: "#333333",
-    marginBottom: 16,
-  },
-  confirmButton: {
-    backgroundColor: "#000000",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  confirmButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  mapLoadingContainer: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 8,
-    padding: 8,
-    zIndex: 1,
-  },
-  mapLoadingText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: "#666666",
-  },
-  customMarker: {
-    padding: 8,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: "#000000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-})
+
 
 export default CollectData

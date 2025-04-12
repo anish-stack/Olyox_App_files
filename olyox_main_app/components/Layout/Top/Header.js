@@ -11,8 +11,7 @@ import {
   Alert,
   StatusBar,
   Image,
-  PermissionResult,
-  Platform,
+ 
 } from "react-native"
 import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
@@ -154,7 +153,7 @@ const Header = () => {
         if (!location?.coords) {
           setLocationLoading(false)
         }
-      }, 5000)
+      }, 12000)
       return
     }
 
@@ -484,7 +483,7 @@ const Header = () => {
                 <View style={styles.loadingIndicator} />
               ) : (
                 <Text numberOfLines={2} style={styles.locationDetails}>
-                  {address?.completeAddress || "Location unavailable"}
+                  {address?.completeAddress || "Searching Location ..."}
                   {address?.district ? `, ${address.district}` : ""}
                 </Text>
               )}
