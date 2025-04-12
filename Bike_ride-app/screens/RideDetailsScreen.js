@@ -576,7 +576,7 @@ export default function RideDetailsScreen() {
             text: 'Yes',
             onPress: () => {
               console.log('✅ Driver confirmed ride completion');
-              handleCompleteRide(); // Ensure this is defined
+              handleCompleteRide(); 
             },
           },
         ],

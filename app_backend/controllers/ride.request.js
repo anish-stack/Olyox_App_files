@@ -797,18 +797,18 @@ exports.ChangeRideRequestByRider = async (io, data) => {
                             acceptedAt: new Date()
                         }
                     },
-                    { upsert: true } 
+                    { upsert: true }
                 );
             } catch (notifError) {
                 console.log(`[${new Date().toISOString()}] Failed to update notification status: ${notifError.message}`);
-           
+
             }
 
             const returnData = {
                 ...populatedRide.toObject(),
                 eta: eta,
-                driver:populatedRide?.rider,
-                temp_ride_id:populatedRide?.rider?.on_ride_id
+                driver: populatedRide?.rider,
+                temp_ride_id: populatedRide?.rider?.on_ride_id
             };
 
             return returnData;
@@ -1265,6 +1265,8 @@ exports.collectCash = async ({ data, paymentMethod }) => {
                 message: 'Rider not found'
             }
         }
+        findRider.isAvailable = true
+        findRider.on_ride_id = null
 
         await findRider.save()
 

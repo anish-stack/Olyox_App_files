@@ -39,7 +39,7 @@ export default function MoneyPage() {
         rateValue: 0,
         isLoading: false,
         showConfirmation: false,
-        paymentMethod: 'cash', // 'cash' or 'online'
+        paymentMethod: 'cash',
         error: null,
     });
 
@@ -52,7 +52,7 @@ export default function MoneyPage() {
 
     const price = data?.rideDetails?.price || '0';
 
-    // Animation Functions
+
     const startEntryAnimation = useCallback(() => {
         Animated.parallel([
             Animated.timing(animations.fade, {
@@ -165,23 +165,22 @@ export default function MoneyPage() {
                 console.log('isPay emit response:', response);
             });
 
-            // Wait for a short time for possible 'payment_error'
+
             const waitForError = new Promise((resolve, reject) => {
                 socket.once('payment_error', (errorMessage) => {
                     reject(new Error(errorMessage || 'Payment failed'));
                 });
 
-                // Optional: Timeout for error event (assume no error if none received in 2s)
+
                 setTimeout(resolve, 2000);
             });
 
             await waitForError;
 
-            // No error, proceed to success
+
             setState(prev => ({ ...prev, isRideRate: true }));
 
             setTimeout(async () => {
-                await Updates.reloadAsync();
                 navigation.dispatch(
                     CommonActions.reset({
                         index: 0,
