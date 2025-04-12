@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, Dimensions, AppState, ActivityIndicator, Image, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, Dimensions, AppState, ActivityIndicator, Image, ScrollView, Alert, Platform } from 'react-native';
 import { Text, Button, Surface, Portal, Modal, Snackbar } from 'react-native-paper';
 import { Audio } from 'expo-av';
 import { CommonActions, useNavigation } from '@react-navigation/native';
@@ -12,6 +12,7 @@ import { useSocket } from '../context/SocketContext';
 import { useLocation } from '../context/LocationContext';
 import axios from 'axios';
 import { decode } from '@mapbox/polyline';
+import LottieView from 'lottie-react-native';
 
 const { width, height } = Dimensions.get('window');
 const RIDE_REQUEST_TIMEOUT = 120000;
@@ -218,7 +219,7 @@ export default function RideRequestScreen() {
             console.log("Ride cancelled start:", data);
             console.log("Ride cancelled rideData:", rideData);
             console.log("Ride cancelled data.ride_request_id:", data.ride_request_id);
-        
+
             // Check if the cancellation is for the current ride
             if (rideData && data.ride_request_id === rideData.requestId) {
                 cleanupRideRequest(); // clear ride state or cancel trip, etc.
@@ -230,7 +231,7 @@ export default function RideRequestScreen() {
                 setShowRideModal(false); // optionally hide modal even if not the same ride
             }
         };
-        
+
 
         const handleRejectionConfirmed = (data) => {
             console.log("Rejection confirmed:", data);
@@ -240,7 +241,7 @@ export default function RideRequestScreen() {
         const handleRideError = (data) => {
             console.log("Ride error:", data);
             showSnackbar(data.message || "An error occurred with this ride");
-            
+
             // If there's an active ride request, clean it up
             if (showRideModal && rideData) {
                 cleanupRideRequest();
@@ -252,7 +253,7 @@ export default function RideRequestScreen() {
             socket.on("ride_cancelled", handleRideCancellation);
             socket.on("rejection_confirmed", handleRejectionConfirmed);
             socket.on("ride_error", handleRideError);
-            
+
             // Let the server know we're connected as a driver
             if (riderDetails?.id) {
                 socket.emit('driver_connected', { driverId: riderDetails.id });
@@ -263,7 +264,7 @@ export default function RideRequestScreen() {
             if (appState.current.match(/inactive|background/) && nextAppState === "active") {
                 if (socket && !socket.connected) {
                     socket.connect();
-                    
+
                     // Reconnect as driver
                     if (riderDetails?.id) {
                         socket.emit('driver_connected', { driverId: riderDetails.id });
@@ -329,14 +330,14 @@ export default function RideRequestScreen() {
             clearTimeout(timeoutRef.current);
             timeoutRef.current = null;
         }
-        
+
         if (countdownIntervalRef.current) {
             clearInterval(countdownIntervalRef.current);
             countdownIntervalRef.current = null;
         }
-        
+
         stopSound();
-        
+
         // Reset UI state
         setShowRideModal(false);
         setRideData(null);
@@ -347,13 +348,13 @@ export default function RideRequestScreen() {
     const handleRejectRide = async (isTimeout = false) => {
         try {
             if (socket && rideData) {
-                console.log("Reject Data ",rideData)
-                console.log("Reject riderDetails ",riderDetails)
+                console.log("Reject Data ", rideData)
+                console.log("Reject riderDetails ", riderDetails)
                 socket.emit('ride_rejected', {
                     ride_id: rideData?.requestId,
                     driver_id: riderDetails?._id,
                 });
-                
+
                 if (isTimeout) {
                     showSnackbar("Ride request timed out");
                 }
@@ -387,7 +388,7 @@ export default function RideRequestScreen() {
                             eta: matchedRider.eta,
                         }
                     });
-                    
+
                     showSnackbar("Ride accepted successfully");
                 } else {
                     throw new Error("Could not match rider details");
@@ -407,20 +408,20 @@ export default function RideRequestScreen() {
                 try {
                     console.log("Socket event received: rider_confirm_message");
                     console.log("Full data payload:", JSON.stringify(data));
-    
+
                     const { rideDetails } = data || {};
                     const driver = rideDetails?.driver;
-    
+
                     // Use temp_ride_id first, fallback to on_ride_id
                     const temp_ride_id = rideDetails?.temp_ride_id || driver?.on_ride_id;
-    
+
                     console.log("Parsed values =>", { driver });
                     console.log("Parsed temp_ride_id =>", { temp_ride_id });
                     console.log("Parsed rideDetails =>", { rideDetails });
-    
+
                     if (driver && rideDetails) {
                         console.log("rider_confirm_message i am inside");
-    
+
                         navigation.dispatch(
                             CommonActions.navigate({
                                 name: 'start',
@@ -439,7 +440,7 @@ export default function RideRequestScreen() {
             });
         }
     }, [socket, navigation]);
-    
+
 
     useEffect(() => {
         return () => {
@@ -450,16 +451,13 @@ export default function RideRequestScreen() {
     if (!rideData && !showRideModal) {
         return (
             <View style={styles.waitingContainer}>
-                <ActivityIndicator size="large" color="#6366F1" />
-                <Text style={styles.waitingText}>Waiting for New ride requests...</Text>
-                <Snackbar
-                    visible={snackbarVisible}
-                    onDismiss={() => setSnackbarVisible(false)}
-                    duration={3000}
-                    style={styles.snackbar}
-                >
-                    {snackbarMessage}
-                </Snackbar>
+                <LottieView
+                    source={require("./waitings.json")}
+                    autoPlay
+                    loop
+                    style={styles.waitingAnimation}
+                />
+                <Text style={styles.waitingText}>Waiting for new ride requests...</Text>
             </View>
         );
     }
@@ -474,7 +472,7 @@ export default function RideRequestScreen() {
                         contentContainerStyle={styles.modalContainer}
                     >
                         <Surface style={styles.modalContent}>
-                         
+
 
                             <View style={styles.userInfoContainer}>
                                 {rideData?.user?.profileImage?.image && (
@@ -577,7 +575,7 @@ export default function RideRequestScreen() {
                         </Surface>
                     </Modal>
                 </Portal>
-                
+
                 <Snackbar
                     visible={snackbarVisible}
                     onDismiss={() => setSnackbarVisible(false)}
@@ -596,18 +594,34 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F9FAFB',
     },
-    waitingContainer: {
-        marginVertical: 16,
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#F3F4F6',
+   waitingContainer: {
+      backgroundColor: "#FFFFFF",
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 16,
+      alignItems: "center",
+      ...Platform.select({
+        ios: {
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 4,
+        },
+      }),
+    },
+    waitingAnimation: {
+      width: 120,
+      height: 120,
     },
     waitingText: {
-        marginVertical: 16,
-        fontSize: 16,
-        color: '#4B5563',
-        fontWeight: '500',
+      fontSize: 16,
+      color: "#616161",
+      fontWeight: "500",
+      marginTop: 8,
+      textAlign: "center",
     },
     mapContainer: {
         width: '100%',

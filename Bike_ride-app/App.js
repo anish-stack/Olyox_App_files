@@ -44,6 +44,7 @@ import WorkingData from './screens/WorkingData/WorkingData';
 import ReferalHistory from './screens/Profile/ReferalHistory';
 import Withdraw from './screens/Profile/Withdraw';
 import { LocalRideStorage } from './services/DatabaseService';
+import RideRequestScreen from './screens/Ride.come';
 
 LogBox.ignoreLogs(['Setting a timer']);
 
@@ -200,6 +201,7 @@ const App = () => {
                     <Stack.Screen name="support" component={SupportScreen} />
                     <Stack.Screen name="collect_money" component={MoneyPage} />
                     <Stack.Screen name="AllRides" component={AllRides} />
+                    <Stack.Screen name="NewRideScreen" component={RideRequestScreen} />
                     <Stack.Screen name="Profile" component={Profile} />
                     <Stack.Screen name="upload-qr" component={UploadQr} />
                     <Stack.Screen name="enter_bh" component={BhVerification} />
