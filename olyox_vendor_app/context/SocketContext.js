@@ -28,7 +28,7 @@ export const SocketProvider = ({ children }) => {
 
                 // Step 2: Fetch user data
                 const response = await axios.get(
-                    'http://192.168.1.9:3100/api/v1/tiffin/get_single_tiffin_profile',
+                    'https://demoapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: { 'Authorization': `Bearer ${token}` }
                     }

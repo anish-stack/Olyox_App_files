@@ -109,7 +109,7 @@ const HomeScreen = () => {
       console.log(token)
       if (token) {
         const response = await axios.get(
-          'http://192.168.1.9:3100/api/v1/rider/user-details',
+          'https://demoapi.olyox.com/api/v1/rider/user-details',
           { headers: { Authorization: `Bearer ${token}` } }
         );
         // console.log("User Details:", response.data.partner);
@@ -161,13 +161,13 @@ const HomeScreen = () => {
 
       // Always allow the API call if going OFFLINE regardless of recharge status
       const response = await axios.post(
-        "http://192.168.1.9:3100/api/v1/rider/toggleWorkStatusOfRider",
+        "https://demoapi.olyox.com/api/v1/rider/toggleWorkStatusOfRider",
         { status: goingOnline },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const response_two = await axios.get(
-        "http://192.168.1.9:3100/api/v1/rider/user-details",
+        "https://demoapi.olyox.com/api/v1/rider/user-details",
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

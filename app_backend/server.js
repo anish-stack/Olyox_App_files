@@ -252,8 +252,8 @@ io.on('connection', (socket) => {
                 }
     
                 // === Notify Rider (Driver) ===
-                const riderId = String(updatedRide.rider?._id); // assuming this field holds the rider's ID
-                const riderSocketId = driverSocketMap.get(riderId); // or whatever map holds the driver's sockets
+                const riderId = String(updatedRide.rider?._id); 
+                const riderSocketId = driverSocketMap.get(riderId); 
     
                 console.log(`[${new Date().toISOString()}] Notifying rider ${riderId}, socket found: ${Boolean(riderSocketId)}`);
     
@@ -268,11 +268,11 @@ io.on('connection', (socket) => {
                 }
     
                 // === Cancel the ride for all other drivers ===
-                await cancelRideForOtherDrivers(io, updatedRide.ride_request_id, driverSocketMap || updatedRide._id, data.data.rider_id, driverSocketMap);
+                await cancelRideForOtherDrivers(io, updatedRide?.temp_ride_id,riderId, driverSocketMap );
             }
         } catch (error) {
             console.error(`[${new Date().toISOString()}] Error handling ride_accepted event:`, error);
-            socket.emit('ride_error', { message: 'Failed to process ride acceptance' });
+            socket.emit('ride_error', { message: 'Ride has already been accepted by another rider' });
         }
     });
     
@@ -1157,7 +1157,7 @@ app.post('/webhook/cab-receive-location', Protect, async (req, res) => {
         const { latitude, longitude } = req.body;
         const userId = req.user.userId;
      
-        //   console.log("body hits",req.body)
+          console.log("body hits")
 
         const data = await RiderModel.findOneAndUpdate(
             { _id: userId },
@@ -1204,6 +1204,55 @@ app.post('/webhook/receive-location', Protect, async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+app.get('/rider/:tempRide', async (req, res) => {
+    try {
+        const { tempRide } = req.params;
+        console.log("[STEP 1] Received tempRide param:", tempRide);
+
+        if (!tempRide || !mongoose.Types.ObjectId.isValid(tempRide)) {
+            console.log("[STEP 2] Invalid ride ID");
+            return res.status(400).json({ error: 'Invalid ride ID' });
+        }
+
+        const objectId = new mongoose.Types.ObjectId(tempRide);
+        console.log("[STEP 3] Converted to ObjectId:", objectId);
+
+        let ride = null;
+        const maxRetries = 3;
+        const delayMs = 12000; // 12 seconds
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            console.log(`[STEP 4.${attempt}] Attempt ${attempt} to fetch ride...`);
+            ride = await tempRideDetailsSchema.findOne({
+                $or: [
+                    { _id: objectId },
+                    { "rideDetails._id": objectId }
+                ]
+            });
+
+            if (ride) {
+                console.log(`[STEP 5.${attempt}] Ride found on attempt ${attempt}`);
+                return res.status(200).json({ ride });
+            }
+
+            console.log(`[STEP 6.${attempt}] Ride not found on attempt ${attempt}, retrying in 12 seconds...`);
+            if (attempt < maxRetries) {
+                await delay(delayMs);
+            }
+        }
+
+        console.log("[STEP 7] Ride not found after 3 attempts");
+        return res.status(404).json({ error: 'Ride not found after retrying' });
+
+    } catch (err) {
+        console.error(`[${new Date().toISOString()}] Error fetching temp ride:`, err);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 
 
@@ -1216,31 +1265,8 @@ app.get('/rider', async (req, res) => {
         res.status(500).send('Error retrieving riders');
     }
 });
-app.get('/rider/:tempRide', async (req, res) => {
-    try {
-        const { tempRide } = req.params;
 
-        if (!tempRide || !mongoose.Types.ObjectId.isValid(tempRide)) {
-            return res.status(400).json({ error: 'Invalid ride ID' });
-        }
 
-        const ride = await tempRideDetailsSchema.findOne({
-            $or: [
-                { _id: tempRide },
-                { "rideDetails._id": new mongoose.Types.ObjectId(tempRide) }
-            ]
-        });
-
-        if (!ride) {
-            return res.status(404).json({ error: 'Ride not found' });
-        }
-
-        res.status(200).json({ ride });
-    } catch (err) {
-        console.error(`[${new Date().toISOString()}] Error fetching temp ride:`, err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
 
 
 app.get('/', (req, res) => {

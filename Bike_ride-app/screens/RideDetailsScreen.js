@@ -34,7 +34,7 @@ const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-const API_BASE_URL = "http://192.168.1.9:3100";
+const API_BASE_URL = "https://demoapi.olyox.com";
 
 export default function RideDetailsScreen() {
   // ===== REFS =====
@@ -185,13 +185,12 @@ export default function RideDetailsScreen() {
 
       return response.data;
     } catch (error) {
-      logError('Failed to fetch ride details', error);
+      logError('Failed to fetch ride details', error.response.data);
      
       return null;
     }
   }, []);
 
-  // Initialize ride data
   useEffect(() => {
     const initializeRideData = async () => {
       // Get ride ID from any available source
@@ -207,7 +206,7 @@ export default function RideDetailsScreen() {
     initializeRideData();
   }, [getRideId, foundRideDetails]);
 
-  // ===== CUSTOM HOOKS =====
+ 
   const {
     currentLocation,
     startLocationTracking,

@@ -105,7 +105,7 @@ export default function RideRequestScreen() {
                 } catch (error) {
                     console.error("Error fetching location:", error);
                 }
-            }, 9000000000000);
+            }, 100000);
         };
 
         getLocation();
@@ -119,7 +119,7 @@ export default function RideRequestScreen() {
         if (!token) return;
 
         try {
-            const response = await fetch('http://192.168.1.9:3100/webhook/cab-receive-location', {
+            const response = await fetch('https://demoapi.olyox.com/webhook/cab-receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -142,7 +142,7 @@ export default function RideRequestScreen() {
             }
 
             const response = await axios.get(
-                'http://192.168.1.9:3100/api/v1/rider/user-details',
+                'https://demoapi.olyox.com/api/v1/rider/user-details',
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
@@ -215,14 +215,22 @@ export default function RideRequestScreen() {
         };
 
         const handleRideCancellation = (data) => {
-            console.log("Ride cancelled:", data);
-            
-            // If this is the currently displayed ride, clear it
-            if (rideData && data.ride_request_id === rideData.id) {
-                cleanupRideRequest();
+            console.log("Ride cancelled start:", data);
+            console.log("Ride cancelled rideData:", rideData);
+            console.log("Ride cancelled data.ride_request_id:", data.ride_request_id);
+        
+            // Check if the cancellation is for the current ride
+            if (rideData && data.ride_request_id === rideData.requestId) {
+                cleanupRideRequest(); // clear ride state or cancel trip, etc.
+                setShowRideModal(false);
                 showSnackbar("This ride has been accepted by another driver");
+                console.log("Ride cancelled done");
+            } else {
+                console.log("Ride cancelled for different ride");
+                setShowRideModal(false); // optionally hide modal even if not the same ride
             }
         };
+        
 
         const handleRejectionConfirmed = (data) => {
             console.log("Rejection confirmed:", data);

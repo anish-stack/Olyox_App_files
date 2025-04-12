@@ -2,7 +2,7 @@ import axios from "axios";
 
 exports.slidesFetch = async () => {
     try {
-        const { data } = await axios.get('http://192.168.1.9:3100/api/v1/admin/get_onboarding_slides');
+        const { data } = await axios.get('https://demoapi.olyox.com/api/v1/admin/get_onboarding_slides');
         return data?.data; // Safely accessing the nested data property
 
     } catch (error) {

@@ -172,7 +172,7 @@ export default function RechargeViaOnline() {
       const token = await SecureStore.getItemAsync('auth_token_cab');
       if (!token) throw new Error('Authentication token not found');
 
-      const response = await axios.get('http://192.168.1.9:3100/api/v1/rider/user-details', {
+      const response = await axios.get('https://demoapi.olyox.com/api/v1/rider/user-details', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUserData(response.data.partner);
@@ -209,7 +209,7 @@ export default function RechargeViaOnline() {
     setLoading(true);
     try {
       const response = await axios.get(
-        `http://192.168.1.9:3100/api/v1/rider/recharge-wallet/${memberId}/${userData?.BH}`
+        `https://demoapi.olyox.com/api/v1/rider/recharge-wallet/${memberId}/${userData?.BH}`
       );
 
       const options = {
@@ -234,7 +234,7 @@ export default function RechargeViaOnline() {
 
       // ✅ After payment, call your backend verification API
       const verifyResponse = await axios.post(
-        `http://192.168.1.9:3100/api/v1/rider/recharge-verify/${userData?.BH}`,
+        `https://demoapi.olyox.com/api/v1/rider/recharge-verify/${userData?.BH}`,
         {
           razorpay_order_id: paymentResponse?.razorpay_order_id,
           razorpay_payment_id: paymentResponse?.razorpay_payment_id,

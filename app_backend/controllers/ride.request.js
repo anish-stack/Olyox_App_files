@@ -710,7 +710,7 @@ exports.findRider = async (id, io, app) => {
 
 exports.ChangeRideRequestByRider = async (io, data) => {
     try {
-        console.log("data of change", data);
+
         if (!data || !data.ride_request_id || !data.rider_id) {
             throw new Error('Invalid data: rideRequestId and driverId are required');
         }
@@ -722,7 +722,6 @@ exports.ChangeRideRequestByRider = async (io, data) => {
             throw new Error('Driver not found');
         }
 
-        // Fetch the ride request from the database
         const ride = await RideRequest.findById(ride_request_id);
 
         if (!ride) {
@@ -798,11 +797,11 @@ exports.ChangeRideRequestByRider = async (io, data) => {
                             acceptedAt: new Date()
                         }
                     },
-                    { upsert: true } // Create if doesn't exist
+                    { upsert: true } 
                 );
             } catch (notifError) {
                 console.log(`[${new Date().toISOString()}] Failed to update notification status: ${notifError.message}`);
-                // Non-critical error, continue without blocking
+           
             }
 
             const returnData = {
