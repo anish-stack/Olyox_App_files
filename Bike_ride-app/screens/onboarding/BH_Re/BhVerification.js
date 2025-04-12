@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 
 const BhVerification = () => {
-  const [bh, setBh] = useState('');
+  const [bh, setBh] = useState('BH');
   const [name, setName] = useState('');
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
@@ -28,7 +28,7 @@ const BhVerification = () => {
 
       setTimeout(() => {
         navigation.navigate('Register', { bh_id: bh });
-      }, 4500);
+      }, 1200);
     } catch (err) {
       setResponse(null);
       setError(err.response?.data?.message || 'An unexpected error occurred. Please try again.');

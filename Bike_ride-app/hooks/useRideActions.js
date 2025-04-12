@@ -5,14 +5,18 @@ import axios from "axios"
 import { Audio } from "expo-av"
 import { CommonActions, useNavigation } from '@react-navigation/native'
 import * as SecureStore from 'expo-secure-store'
+import { useRideStatus } from "../context/CheckRideHaveOrNot.context"
 const API_BASE_URL = "https://demoapi.olyox.com/api/v1"
 
 export function useRideActions({ state, setState, rideDetails, socket, mapRef, soundRef }) {
   const navigation = useNavigation()
+  const { onRide, updateRideStatus } = useRideStatus(); 
 
   const updateState = (newState) => {
     setState((prevState) => ({ ...prevState, ...newState }))
   }
+
+  // console.log("onRide",onRide)
 
   // Logging helper - only logs in development
   const logDebug = (message, data = null) => {
@@ -97,7 +101,7 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
       }
 
       logDebug('Ride details fetched successfully');
-
+      updateRideStatus(true)
       // Update component state
       updateState({
         loading: false,
@@ -212,10 +216,12 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
   // Reset navigation to home
   const resetToHome = useCallback(() => {
     logDebug("Resetting navigation to Home")
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "Home" }],
-    })
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      })
+    );
   }, [navigation])
 
   // Fetch cancel reasons
@@ -364,6 +370,9 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
       Alert.alert("Cancel", "Your pickup has been canceled. Thank you for your time.", [
         { text: "OK", onPress: () => resetToHome() },
       ])
+      updateRideStatus(false)
+
+      
 
       updateState({ showCancelModal: false })
     } catch (error) {
@@ -396,9 +405,20 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
               }
 
               // Handle successful completion
-              Alert.alert("Success", "Ride completed successfully.", [
-                { text: "OK", onPress: () => resetToHome() }
-              ]);
+              Alert.alert(
+                "Success",
+                "Ride completed successfully.",
+                [
+                  {
+                    text: "OK",
+                    onPress: () => {
+                      updateRideStatus(false);
+                      resetToHome();
+                    },
+                  },
+                ]
+              );
+              
             })
           } else {
             logError("Socket not connected for ride completion")

@@ -45,6 +45,7 @@ import ReferalHistory from './screens/Profile/ReferalHistory';
 import Withdraw from './screens/Profile/Withdraw';
 import { LocalRideStorage } from './services/DatabaseService';
 import RideRequestScreen from './screens/Ride.come';
+import { RideStatusProvider } from './context/CheckRideHaveOrNot.context';
 
 LogBox.ignoreLogs(['Setting a timer']);
 
@@ -86,14 +87,13 @@ const App = () => {
           );
 
           const partner = response.data.partner;
-          console.log("Hey Partner", partner)
           if (partner.hasOwnProperty('on_ride_id') && partner.on_ride_id != null) {
             setActiveRide(true);
             await foundRideDetails(partner.on_ride_id);
           } else {
             setActiveRide(false);
           }
-          
+
 
           if (!partner?.isDocumentUpload) {
             setInitialRoute('UploadDocuments');
@@ -117,7 +117,7 @@ const App = () => {
   }, []);
 
   const foundRideDetails = async (temp_ride_id) => {
-    console.log("Temp",temp_ride_id)
+    console.log("Temp", temp_ride_id)
     try {
       const response = await axios.get(`https://demoapi.olyox.com/rider/${temp_ride_id}`)
       console.log("hello", response.data)
@@ -159,7 +159,7 @@ const App = () => {
     return () => clearTimeout(timeout);
   }, [navigationRef]);
 
- 
+
   useEffect(() => {
     const setupBackgroundTask = async () => {
       const status = await BackgroundFetch.getStatusAsync();
@@ -188,38 +188,40 @@ const App = () => {
       <PaperProvider>
         <SocketProvider>
           <LocationProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <SafeAreaProvider>
-                <NavigationContainer ref={navigationRef}>
-                  <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                    <Stack.Screen name="register" component={RegistrationForm} />
-                    <Stack.Screen name="UploadDocuments" component={Document} />
-                    <Stack.Screen name="Wait_Screen" component={Wait_Screen} />
-                    <Stack.Screen name="Home" component={HomeScreen} />
-                    <Stack.Screen name="start" component={RideDetailsScreen} />
-                    <Stack.Screen name="support" component={SupportScreen} />
-                    <Stack.Screen name="collect_money" component={MoneyPage} />
-                    <Stack.Screen name="AllRides" component={AllRides} />
-                    <Stack.Screen name="NewRideScreen" component={RideRequestScreen} />
-                    <Stack.Screen name="Profile" component={Profile} />
-                    <Stack.Screen name="upload-qr" component={UploadQr} />
-                    <Stack.Screen name="enter_bh" component={BhVerification} />
-                    <Stack.Screen name="Register" component={RegisterWithBh} />
-                    <Stack.Screen name="OtpVerify" component={BhOtpVerification} />
-                    <Stack.Screen name="Recharge" component={RechargeViaOnline} />
-                    <Stack.Screen name="recharge-history" component={RechargeHistory} />
-                    <Stack.Screen name="WorkingData" component={WorkingData} />
-                    <Stack.Screen name="referral-history" component={ReferalHistory} />
-                    <Stack.Screen name="withdraw" component={Withdraw} />
-                  </Stack.Navigator>
+            <RideStatusProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <SafeAreaProvider>
+                  <NavigationContainer ref={navigationRef}>
+                    <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
+                      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+                      <Stack.Screen name="register" component={RegistrationForm} />
+                      <Stack.Screen name="UploadDocuments" component={Document} />
+                      <Stack.Screen name="Wait_Screen" component={Wait_Screen} />
+                      <Stack.Screen name="Home" component={HomeScreen} />
+                      <Stack.Screen name="start" component={RideDetailsScreen} />
+                      <Stack.Screen name="support" component={SupportScreen} />
+                      <Stack.Screen name="collect_money" component={MoneyPage} />
+                      <Stack.Screen name="AllRides" component={AllRides} />
+                      <Stack.Screen name="NewRideScreen" component={RideRequestScreen} />
+                      <Stack.Screen name="Profile" component={Profile} />
+                      <Stack.Screen name="upload-qr" component={UploadQr} />
+                      <Stack.Screen name="enter_bh" component={BhVerification} />
+                      <Stack.Screen name="Register" component={RegisterWithBh} />
+                      <Stack.Screen name="OtpVerify" component={BhOtpVerification} />
+                      <Stack.Screen name="Recharge" component={RechargeViaOnline} />
+                      <Stack.Screen name="recharge-history" component={RechargeHistory} />
+                      <Stack.Screen name="WorkingData" component={WorkingData} />
+                      <Stack.Screen name="referral-history" component={ReferalHistory} />
+                      <Stack.Screen name="withdraw" component={Withdraw} />
+                    </Stack.Navigator>
 
-                  {activeRide && (
-                    <ActiveRideButton rideDetails={activeRideData} />
-                  )}r
-                </NavigationContainer>
-              </SafeAreaProvider>
-            </GestureHandlerRootView>
+                    {/* {activeRide && (
+                      <ActiveRideButton rideDetails={activeRideData} />
+                    )}r */}
+                  </NavigationContainer>
+                </SafeAreaProvider>
+              </GestureHandlerRootView>
+            </RideStatusProvider>
           </LocationProvider>
         </SocketProvider>
       </PaperProvider>

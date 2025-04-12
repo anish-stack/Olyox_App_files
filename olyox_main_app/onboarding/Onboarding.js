@@ -1,13 +1,13 @@
 // OnboardingScreen.js
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  Animated, 
-  TouchableOpacity, 
-  Alert, 
-  ActivityIndicator, 
-  Dimensions, 
+import {
+  View,
+  Text,
+  Animated,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Dimensions,
   StatusBar,
   SafeAreaView,
   StyleSheet,
@@ -32,24 +32,24 @@ import LoadingOverlay from './comp/LoadingOverlay';
 const { width, height } = Dimensions.get('window');
 
 
- export default function OnboardingScreen  ()  {
+export default function OnboardingScreen() {
   const navigation = useNavigation();
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef(null);
-  
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [fontsLoaded, setFontsLoaded] = useState(false);
-  
+
   // Auth state
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Load fonts
   useEffect(() => {
     const loadFonts = async () => {
@@ -64,10 +64,10 @@ const { width, height } = Dimensions.get('window');
         setFontsLoaded(true);
       }
     };
-    
+
     loadFonts();
   }, []);
-  
+
   // Fetch onboarding slides
   useEffect(() => {
     const fetchOnboardingSlides = async () => {
@@ -75,7 +75,7 @@ const { width, height } = Dimensions.get('window');
         setLoading(true);
         setError(null);
         const data = await slidesFetch();
-        
+
         if (data && Array.isArray(data)) {
           setSlides(data);
         } else {
@@ -129,27 +129,27 @@ const { width, height } = Dimensions.get('window');
         setLoading(false);
       }
     };
-    
+
     fetchOnboardingSlides();
   }, []);
-  
+
   // Handle phone number submission
   const handlePhoneSubmit = async () => {
     // Validate phone number
     if (!phoneNumber || !/^\d{10}$/.test(phoneNumber.trim())) {
       Alert.alert(
-        "Invalid Phone Number", 
+        "Invalid Phone Number",
         "Please enter a valid 10-digit phone number.",
         [{ text: "OK", style: "default" }]
       );
       return;
     }
-    
+
     try {
       setIsSubmitting(true);
       const formData = { number: phoneNumber };
       const response = await createUserRegister(formData);
-      
+
       if (response.status === 201 || response.status === 200) {
         setShowPhoneModal(false);
         setShowOtpModal(true);
@@ -161,36 +161,36 @@ const { width, height } = Dimensions.get('window');
         );
       }
     } catch (error) {
-      const errorMessage = error?.response?.data?.message || 
-                          'Unable to send OTP at this time. Please try again later.';
+      const errorMessage = error?.response?.data?.message ||
+        'Unable to send OTP at this time. Please try again later.';
       Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   // Handle OTP verification
   const handleOtpVerify = async () => {
     // Validate OTP
     if (!otp || otp.length !== 6 || !/^\d+$/.test(otp)) {
       Alert.alert(
-        "Invalid OTP", 
+        "Invalid OTP",
         "Please enter the 6-digit OTP sent to your phone.",
         [{ text: "OK", style: "default" }]
       );
       return;
     }
-    
+
     try {
       setIsSubmitting(true);
       const formData = { number: phoneNumber, otp };
       const response = await verify_otp(formData);
-      
+
       if (response.status === 200 && response.token) {
         // Save authentication token
         try {
           await tokenCache.saveToken('auth_token_db', response.token);
-          
+
           // Initialize socket if needed
           if (response.User && response.User._id) {
             await initializeSocket({
@@ -198,7 +198,7 @@ const { width, height } = Dimensions.get('window');
               userId: response.User._id
             });
           }
-          
+
           // Show success message and navigate
           Alert.alert(
             'Success!',
@@ -232,20 +232,20 @@ const { width, height } = Dimensions.get('window');
         );
       }
     } catch (error) {
-      const errorMessage = error?.response?.data?.message || 
-                          'Verification failed. Please try again.';
+      const errorMessage = error?.response?.data?.message ||
+        'Verification failed. Please try again.';
       Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   // Handle slide change
   const handleSlideChange = (event) => {
     const slideIndex = Math.floor(event.nativeEvent.contentOffset.x / width);
     setCurrentIndex(slideIndex);
   };
-  
+
   // Go to next slide
   const goToNextSlide = () => {
     if (currentIndex < slides.length - 1) {
@@ -258,21 +258,22 @@ const { width, height } = Dimensions.get('window');
       setShowPhoneModal(true);
     }
   };
-  
+
   // Skip to last slide
   const skipToEnd = () => {
     flatListRef.current?.scrollToIndex({
       index: slides.length - 1,
       animated: true
     });
+    setShowPhoneModal(true)
   };
-  
+
   // Render individual slide
   const renderSlide = ({ item, index }) => {
     return (
-      <View style={styles.slideContainer}>
+      <View key={index} style={styles.slideContainer}>
         <View
-        
+
           style={styles.imageContainer}
         >
           <Image
@@ -281,9 +282,9 @@ const { width, height } = Dimensions.get('window');
             resizeMode="contain"
           />
         </View>
-        
+
         <View
-          
+
           style={styles.textContainer}
         >
           <Text style={styles.slideTitle}>{item.title}</Text>
@@ -292,7 +293,7 @@ const { width, height } = Dimensions.get('window');
       </View>
     );
   };
-  
+
   // Render pagination dots
   const renderPaginationDots = () => {
     return (
@@ -303,25 +304,25 @@ const { width, height } = Dimensions.get('window');
             index * width,
             (index + 1) * width
           ];
-          
+
           const dotWidth = scrollX.interpolate({
             inputRange,
             outputRange: [10, 20, 10],
             extrapolate: 'clamp'
           });
-          
+
           const opacity = scrollX.interpolate({
             inputRange,
             outputRange: [0.3, 1, 0.3],
             extrapolate: 'clamp'
           });
-          
+
           const backgroundColor = scrollX.interpolate({
             inputRange,
             outputRange: ['#ffb0b5', '#ec363f', '#ffb0b5'],
             extrapolate: 'clamp'
           });
-          
+
           return (
             <Animated.View
               key={index}
@@ -335,7 +336,7 @@ const { width, height } = Dimensions.get('window');
       </View>
     );
   };
-  
+
   // Show loading state
   if (loading || !fontsLoaded) {
     return (
@@ -346,7 +347,7 @@ const { width, height } = Dimensions.get('window');
       </View>
     );
   }
-  
+
   // Show error state
   if (error) {
     return (
@@ -367,11 +368,11 @@ const { width, height } = Dimensions.get('window');
       </View>
     );
   }
-  
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
+
       {/* Skip button */}
       {currentIndex < slides.length - 1 && (
         <TouchableOpacity
@@ -381,7 +382,7 @@ const { width, height } = Dimensions.get('window');
           <Text style={styles.skipButtonText}>Skip</Text>
         </TouchableOpacity>
       )}
-      
+
       {/* Slides */}
       <Animated.FlatList
         ref={flatListRef}
@@ -398,10 +399,10 @@ const { width, height } = Dimensions.get('window');
         scrollEventThrottle={16}
         bounces={false}
       />
-      
+
       {/* Pagination */}
       {renderPaginationDots()}
-      
+
       {/* Action buttons */}
       <View style={styles.bottomContainer}>
         {currentIndex === slides.length - 1 ? (
@@ -434,7 +435,7 @@ const { width, height } = Dimensions.get('window');
           </TouchableOpacity>
         )}
       </View>
-      
+
       {/* Phone Auth Modal */}
       <PhoneAuthModal
         visible={showPhoneModal}
@@ -444,7 +445,7 @@ const { width, height } = Dimensions.get('window');
         onClose={() => setShowPhoneModal(false)}
         isSubmitting={isSubmitting}
       />
-      
+
       {/* OTP Verification Modal */}
       <OtpVerificationModal
         visible={showOtpModal}
@@ -458,7 +459,7 @@ const { width, height } = Dimensions.get('window');
         phoneNumber={phoneNumber}
         isSubmitting={isSubmitting}
       />
-      
+
       {/* Loading Overlay */}
       <LoadingOverlay visible={isSubmitting} />
     </SafeAreaView>
@@ -519,7 +520,7 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     position: 'absolute',
-    top: 20,
+    top: 50,
     right: 20,
     zIndex: 10,
     padding: 8,

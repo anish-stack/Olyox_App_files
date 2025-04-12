@@ -29,6 +29,8 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { initializeSocket } from "../context/socketService"
 import { LocalRideStorage } from "../services/DatabaseService"
 import styles from "./HomeScreen.styles"
+import { useRideStatus } from "../context/CheckRideHaveOrNot.context"
+import ActiveRideButton from "../ActiveRideButton"
 
 const HomeScreen = () => {
   const { isSocketReady, socket } = useSocket()
@@ -40,7 +42,8 @@ const HomeScreen = () => {
   const [location, setLocation] = useState(null)
   const [errorMsg, setErrorMsg] = useState(null)
   const [mapVisible, setMapVisible] = useState(true)
-
+  const [activeRideData, setActiveRideData] = useState(false);
+  const { onRide, updateRideStatus } = useRideStatus();
   const navigation = useNavigation()
 
   // Get current location
@@ -90,21 +93,113 @@ const HomeScreen = () => {
     }
   }, [])
 
-  const handleLogout = useCallback(async () => {
+
+
+  // console.log("Ride From Context",onRide)
+
+  const foundRideDetails = async () => {
+    let temp_ride_id;
+
+
+    if (user_data && user_data.hasOwnProperty('on_ride_id') && user_data.on_ride_id != null) {
+      temp_ride_id = user_data.on_ride_id;
+
+      try {
+
+        const response = await axios.get(`https://demoapi.olyox.com/rider/${temp_ride_id}`);
+        console.log("Ride details:", response.data);
+        if (response.data) {
+          updateRideStatus(true)
+        }
+        setActiveRideData(response.data);
+      } catch (error) {
+        console.error("Error fetching ride details:", error?.response?.data || error.message);
+      }
+    } else {
+      console.log("No active ride found or invalid on_ride_id");
+      // Handle the case where there is no ride or on_ride_id is null
+    }
+  };
+
+
+  useEffect(() => {
+    foundRideDetails()
+  }, [user_data])
+
+
+
+  // console.log("No Id Available",user_data)
+  const handleLogout = useCallback(async (retryCount = 0, maxRetries = 3) => {
     try {
-      await SecureStore.deleteItemAsync("auth_token_cab")
-      await SecureStore.deleteItemAsync("isOnline")
+      // First, delete secure storage items regardless of connection state
+      await SecureStore.deleteItemAsync("auth_token_cab");
+      await SecureStore.deleteItemAsync("isOnline");
+
+  
+      if (!user_data?._id) {
+        console.log("No user ID available", user_data);
+        // Even without ID, we should reset to Onboarding since tokens are deleted
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Onboarding" }],
+        });
+        return;
+      }
+
+      // Attempt the logout API call
+      const response = await axios.get(`https://demoapi.olyox.com/api/v1/rider/rider-logout/${user_data._id}`);
+      console.log("Logout successful:", response.data);
+
+      // On success, reset navigation and exit
       navigation.reset({
         index: 0,
         routes: [{ name: "Onboarding" }],
-      })
+      });
 
-      BackHandler.exitApp()
+      BackHandler.exitApp();
     } catch (error) {
-      console.error("Logout Error:", error)
+      console.error(`Logout Error (Attempt ${retryCount + 1}):`, error);
+
+      // If we haven't reached max retries, try again after 4 seconds
+      if (retryCount < maxRetries) {
+        console.log(`Retrying logout in 4 seconds... (Attempt ${retryCount + 1}/${maxRetries})`);
+
+        // Schedule retry after 4 seconds
+        setTimeout(() => {
+          handleLogout(retryCount + 1, maxRetries);
+        }, 4000);
+      } else {
+        // If we've reached max retries, show only the specific server error message
+        const errorMessage =
+          error?.response?.data?.message && error?.response?.data?.message !== "undefined"
+            ? error.response.data.message
+            : "Please try again. If you have an ongoing ride, please complete it first.";
+
+        Alert.alert(
+          "Unable to Logout",
+          errorMessage,
+          [
+            {
+              text: "Try Again",
+              onPress: () => handleLogout(0, maxRetries)
+            },
+            {
+              text: "Force Logout",
+              onPress: () => {
+                // Force navigation reset even if API call failed
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: "Onboarding" }],
+                });
+              }
+            }
+          ]
+        );
+      }
+    } finally {
+      setMenuVisible(false);
     }
-    setMenuVisible(false)
-  }, [navigation])
+  }, [navigation, user_data]);
 
   const handleHardReconnect = async (id) => {
     try {
@@ -218,28 +313,6 @@ const HomeScreen = () => {
   }
 
 
-  // useEffect(() => {
-  //   const checkNewRideCome = async () => {
-  //     if (!isSocketReady || !socket) return;
-
-  //     socket.on('ride_come', (data) => {
-  //       if (data) {
-  //         console.log("Ride data received:", data);
-
-  //         navigation.navigate('NewRideScreen');
-  //       }
-  //     });
-  //   };
-
-  //   checkNewRideCome();
-
-  //   // Cleanup listener on unmount
-  //   return () => {
-  //     if (socket) {
-  //       socket.off('ride_come');
-  //     }
-  //   };
-  // }, [isSocketReady, socket]);
 
   // Memoized components for better performance
   const ConnectionStatus = useMemo(() => {
@@ -312,8 +385,13 @@ const HomeScreen = () => {
             </View>
             <Text style={styles.statusLabel}>Status</Text>
             <Text style={[styles.statusValue, { color: user_data?.isAvailable ? "#4CAF50" : "#F44336" }]}>
-              {user_data?.isAvailable ? "Online" : "Offline"}
+              {user_data?.isAvailable
+                ? "Online"
+                : user_data?.on_ride_id
+                  ? "You are on a ride"
+                  : "Offline"}
             </Text>
+
           </View>
 
           <View style={styles.statusItem}>
@@ -372,11 +450,10 @@ const HomeScreen = () => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Driver Dashboard</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => { }} style={styles.headerButton}>
-            <MaterialCommunityIcons name="bell" size={24} color="#212121" />
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationCount}>0</Text>
-            </View>
+          <TouchableOpacity >
+            {onRide && (
+              <ActiveRideButton rideDetails={activeRideData} />
+            )}
           </TouchableOpacity>
           <TouchableOpacity onPress={() => hardClear()} style={styles.headerButton}>
             <MaterialCommunityIcons name="reload" size={24} color="#212121" />
@@ -417,19 +494,66 @@ const HomeScreen = () => {
             {StatusCard}
 
             <TouchableOpacity
-              style={[styles.onlineToggle, { backgroundColor: isOnline ? "#E8F5E9" : "#FFEBEE" }]}
+              style={[
+                styles.onlineToggle,
+                {
+                  backgroundColor: loading
+                    ? "#F5F5F5"
+                    : isOnline
+                      ? "#E8F5E9"
+                      : user_data?.on_ride_id
+                        ? "#FFF3E0" // light orange for "Ride In Progress"
+                        : "#FFEBEE"
+                }
+              ]}
               onPress={toggleOnlineStatus}
               disabled={loading}
             >
               <MaterialCommunityIcons
-                name={isOnline ? "car" : "car-off"}
+                name={
+                  loading
+                    ? "progress-clock"
+                    : isOnline
+                      ? "car"
+                      : user_data?.on_ride_id
+                        ? "steering" // or "car-wrench" or "clock"
+                        : "car-off"
+                }
                 size={24}
-                color={isOnline ? "#43A047" : "#E53935"}
+                color={
+                  loading
+                    ? "#757575"
+                    : isOnline
+                      ? "#43A047"
+                      : user_data?.on_ride_id
+                        ? "#FB8C00" // orange
+                        : "#E53935"
+                }
               />
-              <Text style={[styles.onlineToggleText, { color: isOnline ? "#43A047" : "#E53935" }]}>
-                {loading ? "Updating..." : isOnline ? "Go Offline" : "Go Online"}
+              <Text
+                style={[
+                  styles.onlineToggleText,
+                  {
+                    color: loading
+                      ? "#757575"
+                      : isOnline
+                        ? "#43A047"
+                        : user_data?.on_ride_id
+                          ? "#FB8C00"
+                          : "#E53935"
+                  }
+                ]}
+              >
+                {loading
+                  ? "Updating..."
+                  : isOnline
+                    ? "Go Offline"
+                    : user_data?.on_ride_id
+                      ? "Ride In Progress"
+                      : "Go Online"}
               </Text>
             </TouchableOpacity>
+
 
             <TouchableOpacity
               style={[styles.reconnectButton, { backgroundColor: isSocketReady ? "#E3F2FD" : "#FFEBEE" }]}

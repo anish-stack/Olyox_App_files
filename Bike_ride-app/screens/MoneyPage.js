@@ -21,6 +21,7 @@ import { BlurView } from 'expo-blur';
 import { LocalRideStorage } from '../services/DatabaseService';
 import * as Updates from "expo-updates";
 import * as Haptics from 'expo-haptics';
+import { useRideStatus } from '../context/CheckRideHaveOrNot.context';
 
 const { width } = Dimensions.get('window');
 const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
@@ -31,6 +32,7 @@ export default function MoneyPage() {
     const route = useRoute();
     const { socket } = useSocket();
     const { data } = route.params || {};
+    const { updateRideStatus} = useRideStatus()
 
     const [state, setState] = useState({
         userData: null,
@@ -179,7 +181,7 @@ export default function MoneyPage() {
 
 
             setState(prev => ({ ...prev, isRideRate: true }));
-
+            updateRideStatus(false);
             setTimeout(async () => {
                 navigation.dispatch(
                     CommonActions.reset({
@@ -195,7 +197,7 @@ export default function MoneyPage() {
                     : error?.message || JSON.stringify(error);
 
             async function reload() {
-                await Updates.reloadAsync();
+                // await Updates.reloadAsync();
                 navigation.dispatch(
                     CommonActions.reset({
                         index: 0,

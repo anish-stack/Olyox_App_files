@@ -23,16 +23,16 @@ import Animated, {
 import { useNavigation } from '@react-navigation/native';
 
 const DOCUMENTS = [
-  { id: 'dl', title: 'Driver\'s License', label:'Driver\'s License', icon: 'car-outline' },
-  { id: 'rc', title: 'Registration Certificate',label:'Registration Certificate', icon: 'document-text-outline' },
-  { id: 'insurance', title: 'Insurance',label:'Insurance', icon: 'card-outline' },
-  { id: 'aadharFront', title: 'aadharFront', label:'Front Side Of Aadhar',icon: 'card-outline' },
-  { id: 'aadharBack', title: 'aadharBack',label:'Back Side Of Aadhar', icon: 'card-outline' },
-  { id: 'pancard', title: 'pancard', label:'Pan Card', icon: 'card-outline' },
-  { id: 'profile', title: 'profile', label:'Profile Image', icon: 'person' },
+  { id: 'dl', title: 'Driver\'s License', label: 'Driver\'s License', icon: 'car-outline' },
+  { id: 'rc', title: 'Registration Certificate', label: 'Registration Certificate', icon: 'document-text-outline' },
+  { id: 'insurance', title: 'Insurance', label: 'Insurance', icon: 'card-outline' },
+  { id: 'aadharFront', title: 'aadharFront', label: 'Front Side Of Aadhar', icon: 'card-outline' },
+  { id: 'aadharBack', title: 'aadharBack', label: 'Back Side Of Aadhar', icon: 'card-outline' },
+  { id: 'pancard', title: 'pancard', label: 'Pan Card', icon: 'card-outline' },
+  { id: 'profile', title: 'profile', label: 'Profile Image', icon: 'person' },
 ];
 
-const API_URL = 'demoapi.olyox.com/api/v1/rider/rider-upload';
+const API_URL = 'https://demoapi.olyox.com/api/v1/rider/rider-upload';
 
 export default function Documents() {
   const [images, setImages] = useState({});
@@ -101,7 +101,7 @@ export default function Documents() {
       })
       console.log("logout done ✔️")
     } catch (error) {
-      console.log("logout Error ✔️",error)
+      console.log("logout Error ✔️", error)
     }
   }
 
@@ -183,9 +183,21 @@ export default function Documents() {
         <Text style={styles.subtitle}>
           Please upload clear photos of your documents
         </Text>
-        <TouchableOpacity onPress={()=>onLogin()}>
-          <Text>Login</Text>
+        <TouchableOpacity
+          onPress={() => onLogin()}
+          style={{
+            backgroundColor: '#0d6efd',
+            paddingVertical: 12,
+            paddingHorizontal: 24,
+            borderRadius: 8,
+            alignItems: 'center'
+          }}
+        >
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>
+            Login
+          </Text>
         </TouchableOpacity>
+
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -196,6 +208,10 @@ export default function Documents() {
               entering={SlideInRight.delay(index * 200)}
               style={styles.documentCard}
             >
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#333' }}>
+                {doc.label}
+              </Text>
+
               <TouchableOpacity
                 style={[
                   styles.uploadArea,

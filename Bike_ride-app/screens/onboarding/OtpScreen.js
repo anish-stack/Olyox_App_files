@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Alert, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, Alert, TouchableOpacity, ActivityIndicator } from "react-native";
 import Input from "../../components/Input";
 import Button from "../../components/Button";
 import axios from 'axios';
@@ -12,7 +12,9 @@ const OtpScreen = ({ onVerify, number }) => {
   const [otp, setOtp] = useState("");
   const [timer, setTimer] = useState(30);
   const [isResendDisabled, setIsResendDisabled] = useState(false);
-  const navigation = useNavigation()
+  const [isVerifying, setIsVerifying] = useState(false);
+  const navigation = useNavigation();
+
   useEffect(() => {
     let interval;
     if (isResendDisabled && timer > 0) {
@@ -25,7 +27,6 @@ const OtpScreen = ({ onVerify, number }) => {
     return () => clearInterval(interval);
   }, [isResendDisabled, timer]);
 
-
   const initializeConnection = async (maxRetries = 4, retryDelay = 2000, userId) => {
     let attempts = 0;
 
@@ -35,12 +36,10 @@ const OtpScreen = ({ onVerify, number }) => {
           userType: 'driver',
           userId: userId
         });
-        // console.log(data)
 
         if (data?.connected) {
           console.log('Socket connected successfully:', data);
-          navigation.navigate('Home');
-          return; 
+          return true;
         }
       } catch (error) {
         console.error(`Socket connection failed (Attempt ${attempts + 1}):`, error);
@@ -53,21 +52,33 @@ const OtpScreen = ({ onVerify, number }) => {
       }
     }
 
-    // If all attempts fail, show an alert
-    Alert.alert('Connection Failed', 'Unable to connect to the server. Please try again later.');
+    console.log("All socket connection attempts failed");
+    return false;
+  };
+
+  const handleOtpChange = (text) => {
+    // Only accept numbers and limit to 6 digits
+    const numericValue = text.replace(/[^0-9]/g, '');
+    if (numericValue.length <= 6) {
+      setOtp(numericValue);
+    }
   };
 
   const handleOtpVerify = async () => {
-    console.log(
+    // Validate OTP length
+    if (otp.length !== 6) {
+      Alert.alert("Invalid OTP", "Please enter a 6-digit OTP");
+      return;
+    }
 
-      otp, number
-    )
+    setIsVerifying(true);
+    
     try {
       const response = await axios.post(
         'https://demoapi.olyox.com/api/v1/rider/rider-verify',
         { otp, number }
       );
-      console.log("response.data", response.data)
+      
       if (response.data.success) {
         const token = response.data.token;
         const type = response.data.redirect?.type;
@@ -77,30 +88,38 @@ const OtpScreen = ({ onVerify, number }) => {
 
         await SecureStore.setItemAsync('auth_token_cab', token);
 
-        console.log(response.data)
         // 🚀 Improved Navigation Logic
         if (!accountStatus) {
+          setIsVerifying(false);
           navigation.navigate('UploadDocuments');
         } else if (!isDocumentUpload) {
+          setIsVerifying(false);
           navigation.navigate('UploadDocuments');
         } else if (!DocumentVerify) {
+          setIsVerifying(false);
           navigation.navigate('Wait_Screen');
         } else {
-          await initializeConnection(5, 6000, response?.data?.user)
+          // Try to connect socket
+          const socketConnected = await initializeConnection(5, 6000, response?.data?.user);
+          setIsVerifying(false);
+          
+          // Navigate to Home regardless of socket connection status
+          navigation.navigate('Home');
         }
 
         onVerify();
       } else {
+        setIsVerifying(false);
         console.log("OTP verification failed:", response.data.message);
         Alert.alert("Error", response.data.message);
-        navigation.navigate('Onboard'); // Ensure `Onboard` is correct
+        navigation.navigate('Onboard');
       }
     } catch (error) {
+      setIsVerifying(false);
       Alert.alert('Error', error?.response?.data?.message || "Something went wrong");
       console.error("Error during OTP verification:", error);
     }
   };
-
 
   const handleResendOtp = async () => {
     try {
@@ -127,15 +146,27 @@ const OtpScreen = ({ onVerify, number }) => {
       <Text style={styles.subtitle}>OTP sent to your WhatsApp number {number}</Text>
 
       <Input
-        placeholder="Enter OTP"
+        placeholder="Enter 6-digit OTP"
         value={otp}
-        onChangeText={setOtp}
+        onChangeText={handleOtpChange}
         keyboardType="numeric"
         icon="numeric"
         style={styles.input}
+        maxLength={6}
       />
 
-      <Button title="Verify OTP" onPress={handleOtpVerify} style={styles.verifyButton} />
+      {isVerifying ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#e51e25" />
+          <Text style={styles.loadingText}>Verifying OTP...</Text>
+        </View>
+      ) : (
+        <Button 
+          title="Verify OTP" 
+          onPress={handleOtpVerify} 
+          style={styles.verifyButton} 
+        />
+      )}
 
       <View style={styles.resendContainer}>
         <Text style={styles.timerText}>
@@ -143,8 +174,11 @@ const OtpScreen = ({ onVerify, number }) => {
         </Text>
         <TouchableOpacity
           onPress={handleResendOtp}
-          disabled={isResendDisabled}
-          style={[styles.resendButton, isResendDisabled && styles.disabledButton]}
+          disabled={isResendDisabled || isVerifying}
+          style={[
+            styles.resendButton, 
+            (isResendDisabled || isVerifying) && styles.disabledButton
+          ]}
         >
           <Text style={styles.resendButtonText}>Resend OTP</Text>
         </TouchableOpacity>
@@ -210,6 +244,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#ffffff",
   },
+  loadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    width: "100%",
+    paddingVertical: 15,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#e51e25",
+  }
 });
 
 export default OtpScreen;

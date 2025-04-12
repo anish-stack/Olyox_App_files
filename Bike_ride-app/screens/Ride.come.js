@@ -13,6 +13,7 @@ import { useLocation } from '../context/LocationContext';
 import axios from 'axios';
 import { decode } from '@mapbox/polyline';
 import LottieView from 'lottie-react-native';
+import { useRideStatus } from '../context/CheckRideHaveOrNot.context';
 
 const { width, height } = Dimensions.get('window');
 const RIDE_REQUEST_TIMEOUT = 120000;
@@ -58,6 +59,8 @@ export default function RideRequestScreen() {
     const timeoutRef = useRef(null);
     const soundLoopRef = useRef(null);
     const countdownIntervalRef = useRef(null);
+      const { onRide, updateRideStatus } = useRideStatus(); 
+    
 
     useEffect(() => {
         if (rideData?.polyline) {
@@ -390,11 +393,15 @@ export default function RideRequestScreen() {
                     });
 
                     showSnackbar("Ride accepted successfully");
+                    updateRideStatus(true)
                 } else {
+                    updateRideStatus(false)
                     throw new Error("Could not match rider details");
                 }
             }
         } catch (error) {
+            updateRideStatus(false)
+
             console.error('Error accepting ride:', error);
             showSnackbar("Failed to accept ride. Please try again.");
         } finally {
@@ -421,6 +428,7 @@ export default function RideRequestScreen() {
 
                     if (driver && rideDetails) {
                         console.log("rider_confirm_message i am inside");
+                        updateRideStatus(true)
 
                         navigation.dispatch(
                             CommonActions.navigate({

@@ -41,17 +41,17 @@ const ActiveRideButton = ({ rideDetails }) => {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    bottom: 20,
-    right: 20,
-    zIndex: 1000,
-  },
+  // container: {
+  //   position: "absolute",
+  //   bottom: 0,
+  //   right: 20,
+  //   zIndex: 1000,
+  // },
   button: {
     backgroundColor: "#FF3B30",
     borderRadius: 30,
-    width: 50,
-    height: 50,
+    width: 30,
+    height: 30,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",

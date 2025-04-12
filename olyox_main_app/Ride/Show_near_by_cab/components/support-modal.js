@@ -125,18 +125,22 @@ export const SupportModal = React.memo(({
                             <Text style={styles.emergencyText}>Call Support</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={styles.emergencyOption}
-                            onPress={() => {
-                                setVisible(false);
-                                setCancelModel(true);
-                            }}
-                        >
-                            <View style={[styles.emergencyIconContainer, { backgroundColor: '#EF4444' }]}>
-                                <MaterialCommunityIcons name="close" size={28} color="#fff" />
-                            </View>
-                            <Text style={styles.emergencyText}>Cancel Ride</Text>
-                        </TouchableOpacity>
+
+                        {!rideStart && (
+                            <TouchableOpacity
+                                style={styles.emergencyOption}
+                                onPress={() => {
+                                    setVisible(false);
+                                    setCancelModel(true);
+                                }}
+                            >
+                                <View style={[styles.emergencyIconContainer, { backgroundColor: '#EF4444' }]}>
+                                    <MaterialCommunityIcons name="close" size={28} color="#fff" />
+                                </View>
+                                <Text style={styles.emergencyText}>Cancel Ride</Text>
+                            </TouchableOpacity>
+                        )}
+
                     </View>
 
                     <TouchableOpacity
@@ -174,7 +178,7 @@ export const SupportModal = React.memo(({
                             onPress={handleEndRide}
                         >
                             <MaterialCommunityIcons name="car" size={20} color="#fff" />
-                            <Text style={styles.shareLocationText}> {rideLoadingEnd ? 'Please Wait While We Confirm With Rider ...':'Mark Your Ride Complete'}</Text>
+                            <Text style={styles.shareLocationText}> {rideLoadingEnd ? 'Please Wait While We Confirm With Rider ...' : 'Mark Your Ride Complete'}</Text>
                         </TouchableOpacity>
                     )}
                 </View>
