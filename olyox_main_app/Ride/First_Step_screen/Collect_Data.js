@@ -20,7 +20,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context"
 import axios from "axios"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps"
+import MapView, { Marker, PROVIDER_DEFAULT, PROVIDER_GOOGLE, Polyline } from "react-native-maps"
+import PolylineDecoder from '@mapbox/polyline';
 import MapViewDirections from "react-native-maps-directions"
 import * as Location from "expo-location"
 import { useNavigation } from "@react-navigation/native"
@@ -114,7 +115,11 @@ const CollectData = () => {
   const scrollViewRef = useRef(null)
   const loadingAnimation = useRef(new Animated.Value(0)).current
   const navigation = useNavigation()
-
+  const isIOS = Platform.OS === 'ios';
+  const isAndroid = Platform.OS === 'android';
+  const [distance, setDistance] = useState(null);
+  const [duration, setDuration] = useState(null);
+  const [coordinates, setCoordinates] = useState([]);
   const [state, setState] = useState({
     pickup: "",
     dropoff: "",
@@ -265,7 +270,7 @@ const CollectData = () => {
     setState((prev) => ({ ...prev, isFetchingLocation: true, error: "" }))
     try {
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Highest, 
+        accuracy: Location.Accuracy.Highest,
         timeInterval: 5000, // Update every 5 seconds
         distanceInterval: 10, // Update every 10 meters
       })
@@ -526,6 +531,50 @@ const CollectData = () => {
     Keyboard.dismiss()
   }
 
+
+  useEffect(() => {
+    const fetchDirections = async () => {
+      try {
+        console.log("Fetching directions...");
+
+        // Prepare the pickup and dropoff data
+        const pickup = {
+          latitude: rideData?.pickup?.latitude,
+          longitude: rideData?.pickup?.longitude
+        };
+        const dropoff = {
+          latitude: rideData?.dropoff?.latitude,
+          longitude: rideData?.dropoff?.longitude
+        };
+
+        // Send the pickup and dropoff coordinates to your backend API
+        const response = await axios.post('https://demoapi.olyox.com/directions', { pickup, dropoff });
+
+        const json = response.data;
+        console.log("Fetching directions json...", json);
+
+        if (json?.polyline) {
+          const decodedCoords = PolylineDecoder.decode(json.polyline).map(([lat, lng]) => ({
+            latitude: lat,
+            longitude: lng,
+          }));
+          setCoordinates(decodedCoords);
+        }
+
+        if (json?.distance) setDistance(json.distance);
+        if (json?.duration) setDuration(json.duration);
+      } catch (err) {
+        console.error("Error fetching directions:", err.response.data);
+      }
+    };
+
+    // Only fetch directions if rideData is available and valid
+    if (rideData?.pickup?.latitude && rideData?.pickup?.longitude && rideData?.dropoff?.latitude && rideData?.dropoff?.longitude) {
+      fetchDirections();
+    }
+  }, [rideData]); // Dependency array includes rideData so it refetches when it changes.
+
+
   const fitMapToMarkers = () => {
     if (!mapRef.current || !rideData.pickup.latitude || !rideData.dropoff.latitude) return
 
@@ -546,6 +595,7 @@ const CollectData = () => {
       },
     )
   }
+  // console.log(rideData)
 
   const handleSubmit = () => {
     if (!rideData.pickup.latitude || !rideData.dropoff.latitude) {
@@ -582,9 +632,14 @@ const CollectData = () => {
 
         <MapView
           ref={mapRef}
-          provider={PROVIDER_GOOGLE}
+          provider={isAndroid ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}  // Use Google Maps on Android, default (Apple Maps) on iOS
           style={Styles.map}
-          region={region}
+          region={{
+            latitude: 28.7041,
+            longitude: 77.1025,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }}
           customMapStyle={mapStyle}
           onRegionChangeComplete={handleMapRegionChange}
           showsUserLocation
@@ -592,6 +647,10 @@ const CollectData = () => {
           showsCompass
           minZoomLevel={5} // Prevent zooming out too far
           maxZoomLevel={18} // Prevent zooming in too far
+          {...(isIOS && {
+            // iOS-specific properties
+            showsTraffic: true,  // Enable traffic layer on iOS
+          })}
         >
           <Marker
             coordinate={{
@@ -599,7 +658,7 @@ const CollectData = () => {
               longitude: region.longitude,
             }}
             pinColor={state.mapType === "pickup" ? "green" : "red"}
-            opacity={0} // Hide the default marker as we're using a custom one
+            opacity={1} // Set opacity to 1 to make the marker visible
           />
         </MapView>
 
@@ -832,7 +891,7 @@ const CollectData = () => {
           <View style={Styles.previewMapContainer}>
             <MapView
               ref={mapRef}
-              provider={PROVIDER_GOOGLE}
+              provider={Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
               style={Styles.previewMap}
               initialRegion={region}
               customMapStyle={mapStyle}
@@ -871,27 +930,42 @@ const CollectData = () => {
                 </View>
               </Marker>
 
+              {Platform.OS === "ios" ? (
+                coordinates.length > 0 && (
+                  <Polyline
+                    coordinates={coordinates}
+                    strokeWidth={4}
+                    strokeColor="#000000"
+                  />
+                )
+              ) : (
+                <MapViewDirections
+                  origin={{
+                    latitude: rideData.pickup.latitude,
+                    longitude: rideData.pickup.longitude,
+                  }}
+                  destination={{
+                    latitude: rideData.dropoff.latitude,
+                    longitude: rideData.dropoff.longitude,
+                  }}
+                  apikey={'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8'}
+                  strokeWidth={4}
+                  strokeColor="#000000"
+                  lineDashPattern={[0]}
+                  mode="DRIVING"
+                  onReady={(result) => {
+                    console.log(`Distance: ${result.distance} km`)
+                    console.log(`Duration: ${result.duration} min`)
+                  }}
+                  onError={(errorMessage) => {
+                    console.warn('MapViewDirections Error:', errorMessage);
+                  }}
+                />
+              )}
+
+
               {/* Route line */}
-              <MapViewDirections
-                origin={{
-                  latitude: rideData.pickup.latitude,
-                  longitude: rideData.pickup.longitude,
-                }}
-                destination={{
-                  latitude: rideData.dropoff.latitude,
-                  longitude: rideData.dropoff.longitude,
-                }}
-                apikey={GOOGLE_MAPS_APIKEY}
-                strokeWidth={4}
-                strokeColor="#000000"
-                lineDashPattern={[0]}
-                mode="DRIVING"
-                onReady={(result) => {
-                  // Store distance and duration if needed
-                  console.log(`Distance: ${result.distance} km`)
-                  console.log(`Duration: ${result.duration} min`)
-                }}
-              />
+
             </MapView>
 
             <View style={Styles.mapOverlayInfo}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,24 +8,22 @@ import {
   ActivityIndicator,
   Linking,
   StatusBar,
-  Animated,
   Platform,
+  ScrollView,
+  Dimensions,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import axios from 'axios';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Phone, MapPin, Star, Clock, Leaf, CircleAlert as AlertCircle, ArrowLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Food_Card from '../Food_Card/Food_Card';
 import SuperFicial from '../../SuperFicial/SuperFicial';
 import { useFood } from '../../context/Food_Context/Food_context';
 
-const BANNER_HEIGHT = 280;
-const HEADER_MAX_HEIGHT = 60;
-const HEADER_MIN_HEIGHT = 0;
-const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
-
 const DEFAULT_IMAGE = "https://i.ibb.co/rGcJwG34/Hotel-2.png";
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const BANNER_HEIGHT = 280;
 
 export default function Restaurant() {
   const route = useRoute();
@@ -36,8 +34,8 @@ export default function Restaurant() {
   const [foods, setFoods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
-  const scrollY = new Animated.Value(0);
 
   const fetchFoods = useCallback(async () => {
     setLoading(true);
@@ -61,15 +59,15 @@ export default function Restaurant() {
     fetchFoods();
   }, [fetchFoods]);
 
-  const handleCall = () => {
+  const handleCall = useCallback(() => {
     if (details?.restaurant_phone) {
       Linking.openURL(`tel:${details.restaurant_phone}`);
     }
-  };
+  }, [details?.restaurant_phone]);
 
   const HeaderComponent = Platform.select({
     ios: BlurView,
-    default: Animated.View
+    default: View
   });
 
   const headerProps = Platform.select({
@@ -77,111 +75,101 @@ export default function Restaurant() {
     default: {}
   });
 
+  const restaurantInfo = useMemo(() => ({
+    name: details?.restaurant_name || 'Restaurant',
+    rating: details?.rating || 'New',
+    category: details?.restaurant_category || 'Restaurant',
+    isOpen: details?.isWorking || false,
+    deliveryTime: details?.minDeliveryTime || '30-40 min',
+    priceForTwo: details?.priceForTwoPerson || '500',
+    address: details?.restaurant_address?.street 
+      ? `${details.restaurant_address.street}, ${details.restaurant_address.city}`
+      : 'Address not available'
+  }), [details]);
+
   const renderHeader = () => (
     <HeaderComponent
-      style={[
-        styles.header,
-        {
-          opacity: scrollY.interpolate({
-            inputRange: [0, HEADER_SCROLL_DISTANCE],
-            outputRange: [0, 1],
-          }),
-        },
-      ]}
+      style={styles.header}
       {...headerProps}
     >
-      <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
-        <Icon name="arrow-left" size={24} color="#000" />
-      </TouchableOpacity>
-      <Animated.Text
-        style={[
-          styles.headerTitle,
-          {
-            opacity: scrollY.interpolate({
-              inputRange: [0, HEADER_SCROLL_DISTANCE],
-              outputRange: [0, 1],
-            }),
-          },
-        ]}
-        numberOfLines={1}
+      <TouchableOpacity 
+        style={styles.headerButton} 
+        onPress={() => navigation.goBack()}
       >
-        {details?.restaurant_name}
-      </Animated.Text>
-      <TouchableOpacity style={styles.headerButton} onPress={handleCall}>
-        <Icon name="phone" size={24} color="#000" />
+        <ArrowLeft size={24} color="#000" />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle} numberOfLines={1}>
+        {restaurantInfo.name}
+      </Text>
+      <TouchableOpacity 
+        style={styles.headerButton} 
+        onPress={handleCall}
+      >
+        <Phone size={24} color="#000" />
       </TouchableOpacity>
     </HeaderComponent>
   );
 
   const renderBanner = () => (
-    <Animated.View
-      style={[
-        styles.bannerContainer,
-        {
-          transform: [
-            {
-              translateY: scrollY.interpolate({
-                inputRange: [0, HEADER_SCROLL_DISTANCE],
-                outputRange: [0, -HEADER_SCROLL_DISTANCE / 2],
-                extrapolate: 'clamp',
-              }),
-            },
-          ],
-        },
-      ]}
-    >
+    <View style={styles.bannerContainer}>
       <Image
-        source={{
-          uri: imageError ? DEFAULT_IMAGE :
-            details?.logo?.url && details.logo.url !== "" ?
-              details.logo.url : DEFAULT_IMAGE
-        }}
+        source={{ uri: imageError ? DEFAULT_IMAGE : details?.logo?.url || DEFAULT_IMAGE }}
         style={styles.bannerImage}
-        onError={() => setImageError(true)}
+        onLoadStart={() => setImageLoading(true)}
+        onLoadEnd={() => setImageLoading(false)}
+        onError={() => {
+          setImageError(true);
+          setImageLoading(false);
+        }}
       />
+      {imageLoading && (
+        <View style={styles.imageLoadingContainer}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      )}
       <LinearGradient
         colors={['transparent', 'rgba(0,0,0,0.8)']}
         style={styles.bannerGradient}
       >
         <View style={styles.bannerContent}>
-          <Text style={styles.restaurantName}>{details?.restaurant_name}</Text>
+          <Text style={styles.restaurantName}>{restaurantInfo.name}</Text>
           <View style={styles.bannerInfo}>
             <View style={styles.ratingBadge}>
-              <Icon name="star" size={16} color="#FFD700" />
-              <Text style={styles.ratingText}>{details?.rating || 'New'}</Text>
+              <Star size={16} color="#FFD700" />
+              <Text style={styles.ratingText}>{restaurantInfo.rating}</Text>
             </View>
             <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{details?.restaurant_category}</Text>
+              <Text style={styles.categoryText}>{restaurantInfo.category}</Text>
             </View>
-            {details?.isWorking && (
+            {restaurantInfo.isOpen && (
               <View style={styles.openBadge}>
-                <Icon name="clock-check-outline" size={14} color="#4CAF50" />
+                <Clock size={14} color="#4CAF50" />
                 <Text style={styles.openText}>Open Now</Text>
               </View>
             )}
           </View>
         </View>
       </LinearGradient>
-    </Animated.View>
+    </View>
   );
 
   const renderQuickInfo = () => (
     <View style={styles.quickInfoContainer}>
       <View style={styles.quickInfoItem}>
-        <Icon name="clock-outline" size={20} color="#666" />
-        <Text style={styles.quickInfoText}>{details?.minDeliveryTime}</Text>
+        <Clock size={20} color="#666" />
+        <Text style={styles.quickInfoText}>{restaurantInfo.deliveryTime}</Text>
         <Text style={styles.quickInfoLabel}>Delivery Time</Text>
       </View>
       <View style={styles.quickInfoDivider} />
       <View style={styles.quickInfoItem}>
-        <Icon name="currency-inr" size={20} color="#666" />
-        <Text style={styles.quickInfoText}>₹{details?.priceForTwoPerson}</Text>
+        <Text style={styles.currencySymbol}>₹</Text>
+        <Text style={styles.quickInfoText}>{restaurantInfo.priceForTwo}</Text>
         <Text style={styles.quickInfoLabel}>For Two</Text>
       </View>
       <View style={styles.quickInfoDivider} />
       <View style={styles.quickInfoItem}>
-        <Icon name="star" size={20} color="#666" />
-        <Text style={styles.quickInfoText}>{details?.rating || 'New'}</Text>
+        <Star size={20} color="#666" />
+        <Text style={styles.quickInfoText}>{restaurantInfo.rating}</Text>
         <Text style={styles.quickInfoLabel}>Rating</Text>
       </View>
     </View>
@@ -189,9 +177,9 @@ export default function Restaurant() {
 
   const renderDetails = () => (
     <View style={styles.detailsContainer}>
-      {!details?.isWorking && (
+      {!restaurantInfo.isOpen && (
         <View style={styles.closedBanner}>
-          <Icon name="clock-alert-outline" size={20} color="#fff" />
+          <Clock size={20} color="#fff" />
           <Text style={styles.closedText}>
             Currently Closed • Opens at {details?.openingHours?.split('-')[0]}
           </Text>
@@ -204,21 +192,19 @@ export default function Restaurant() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Location & Contact</Text>
           <TouchableOpacity onPress={handleCall} style={styles.callButton}>
-            <Icon name="phone" size={18} color="#fff" />
+            <Phone size={18} color="#fff" />
             <Text style={styles.callButtonText}>Call</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.addressContent}>
-          <Icon name="map-marker" size={20} color="#666" />
-          <Text style={styles.addressText}>
-            {`${details?.restaurant_address?.street}, ${details?.restaurant_address?.city}`}
-          </Text>
+          <MapPin size={20} color="#666" />
+          <Text style={styles.addressText}>{restaurantInfo.address}</Text>
         </View>
       </View>
 
-      {details?.restaurant_category === "Veg" && (
+      {restaurantInfo.category === "Veg" && (
         <View style={styles.vegBadge}>
-          <Icon name="leaf" size={16} color="#4CAF50" />
+          <Leaf size={16} color="#4CAF50" />
           <Text style={styles.vegText}>Pure Vegetarian Restaurant</Text>
         </View>
       )}
@@ -232,7 +218,7 @@ export default function Restaurant() {
         {foods.map((item) => (
           <Food_Card
             key={item._id}
-            isAddAble={details?.isWorking}
+            isAddAble={restaurantInfo.isOpen}
             item={item}
           />
         ))}
@@ -252,7 +238,7 @@ export default function Restaurant() {
   if (error) {
     return (
       <View style={styles.errorContainer}>
-        <Icon name="alert-circle-outline" size={48} color="#E23744" />
+        <AlertCircle size={48} color="#E23744" />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchFoods}>
           <Text style={styles.retryButtonText}>Try Again</Text>
@@ -265,18 +251,15 @@ export default function Restaurant() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       {renderHeader()}
-      <Animated.ScrollView
+      <ScrollView
         showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
+        bounces={Platform.OS === 'ios'}
+        overScrollMode={Platform.OS === 'android' ? 'never' : undefined}
       >
         {renderBanner()}
         {renderDetails()}
         {renderMenu()}
-      </Animated.ScrollView>
+      </ScrollView>
       <SuperFicial cart={cart} restaurant_id={details} totalAmount={400} />
     </View>
   );
@@ -289,13 +272,13 @@ const styles = StyleSheet.create({
   },
   header: {
     position: 'absolute',
-    top: -30,
+    top: 0,
     left: 0,
     right: 0,
-    height: 60 + (Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0),
+    height: Platform.OS === 'ios' ? 88 : 60,
     paddingTop: Platform.OS === 'ios' ? 44 : StatusBar.currentHeight,
     backgroundColor: Platform.select({
-      ios: 'transparent',
+      ios: 'rgba(255,255,255,0.85)',
       default: '#fff'
     }),
     flexDirection: 'row',
@@ -310,22 +293,19 @@ const styles = StyleSheet.create({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.1,
         shadowRadius: 8,
       },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-      }
     }),
   },
   headerButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff',
+    backgroundColor: Platform.select({
+      ios: 'rgba(255,255,255,0.9)',
+      default: '#fff'
+    }),
     justifyContent: 'center',
     alignItems: 'center',
     ...Platform.select({
@@ -350,12 +330,23 @@ const styles = StyleSheet.create({
   },
   bannerContainer: {
     height: BANNER_HEIGHT,
-    width: '100%',
+    width: SCREEN_WIDTH,
     position: 'relative',
   },
   bannerImage: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#f0f0f0',
+  },
+  imageLoadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   bannerGradient: {
     position: 'absolute',
@@ -371,8 +362,11 @@ const styles = StyleSheet.create({
   },
   restaurantName: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: Platform.select({ ios: '800', default: 'bold' }),
     color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   bannerInfo: {
     flexDirection: 'row',
@@ -446,9 +440,14 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: '#eee',
   },
-  quickInfoText: {
+  currencySymbol: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#666',
+  },
+  quickInfoText: {
+    fontSize: 16,
+    fontWeight: Platform.select({ ios: '600', default: 'bold' }),
     color: '#000',
   },
   quickInfoLabel: {
@@ -467,7 +466,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 50,
   },
   closedText: {
     color: '#fff',
@@ -486,7 +485,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: Platform.select({ ios: '600', default: 'bold' }),
     color: '#000',
   },
   callButton: {
@@ -537,7 +536,7 @@ const styles = StyleSheet.create({
   },
   menuTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: Platform.select({ ios: '700', default: 'bold' }),
     color: '#000',
     marginBottom: 16,
   },
@@ -579,6 +578,6 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: Platform.select({ ios: '600', default: 'bold' }),
   },
 });

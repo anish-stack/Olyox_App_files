@@ -7,6 +7,7 @@
     "icon": "./assets/playstore-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+     "jsEngine": "jsc",
     "splash": {
       "image": "./assets/playstore-icon.png",
       "resizeMode": "contain",
@@ -15,10 +16,18 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.olyoxuser.olyox",  
+      "development": {
+        "distribution": "internal",
+        "buildType": "simulator"
+      },
+      "production": {
+        "distribution": "app-store"
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app requires your location to provide better services.",
         "CFBundleURLTypes": [],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "GMSApiKey": "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8"
       }
     },
     "android": {

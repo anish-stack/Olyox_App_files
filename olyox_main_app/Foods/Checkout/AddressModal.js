@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     StyleSheet,
     ScrollView,
+    Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-        minHeight: '73%',
+        minHeight: Platform.OS=== "ios" ? '55%':'73%',
     },
     modalHeader: {
         flexDirection: 'row',

@@ -18,6 +18,7 @@ import styles from './BookingModel.style';
 import axios from 'axios';
 import { tokenCache } from '../../Auth/cache';
 import { useEffect } from 'react';
+import GuestCounterIos from './GuestCounterIos';
 
 export default function BookingModal({ visible, onClose, roomData }) {
   const [checkInDate, setCheckInDate] = useState(new Date());
@@ -388,58 +389,85 @@ useEffect(()=>{
               </View>
             </View>
 
-            <View style={styles.guestTypeContainer}>
-              <View style={styles.guestTypePicker}>
-                <Text style={styles.guestTypeLabel}>Male</Text>
-                <Picker
-                  selectedValue={males}
-                  style={styles.picker}
-                  onValueChange={setMales}
-                >
-                  {[...Array(maxAllowedGuests + 1)].map((_, i) => (
-                    <Picker.Item
-                      key={`male-${i}`}
-                      label={i.toString()}
-                      value={i}
-                    />
-                  ))}
-                </Picker>
-              </View>
+            {Platform.OS === "android" ? (
+               <View style={styles.guestTypeContainer}>
+               <View style={styles.guestTypePicker}>
+                 <Text style={styles.guestTypeLabel}>Male</Text>
+                 <Picker
+                   selectedValue={males}
+                   style={styles.picker}
+                   onValueChange={setMales}
+                 >
+                   {[...Array(maxAllowedGuests + 1)].map((_, i) => (
+                     <Picker.Item
+                       key={`male-${i}`}
+                       label={i.toString()}
+                       value={i}
+                     />
+                   ))}
+                 </Picker>
+               </View>
+ 
+               <View style={styles.guestTypePicker}>
+                 <Text style={styles.guestTypeLabel}>Female</Text>
+                 <Picker
+                   selectedValue={females}
+                   style={styles.picker}
+                   onValueChange={setFemales}
+                 >
+                   {[...Array(maxAllowedGuests + 1)].map((_, i) => (
+                     <Picker.Item
+                       key={`female-${i}`}
+                       label={i.toString()}
+                       value={i}
+                     />
+                   ))}
+                 </Picker>
+               </View>
+ 
+               <View style={styles.guestTypePicker}>
+                 <Text style={styles.guestTypeLabel}>Children</Text>
+                 <Picker
+                   selectedValue={children}
+                   style={styles.picker}
+                   onValueChange={setChildren}
+                 >
+                   {[...Array(maxAllowedGuests + 1)].map((_, i) => (
+                     <Picker.Item
+                       key={`child-${i}`}
+                       label={i.toString()}
+                       value={i}
+                     />
+                   ))}
+                 </Picker>
+               </View>
+             </View>
+            ):(
+              <View style={styles.iosGuestContainer}>
+        <GuestCounterIos 
+          label="Male" 
+          count={males} 
+          onIncrease={() => males < maxAllowedGuests ? setMales(males + 1) : null}
+          onDecrease={() => males > 0 ? setMales(males - 1) : null}
+        />
+        
+        <GuestCounterIos 
+          label="Female" 
+          count={females} 
+          onIncrease={() => females < maxAllowedGuests ? setFemales(females + 1) : null}
+          onDecrease={() => females > 0 ? setFemales(females - 1) : null}
+        />
+        
+        <GuestCounterIos 
+          label="Children" 
+          count={children} 
+          onIncrease={() => children < maxAllowedGuests ? setChildren(children + 1) : null}
+          onDecrease={() => children > 0 ? setChildren(children - 1) : null}
+        />
+      </View>
+            )}
 
-              <View style={styles.guestTypePicker}>
-                <Text style={styles.guestTypeLabel}>Female</Text>
-                <Picker
-                  selectedValue={females}
-                  style={styles.picker}
-                  onValueChange={setFemales}
-                >
-                  {[...Array(maxAllowedGuests + 1)].map((_, i) => (
-                    <Picker.Item
-                      key={`female-${i}`}
-                      label={i.toString()}
-                      value={i}
-                    />
-                  ))}
-                </Picker>
-              </View>
-
-              <View style={styles.guestTypePicker}>
-                <Text style={styles.guestTypeLabel}>Children</Text>
-                <Picker
-                  selectedValue={children}
-                  style={styles.picker}
-                  onValueChange={setChildren}
-                >
-                  {[...Array(maxAllowedGuests + 1)].map((_, i) => (
-                    <Picker.Item
-                      key={`child-${i}`}
-                      label={i.toString()}
-                      value={i}
-                    />
-                  ))}
-                </Picker>
-              </View>
-            </View>
+           
 
             <View style={styles.guestSummaryContainer}>
               <Text style={styles.guestSummaryText}>

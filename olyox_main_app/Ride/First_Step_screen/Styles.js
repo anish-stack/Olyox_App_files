@@ -1,4 +1,4 @@
-import { StyleSheet, Dimensions } from "react-native"
+import { StyleSheet, Dimensions, Platform } from "react-native"
 
 const { width, height } = Dimensions.get("window")
 
@@ -145,7 +145,7 @@ export default StyleSheet.create({
     color: "#333333",
   },
   previewMapContainer: {
-    height: 300,
+    height: Platform.OS === "ios" ? 400:300,
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 12,

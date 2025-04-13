@@ -48,6 +48,7 @@ import BookingConfirmation from './Ride/Show_near_by_cab/confirm_booking';
 import Policy from './policy/Policy';
 import Help_On from './onboarding/Help/Help_On';
 import LocationErrorScreen from './LocationError';
+import SplashScreen from './screens/SplashScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -153,16 +154,13 @@ const App = () => {
       console.log("📍 Updating location state:", newLocation);
       lastLocationUpdateTimeRef.current = now;
     } else {
-      // Still log but don't update state
       console.log("📡 Location update (not updating state):", newLocation);
     }
 
-    // Mark location as loaded (even if approximate)
     locationLoadingRef.current = false;
     setInitialLoading(false);
   }, []);
 
-  // Get location in background
   const getLocationInBackground = useCallback(async () => {
     try {
       // Cleanup any existing subscription
@@ -269,7 +267,7 @@ const App = () => {
     };
   }, [getLocationInBackground]);
 
-  // Auto-retry location fetch up to 3 times
+ 
   useEffect(() => {
     if ((locationError === ERROR_TYPES.TIMEOUT || locationError === ERROR_TYPES.UNKNOWN) &&
       locationFetchRetries <= 3) {
@@ -282,7 +280,7 @@ const App = () => {
     }
   }, [locationError, locationFetchRetries, getLocationInBackground]);
 
-  // Memoize routes to prevent unnecessary re-renders
+
   const routes = React.useMemo(() => (
     <>
       <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
@@ -316,6 +314,8 @@ const App = () => {
       <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={OnboardingScreen} />
 
       {/* App Policy */}
+      <Stack.Screen name="spalsh" options={{ headerShown: false, title: "Olyox App Polices" }} component={SplashScreen} />
+
       <Stack.Screen name="policy" options={{ headerShown: true, title: "Olyox App Polices" }} component={Policy} />
       <Stack.Screen name="policyauth" options={{ headerShown: true, title: "Olyox App Polices" }} component={Policy} />
       <Stack.Screen name="Help_me" options={{ headerShown: true, title: "Olyox Center" }} component={Help_On} />
@@ -367,7 +367,7 @@ const App = () => {
                 <StatusBar style="auto" />
                 <ErrorBoundaryWrapper>
                   <NavigationContainer>
-                    <Stack.Navigator initialRouteName={isLogin ? 'Home' : 'Onboarding'}>
+                    <Stack.Navigator initialRouteName={'spalsh'}>
                       {routes}
                     </Stack.Navigator>
 

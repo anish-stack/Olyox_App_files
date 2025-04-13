@@ -1148,6 +1148,48 @@ app.post('/image-upload', upload.any(), async (req, res) => {
     }
 });
 
+
+// Define the route to fetch directions
+app.post('/directions', async (req, res) => {
+    try {
+        console.log("i am hits",req.body)
+      // Extract pickup and drop locations from the request body
+      const data = req.body || {};
+      console.log("I am pickup", data);
+      
+      // Check if the pickup and dropoff coordinates exist
+      if (!data?.pickup?.latitude || !data?.pickup?.longitude || !data?.dropoff?.latitude || !data?.dropoff?.longitude) {
+        return res.status(400).json({ error: 'Invalid pickup or dropoff location data' });
+      }
+      
+      // Construct the Google Maps API URL
+      const googleMapsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${data?.pickup?.latitude},${data?.pickup?.longitude}&destination=${data?.dropoff?.latitude},${data?.dropoff?.longitude}&key=AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8`;
+  
+      // Make the request to Google Maps API
+      const response = await axios.get(googleMapsUrl);
+      
+      // Check if the API returned valid data
+      if (response.data.routes && response.data.routes[0] && response.data.routes[0].legs) {
+        const leg = response.data.routes[0].legs[0];
+        
+        // Get the polyline encoded path for the directions
+        const polyline = response.data.routes[0].overview_polyline.points;
+  
+        // Return the distance, duration, and polyline for frontend rendering
+        return res.json({
+          distance: leg.distance.text,
+          duration: leg.duration.text,
+          polyline: polyline, // Send polyline for rendering on the map
+        });
+      } else {
+        return res.status(404).json({ error: 'No route found' });
+      }
+    } catch (error) {
+      console.error('Error fetching directions:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
 /**
  * Location webhook for parcel delivery personnel
  * Updates the current location of a parcel delivery person

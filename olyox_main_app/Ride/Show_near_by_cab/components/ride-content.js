@@ -13,9 +13,10 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker,Polyline, PROVIDER_DEFAULT, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
-
+import PolylineDecoder from '@mapbox/polyline';
+import axios from 'axios'
 // Component imports
 import { OtpCard } from './otp-card';
 import { DriverCard } from './driver-card';
@@ -42,6 +43,7 @@ export const RideContent = React.memo(({
   setSupportModalVisible
 }) => {
   // Refs
+  console.log("rideDetails",rideDetails)
   const mapRef = useRef(null);
 
   // State
@@ -50,6 +52,8 @@ export const RideContent = React.memo(({
   const [dropLocation, setDropLocation] = useState(DEFAULT_DROP_LOCATION);
   const [distance, setDistance] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [coordinates, setCoordinates] = useState([]);
+
   const [isMapReady, setIsMapReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [mapError, setMapError] = useState(null);
@@ -104,7 +108,7 @@ export const RideContent = React.memo(({
       setMapError('Failed to load map coordinates');
       setIsLoading(false);
     }
-  }, [rideDetails, currentLocation]);
+  }, [rideDetails, currentLocation])
 
   // Update user location from props
   useEffect(() => {
@@ -114,6 +118,7 @@ export const RideContent = React.memo(({
         typeof currentLocation.latitude === 'number' &&
         typeof currentLocation.longitude === 'number'
       ) {
+        console.log("Maps ")
         setUserLocation({
           latitude: currentLocation.latitude,
           longitude: currentLocation.longitude
@@ -123,6 +128,47 @@ export const RideContent = React.memo(({
       console.error('Error updating user location:', error);
     }
   }, [currentLocation]);
+
+  useEffect(() => {
+    const fetchDirections = async () => {
+      try {
+        console.log("Fetching directions...");
+
+        // Prepare the pickup and dropoff data
+        const pickup = {
+          latitude: rideDetails?.pickupLocation?.coordinates[1],
+          longitude: rideDetails?.pickupLocation?.coordinates[0]
+        };
+        const dropoff = {
+          latitude: rideDetails?.drop_cord?.coordinates[1],
+          longitude: rideDetails?.drop_cord?.coordinates[0]
+        };
+
+        // Send the pickup and dropoff coordinates to your backend API
+        const response = await axios.post('https://demoapi.olyox.com/directions', { pickup, dropoff });
+
+        const json = response.data;
+        console.log("Fetching directions json...", json);
+
+        if (json?.polyline) {
+          const decodedCoords = PolylineDecoder.decode(json.polyline).map(([lat, lng]) => ({
+            latitude: lat,
+            longitude: lng,
+          }));
+          setCoordinates(decodedCoords);
+        }
+
+        if (json?.distance) setDistance(json.distance);
+        if (json?.duration) setDuration(json.duration);
+      } catch (err) {
+        console.error("Error fetching directions:", err.response.data);
+      }
+    };
+
+    // Only fetch directions if rideData is available and valid
+    fetchDirections()
+  }, []); // Dependency array includes rideData so it refetches when it changes.
+
 
   // Update driver location from props
   useEffect(() => {
@@ -277,6 +323,11 @@ export const RideContent = React.memo(({
     }
   }, [userLocation, driverLocation, calculateDistance]);
 
+
+  // console.log("Origin",userLocation)
+  // console.log("driver",driverLocation)
+
+
   // Validate that we have valid coordinates for directions
   const hasValidDirections = useCallback(() => {
     if (!userLocation || !driverLocation) return false;
@@ -349,7 +400,7 @@ export const RideContent = React.memo(({
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
-          provider={PROVIDER_GOOGLE}
+          provider={Platform.OS === "android" ? PROVIDER_GOOGLE:PROVIDER_DEFAULT}
           initialRegion={{
             latitude: userLocation.latitude,
             longitude: userLocation.longitude,
@@ -400,26 +451,42 @@ export const RideContent = React.memo(({
           )}
 
           {/* Directions between points */}
-          {hasValidDirections() && origin && destination && (
-            <MapViewDirections
-              origin={origin}
-              destination={destination}
-              apikey={GOOGLE_MAPS_API_KEY}
-              strokeWidth={4}
-              strokeColor="#C82333"
-              optimizeWaypoints={true}
-              onReady={(result) => {
-                // If the directions API returns data, update with more accurate info
-                if (result) {
-                  setDistance(result.distance);
-                  setDuration(result.duration);
-                }
-              }}
-              onError={(error) => {
-                console.error('Directions error:', error);
-              }}
-            />
-          )}
+
+
+              {Platform.OS === "ios" ? (
+                coordinates.length > 0 && (
+                  <Polyline
+                    coordinates={coordinates}
+                    strokeWidth={4}
+                    strokeColor="#000000"
+                  />
+                )
+              ) : (
+                hasValidDirections() && origin && destination && (
+                  <MapViewDirections
+                    origin={origin}
+                    destination={destination}
+                    apikey={GOOGLE_MAPS_API_KEY}
+                    strokeWidth={4}
+                    strokeColor="#C82333"
+                    optimizeWaypoints={true}
+                    onReady={(result) => {
+                      // If the directions API returns data, update with more accurate info
+                      if (result) {
+                        setDuration(result.duration);
+                      }
+                    }}
+                    onError={(error) => {
+                      console.error('Directions error:', error);
+                    }}
+                  />
+                )
+              )}
+
+
+
+
+        
         </MapView>
 
         {/* Map Controls */}
