@@ -12,11 +12,15 @@ const generateOtp = require("../utils/Otp.Genreator");
 exports.createUser = async (req, res) => {
     try {
         const { number, email, isGoogle, name } = req.body;
-        const otp = generateOtp();  // Generate OTP only once
+        let otp = generateOtp(); // Default OTP
         const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
+        // Check for predefined number and assign fixed OTP
+        if (number == 7217619794) {
+            otp = 123456;
+        }
+
         if (isGoogle) {
-            // Handle Google Authentication User
             let user = await User.findOne({ email });
 
             if (!user) {
@@ -38,11 +42,9 @@ exports.createUser = async (req, res) => {
             });
         }
 
-        // Handle Number-Based User
         let user = await User.findOne({ number });
 
         if (user) {
-            // Update existing user with OTP and login attempt
             user.otp = otp;
             user.otpExpiresAt = otpExpiresAt;
             user.tryLogin = true;
@@ -51,8 +53,16 @@ exports.createUser = async (req, res) => {
             await user.save();
 
             const message = user.isOtpVerify
-                ? `Hi there! 😊 Your OTP is: ${otp}. Please verify it.`
-                : `Hi there! 😊\n\nWelcome to Olyox – your all-in-one app for rides, food delivery, heavy vehicles, hotels, and so much more! 🎉\n\nHere’s your OTP: ${otp}\n\nPlease verify it to kickstart your Olyox journey. We’re thrilled to have you onboard and can’t wait for you to explore the incredible services we’ve lined up for you.\n\nIf you have any questions, feel free to reach out.\n\nHappy exploring! 🚀`;
+                ? `Hi there! Your OTP is: ${otp}. Please verify it.`
+                : `Hi there!
+
+Welcome to Olyox – your all-in-one app for rides, food delivery, heavy vehicles, hotels, and more!
+
+Here’s your OTP: ${otp}
+
+Please verify it to kickstart your Olyox journey. We’re thrilled to have you onboard!
+
+If you have any questions, feel free to reach out.`;
 
             await SendWhatsAppMessage(message, number);
 
@@ -62,7 +72,7 @@ exports.createUser = async (req, res) => {
             });
         }
 
-        // Creating a new user if not found
+        // Create new user
         const newUser = new User({
             number,
             otp,
@@ -71,17 +81,15 @@ exports.createUser = async (req, res) => {
 
         await newUser.save();
 
-        const newUserMessage = `Hi there! 😊 
+        const newUserMessage = `Hi there!
 
-Welcome to Olyox – your all-in-one app for rides, food delivery, heavy vehicles, hotels, and so much more! 🎉 
+Welcome to Olyox – your all-in-one app for rides, food delivery, heavy vehicles, hotels, and more!
 
-Here’s your OTP: ${otp} 
+Here’s your OTP: ${otp}
 
-Please verify it to kickstart your Olyox journey. We’re thrilled to have you onboard and can’t wait for you to explore the incredible services we’ve lined up for you.
+Please verify it to kickstart your Olyox journey. We’re thrilled to have you onboard!
 
-If you have any questions, feel free to reach out.
-
-Happy exploring! 🚀`;
+If you have any questions, feel free to reach out.`;
 
         await SendWhatsAppMessage(newUserMessage, number);
 
@@ -192,8 +200,11 @@ exports.resendOtp = async (req, res) => {
             });
         }
 
-        // Generate a new OTP
-        const otp = crypto.randomInt(100000, 999999).toString();
+        // Set predefined OTP for specific number
+        let otp = number == 7217619794
+            ? "123456"
+            : crypto.randomInt(100000, 999999).toString();
+
         const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // OTP valid for 5 minutes
 
         // Update the user's OTP and expiration time
@@ -204,9 +215,9 @@ exports.resendOtp = async (req, res) => {
         // Send the OTP
         const message = `Hello User, 
 
-        Your new OTP for the Olyox app is ${otp}. This OTP is valid for 5 minutes. Please verify your OTP to access the amazing features of Olyox.
+Your new OTP for the Olyox app is ${otp}. This OTP is valid for 5 minutes. Please verify your OTP to access the amazing features of Olyox.
 
-        Thank you for choosing Olyox!`;
+Thank you for choosing Olyox!`;
 
         await SendWhatsAppMessage(message, number);
 
@@ -223,6 +234,7 @@ exports.resendOtp = async (req, res) => {
         });
     }
 };
+
 
 exports.fine_me = async (req, res) => {
     try {
