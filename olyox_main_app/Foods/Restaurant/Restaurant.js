@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: Platform.OS === 'ios' ? 88 : 60,
+    height: Platform.OS === 'ios' ? 88 : 100,
     paddingTop: Platform.OS === 'ios' ? 44 : StatusBar.currentHeight,
     backgroundColor: Platform.select({
       ios: 'rgba(255,255,255,0.85)',

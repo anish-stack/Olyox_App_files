@@ -1,4 +1,3 @@
-"use client"
 
 import { useState, useEffect } from "react"
 import {
@@ -9,15 +8,16 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
-  Modal,
-  Dimensions,
+
 } from "react-native"
 import * as ImagePicker from "expo-image-picker"
 import axios from "axios"
 import { MaterialIcons, Ionicons } from "@expo/vector-icons"
+import { } from 'react-native'
 import { API_BASE_URL_V2 } from "../../constant/Api"
 import { useToken } from "../../context/AuthContext"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { useNavigation, CommonActions } from "@react-navigation/native"
+
 import Layout from "../../components/Layout/Layout"
 import styles from './upload_Documents.styles'
 
@@ -26,7 +26,7 @@ export default function UploadDocuments() {
   const [selectedImages, setSelectedImages] = useState({})
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
-
+  const navigation = useNavigation()
   const documentFields = [
     { key: "aadhar_front", label: "Aadhar Front", icon: "credit-card" },
     { key: "aadhar_Back", label: "Aadhar Back", icon: "credit-card" },
@@ -37,7 +37,7 @@ export default function UploadDocuments() {
   ]
 
   useEffect(() => {
-    ;(async () => {
+    ; (async () => {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
       if (status !== "granted") {
         Alert.alert("Permission Required", "You need to grant permission to access the gallery.")
@@ -85,6 +85,12 @@ export default function UploadDocuments() {
 
       if (response.data.success) {
         Alert.alert("Success", "Documents uploaded successfully.")
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Home' }],
+          })
+        );
         setSelectedImages({})
       } else {
         Alert.alert("Upload Failed", response.data.message || "Something went wrong.")
@@ -121,68 +127,68 @@ export default function UploadDocuments() {
   )
 
   return (
-  <Layout>
+    <Layout>
       <ScrollView style={styles.container}>
-      <Text style={styles.title}>Upload Documents</Text>
-      <Text style={styles.subtitle}>Please upload clear images of the following documents</Text>
+        <Text style={styles.title}>Upload Documents</Text>
+        <Text style={styles.subtitle}>Please upload clear images of the following documents</Text>
 
-      <View style={styles.documentGrid}>{documentFields.map(renderDocumentCard)}</View>
+        <View style={styles.documentGrid}>{documentFields.map(renderDocumentCard)}</View>
 
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: `${(Object.keys(selectedImages).length / documentFields.length) * 100}%` },
-            ]}
-          />
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${(Object.keys(selectedImages).length / documentFields.length) * 100}%` },
+              ]}
+            />
+          </View>
+          <Text style={styles.progressText}>
+            {Object.keys(selectedImages).length} of {documentFields.length} uploaded
+          </Text>
         </View>
-        <Text style={styles.progressText}>
-          {Object.keys(selectedImages).length} of {documentFields.length} uploaded
-        </Text>
-      </View>
 
-      <TouchableOpacity
-        style={[styles.submitButton, Object.keys(selectedImages).length === 0 && styles.submitButtonDisabled]}
-        onPress={() => setModalVisible(true)}
-        disabled={Object.keys(selectedImages).length === 0 || loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <>
-            <Ionicons name="cloud-upload-outline" size={24} color="#fff" style={styles.submitIcon} />
-            <Text style={styles.submitText}>Submit Documents</Text>
-          </>
-        )}
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.submitButton, Object.keys(selectedImages).length === 0 && styles.submitButtonDisabled]}
+          onPress={() => setModalVisible(true)}
+          disabled={Object.keys(selectedImages).length === 0 || loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="cloud-upload-outline" size={24} color="#fff" style={styles.submitIcon} />
+              <Text style={styles.submitText}>Submit Documents</Text>
+            </>
+          )}
+        </TouchableOpacity>
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Confirm Submission</Text>
-            <Text style={styles.modalText}>Are you sure you want to submit the selected documents?</Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalButton, styles.modalButtonConfirm]} onPress={uploadDocuments}>
-                <Text style={styles.modalButtonText}>{loading ? 'Please Wait ...':'Confirm'}</Text>
-              </TouchableOpacity>
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Confirm Submission</Text>
+              <Text style={styles.modalText}>Are you sure you want to submit the selected documents?</Text>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonCancel]}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalButton, styles.modalButtonConfirm]} onPress={uploadDocuments}>
+                  <Text style={styles.modalButtonText}>{loading ? 'Please Wait ...' : 'Confirm'}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </ScrollView>
-  </Layout>
+        </Modal>
+      </ScrollView>
+    </Layout>
   )
 }
 

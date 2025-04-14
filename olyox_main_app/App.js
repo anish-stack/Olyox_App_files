@@ -301,7 +301,7 @@ const App = () => {
       <Stack.Screen name="Tiffins_Page" options={{ headerShown: true, title: "Tiffins Package" }} component={Tiffins_Page} />
       <Stack.Screen name="food_Page_By_Cats" options={{ headerShown: false }} component={Food_Dispay_Page} />
       <Stack.Screen name="restaurants_page" options={{ headerShown: false }} component={Restaurant} />
-      <Stack.Screen name="Checkout" options={{ headerShown: false }} component={Checkout} />
+      <Stack.Screen name="Checkout" options={{ headerShown: Platform.OS === "ios" ? false:true }} component={Checkout} />
       <Stack.Screen name="Order_Process" options={{ headerShown: false }} component={OrderTracking} />
       {/* User Profile and Auth */}
       <Stack.Screen name="Profile" options={{ headerShown: true }} component={UserProfile} />

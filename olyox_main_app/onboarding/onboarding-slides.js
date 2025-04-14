@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 1000; // delay between retries
+const RETRY_DELAY_MS = 1000; 
 
 export const slidesFetch = async () => {
   let attempt = 0;

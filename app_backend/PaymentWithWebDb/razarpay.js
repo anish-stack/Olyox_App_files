@@ -1,9 +1,8 @@
-const mongoose = require('mongoose');
+
 const Razorpay = require('razorpay');
 const axios = require('axios');
 const { getMembershipPlanModel, getRechargeModel, getActiveReferralSchema, getvendorModel } = require('./db');
 var { validatePaymentVerification } = require('razorpay/dist/utils/razorpay-utils');
-const RiderModel = require('../models/Rider.model');
 const SendWhatsAppMessage = require('../utils/whatsapp_send');
 const { updateRechargeDetails } = require('../utils/Api.utils');
 const razorpayInstance = new Razorpay({
@@ -66,7 +65,7 @@ exports.make_recharge = async (req, res) => {
 
         // Create Razorpay order
         const orderOptions = {
-            amount: package_price * 100, // amount in paise
+            amount: package_price * 100, 
             currency: 'INR',
             receipt: `receipt_${Date.now()}`,
             notes: {
@@ -223,6 +222,7 @@ exports.verify_recharge = async (req, res) => {
             approveRecharge: true,
             BH: user?.myReferral
         })
+        
 
         if (!datas?.success) {
             return res.status(400).json({ message: 'Failed to update recharge details.' });

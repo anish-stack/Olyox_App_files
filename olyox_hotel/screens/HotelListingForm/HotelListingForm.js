@@ -16,6 +16,7 @@ import FormField from '../../components/common/FormField';
 import SwitchField from '../../components/common/SwitchField';
 import ImageUploadField from '../../components/common/ImageUploadField';
 import FormButton from '../../components/common/FormButton';
+import { useNavigation, CommonActions } from "@react-navigation/native"
 
 import { Ionicons } from '@expo/vector-icons';
 import DropdownField from '../../components/common/DropdownField';
@@ -27,10 +28,10 @@ import { useToken } from '../../context/AuthContext';
 const roomTypeOptions = ['1BHK', '2BHK', '3BHK', 'Studio', 'Penthouse', 'Villa'];
 
 const HotelListingForm = () => {
-const {token} = useToken()
+  const { token } = useToken()
   const [form, setForm] = useState({
     room_type: '',
-   
+
     has_tag: '',
     rating_number: '0',
     number_of_rating_done: '0',
@@ -45,6 +46,7 @@ const {token} = useToken()
     cancellation_policy: '',
   });
 
+  const navigation = useNavigation()
   // Tags state
   const [tags, setTags] = useState([]);
 
@@ -121,7 +123,7 @@ const {token} = useToken()
     try {
       // Request permissions
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (status !== 'granted') {
         Alert.alert('Permission Required', 'Please grant camera roll permissions to upload images.');
         return;
@@ -148,7 +150,7 @@ const {token} = useToken()
   const validateForm = () => {
     // Required fields
     const requiredFields = ['room_type', 'book_price'];
-    
+
     for (const field of requiredFields) {
       if (!form[field]) {
         setError(`${field.replace('_', ' ')} is required`);
@@ -183,7 +185,7 @@ const {token} = useToken()
       // Reset states
       setError(null);
       setSuccess(false);
-      
+
       // Validate form
       if (!validateForm()) return;
 
@@ -217,10 +219,10 @@ const {token} = useToken()
 
       // Send API request
       const response = await axios.post(`${API_BASE_URL_V2}/add-hotel-listing`, formData, {
-        headers: { 
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${token}`
-        
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+
         },
       });
 
@@ -228,9 +230,14 @@ const {token} = useToken()
       setSuccess(true);
       console.log(response.data.message)
       Alert.alert('Success', 'Hotel listing added successfully!');
-      
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        })
+      );
       // Reset form after successful submission
-    //   resetForm();
+      //   resetForm();
     } catch (err) {
       console.error('API Error:', err.response);
       setError(err.response?.data?.message || 'Failed to add hotel listing. Please try again.');
@@ -243,7 +250,7 @@ const {token} = useToken()
   const resetForm = () => {
     setForm({
       room_type: '',
-   
+
       has_tag: '',
       rating_number: '0',
       number_of_rating_done: '0',
@@ -257,9 +264,9 @@ const {token} = useToken()
       package_add_ons: [],
       cancellation_policy: '',
     });
-    
+
     setTags([]);
-    
+
     setImages({
       main_image: null,
       second_image: null,
@@ -267,7 +274,7 @@ const {token} = useToken()
       fourth_image: null,
       fifth_image: null,
     });
-    
+
     setAmenities({
       AC: false,
       freeWifi: false,
@@ -293,215 +300,215 @@ const {token} = useToken()
   };
 
   return (
- <SafeAreaView style={{flex:1}}>
-       <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={Styles.container}
-      
-    >
-      <ScrollView contentContainerStyle={Styles.scrollContent}>
-        <View style={Styles.formContainer}>
-          <Text style={Styles.formTitle}>Add Hotel Listing</Text>
-          
-          {/* Error message */}
-          {error && (
-            <View style={Styles.errorContainer}>
-              <Text style={Styles.errorText}>{error}</Text>
-            </View>
-          )}
-          
-          {/* Success message */}
-          {success && (
-            <View style={Styles.successContainer}>
-              <Text style={Styles.successText}>Hotel listing added successfully!</Text>
-            </View>
-          )}
+    <SafeAreaView style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={Styles.container}
 
-          {/* Basic Information */}
-          <View style={Styles.sectionContainer}>
-            <Text style={Styles.sectionTitle}>Basic Information</Text>
-            
-            <DropdownField
-              label="Room Type"
-              value={form.room_type}
-              options={roomTypeOptions}
-              onSelect={handleRoomTypeSelect}
-              required
-            />
-            
-          
-            
-            <TagInputField
-              label="Tags"
-              tags={tags}
-              onTagsChange={handleTagsChange}
-              placeholder="Type tag and press Enter"
-            />
-            
-            <FormField
-              label="Allowed Persons"
-              value={form.allowed_person}
-              onChangeText={(value) => handleChange('allowed_person', value)}
-              keyboardType="numeric"
-              placeholder="e.g. 2"
-            />
-          </View>
+      >
+        <ScrollView contentContainerStyle={Styles.scrollContent}>
+          <View style={Styles.formContainer}>
+            <Text style={Styles.formTitle}>Add Hotel Listing</Text>
 
-          {/* Amenities */}
-          <View style={Styles.amenitiesContainer}>
-            <Text style={Styles.amenitiesTitle}>Amenities</Text>
-            
-            {Object.keys(amenities).map((amenity) => (
-              <View key={amenity} style={Styles.amenityItem}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons
-                    name={amenities[amenity] ? "checkmark-circle" : "ellipse-outline"}
-                    size={20}
-                    color={amenities[amenity] ? "#2196F3" : "#ccc"}
-                  />
-                  <Text style={Styles.amenityText}>
-                    {amenity.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())}
-                  </Text>
-                </View>
-                <Switch
-                  value={amenities[amenity]}
-                  onValueChange={() => toggleAmenity(amenity)}
-                  trackColor={{ false: '#d1d1d1', true: '#2196F3' }}
-                  thumbColor={amenities[amenity] ? '#fff' : '#f4f3f4'}
-                />
+            {/* Error message */}
+            {error && (
+              <View style={Styles.errorContainer}>
+                <Text style={Styles.errorText}>{error}</Text>
               </View>
-            ))}
-          </View>
+            )}
 
-          {/* Pricing Information */}
-          <View style={Styles.sectionContainer}>
-            <Text style={Styles.sectionTitle}>Pricing Information</Text>
-            
-            <FormField
-              label="Book Price"
-              value={form.book_price}
-              onChangeText={(value) => handleChange('book_price', value)}
-              keyboardType="numeric"
-              required
-            />
-            
-            <FormField
-              label="Cut Price (Original Price)"
-              value={form.cut_price}
-              onChangeText={(value) => handleChange('cut_price', value)}
-              keyboardType="numeric"
-            />
-            
-            <FormField
-              label="Discount Percentage"
-              value={form.discount_percentage}
-              onChangeText={(value) => handleChange('discount_percentage', value)}
-              keyboardType="numeric"
-              placeholder="e.g. 10"
-            />
-            
-            <SwitchField
-              label="Apply Tax"
-              value={form.is_tax_applied}
-              onValueChange={() => handleSwitch('is_tax_applied')}
-            />
-            
-            {form.is_tax_applied && (
+            {/* Success message */}
+            {success && (
+              <View style={Styles.successContainer}>
+                <Text style={Styles.successText}>Hotel listing added successfully!</Text>
+              </View>
+            )}
+
+            {/* Basic Information */}
+            <View style={Styles.sectionContainer}>
+              <Text style={Styles.sectionTitle}>Basic Information</Text>
+
+              <DropdownField
+                label="Room Type"
+                value={form.room_type}
+                options={roomTypeOptions}
+                onSelect={handleRoomTypeSelect}
+                required
+              />
+
+
+
+              <TagInputField
+                label="Tags"
+                tags={tags}
+                onTagsChange={handleTagsChange}
+                placeholder="Type tag and press Enter"
+              />
+
               <FormField
-                label="Tax Fair"
-                value={form.tax_fair}
-                onChangeText={(value) => handleChange('tax_fair', value)}
+                label="Allowed Persons"
+                value={form.allowed_person}
+                onChangeText={(value) => handleChange('allowed_person', value)}
+                keyboardType="numeric"
+                placeholder="e.g. 2"
+              />
+            </View>
+
+            {/* Amenities */}
+            <View style={Styles.amenitiesContainer}>
+              <Text style={Styles.amenitiesTitle}>Amenities</Text>
+
+              {Object.keys(amenities).map((amenity) => (
+                <View key={amenity} style={Styles.amenityItem}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons
+                      name={amenities[amenity] ? "checkmark-circle" : "ellipse-outline"}
+                      size={20}
+                      color={amenities[amenity] ? "#2196F3" : "#ccc"}
+                    />
+                    <Text style={Styles.amenityText}>
+                      {amenity.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase())}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={amenities[amenity]}
+                    onValueChange={() => toggleAmenity(amenity)}
+                    trackColor={{ false: '#d1d1d1', true: '#2196F3' }}
+                    thumbColor={amenities[amenity] ? '#fff' : '#f4f3f4'}
+                  />
+                </View>
+              ))}
+            </View>
+
+            {/* Pricing Information */}
+            <View style={Styles.sectionContainer}>
+              <Text style={Styles.sectionTitle}>Pricing Information</Text>
+
+              <FormField
+                label="Book Price"
+                value={form.book_price}
+                onChangeText={(value) => handleChange('book_price', value)}
+                keyboardType="numeric"
+                required
+              />
+
+              <FormField
+                label="Cut Price (Original Price)"
+                value={form.cut_price}
+                onChangeText={(value) => handleChange('cut_price', value)}
                 keyboardType="numeric"
               />
-            )}
-          </View>
 
-          {/* Package Information */}
-          <View style={Styles.sectionContainer}>
-            <Text style={Styles.sectionTitle}>Package Information</Text>
-            
-            <SwitchField
-              label="Is Package"
-              value={form.isPackage}
-              onValueChange={() => handleSwitch('isPackage')}
-            />
-            
-            {form.isPackage && (
               <FormField
-                label="Package Add-ons"
-                value={form.package_add_ons}
-                onChangeText={(value) => handleChange('package_add_ons', value)}
+                label="Discount Percentage"
+                value={form.discount_percentage}
+                onChangeText={(value) => handleChange('discount_percentage', value)}
+                keyboardType="numeric"
+                placeholder="e.g. 10"
+              />
+
+              <SwitchField
+                label="Apply Tax"
+                value={form.is_tax_applied}
+                onValueChange={() => handleSwitch('is_tax_applied')}
+              />
+
+              {form.is_tax_applied && (
+                <FormField
+                  label="Tax Fair"
+                  value={form.tax_fair}
+                  onChangeText={(value) => handleChange('tax_fair', value)}
+                  keyboardType="numeric"
+                />
+              )}
+            </View>
+
+            {/* Package Information */}
+            <View style={Styles.sectionContainer}>
+              <Text style={Styles.sectionTitle}>Package Information</Text>
+
+              <SwitchField
+                label="Is Package"
+                value={form.isPackage}
+                onValueChange={() => handleSwitch('isPackage')}
+              />
+
+              {form.isPackage && (
+                <FormField
+                  label="Package Add-ons"
+                  value={form.package_add_ons}
+                  onChangeText={(value) => handleChange('package_add_ons', value)}
+                  multiline
+                  numberOfLines={3}
+                  placeholder="Describe package inclusions..."
+                />
+              )}
+
+              <FormField
+                label="Cancellation Policy"
+                value={form.cancellation_policy}
+                onChangeText={(value) => handleChange('cancellation_policy', value)}
                 multiline
                 numberOfLines={3}
-                placeholder="Describe package inclusions..."
+                placeholder="Describe cancellation policy..."
               />
-            )}
-            
-            <FormField
-              label="Cancellation Policy"
-              value={form.cancellation_policy}
-              onChangeText={(value) => handleChange('cancellation_policy', value)}
-              multiline
-              numberOfLines={3}
-              placeholder="Describe cancellation policy..."
-            />
-          </View>
+            </View>
 
-          {/* Image Upload Section */}
-          <View style={Styles.sectionContainer}>
-            <Text style={Styles.sectionTitle}>Hotel Images</Text>
-            <Text style={Styles.sectionSubtitle}>Upload high-quality images of your hotel room</Text>
-            
-            <ImageUploadField
-              label="Main Image (Required)"
-              imageUri={images.main_image}
-              onPress={() => pickImage('main_image')}
-            />
-            
-            <ImageUploadField
-              label="Second Image"
-              imageUri={images.second_image}
-              onPress={() => pickImage('second_image')}
-            />
-            
-            <ImageUploadField
-              label="Third Image"
-              imageUri={images.third_image}
-              onPress={() => pickImage('third_image')}
-            />
-            
-            <ImageUploadField
-              label="Fourth Image"
-              imageUri={images.fourth_image}
-              onPress={() => pickImage('fourth_image')}
-            />
-            
-            <ImageUploadField
-              label="Fifth Image"
-              imageUri={images.fifth_image}
-              onPress={() => pickImage('fifth_image')}
-            />
-          </View>
+            {/* Image Upload Section */}
+            <View style={Styles.sectionContainer}>
+              <Text style={Styles.sectionTitle}>Hotel Images</Text>
+              <Text style={Styles.sectionSubtitle}>Upload high-quality images of your hotel room</Text>
 
-          {/* Form Actions */}
-          <View style={Styles.actionsContainer}>
-            {/* <FormButton
+              <ImageUploadField
+                label="Main Image (Required)"
+                imageUri={images.main_image}
+                onPress={() => pickImage('main_image')}
+              />
+
+              <ImageUploadField
+                label="Second Image"
+                imageUri={images.second_image}
+                onPress={() => pickImage('second_image')}
+              />
+
+              <ImageUploadField
+                label="Third Image"
+                imageUri={images.third_image}
+                onPress={() => pickImage('third_image')}
+              />
+
+              <ImageUploadField
+                label="Fourth Image"
+                imageUri={images.fourth_image}
+                onPress={() => pickImage('fourth_image')}
+              />
+
+              <ImageUploadField
+                label="Fifth Image"
+                imageUri={images.fifth_image}
+                onPress={() => pickImage('fifth_image')}
+              />
+            </View>
+
+            {/* Form Actions */}
+            <View style={Styles.actionsContainer}>
+              {/* <FormButton
               title="Reset Form"
               onPress={resetForm}
               type="secondary"
               disabled={isLoading}
             /> */}
-            
-            <FormButton
-              title="Submit Listing"
-              onPress={handleSubmit}
-              isLoading={isLoading}
-            />
+
+              <FormButton
+                title="Submit Listing"
+                onPress={handleSubmit}
+                isLoading={isLoading}
+              />
+            </View>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
- </SafeAreaView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
