@@ -13,7 +13,7 @@ const SettingsSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    ride_percentage_off:{
+    ride_percentage_off: {
         type: Number
     },
     maintenanceMode: {
@@ -75,7 +75,20 @@ const SettingsSchema = new mongoose.Schema({
     instagramUrl: {
         type: String,
         default: ''
+    },
+    first_recharge_commisons: {
+        type: Number,
+        default: 0
+    },
+    second_recharge_commisons: {
+        type: Number,
+        default: 0
+    },
+    support_number: {
+        type: Number,
+        default: 1234567890
     }
+
 
 }, { timestamps: true });
 
