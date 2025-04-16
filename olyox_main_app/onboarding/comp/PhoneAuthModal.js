@@ -1,4 +1,3 @@
-// PhoneAuthModal.js
 import React, { useEffect } from 'react';
 import {
     Modal,
@@ -16,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
+import { useGuest } from '../../context/GuestLoginContext';
 
 const PhoneAuthModal = ({
     visible,
@@ -27,12 +27,17 @@ const PhoneAuthModal = ({
 }) => {
 
     const navigation = useNavigation()
-    // Vibration feedback when modal opens
     useEffect(() => {
         if (visible) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
     }, [visible]);
+    const { handleGuestLogin } = useGuest()
+
+    const loggedAsAGuest = ()=>{
+        handleGuestLogin()
+        navigation.navigate('Home')
+    }
 
     return (
         <Modal
@@ -78,7 +83,13 @@ const PhoneAuthModal = ({
                                     editable={!isSubmitting}
                                 />
                             </View>
-
+                            <TouchableOpacity style={{ marginBottom: 13 }} onPress={() => [onClose(), navigation.navigate('policyauth')]}>
+                                <Text style={styles.termsText}>
+                                    By continuing, you agree to our{' '}
+                                    <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
+                                    <Text style={styles.termsLink}>Privacy Policy</Text>
+                                </Text>
+                            </TouchableOpacity>
                             <TouchableOpacity
                                 style={[
                                     styles.submitButton,
@@ -92,15 +103,16 @@ const PhoneAuthModal = ({
                                 ) : (
                                     <Text style={styles.submitButtonText}>Send OTP</Text>
                                 )}
+
                             </TouchableOpacity>
 
-                            <TouchableOpacity onPress={() => [onClose(),navigation.navigate('policyauth')]}>
-                                <Text style={styles.termsText}>
-                                    By continuing, you agree to our{' '}
-                                    <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-                                    <Text style={styles.termsLink}>Privacy Policy</Text>
+                            <TouchableOpacity onPress={() => [onClose(), loggedAsAGuest()]}>
+                                <Text style={styles.guestText}>
+                                    <Text style={styles.highlightText}>You can continue using the app in Guest Mode without the need to sign up.</Text>
                                 </Text>
                             </TouchableOpacity>
+
+
                         </View>
                     </View>
                 </KeyboardAvoidingView>
@@ -200,6 +212,15 @@ const styles = StyleSheet.create({
         color: '#ec363f',
         fontWeight: '500',
     },
+    guestText: {
+        textAlign: 'center',
+        fontSize: 16,
+        color: '#333',
+    },
+    highlightText: {
+        fontWeight: 'bold',
+        color: '#ec363f',
+    }
 });
 
 export default PhoneAuthModal;

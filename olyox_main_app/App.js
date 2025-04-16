@@ -49,6 +49,7 @@ import Policy from './policy/Policy';
 import Help_On from './onboarding/Help/Help_On';
 import LocationErrorScreen from './LocationError';
 import SplashScreen from './screens/SplashScreen';
+import { GuestProvider } from './context/GuestLoginContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -78,11 +79,9 @@ const isSignificantLocationChange = (prevLocation, newLocation) => {
   const prevCoords = prevLocation.coords || prevLocation;
   const newCoords = newLocation.coords || newLocation;
 
-  // Calculate distance between points (simple approximation)
   const latDiff = Math.abs(prevCoords.latitude - newCoords.latitude);
   const lngDiff = Math.abs(prevCoords.longitude - newCoords.longitude);
 
-  // Only update if moved more than ~10 meters (approximately)
   return (latDiff > 0.0001 || lngDiff > 0.0001);
 };
 
@@ -91,20 +90,17 @@ const App = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [locationError, setLocationError] = useState(null);
   const [locationFetchRetries, setLocationFetchRetries] = useState(0);
-
-  // Use refs to avoid unnecessary renders
   const locationRef = useRef(null);
   const watchSubscriptionRef = useRef(null);
   const lastLocationUpdateTimeRef = useRef(0);
   const locationLoadingRef = useRef(true);
-
-  // Minimum time between location updates to state (in milliseconds)
-  const MIN_UPDATE_INTERVAL = 10000; // 10 seconds
+  const MIN_UPDATE_INTERVAL = 10000;
 
   // Check login status
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
+
         const db_token = await tokenCache.getToken('auth_token_db');
         setIsLogin(db_token !== null);
       } catch (error) {
@@ -146,8 +142,6 @@ const App = () => {
     // Store latest location in ref regardless of whether we update state
     locationRef.current = newLocation;
 
-    // Only update state if it's been at least MIN_UPDATE_INTERVAL since the last update
-    // OR if the location has changed significantly
     if (now - lastLocationUpdateTimeRef.current >= MIN_UPDATE_INTERVAL ||
       isSignificantLocationChange(locationRef.current, newLocation)) {
 
@@ -267,7 +261,7 @@ const App = () => {
     };
   }, [getLocationInBackground]);
 
- 
+
   useEffect(() => {
     if ((locationError === ERROR_TYPES.TIMEOUT || locationError === ERROR_TYPES.UNKNOWN) &&
       locationFetchRetries <= 3) {
@@ -363,28 +357,30 @@ const App = () => {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <SocketProvider>
             <LocationProvider initialLocation={locationRef.current}>
-              <SafeAreaProvider>
-                <StatusBar style="auto" />
-                <ErrorBoundaryWrapper>
-                  <NavigationContainer>
-                    <Stack.Navigator initialRouteName={'spalsh'}>
-                      {routes}
-                    </Stack.Navigator>
+              <GuestProvider>
+                <SafeAreaProvider>
+                  <StatusBar style="auto" />
+                  <ErrorBoundaryWrapper>
+                    <NavigationContainer>
+                      <Stack.Navigator initialRouteName={'spalsh'}>
+                        {routes}
+                      </Stack.Navigator>
 
-                    {/* Overlay error banner if there's a location error but we're proceeding anyway */}
-                    {locationError && (
-                      <TouchableOpacity
-                        style={styles.errorBanner}
-                        onPress={() => navigation.navigate('LocationError')}
-                      >
-                        <Text style={styles.errorBannerText}>
-                          Location service issue. Tap to fix.
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  </NavigationContainer>
-                </ErrorBoundaryWrapper>
-              </SafeAreaProvider>
+                      {/* Overlay error banner if there's a location error but we're proceeding anyway */}
+                      {locationError && (
+                        <TouchableOpacity
+                          style={styles.errorBanner}
+                          onPress={() => navigation.navigate('LocationError')}
+                        >
+                          <Text style={styles.errorBannerText}>
+                            Location service issue. Tap to fix.
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </NavigationContainer>
+                  </ErrorBoundaryWrapper>
+                </SafeAreaProvider>
+              </GuestProvider>
             </LocationProvider>
           </SocketProvider>
         </GestureHandlerRootView>

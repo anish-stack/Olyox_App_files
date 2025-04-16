@@ -11,6 +11,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { COLORS } from '../../../constants/colors';
 import { useFood } from '../../../context/Food_Context/Food_context';
+import { useGuest } from '../../../context/GuestLoginContext';
 
 const { width } = Dimensions.get('window');
 const tabWidth = width / 5;
@@ -18,15 +19,15 @@ const tabWidth = width / 5;
 const BottomNav = () => {
     const navigation = useNavigation();
     const route = useRoute();
+    const { isGuest } = useGuest()
     const [selectedTab, setSelectedTab] = React.useState(0);
     const animatedValue = React.useRef(new Animated.Value(0)).current;
     const { cart } = useFood()
     const tabs = [
         { name: 'Home', icon: '🏠', route: 'Home' },
-      
         { name: 'Active Order', icon: '🍕', route: 'Order_Process' },
         { name: 'Cart', icon: '🛒', route: 'Checkout', numValue: cart.length || '' },
-        { name: 'Profile', icon: '👤', route: 'Profile' },
+        { name: isGuest ? 'Login' : 'Profile', icon: '👤', route: isGuest ? 'Onboarding' : 'Profile' },
     ];
 
     const handleCheckout = () => {

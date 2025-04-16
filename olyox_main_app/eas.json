@@ -27,6 +27,11 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios":{
+        "appleId":"naveenkumarof01@gmail.com",
+        "ascAppId":"6744582670"
+      }
+    }
   }
 }

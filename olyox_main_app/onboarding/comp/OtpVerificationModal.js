@@ -24,13 +24,13 @@ const OtpVerificationModal = ({
   onVerify,
   onClose,
   phoneNumber,
-  isSubmitting
+  isSubmitting,
 }) => {
   const [timer, setTimer] = useState(30);
   const [canResend, setCanResend] = useState(false);
   const timerRef = useRef(null);
   const Navigation = useNavigation()
-  // Start timer when modal opens
+
   useEffect(() => {
     if (visible) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

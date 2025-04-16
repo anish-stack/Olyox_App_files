@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  olyox
 //
-//  Created by Md Hussain on 13/04/25.
+//  Created by Md Hussain on 14/04/25.
 //
 
 import SwiftUI
@@ -13,7 +13,7 @@ struct ContentView: View {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundStyle(.tint)
-            Text("Hello, world kings!")
+            Text("Hello, world!")
         }
         .padding()
     }
