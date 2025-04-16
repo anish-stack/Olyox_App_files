@@ -15,6 +15,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import { AppRegistry } from 'react-native';
 import { name as appName } from './app.json';
 import LottieView from 'lottie-react-native'; // Import Lottie
+import * as Application from 'expo-application';
 
 // Import screens
 import HomeScreen from './screens/HomeScreen';
@@ -367,15 +368,27 @@ const App = () => {
                       </Stack.Navigator>
 
                       {/* Overlay error banner if there's a location error but we're proceeding anyway */}
-                      {locationError && (
-                        <TouchableOpacity
-                          style={styles.errorBanner}
-                          onPress={() => navigation.navigate('LocationError')}
-                        >
-                          <Text style={styles.errorBannerText}>
-                            Location service issue. Tap to fix.
-                          </Text>
-                        </TouchableOpacity>
+                      {locationError && (                    
+                           <TouchableOpacity
+                           style={styles.errorBanner}
+                           onPress={async () => {
+                             if (Platform.OS === 'ios') {
+                               Linking.openURL('app-settings:'); 
+                             } else {
+                               // Open Android settings for the current app
+                               IntentLauncher.startActivityAsync(
+                                 IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
+                                 {
+                                   data: 'package:' + Application.applicationId,
+                                 }
+                               );
+                             }
+                           }}
+                         >
+                           <Text style={styles.errorBannerText}>
+                             Location service issue. Tap to fix.
+                           </Text>
+                         </TouchableOpacity>
                       )}
                     </NavigationContainer>
                   </ErrorBoundaryWrapper>
@@ -406,7 +419,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#555',
     textAlign: 'center',
-  }
+  },
+  errorBanner: {
+    backgroundColor: '#f44336', // Red alert color
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    margin: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4, // Android shadow
+    shadowColor: '#000', // iOS shadow
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  errorBannerText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
 });
 
 const WrappedApp = Sentry.wrap(App);
