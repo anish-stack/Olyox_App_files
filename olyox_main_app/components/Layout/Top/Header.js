@@ -11,7 +11,7 @@ import {
   Alert,
   StatusBar,
   Image,
- 
+
 } from "react-native"
 import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
@@ -23,6 +23,7 @@ import useSettings from "../../../hooks/Settings"
 import Footer from "./Footer"
 import { find_me } from "../../../utils/helpers"
 import * as Location from 'expo-location'
+import { useGuest } from "../../../context/GuestLoginContext"
 
 const { width } = Dimensions.get("window")
 
@@ -34,7 +35,7 @@ const Header = () => {
   const [locationLoading, setLocationLoading] = useState(true)
   const [userData, setUserData] = useState(null)
   const [locationPermission, setLocationPermission] = useState(null)
-  
+  const { isGuest } = useGuest()
   // Hooks
   const { location } = useLocation()
   const { settings } = useSettings()
@@ -46,7 +47,7 @@ const Header = () => {
   const headerHeightAnim = useRef(new Animated.Value(70)).current
 
   // Rain animation setup
-  const rainDrops = useMemo(() => 
+  const rainDrops = useMemo(() =>
     [...Array(20)].map(() => ({
       x: Math.random() * width,
       y: -Math.random() * 100,
@@ -54,14 +55,14 @@ const Header = () => {
       opacity: 0.5 + Math.random() * 0.5,
       size: 2 + Math.random() * 4,
     })),
-  [])
-  
+    [])
+
   const rainAnimValues = useRef(rainDrops.map(() => new Animated.Value(0))).current
 
   // Menu items configuration
   const menuItems = useMemo(() => [
     { title: "Home", icon: "home", iconType: "FontAwesome5", screen: "Home" },
-    { title: "Profile", icon: "user", iconType: "FontAwesome5", screen: "Profile" },
+    { title: isGuest ? "Guest" : "Profile", icon: "user", iconType: "FontAwesome5", screen: isGuest ? '' : "Profile" },
     { title: "Parcel", icon: "box", iconType: "FontAwesome5", screen: "Parcel" },
     { title: "Orders", icon: "shopping-bag", iconType: "FontAwesome5", screen: "Orders" },
     { title: "Hotel", icon: "hotel", iconType: "FontAwesome5", screen: "Hotel" },
@@ -137,7 +138,7 @@ const Header = () => {
   // Fetch current location with caching
   const findCurrent = useCallback(async () => {
     setLocationLoading(true)
-    
+
     // Check if we have permission
     if (locationPermission !== 'granted') {
       const hasPermission = await requestLocationPermission()
@@ -146,7 +147,7 @@ const Header = () => {
         return
       }
     }
-    
+
     // Check if we have location coordinates
     if (!location?.coords) {
       setTimeout(() => {
@@ -162,9 +163,9 @@ const Header = () => {
       const cachedAddress = await tokenCache.get_location("cached_location")
       const cachedCoords = await tokenCache.get_location("cached_coords")
 
-      console.log("cachedAddress",cachedAddress)
-      console.log("get_location",cachedCoords)
-      
+      console.log("cachedAddress", cachedAddress)
+      console.log("get_location", cachedCoords)
+
       // If we have cached location and it's close to current location, use it
       if (cachedAddress && cachedCoords) {
         const parsedCoords = JSON.parse(cachedCoords)
@@ -174,12 +175,12 @@ const Header = () => {
           parsedCoords.latitude,
           parsedCoords.longitude
         )
-        
+
         // If within 100 meters, use cached address
         if (distance < 0.1) {
           setAddress(JSON.parse(cachedAddress))
           setLocationLoading(false)
-          
+
           // Animate header height based on address length
           const addressObj = JSON.parse(cachedAddress)
           const targetHeight = addressObj?.completeAddress?.length > 30 ? 90 : 70
@@ -193,7 +194,7 @@ const Header = () => {
         lat: location?.coords?.latitude,
         lng: location?.coords?.longitude,
       })
-      
+
       setAddress(data.data.address)
       setLocationLoading(false)
 
@@ -218,16 +219,16 @@ const Header = () => {
     const R = 6371 // Radius of the earth in km
     const dLat = deg2rad(lat2 - lat1)
     const dLon = deg2rad(lon2 - lon1)
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
     return R * c // Distance in km
   }
 
   const deg2rad = (deg) => {
-    return deg * (Math.PI/180)
+    return deg * (Math.PI / 180)
   }
 
   // Animate header height
@@ -266,7 +267,7 @@ const Header = () => {
 
   // Handle login
   const handleLogin = useCallback(() => {
-    navigation.navigate("Login")
+    navigation.navigate("Onboarding")
     hideSidebar()
   }, [navigation, hideSidebar])
 
@@ -371,15 +372,15 @@ const Header = () => {
   // Render location permission request
   const renderLocationPermissionRequest = useMemo(() => {
     if (locationPermission === 'granted' || !locationLoading) return null
-    
+
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.permissionRequest}
         onPress={requestLocationPermission}
       >
         <MaterialCommunityIcons name="map-marker-alert" size={18} color={COLORS.white} />
         <Text style={styles.permissionText}>Location access needed</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.permissionButton}
           onPress={requestLocationPermission}
         >
@@ -423,17 +424,9 @@ const Header = () => {
       ) : (
         <View style={styles.authButtonsContainer}>
           <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Login</Text>
+            <Text style={styles.loginButtonText}>Sign up</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.registerButton}
-            onPress={() => {
-              navigation.navigate("Register")
-              hideSidebar()
-            }}
-          >
-            <Text style={styles.registerButtonText}>Register</Text>
-          </TouchableOpacity>
+       
         </View>
       )}
     </View>
@@ -462,9 +455,9 @@ const Header = () => {
 
       {/* Main Header */}
       <Animated.View style={[styles.header, { height: headerHeightAnim }]}>
-        
+
         <View style={styles.headerContent}>
-        <View style={styles.headerLogoContainer}>
+          <View style={styles.headerLogoContainer}>
             <Image source={require("./logo_O.png")} style={styles.headerLogo} resizeMode="contain" />
           </View>
           {/* Location Section */}
@@ -491,7 +484,7 @@ const Header = () => {
           </TouchableOpacity>
 
           {/* Logo in Header */}
-         
+
 
           {/* Menu Button */}
           <TouchableOpacity style={styles.menuButton} onPress={toggleSidebar} activeOpacity={0.7}>
@@ -526,7 +519,7 @@ const Header = () => {
                 },
               ]}
             >
-              <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+              <TouchableOpacity activeOpacity={1} onPress={() => { }}>
                 {/* Sidebar Header */}
                 <View style={styles.sidebarHeader}>
                   <View style={styles.logoContainer}>
@@ -550,7 +543,7 @@ const Header = () => {
 
                 {/* Menu Items */}
                 {renderMenuItems}
-                
+
                 {/* Footer */}
                 <Footer />
               </TouchableOpacity>
@@ -636,7 +629,7 @@ const styles = StyleSheet.create({
   menuButton: {
     width: 35,
     height: 35,
-    marginLeft:5,
+    marginLeft: 5,
     borderRadius: 20,
     backgroundColor: "rgba(255, 255, 255, 0.15)",
     justifyContent: "center",

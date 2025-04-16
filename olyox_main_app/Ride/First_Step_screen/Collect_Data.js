@@ -29,6 +29,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { find_me } from "../../utils/helpers"
 import { tokenCache } from "../../Auth/cache"
 import Styles from "./Styles"
+import { useGuest } from "../../context/GuestLoginContext"
 
 const GOOGLE_MAPS_APIKEY = "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8"
 const { width, height } = Dimensions.get("window")
@@ -119,6 +120,7 @@ const CollectData = () => {
   const isAndroid = Platform.OS === 'android';
   const [distance, setDistance] = useState(null);
   const [duration, setDuration] = useState(null);
+  const {isGuest} = useGuest()
   const [coordinates, setCoordinates] = useState([]);
   const [state, setState] = useState({
     pickup: "",
@@ -595,9 +597,28 @@ const CollectData = () => {
       },
     )
   }
-  // console.log(rideData)
 
   const handleSubmit = () => {
+
+    if(isGuest){
+      Alert.alert(
+        "Create an Account to Continue",
+        "To book a ride, please create an account. It only takes a moment, and you'll be ready to go!",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+          
+              navigation.navigate("Onboarding");
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+      return; 
+    }
+
+
     if (!rideData.pickup.latitude || !rideData.dropoff.latitude) {
       Alert.alert("Error", "Please select both pickup and drop-off locations")
       return

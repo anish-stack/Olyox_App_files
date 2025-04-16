@@ -10,13 +10,15 @@ import {
     ActivityIndicator,
     RefreshControl,
     Linking,
+    Alert,
 } from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import Layout from "../../components/Layout/_layout"
-import { useRoute } from "@react-navigation/native"
+import { useNavigation, useRoute } from "@react-navigation/native"
 import { findHotelsDetails } from "../utils/Hotel.data"
 import BookingModal from "./BookingModal"
 import styles from "./SingleHotelDetails.style"
+import { useGuest } from "../../context/GuestLoginContext"
 
 const getAmenityIcon = (amenity) => {
     const iconMap = {
@@ -55,6 +57,7 @@ const formatAmenityName = (amenity) => {
 export default function SingleHotelDetails() {
     const route = useRoute()
     const { id } = route.params || {}
+    const { isGuest } = useGuest()
     const [data, setData] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -62,7 +65,7 @@ export default function SingleHotelDetails() {
     const [showModal, setShowModal] = useState(false)
     const [showAllAmenities, setShowAllAmenities] = useState(false)
     const [imageError, setImageError] = useState(false);
-
+    const navigation = useNavigation()
 
     const fetchData = useCallback(
         async (showLoader = true) => {
@@ -124,7 +127,29 @@ export default function SingleHotelDetails() {
             </Layout>
         )
     }
-
+    if (isGuest) {
+        return Alert.alert(
+          "Create an Account to Continue",
+          "To book a Hotel Room, please create an account. It only takes a moment, and you'll be ready to go!",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                // Navigate to Onboarding when OK is pressed
+                navigation.navigate("Onboarding");
+              },
+            },
+            {
+              text: "Cancel",
+              onPress: () => {
+                // Navigate back to the previous screen when Cancel is pressed
+                navigation.goBack();
+              },
+            },
+          ],
+          { cancelable: false }
+        );
+      }
     const activeAmenities = Object.entries(data?.hotel_user?.amenities || {})
         .filter(([_, value]) => value)
         .map(([key]) => key)

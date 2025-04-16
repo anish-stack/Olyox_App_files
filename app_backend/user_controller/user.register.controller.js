@@ -512,6 +512,38 @@ exports.updateBlockStatus = async (req, res) => {
     }
 }
 
+exports.deleteMyAccount = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'The requested user account was not found.',
+            });
+        }
+
+        await User.findByIdAndDelete(id);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Your account has been successfully deleted. We’re sorry to see you go!',
+            data: null
+        });
+
+    } catch (error) {
+        console.error("Error deleting account:", error);
+        return res.status(500).json({
+            success: false,
+            message: 'Something went wrong while deleting the account. Please try again later.',
+            error: error.message
+        });
+    }
+};
+
+
+
 exports.logout = async (req, res) => {
     try {
         res.clearCookie("token");

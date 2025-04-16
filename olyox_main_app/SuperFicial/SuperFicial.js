@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useMemo, useState } from "react"
-import { View, Text, Image, TouchableOpacity, StyleSheet, Animated, ScrollView, Dimensions } from "react-native"
+import { View, Text, Image, TouchableOpacity, StyleSheet, Animated, ScrollView, Dimensions, Alert } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { PanGestureHandler, State } from "react-native-gesture-handler"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import { useFood } from "../context/Food_Context/Food_context"
+import { useGuest } from "../context/GuestLoginContext"
 
 const { width, height } = Dimensions.get("window")
 
@@ -12,7 +13,7 @@ export default function SuperFicial({ restaurant_id }) {
     const translateY = useRef(new Animated.Value(height)).current
     const lastGestureDy = useRef(0)
     const [isVisible, setIsVisible] = useState(true)
-
+    const { isGuest } = useGuest()
     const { cart, removeFood, updateQuantity } = useFood()
 
     const totalAmount = useMemo(() => {
@@ -53,17 +54,42 @@ export default function SuperFicial({ restaurant_id }) {
     }
 
     const handleViewAll = () => {
+
         navigation.navigate("FullCart")
     }
 
     const handleCheckout = () => {
-        const check_out_data_prepare = {
-            items: cart,
-            total_amount: totalAmount,
-            restaurant: restaurant_id,
+        if (isGuest) {
+            Alert.alert(
+                "Create an Account to Continue",
+                "To place a food order, please create an account. It only takes a moment, and you'll be all set to enjoy your meal!",
+                [
+                    {
+                        text: "OK",
+                        onPress: () => {
+                            navigation.navigate("Onboarding");
+                        },
+                    },
+                    {
+                        text: "Cancel",
+                        onPress: () => {
+                            navigation.goBack();
+                        },
+                    },
+                ],
+                { cancelable: false }
+            );
+        } else {
+            const check_out_data_prepare = {
+                items: cart,
+                total_amount: totalAmount,
+                restaurant: restaurant_id,
+            };
+    
+            navigation.navigate("Checkout", { data: check_out_data_prepare });
         }
-        navigation.navigate("Checkout", { data: check_out_data_prepare })
-    }
+    };
+    
 
     const handleRemoveItem = (itemId) => {
         removeFood(itemId)

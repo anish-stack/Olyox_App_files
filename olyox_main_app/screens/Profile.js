@@ -162,6 +162,19 @@ export default function UserProfile() {
         }
     };
 
+    const deleteAccount = async(id)=>{
+        try {
+            const response = await axios.post(`https://demoapi.olyox.com/api/v1/user/delete-my-account/${id}`)
+            console.log("response", response.data);
+            Alert.alert('Account deleted successfully');
+            
+        } catch (error) {
+            console.error('Error deleting account:', error);
+            Alert.alert('Error', 'There was an issue deleting your account. Please try again.');
+            
+        }
+    }
+
 
     useEffect(() => {
         if (image) {
@@ -435,6 +448,9 @@ export default function UserProfile() {
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.editButton} onPress={() => setEditModel(true)}>
                             <Text style={styles.editText}>Edit Profile</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.deleteButton} onPress={() => deleteAccount(userData?._id)}>
+                            <Text style={styles.deleteext}>Delete Account</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -728,7 +744,7 @@ const styles = StyleSheet.create({
     containerButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         marginTop: 20,
     },
     logoutButton: {
@@ -753,6 +769,15 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 8,
+        width: '28%',
+        alignItems: 'center',
+    },
+    deleteButton:{
+        backgroundColor: '#d64444', // Dark blue color for edit
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        marginLeft:8,
         width: '30%',
         alignItems: 'center',
     },
@@ -762,4 +787,10 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         textTransform: 'uppercase',
     },
+   deleteext: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+    }
 });

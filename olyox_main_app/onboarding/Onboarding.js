@@ -26,6 +26,7 @@ import { createUserRegister, verify_otp } from '../utils/helpers';
 import PhoneAuthModal from './comp/PhoneAuthModal';
 import OtpVerificationModal from './comp/OtpVerificationModal';
 import LoadingOverlay from './comp/LoadingOverlay';
+import { useGuest } from '../context/GuestLoginContext';
 
 
 
@@ -36,6 +37,7 @@ export default function OnboardingScreen() {
   const navigation = useNavigation();
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef(null);
+  const {handleGuestLogout} = useGuest()
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [slides, setSlides] = useState([]);
@@ -198,7 +200,7 @@ export default function OnboardingScreen() {
               userId: response.User._id
             });
           }
-
+          handleGuestLogout()
           // Show success message and navigate
           Alert.alert(
             'Success!',
