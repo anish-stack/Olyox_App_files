@@ -169,7 +169,7 @@ export default function UserProfile() {
             Alert.alert('Account deleted successfully');
             
         } catch (error) {
-            console.error('Error deleting account:', error);
+            console.error('Error deleting account:', error.response.data);
             Alert.alert('Error', 'There was an issue deleting your account. Please try again.');
             
         }

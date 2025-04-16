@@ -10,7 +10,7 @@ users.post('/register', createUser)
 users.post('/verify-user', verify_user)
 users.post('/resend-otp', resendOtp)
 users.post('/login', login)
-users.post('/delete-my-account', deleteMyAccount)
+users.post('/delete-my-account/:id', deleteMyAccount)
 
 users.get('/find_me',Protect, fine_me)
 users.get('/find-Orders-details',Protect, findAllOrders)
