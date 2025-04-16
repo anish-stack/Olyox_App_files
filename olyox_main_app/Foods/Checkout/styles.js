@@ -13,11 +13,13 @@ export const styles = StyleSheet.create({
     backgroundColor: "#F8F9FA",
   },
   header: {
+
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    marginBottom:2,
+    paddingVertical: 36,
     backgroundColor: "#FF5252",
     elevation: 4,
     shadowColor: "#000",

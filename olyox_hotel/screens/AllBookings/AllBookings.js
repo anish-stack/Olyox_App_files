@@ -47,14 +47,16 @@ export default function AllBookings() {
                 params: selectedFilter,
             })
             const filterNotCancelBooking = response?.data?.data.filter((item) => item.status !== 'Cancelled')
-            // console.log("Bookings New", response.data.data[0]?.listing_id)
+
             setBookings(filterNotCancelBooking || response.data.data || [])
         } catch (error) {
             if (error.response?.data?.message === "No bookings found matching the criteria") {
                 setBookings([])
+            } else {
+                Alert.alert("Error", error.response?.data?.message || "Failed to fetch bookings")
+                console.error("Error fetching bookings:", error.response?.data?.message || "Failed to fetch bookings")
             }
-            console.error("Error fetching bookings:", error.response?.data?.message || "Failed to fetch bookings")
-            Alert.alert("Error", error.response?.data?.message || "Failed to fetch bookings")
+
         } finally {
             setLoading(false)
         }

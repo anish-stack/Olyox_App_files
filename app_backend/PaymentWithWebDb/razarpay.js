@@ -1,15 +1,20 @@
-const mongoose = require('mongoose');
+
 const Razorpay = require('razorpay');
 const axios = require('axios');
 const { getMembershipPlanModel, getRechargeModel, getActiveReferralSchema, getvendorModel } = require('./db');
 var { validatePaymentVerification } = require('razorpay/dist/utils/razorpay-utils');
-const RiderModel = require('../models/Rider.model');
 const SendWhatsAppMessage = require('../utils/whatsapp_send');
 const { updateRechargeDetails } = require('../utils/Api.utils');
 const razorpayInstance = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
+const settings = require('../models/Admin/Settings');
+const { createRechargeLogs } = require('../Admin Controllers/Bugs/rechargeLogs');
+
+
+const FIRST_RECHARGE_COMMISONS = 10
+const SECOND_RECHARGE_COMMISONS = 2
 
 
 const check_user_presence = async (user_id) => {
@@ -66,7 +71,7 @@ exports.make_recharge = async (req, res) => {
 
         // Create Razorpay order
         const orderOptions = {
-            amount: package_price * 100, // amount in paise
+            amount: package_price * 100,
             currency: 'INR',
             receipt: `receipt_${Date.now()}`,
             notes: {
@@ -91,8 +96,6 @@ exports.make_recharge = async (req, res) => {
             razarpay_order_id: razorpayOrder.id,
             razorpay_payment_id: null,
             razorpay_status: razorpayOrder.status,
-
-
         });
         await rechargeData.save();
         console.log('Recharge Data:', rechargeData);
@@ -113,69 +116,58 @@ exports.verify_recharge = async (req, res) => {
         const {
             razorpay_order_id,
             razorpay_payment_id,
-            razorpay_signature,
-
+            razorpay_signature
         } = req.body;
-        console.log("req.method", req.method);
-        console.log("req.headers", req.headers);
-        console.log("req.body", req.body);
+
         const { BHID } = req.params || {};
-        console.log("req.body", req.body)
-        console.log("req.query ", req.params)
-        // Validate request body
+        const RechargeModel = getRechargeModel();
+        const MembershipPlan = getMembershipPlanModel();
+        const VendorModel = await getvendorModel();
+        const ActiveReferral_Model = getActiveReferralSchema();
+
+        // Step 1: Validate request body
         if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
             return res.status(400).json({ message: 'Missing required payment information.' });
         }
 
-        // Validate Razorpay signature
+        // Step 2: Validate Razorpay signature
         const isSignatureValid = validatePaymentVerification(
             { order_id: razorpay_order_id, payment_id: razorpay_payment_id },
             razorpay_signature,
             process.env.RAZORPAY_KEY_SECRET
         );
 
-        console.log("isSignatureValid", isSignatureValid)
         if (!isSignatureValid) {
             return res.status(400).json({ message: 'Invalid Razorpay payment signature.' });
         }
 
-        // Fetch recharge entry from DB
-        const RechargeModel = getRechargeModel();
-        console.log("RechargeModel", RechargeModel)
+        // Step 3: Fetch recharge data
         if (!RechargeModel) {
             return res.status(500).json({ message: 'Recharge model not found.' });
         }
-        const rechargeData = await RechargeModel.findOne({ razarpay_order_id: razorpay_order_id })
 
+        const rechargeData = await RechargeModel.findOne({ razarpay_order_id: razorpay_order_id });
         if (!rechargeData) {
             return res.status(404).json({ message: 'Recharge entry not found.' });
         }
-        console.log("rechargeData", rechargeData)
 
-        // Get membership plan
-        const MembershipPlan = getMembershipPlanModel();
+        // Step 4: Fetch membership plan
         const plan = await MembershipPlan.findById(rechargeData?.member_id);
-
-        console.log("plan", plan)
-
         if (!plan) {
             return res.status(400).json({ message: 'Invalid or missing membership plan.' });
         }
 
-        // Check user presence
-
-        const vendor = await getvendorModel();
-        const user = await vendor.findById(rechargeData?.vendor_id);
-        console.log("user", user)
+        // Step 5: Fetch vendor
+        const user = await VendorModel.findById(rechargeData?.vendor_id);
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }
 
         const isFirstRecharge = !user?.payment_id;
 
-        // Calculate plan end date
-        const { whatIsThis, validityDays } = plan;
+        // Step 6: Calculate plan end date
         const endDate = new Date();
+        const { whatIsThis, validityDays } = plan;
 
         switch (whatIsThis) {
             case 'Day':
@@ -194,42 +186,63 @@ exports.verify_recharge = async (req, res) => {
                 return res.status(400).json({ message: "Invalid validity unit in membership plan." });
         }
 
-        // Update recharge data
+        // Step 7: Update recharge data
         rechargeData.razorpay_payment_id = razorpay_payment_id;
         rechargeData.razorpay_status = 'paid';
         rechargeData.end_date = endDate;
         rechargeData.trn_no = razorpay_payment_id;
         rechargeData.payment_approved = true;
 
-        // Handle referral status update
-        const ActiveReferral_Model = getActiveReferralSchema();
+        // Step 8: Handle referral update
         const referral = await ActiveReferral_Model.findOne({ contactNumber: user.number });
         if (referral && user.recharge === 1) {
             referral.isRecharge = true;
             await referral.save();
         }
 
-        // Update user data
+        // Step 9: Update user info
         user.payment_id = rechargeData?._id;
         user.recharge += 1;
         user.plan_status = true;
         user.member_id = plan?._id;
         await user.save();
 
+        // Step 10: Trigger approval API
+        try {
+            await axios.get(`https://api.olyox.com/api/v1/approve_recharge?_id=${rechargeData?._id}`);
+        } catch (error) {
+            const logsData = {
+                BHID: user.my_referral_id,
+                amount: plan?.price,
+                plan: plan?.title,
+                transactionId: razorpay_payment_id,
+                status: "FAILED",
+                error_msg: error?.response?.data?.message || error.message || "Error is Undefined",
+                paymentMethod: "PAYPAL"
+            };
+            await createRechargeLogs({ data: logsData });
+
+            const errorAlert = `⚠️ Recharge Verification Failed\n\nUser: ${user?.name || 'Unknown'}\nNumber: ${user?.number || 'N/A'}\nPlan: ${plan?.title || 'N/A'}\nTransaction ID: ${razorpay_payment_id || 'N/A'}\n\nPlease investigate this issue.`;
+            await SendWhatsAppMessage(errorAlert, process.env.ADMIN_WHATSAPP_NUMBER);
+
+
+        }
+
         await rechargeData.save();
-        const datas = await updateRechargeDetails({
+
+        // Step 11: Update external recharge details
+        const updateResult = await updateRechargeDetails({
             rechargePlan: plan?.title,
             expireData: endDate,
             approveRecharge: true,
             BH: user?.myReferral
-        })
+        });
 
-        if (!datas?.success) {
+        if (!updateResult?.success) {
             return res.status(400).json({ message: 'Failed to update recharge details.' });
         }
-        // await riders.save();
-        console.log("save rechargeData", rechargeData)
-  
+
+        // Step 12: Send WhatsApp notifications
         const vendorMessage = `Dear ${user.name},\n\n✅ Your recharge is successful!\nPlan: ${plan.title}\nAmount: ₹${plan.price}\nTransaction ID: ${razorpay_payment_id}\n\nThank you for choosing us!`;
 
         const adminMessage = `🔔 New Recharge Received\n\nDetails:\n- Transaction ID: ${razorpay_payment_id}\n- Plan: ${plan.title}\n- Amount: ₹${plan.price}\n- Vendor Name: ${user.name}\n- Contact: ${user.number}`;

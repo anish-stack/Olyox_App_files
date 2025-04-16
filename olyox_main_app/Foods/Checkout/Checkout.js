@@ -27,7 +27,7 @@ import EmptyCartMessage from "./EmptyCartMessage"
 // Component for each cart item
 const CartItem = ({ item, onUpdateQuantity, onRemoveItem }) => {
   const [imageError, setImageError] = useState(false)
-  
+
   return (
     <View style={styles.cartItem}>
       <Image
@@ -107,8 +107,8 @@ const CouponSection = ({ coupons, couponsLoading, couponsError, totalAmount, sel
           <TouchableOpacity
             key={coupon._id}
             style={[
-              styles.couponItem, 
-              isSelected && styles.selectedCoupon, 
+              styles.couponItem,
+              isSelected && styles.selectedCoupon,
               isDisabled && styles.disabledCoupon
             ]}
             onPress={() => !isDisabled && onSelectCoupon(coupon)}
@@ -130,15 +130,15 @@ const CouponSection = ({ coupons, couponsLoading, couponsError, totalAmount, sel
 
             <View style={styles.couponDetails}>
               <Text style={styles.couponDetailText}>
-                {coupon.discount_type === "percentage" 
-                  ? `${coupon.discount}% off` 
+                {coupon.discount_type === "percentage"
+                  ? `${coupon.discount}% off`
                   : `₹${coupon.discount} off`}
               </Text>
               {coupon.max_discount && (
                 <Text style={styles.couponDetailText}>Up to ₹{coupon.max_discount}</Text>
               )}
               <Text style={[
-                styles.couponMinOrder, 
+                styles.couponMinOrder,
                 isDisabled && styles.couponMinOrderHighlight
               ]}>
                 Min order: ₹{coupon.min_order_amount}
@@ -192,16 +192,16 @@ const PaymentMethodItem = ({ method, isSelected, onSelect }) => (
         styles.paymentIconContainer,
         isSelected && styles.selectedPaymentIconContainer,
       ]}>
-        <Icon 
-          name={method.icon} 
-          size={20} 
-          color={isSelected ? "#FFFFFF" : "#666"} 
+        <Icon
+          name={method.icon}
+          size={20}
+          color={isSelected ? "#FFFFFF" : "#666"}
         />
       </View>
 
       <View style={styles.paymentMethodInfo}>
         <Text style={[
-          styles.paymentMethodName, 
+          styles.paymentMethodName,
           isSelected && styles.selectedPaymentText
         ]}>
           {method.name}
@@ -270,7 +270,7 @@ const Checkout = () => {
   const route = useRoute()
   const navigation = useNavigation()
   const { data } = route.params || {}
-  const { removeFood, cart: initialItems, updateQuantity,clearCart } = useFood()
+  const { removeFood, cart: initialItems, updateQuantity, clearCart } = useFood()
   const { total_amount: initialTotalAmount, restaurant } = data || {}
   const { location } = useLocation()
 
@@ -441,7 +441,7 @@ const Checkout = () => {
       setShowAddressModal(true)
       return
     }
-    
+
     setShowConfirmation(true)
   }, [deliveryAddress])
 
@@ -522,12 +522,12 @@ const Checkout = () => {
   // Render confirmation modal
   const renderConfirmationModal = () => {
     if (!showConfirmation) return null;
-    
+
     const deliveryFee = 40;
     const packagingFee = 15;
     const taxes = Math.round(totalAmount * 0.05);
     const finalPayableAmount = finalAmount + deliveryFee + packagingFee + taxes;
-    
+
     return (
       <View style={styles.confirmationOverlay}>
         <View style={styles.confirmationModal}>
@@ -537,7 +537,7 @@ const Checkout = () => {
               <Icon name="close" size={24} color="#333" />
             </TouchableOpacity>
           </View>
-          
+
           <ScrollView style={styles.confirmationContent}>
             <View style={styles.confirmationSection}>
               <Text style={styles.confirmationSectionTitle}>Delivery Address</Text>
@@ -547,14 +547,14 @@ const Checkout = () => {
                 {` - ${deliveryAddress.pincode}`}
               </Text>
             </View>
-            
+
             <View style={styles.confirmationSection}>
               <Text style={styles.confirmationSectionTitle}>Payment Method</Text>
               <Text style={styles.confirmationPayment}>
                 {paymentMethod === "CARD" ? "Online Payment" : "Cash on Delivery"}
               </Text>
             </View>
-            
+
             <View style={styles.confirmationSection}>
               <Text style={styles.confirmationSectionTitle}>Order Summary</Text>
               {items.map(item => (
@@ -568,7 +568,7 @@ const Checkout = () => {
                 </View>
               ))}
             </View>
-            
+
             <View style={styles.confirmationSection}>
               <Text style={styles.confirmationSectionTitle}>Bill Details</Text>
               <View style={styles.confirmationBillItem}>
@@ -599,16 +599,16 @@ const Checkout = () => {
               </View>
             </View>
           </ScrollView>
-          
+
           <View style={styles.confirmationActions}>
-            <TouchableOpacity 
-              style={styles.confirmationCancelButton} 
+            <TouchableOpacity
+              style={styles.confirmationCancelButton}
               onPress={() => setShowConfirmation(false)}
             >
               <Text style={styles.confirmationCancelText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.confirmationConfirmButton} 
+            <TouchableOpacity
+              style={styles.confirmationConfirmButton}
               onPress={handlePlaceOrder}
               disabled={isLoading}
             >
@@ -624,8 +624,8 @@ const Checkout = () => {
     );
   };
 
-  if(initialItems.length === 0){
-    return <EmptyCartMessage/>
+  if (initialItems.length === 0) {
+    return <EmptyCartMessage />
   }
 
   return (
@@ -633,13 +633,15 @@ const Checkout = () => {
       <StatusBar barStyle={Platform.OS === 'ios' ? "dark-content" : "light-content"} backgroundColor="#FF5252" />
       <View style={styles.container}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Checkout</Text>
-          <View style={styles.headerRight} />
-        </View>
+        {Platform.OS === "ios" && (
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Checkout</Text>
+            <View style={styles.headerRight} />
+          </View>
+        )}
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {/* Restaurant Info */}
@@ -670,9 +672,9 @@ const Checkout = () => {
               </Text>
             </View>
             {items?.map(item => (
-              <CartItem 
+              <CartItem
                 key={item._id}
-                item={item} 
+                item={item}
                 onUpdateQuantity={handleUpdateQuantity}
                 onRemoveItem={handleRemoveItem}
               />
@@ -687,13 +689,13 @@ const Checkout = () => {
             </View>
 
             {deliveryAddress ? (
-              <AddressSection 
-                deliveryAddress={deliveryAddress} 
+              <AddressSection
+                deliveryAddress={deliveryAddress}
                 onChangeAddress={() => setShowAddressModal(true)}
               />
             ) : (
-              <TouchableOpacity 
-                style={styles.addAddressButton} 
+              <TouchableOpacity
+                style={styles.addAddressButton}
                 onPress={() => setShowAddressModal(true)}
               >
                 <Icon name="plus" size={20} color="#FFFFFF" />
