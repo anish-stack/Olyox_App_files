@@ -5,6 +5,7 @@ import { tokenCache } from '../Auth/cache';
 import { find_me } from '../utils/helpers';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as SecureStore from 'expo-secure-store';
 
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
@@ -28,6 +29,8 @@ export default function UserProfile() {
     useEffect(() => {
         fetchData();
     }, []);
+
+
 
     const fetchData = async () => {
         try {
@@ -56,6 +59,21 @@ export default function UserProfile() {
         })();
     }, []);
 
+
+    const handleLogout = async()=>{
+        await SecureStore.deleteItemAsync('auth_token')
+        await SecureStore.deleteItemAsync('cached_location')
+        await SecureStore.deleteItemAsync('cached_coords')
+        await SecureStore.deleteItemAsync('auth_token_db')
+      
+        navigation.reset({
+            index: 0,
+            routes: [{ name: 'Onboarding' }],
+        })
+
+    }
+
+    
     const pickImage = async () => {
         console.log("Opening image picker...");
 
@@ -166,10 +184,10 @@ export default function UserProfile() {
         try {
             const response = await axios.post(`https://demoapi.olyox.com/api/v1/user/delete-my-account/${id}`)
             console.log("response", response.data);
-            Alert.alert('Account deleted successfully');
-            
+            Alert.alert(response.data.message);
+            await handleLogout()
         } catch (error) {
-            console.error('Error deleting account:', error.response.data);
+            console.error('Error deleting account:', error.response.data,message);
             Alert.alert('Error', 'There was an issue deleting your account. Please try again.');
             
         }
@@ -443,7 +461,7 @@ export default function UserProfile() {
                     <Text style={styles.email}>{userData?.email || "Please Add a Email"}</Text>
                     {/* <Text style={styles.email}>{userData?.isOtpVerify ? 'Verified User' : ''}</Text> */}
                     <View style={styles.containerButton}>
-                        <TouchableOpacity style={styles.logoutButton} onPress={() => { }}>
+                        <TouchableOpacity style={styles.logoutButton} onPress={() => handleLogout()}>
                             <Text style={styles.logoutText}>Logout</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.editButton} onPress={() => setEditModel(true)}>
