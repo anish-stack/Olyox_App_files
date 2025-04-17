@@ -43,43 +43,56 @@
     <dict>
       <key>NSAllowsArbitraryLoads</key>
       <false/>
-        <key>NSAllowsArbitraryLoadsInWebContent</key>
+      <key>NSAllowsArbitraryLoadsInWebContent</key>
       <true/>
-
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    
+    <!-- Updated Purpose Strings as per App Store Guidelines -->
     <key>NSCameraUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your camera</string>
-    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your location</string>
-    <key>NSLocationAlwaysUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your location</string>
+    <string>Allow Olyox to access your camera to take photos for profile setup, order verification, and customer support.</string>
+    
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>This app requires your location to provide better services.</string>
+    <string>Olyox uses your location while the app is active to show nearby hotels, restaurants, and local services, and to automatically fill in your address during checkout.</string>
+    
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>Olyox uses your location in the background to provide real-time delivery tracking and notify you of services near your current location, even when the app isn't open.</string>
+    
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Olyox needs access to your location at all times for continuous delivery updates, to show nearby providers, and to improve service recommendations based on your location history.</string>
+    
     <key>NSMicrophoneUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <string>Allow Olyox to access your microphone for audio messages in support chat and recording voice notes when placing or receiving orders.</string>
+    
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your photos</string>
+    <string>Olyox accesses your photo library so you can upload images for profile photos, product reviews, or support requests—for example, sharing a photo of a received item.</string>
+    
     <key>UIBackgroundModes</key>
     <array>
       <string>fetch</string>
     </array>
+    
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
+    
     <key>UIRequiredDeviceCapabilities</key>
     <array>
       <string>arm64</string>
     </array>
+    
     <key>UIRequiresFullScreen</key>
     <false/>
+    
     <key>UIStatusBarStyle</key>
     <string>UIStatusBarStyleDefault</string>
+    
     <key>UISupportedInterfaceOrientations</key>
     <array>
       <string>UIInterfaceOrientationPortrait</string>
       <string>UIInterfaceOrientationPortraitUpsideDown</string>
     </array>
+    
     <key>UISupportedInterfaceOrientations~ipad</key>
     <array>
       <string>UIInterfaceOrientationPortrait</string>
@@ -87,8 +100,10 @@
       <string>UIInterfaceOrientationLandscapeLeft</string>
       <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
+    
     <key>UIUserInterfaceStyle</key>
     <string>Light</string>
+    
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
   </dict>
