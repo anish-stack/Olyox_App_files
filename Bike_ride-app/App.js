@@ -82,7 +82,7 @@ const App = () => {
 
         if (token) {
           const response = await axios.get(
-            'https://demoapi.olyox.com/api/v1/rider/user-details',
+            'http://192.168.1.12:3100/api/v1/rider/user-details',
             { headers: { Authorization: `Bearer ${token}` } }
           );
 
@@ -119,7 +119,7 @@ const App = () => {
   const foundRideDetails = async (temp_ride_id) => {
     console.log("Temp", temp_ride_id)
     try {
-      const response = await axios.get(`https://demoapi.olyox.com/rider/${temp_ride_id}`)
+      const response = await axios.get(`http://192.168.1.12:3100/rider/${temp_ride_id}`)
       console.log("hello", response.data)
       setActiveRideData(response.data)
     } catch (error) {
@@ -194,7 +194,7 @@ const App = () => {
                   <NavigationContainer ref={navigationRef}>
                     <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
                       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                      <Stack.Screen name="register" component={RegistrationForm} />
+                      <Stack.Screen name="register" options={{headerShown:true}}  component={RegistrationForm} />
                       <Stack.Screen name="UploadDocuments" component={Document} />
                       <Stack.Screen name="Wait_Screen" component={Wait_Screen} />
                       <Stack.Screen name="Home" component={HomeScreen} />

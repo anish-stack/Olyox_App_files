@@ -35,7 +35,7 @@ import {
         }
   
         const response = await axios.get(
-          'https://demoapi.olyox.com/api/v1/rider/getMyAllRides',
+          'http://192.168.1.12:3100/api/v1/rider/getMyAllRides',
           {
             headers: {
               Authorization: `Bearer ${token}`,

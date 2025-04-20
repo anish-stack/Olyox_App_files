@@ -407,7 +407,7 @@ const CollectData = () => {
       const db_token = await tokenCache.getToken("auth_token_db")
       const token = db_token || gmail_token
 
-      const response = await axios.get("https://demoapi.olyox.com/api/v1/user/find-Orders-details", {
+      const response = await axios.get("http://192.168.1.12:3100/api/v1/user/find-Orders-details", {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -550,7 +550,7 @@ const CollectData = () => {
         };
 
         // Send the pickup and dropoff coordinates to your backend API
-        const response = await axios.post('https://demoapi.olyox.com/directions', { pickup, dropoff });
+        const response = await axios.post('http://192.168.1.12:3100/directions', { pickup, dropoff });
 
         const json = response.data;
         console.log("Fetching directions json...", json);

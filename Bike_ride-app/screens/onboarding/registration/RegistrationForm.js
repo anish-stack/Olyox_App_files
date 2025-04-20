@@ -1,57 +1,71 @@
-
 import { useEffect, useState } from "react"
 import { View, StyleSheet, Text, ScrollView, ImageBackground, TouchableOpacity } from "react-native"
-import { TextInput, Button, Card, Title, Paragraph, ActivityIndicator, Snackbar, Menu } from "react-native-paper"
+import { TextInput, Button, Card, Title, Paragraph, ActivityIndicator, Snackbar, Menu, Chip } from "react-native-paper"
 import axios from "axios"
 import { Alert } from "react-native"
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from 'expo-secure-store'
 import { useNavigation, useRoute } from "@react-navigation/native"
 
 const API_BASE_URL = "https://api.olyox.com/api/v1"
-const MAIN_API_BASE_URL = "https://demoapi.olyox.com/api/v1/rider"
-
-const vehicleTypes = ["SEDAN", "SUV", "PRIME", "MINI"]
-const vehicleBrands = [
-  "Maruti Suzuki",
-  "Hyundai",
-  "Tata Motors",
-  "Mahindra & Mahindra",
-  "Kia",
-  "Toyota",
-  "MG Motor",
-  "Honda",
-  "Renault",
-  "Skoda",
-]
+const MAIN_API_BASE_URL = "http://192.168.1.12:3100/api/v1"
 
 export default function RegistrationForm() {
-  const route = useRoute();
-  const { bh } = route.params || {};
-  const [step, setStep] = useState(1);
-  const [bhId, setBhId] = useState(bh ?? "BH");
+  const route = useRoute()
+  const navigation = useNavigation()
+  const { bh } = route.params || {}
+  
+  // Form steps
+  const [step, setStep] = useState(1)
+  
+  // Form data
   const [userData, setUserData] = useState(null)
-  const [alltypes, setAllTypes] = useState([])
+  const [bhId, setBhId] = useState(bh ?? "BH")
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
-  const [vehicleName, setVehicleName] = useState("")
+  const [role, setRole] = useState("cab") // cab or parcel
   const [vehicleType, setVehicleType] = useState("")
+  const [vehicleTypeId, setVehicleTypeId] = useState("")
+  const [vehicleName, setVehicleName] = useState("")
   const [vehicleNumber, setVehicleNumber] = useState("")
-  const [RcExpireDate, setRcExpireDate] = useState("")
+  const [rcExpireDate, setRcExpireDate] = useState("")
   const [otp, setOtp] = useState("")
+  
+  // Data lists
+  const [vehicleTypes, setVehicleTypes] = useState([])
+  const [vehicleBrands, setVehicleBrands] = useState([])
+  const [parcelVehicles, setParcelVehicles] = useState([])
+  
+  // UI states
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [vehicleTypeMenuVisible, setVehicleTypeMenuVisible] = useState(false)
   const [vehicleNameMenuVisible, setVehicleNameMenuVisible] = useState(false)
-  const navigation = useNavigation()
-  // console.log(bh)
+  const [parcelTypeMenuVisible, setParcelTypeMenuVisible] = useState(false)
+
+  // Fetch initial data
+  useEffect(() => {
+    fetchVehicleTypes()
+    fetchParcelVehicles()
+  }, [])
+
+  // Fetch vehicle brands when a vehicle type is selected
+  useEffect(() => {
+    if (vehicleTypeId && role === "cab") {
+      fetchVehicleBrands(vehicleTypeId)
+    }
+  }, [vehicleTypeId, role])
+
+  // API functions
   const fetchUserDetails = async () => {
-    if (!bhId) {
-      setError("Please enter a BH ID")
+    if (!bhId || bhId === "BH") {
+      setError("Please enter a valid BH ID")
       return
     }
+
     setLoading(true)
     setError("")
+    
     try {
       const response = await axios.get(`${API_BASE_URL}/app-get-details?Bh=${bhId}`)
 
@@ -61,66 +75,91 @@ export default function RegistrationForm() {
         setPhone(response.data.data.number || "")
         setStep(2)
       } else {
-        setError("User not found")
+        setError("User not found with this BH ID")
       }
     } catch (error) {
       console.error("Error fetching user details:", error)
-      setError("Failed to fetch user details")
+      setError("Failed to fetch user details. Please check your network connection.")
     } finally {
       setLoading(false)
     }
   }
 
-
-  const fetchTypes = async () => {
+  const fetchVehicleTypes = async () => {
     try {
-      const response = await axios.get(`https://demoapi.olyox.com/api/v1/admin/getAllSuggestions`)
+      const response = await axios.get(`${MAIN_API_BASE_URL}/admin/getAllSuggestions`)
       if (response.data.success) {
-        setAllTypes(response.data.data)
-      }
-      else {
-        setAllTypes([])
-
+        setVehicleTypes(response.data.data)
       }
     } catch (error) {
-      Alert.alert('Vehicle type Found', 'Please Re try After Some Time', [{
-        text: 'OK',
-
-      }])
+      console.error("Error fetching vehicle types:", error)
+      Alert.alert('Error', 'Failed to fetch vehicle types. Please try again later.')
     }
   }
-  useEffect(() => {
-    fetchTypes()
-  }, [])
+
+  const fetchVehicleBrands = async (typeId) => {
+    try {
+      const response = await axios.get(`${MAIN_API_BASE_URL}/admin/ride-sub-suggestion/by-category/${typeId}`)
+      if (response.data.success && response.data.data.length > 0) {
+        setVehicleBrands(response.data.data[0].subCategory || [])
+      } else {
+        setVehicleBrands([])
+      }
+    } catch (error) {
+      console.error("Error fetching vehicle brands:", error)
+      setVehicleBrands([])
+      Alert.alert('Error', 'Failed to fetch vehicle brands. Please try again later.')
+    }
+  }
+
+  const fetchParcelVehicles = async () => {
+    try {
+      const response = await axios.get(`${MAIN_API_BASE_URL}/parcel/all-parcel`)
+      if (response.data.success) {
+        setParcelVehicles(response.data.data)
+      }
+    } catch (error) {
+      console.error("Error fetching parcel vehicles:", error)
+      Alert.alert('Error', 'Failed to fetch parcel vehicles. Please try again later.')
+    }
+  }
 
   const registerRider = async () => {
     if (!validateForm()) {
       return
     }
+    
     setLoading(true)
     setError("")
+    
     try {
-      const response = await axios.post(`${MAIN_API_BASE_URL}/register`, {
+      const endpoint = `${MAIN_API_BASE_URL}/rider/register`
+     
+      
+      const payload = {
         name,
         phone,
+        BH: bhId,
+        role,
         rideVehicleInfo: {
           vehicleName,
           vehicleType,
-          RcExpireDate,
+          RcExpireDate: rcExpireDate,
           VehicleNumber: vehicleNumber,
-        },
-        BH: bhId,
-      })
+        }
+      }
+      
+      const response = await axios.post(endpoint, payload)
 
       if (response.data.success) {
         setStep(3)
-        setSuccess("Registration successful. Please enter OTP.")
+        setSuccess("Registration successful! Please enter the OTP sent to your phone.")
       } else {
-        setError(response.data.message)
+        setError(response.data.message || "Registration failed")
       }
     } catch (error) {
       console.error("Error registering rider:", error)
-      setError(error.response.data.message)
+      setError(error.response?.data.message || "Registration failed. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -128,92 +167,109 @@ export default function RegistrationForm() {
 
   const verifyOtp = async () => {
     if (!otp) {
-      setError("Please enter OTP")
+      setError("Please enter the OTP")
       return
     }
+    
     setLoading(true)
     setError("")
+    
     try {
-      const { data } = await axios.post(`${MAIN_API_BASE_URL}/rider-verify`, {
+      const endpoint = `${MAIN_API_BASE_URL}/rider/rider-verify`
+
+      const { data } = await axios.post(endpoint, {
         number: phone,
         otp,
       })
-      const { success, token } = data
-      await SecureStore.setItemAsync('auth_token_cab', token)
-
-      if (success) {
-        setSuccess("OTP verified successfully")
-        navigation.navigate('UploadDocuments')
+      
+      if (data.success && data.token) {
+        const tokenKey = role === "cab" ? 'auth_token_cab' : 'auth_token_cab'
+        await SecureStore.setItemAsync(tokenKey, data.token)
+        setSuccess("OTP verified successfully!")
+        navigation.navigate('UploadDocuments', { role })
+      } else {
+        setError("Verification failed. Please check the OTP.")
       }
     } catch (error) {
-      console.log(error.response)
+      console.error("Error verifying OTP:", error)
+      setError(error.response?.data.message || "OTP verification failed")
+    } finally {
       setLoading(false)
-      Alert.alert("Error", error.response.data.message)
-
     }
-    // Implement OTP verification logic here
-
   }
 
   const resendOtp = async () => {
-
     setLoading(true)
     setError("")
+    
     try {
-      const { data } = await axios.post(`${MAIN_API_BASE_URL}/rider-resend`, {
-        number: phone
-      })
-      console.log(data)
-      setTimeout(() => {
-        setLoading(false)
-        setSuccess("OTP resend successfully")
-      }, 2000)
+      const endpoint = `${MAIN_API_BASE_URL}/rider/rider-resend`
+      
+      const { data } = await axios.post(endpoint, { number: phone })
+      
+      if (data.success) {
+        setSuccess("OTP resent successfully!")
+      } else {
+        setError("Failed to resend OTP")
+      }
     } catch (error) {
-
+      console.error("Error resending OTP:", error)
+      setError(error.response?.data.message || "Failed to resend OTP")
+    } finally {
       setLoading(false)
-      console.log(error.response)
-      Alert.alert("Error", error.response.data.message)
-
-
     }
-    // Implement OTP verification logic here
-    // For now, we'll just simulate a successful verification
-
   }
 
-
   const validateForm = () => {
-    let missingFields = [];
+    let missingFields = []
 
-    if (!name) missingFields.push("Name");
-    if (!phone) missingFields.push("Phone");
-    if (!vehicleName) missingFields.push("Vehicle Name");
-    if (!vehicleType) missingFields.push("Vehicle Type");
-    if (!RcExpireDate) missingFields.push("Rc Expire Date");
-    if (!vehicleNumber) missingFields.push("Vehicle Number");
+    if (!name) missingFields.push("Name")
+    if (!phone) missingFields.push("Phone")
+    
+    if (role === "cab") {
+      if (!vehicleType) missingFields.push("Vehicle Type")
+      if (!vehicleName) missingFields.push("Vehicle Brand")
+    } else {
+      if (!vehicleType) missingFields.push("Parcel Vehicle Type")
+    }
+    
+    if (!vehicleNumber) missingFields.push("Vehicle Number")
+    if (!rcExpireDate) missingFields.push("RC Expiry Date")
 
     if (missingFields.length > 0) {
-      setError(`Please fill in the following fields: ${missingFields.join(", ")}`);
-      return false;
+      setError(`Please fill in: ${missingFields.join(", ")}`)
+      return false
     }
 
     if (!/^\d{10}$/.test(phone)) {
-      setError("Invalid phone number")
+      setError("Please enter a valid 10-digit phone number")
+      return false
+    }
+
+    // Basic date validation (YYYY-MM-DD format)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+    if (!dateRegex.test(rcExpireDate)) {
+      setError("Please enter RC expiry date in YYYY-MM-DD format")
       return false
     }
 
     return true
   }
 
+  // UI Components
   const renderUserInfo = () => {
     if (!userData) return null
+    
     return (
       <Card style={styles.card}>
         <Card.Content>
           <Title style={styles.cardTitle}>User Information</Title>
           <Paragraph style={styles.cardParagraph}>Name: {userData.name}</Paragraph>
-
-          <Paragraph style={styles.cardParagraph}>Category: {userData.category.title}</Paragraph>
+          {userData.category && (
+            <Paragraph style={styles.cardParagraph}>
+              Category: {userData.category.title}
+            </Paragraph>
+          )}
         </Card.Content>
       </Card>
     )
@@ -226,82 +282,173 @@ export default function RegistrationForm() {
         value={bhId}
         onChangeText={setBhId}
         mode="outlined"
-        keyboardType={"number-pad"}
+        keyboardType="phone-pad"
         style={styles.input}
         theme={{ colors: { primary: "#f7de02" } }}
       />
-      <Button mode="contained" onPress={fetchUserDetails} style={styles.button} labelStyle={styles.buttonLabel}>
-        Next
+      <Button 
+        mode="contained" 
+        onPress={fetchUserDetails} 
+        style={styles.button} 
+        labelStyle={styles.buttonLabel}
+        disabled={loading}
+      >
+        {loading ? 'Checking...' : 'Next'}
       </Button>
-      {/* <TouchableOpacity onPress={() => navigation.navigate('enter_bh')} style={styles.referralCode}>
-        <Text style={styles.referralCodetext}>I have a Referral code </Text>
-      </TouchableOpacity> */}
+      <TouchableOpacity onPress={() => navigation.navigate('enter_bh')} style={styles.referralCode}>
+        <Text style={styles.referralCodeText}>I have a Referral code</Text>
+      </TouchableOpacity>
+    </View>
+  )
+
+  const renderRoleSelection = () => (
+    <View style={styles.roleContainer}>
+      <Text style={styles.sectionTitle}>Register as:</Text>
+      <View style={styles.roleButtonsContainer}>
+        <TouchableOpacity
+          style={[styles.roleButton, role === "cab" && styles.roleButtonActive]}
+          onPress={() => setRole("cab")}
+        >
+          <Text style={[styles.roleButtonText, role === "cab" && styles.roleButtonTextActive]}>
+            Cab Driver
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.roleButton, role === "parcel" && styles.roleButtonActive]}
+          onPress={() => setRole("parcel")}
+        >
+          <Text style={[styles.roleButtonText, role === "parcel" && styles.roleButtonTextActive]}>
+            Parcel Delivery
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   )
 
   const renderStep2 = () => (
     <View style={styles.stepContainer}>
       {renderUserInfo()}
+      {renderRoleSelection()}
+      
       <TextInput
         label="Name"
         value={name}
         editable={false}
-        onChangeText={setName}
         mode="outlined"
         style={styles.input}
         theme={{ colors: { primary: "#f7de02" } }}
       />
+      
       <TextInput
-        label="Phone"
+        label="Phone Number"
         value={phone}
         editable={false}
-
-        onChangeText={setPhone}
         mode="outlined"
         style={styles.input}
         keyboardType="phone-pad"
         theme={{ colors: { primary: "#f7de02" } }}
       />
-      <Menu
-        visible={vehicleTypeMenuVisible}
-        onDismiss={() => setVehicleTypeMenuVisible(false)}
-        anchor={
-          <Button onPress={() => setVehicleTypeMenuVisible(true)} mode="outlined" style={styles.input}>
-            {vehicleType || "Select Vehicle Type"}
-          </Button>
-        }
-      >
-        {alltypes && alltypes.map((type, index) => (
-          <Menu.Item
-            key={index}
-            onPress={() => {
-              setVehicleType(type?.name)
-              setVehicleTypeMenuVisible(false)
-            }}
-            title={type?.name || "Not-available"}
-          />
-        ))}
-      </Menu>
-      <Menu
-        visible={vehicleNameMenuVisible}
-        onDismiss={() => setVehicleNameMenuVisible(false)}
-        anchor={
-          <Button onPress={() => setVehicleNameMenuVisible(true)} mode="outlined" style={styles.input}>
-            {vehicleName || "Select Vehicle Brand"}
-          </Button>
-        }
-      >
-        {vehicleBrands.map((brand) => (
-          <Menu.Item
-            key={brand}
-            onPress={() => {
-              setVehicleName(brand)
-              setVehicleNameMenuVisible(false)
-            }}
-            title={brand}
-          />
-        ))}
-      </Menu>
+
+      {role === "cab" ? (
+        <>
+          <Text style={styles.sectionTitle}>Vehicle Information</Text>
+          <Menu
+            visible={vehicleTypeMenuVisible}
+            onDismiss={() => setVehicleTypeMenuVisible(false)}
+            anchor={
+              <Button 
+                onPress={() => setVehicleTypeMenuVisible(true)} 
+                mode="outlined" 
+                style={styles.input}
+              >
+                {vehicleType || "Select Vehicle Type"}
+              </Button>
+            }
+          >
+            {vehicleTypes.map((type) => (
+              <Menu.Item
+                key={type._id}
+                onPress={() => {
+                  setVehicleType(type.name)
+                  setVehicleTypeId(type._id)
+                  setVehicleTypeMenuVisible(false)
+                  setVehicleName("") // Reset vehicle name when type changes
+                }}
+                title={type.name || "N/A"}
+              />
+            ))}
+          </Menu>
+
+          {vehicleTypeId && (
+            <Menu
+              visible={vehicleNameMenuVisible}
+              onDismiss={() => setVehicleNameMenuVisible(false)}
+              anchor={
+                <Button 
+                  onPress={() => setVehicleNameMenuVisible(true)} 
+                  mode="outlined" 
+                  style={styles.input}
+                >
+                  {vehicleName || "Select Vehicle Brand"}
+                </Button>
+              }
+            >
+              {vehicleBrands.map((brand) => (
+                <Menu.Item
+                  key={brand}
+                  onPress={() => {
+                    setVehicleName(brand)
+                    setVehicleNameMenuVisible(false)
+                  }}
+                  title={brand}
+                />
+              ))}
+            </Menu>
+          )}
+        </>
+      ) : (
+        <>
+          <Text style={styles.sectionTitle}>Parcel Vehicle Information</Text>
+          <Menu
+            visible={parcelTypeMenuVisible}
+            onDismiss={() => setParcelTypeMenuVisible(false)}
+            anchor={
+              <Button 
+                onPress={() => setParcelTypeMenuVisible(true)} 
+                mode="outlined" 
+                style={styles.input}
+              >
+                {vehicleType || "Select Parcel Vehicle Type"}
+              </Button>
+            }
+          >
+            {parcelVehicles.map((vehicle) => (
+              <Menu.Item
+                key={vehicle._id}
+                onPress={() => {
+                  setVehicleType(vehicle.info)
+                  setVehicleName(vehicle.title)
+                  setParcelTypeMenuVisible(false)
+                }}
+                title={`${vehicle.title} (${vehicle.info})`}
+              />
+            ))}
+          </Menu>
+
+          {vehicleType && (
+            <View style={styles.infoView}>
+              <Text style={styles.infoText}>
+                Vehicle Type: {vehicleType}
+              </Text>
+              {vehicleName && (
+                <Text style={styles.infoText}>
+                  Info: {vehicleName}
+                </Text>
+              )}
+            </View>
+          )}
+        </>
+      )}
 
       <TextInput
         label="Vehicle Number"
@@ -309,55 +456,97 @@ export default function RegistrationForm() {
         onChangeText={setVehicleNumber}
         mode="outlined"
         style={styles.input}
+        placeholder="e.g., DL01AB1234"
         theme={{ colors: { primary: "#f7de02" } }}
       />
+      
       <TextInput
-        label="Rc Expire Date"
-        value={RcExpireDate}
+        label="RC Expiry Date"
+        value={rcExpireDate}
         onChangeText={setRcExpireDate}
         mode="outlined"
         placeholder="YYYY-MM-DD"
         style={styles.input}
         theme={{ colors: { primary: "#f7de02" } }}
       />
-      <Button mode="contained" onPress={registerRider} style={styles.button} labelStyle={styles.buttonLabel}>
-        Register
+      
+      <Button 
+        mode="contained" 
+        onPress={registerRider} 
+        style={styles.button} 
+        labelStyle={styles.buttonLabel}
+        disabled={loading}
+      >
+        {loading ? 'Submitting...' : 'Register'}
       </Button>
     </View>
   )
 
   const renderStep3 = () => (
     <View style={styles.stepContainer}>
-      <TextInput
-        label="OTP"
-        value={otp}
-        onChangeText={setOtp}
-        mode="outlined"
-        style={styles.input}
-        keyboardType="numeric"
-        theme={{ colors: { primary: "#f7de02" } }}
-      />
-      <Button mode="contained" onPress={verifyOtp} style={styles.button} labelStyle={styles.buttonLabel}>
-        Verify OTP
-      </Button>
-      <Button mode="contained" onPress={resendOtp} style={styles.button} labelStyle={styles.buttonLabel}>
-        Resend OTP
-      </Button>
+      <Card style={styles.otpCard}>
+        <Card.Content>
+          <Title style={styles.otpTitle}>Verify Your Number</Title>
+          <Paragraph style={styles.otpMessage}>
+            We have sent an OTP to {phone}. Please enter it below.
+          </Paragraph>
+          
+          <TextInput
+            label="Enter OTP"
+            value={otp}
+            onChangeText={setOtp}
+            mode="outlined"
+            style={styles.otpInput}
+            keyboardType="numeric"
+            maxLength={6}
+            theme={{ colors: { primary: "#f7de02" } }}
+          />
+          
+          <Button 
+            mode="contained" 
+            onPress={verifyOtp} 
+            style={styles.button}
+            labelStyle={styles.buttonLabel}
+            disabled={loading}
+          >
+            {loading ? 'Verifying...' : 'Verify OTP'}
+          </Button>
+          
+          <Button 
+            mode="text" 
+            onPress={resendOtp} 
+            style={styles.resendButton}
+            labelStyle={styles.resendButtonLabel}
+            disabled={loading}
+          >
+            Resend OTP
+          </Button>
+        </Card.Content>
+      </Card>
     </View>
   )
 
   return (
-    <ImageBackground source={{ uri: "https://example.com/background-image.jpg" }} style={styles.backgroundImage}>
-      <ScrollView contentContainerStyle={styles.container}>
+    // <ImageBackground 
+    //   source={require('../assets/background.jpg')} 
+    //   style={styles.backgroundImage}
+    //   defaultSource={require('../assets/background-placeholder.jpg')}
+    // >
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
         <Card style={styles.formCard}>
           <Card.Content>
-            <Title style={styles.title}>Driver Registration</Title>
+            <Title style={styles.title}>
+              {step === 1 ? "Enter Your BH ID" : 
+               step === 2 ? "Driver Registration" : 
+              null}
+            </Title>
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
             {loading && <ActivityIndicator animating={true} style={styles.loader} color="#f7de02" />}
           </Card.Content>
         </Card>
+        
         <Snackbar
           visible={!!error || !!success}
           onDismiss={() => {
@@ -370,7 +559,7 @@ export default function RegistrationForm() {
           {error || success}
         </Snackbar>
       </ScrollView>
-    </ImageBackground>
+    // </ImageBackground>
   )
 }
 
@@ -381,20 +570,21 @@ const styles = StyleSheet.create({
   },
   container: {
     flexGrow: 1,
-    padding: 20,
+    padding: 14,
     justifyContent: "center",
   },
   formCard: {
     borderRadius: 15,
     elevation: 5,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    marginBottom: 10,
   },
   title: {
     fontSize: 28,
     fontWeight: "bold",
     marginBottom: 20,
     textAlign: "center",
-    color: "#f7de02",
+    color: "#333",
   },
   stepContainer: {
     marginBottom: 20,
@@ -407,45 +597,129 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingVertical: 8,
     backgroundColor: "#f7de02",
+    borderRadius: 8,
+    elevation: 2,
   },
   buttonLabel: {
     fontSize: 16,
     fontWeight: "bold",
+    color: "#333",
   },
   card: {
     marginBottom: 20,
     borderRadius: 10,
     elevation: 3,
+    backgroundColor: "#FFF8E1",
   },
   cardTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#f7de02",
+    color: "#333",
   },
   cardParagraph: {
     fontSize: 16,
     marginBottom: 5,
+    color: "#555",
   },
   loader: {
     marginTop: 20,
   },
   errorSnackbar: {
-    backgroundColor: "#ff6961",
+    backgroundColor: "#FF5252",
   },
   successSnackbar: {
-    backgroundColor: "#77dd77",
+    backgroundColor: "#4CAF50",
+  },
+  roleContainer: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#333",
+    marginTop: 10,
+  },
+  roleButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  roleButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 8,
+    backgroundColor: "#f5f5f5",
+    marginHorizontal: 5,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  roleButtonActive: {
+    backgroundColor: "#f7de02",
+    borderColor: "#e6cc00",
+  },
+  roleButtonText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#555",
+  },
+  roleButtonTextActive: {
+    color: "#333",
+    fontWeight: "bold",
+  },
+  infoView: {
+    backgroundColor: "#f5f5f5",
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  infoText: {
+    fontSize: 16,
+    color: "#333",
+    marginBottom: 5,
+  },
+  otpCard: {
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: "#FFF8E1",
+  },
+  otpTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#333",
+    marginBottom: 15,
+  },
+  otpMessage: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 20,
+    color: "#555",
+  },
+  otpInput: {
+    fontSize: 18,
+    marginBottom: 20,
+    backgroundColor: "white",
+    textAlign: "center",
+    letterSpacing: 5,
+  },
+  resendButton: {
+    marginTop: 10,
+  },
+  resendButtonLabel: {
+    color: "#3d7de2",
+    fontSize: 14,
   },
   referralCode: {
-    textAlign: "center",
-    display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 14
+    marginVertical: 14,
   },
-  referralCodetext: {
-    fontSize: 22,
-    fontWeight: 500,
-    color: '#003300'
-  }
+  referralCodeText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#3d7de2",
+    textDecorationLine: "underline",
+  },
 })
-

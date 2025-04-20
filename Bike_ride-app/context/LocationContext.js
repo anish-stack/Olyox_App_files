@@ -11,6 +11,7 @@ export const LocationProvider = ({ children }) => {
     try {
       // Request permission
       let { status } = await Location.requestForegroundPermissionsAsync();
+      console.log("status",status)
       if (status !== "granted") {
         console.error("Permission to access location was denied");
         return;
@@ -18,6 +19,7 @@ export const LocationProvider = ({ children }) => {
 
       // Get current location
       let location = await Location.getCurrentPositionAsync({});
+      console.log("location",location)
       setDriverLocation({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,

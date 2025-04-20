@@ -15,7 +15,12 @@ const {
     getSuggestionById,
     updateSuggestion,
     deleteSuggestion,
-    updateStatus
+    updateStatus,
+    addRideSubSuggestion,
+    getAllRideSubSuggestions,
+    updateRideSubSuggestion,
+    deleteRideSubSuggestion,
+    getByCategoryId
 } = require('../../Admin Controllers/RideControllers/Rides_Controoler');
 
 const {
@@ -97,6 +102,17 @@ admin.get('/getSuggestionById/:id', getSuggestionById);
 admin.put('/updateSuggestion/update/:id', updateSuggestion);
 admin.put('/updateSuggestionStatus/:id', updateStatus);
 admin.delete('/deleteSuggestion/delete/:id', deleteSuggestion);
+
+// Suggestions Sub
+
+admin.post('/ride-sub-suggestion/:id', addRideSubSuggestion);
+admin.get('/ride-sub-suggestion', getAllRideSubSuggestions);
+admin.get('/ride-sub-suggestion/by-category/:id', getByCategoryId);
+admin.put('/ride-sub-suggestion/:id', updateRideSubSuggestion);
+admin.delete('/ride-sub-suggestion/:id', deleteRideSubSuggestion);
+
+
+
 
 // Home Screen Slides
 admin.post('/create_home_slide', upload.single('image'), create_home_slide);

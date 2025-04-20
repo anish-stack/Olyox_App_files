@@ -32,7 +32,7 @@ const DOCUMENTS = [
   { id: 'profile', title: 'profile', label: 'Profile Image', icon: 'person' },
 ];
 
-const API_URL = 'https://demoapi.olyox.com/api/v1/rider/rider-upload';
+const API_URL = 'http://192.168.1.12:3100/api/v1/rider/rider-upload';
 
 export default function Documents() {
   const [images, setImages] = useState({});

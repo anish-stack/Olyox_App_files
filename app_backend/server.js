@@ -91,6 +91,7 @@ const tiffinPartnerMap = new Map();  // Tiffin service partners
 
 // Make driverSocketMap available to the entire application
 app.set('driverSocketMap', driverSocketMap);
+app.set('userSocketMap', userSocketMap);
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {

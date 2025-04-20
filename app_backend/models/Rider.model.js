@@ -185,8 +185,14 @@ const RiderSchema = new Schema({
     recentRejections: [{
         rideId: { type: mongoose.Schema.Types.ObjectId, ref: 'RideRequest' },
         timestamp: { type: Date, default: Date.now }
-      }],
-      
+    }],
+
+    category: {
+        type: String,
+        enum: ["parcel", "cab"],
+        default: "cab"
+    },
+
     isBlockByAdmin: {
         type: Boolean,
         default: false

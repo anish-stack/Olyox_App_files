@@ -19,7 +19,7 @@ cloudinary.config({
 exports.registerRider = async (req, res) => {
   try {
     // console.log("rider", req.body)
-    const { name, phone, rideVehicleInfo, BH } = req.body;
+    const { name, phone, rideVehicleInfo, BH ,role} = req.body;
     const { vehicleName, vehicleType, PricePerKm, VehicleNumber, RcExpireDate } = rideVehicleInfo;
 
     if (!BH) {
@@ -78,6 +78,7 @@ exports.registerRider = async (req, res) => {
       phone,
       rideVehicleInfo: { vehicleName, vehicleType, VehicleNumber, RcExpireDate },
       BH,
+      category:role,
       otp,
       isOtpVerify: false,
       isDocumentUpload: false,

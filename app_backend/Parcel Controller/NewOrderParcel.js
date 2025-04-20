@@ -1,10 +1,10 @@
 const Parcel_Request = require("../models/Parcel_Models/Parcel_Request");
 const mongoose = require("mongoose");
 const axios = require("axios");
+const { notifyDriverService } = require("./ParcelSockets/Notify_Parcel");
 
 exports.NewBooking = async (req, res) => {
     try {
-        console.log("Booking request received:", req.body);
 
         // Validate required fields
         if (!req.body.pickup || !req.body.dropoff || !req.body.vehicle_id) {
@@ -85,7 +85,7 @@ exports.NewBooking = async (req, res) => {
         await newBooking.save();
 
         // Optional: Notify driver service about new booking
-        // await notifyDriverService(newBooking._id);
+        await notifyDriverService(newBooking._id,req,res);
 
         res.status(201).json({
             success: true,

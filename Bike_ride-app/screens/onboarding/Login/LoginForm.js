@@ -51,7 +51,7 @@ const LoginForm = ({ onLogin }) => {
     
     try {
       const response = await axios.post(
-        'https://demoapi.olyox.com/api/v1/rider/rider-login', 
+        'http://192.168.1.12:3100/api/v1/rider/rider-login', 
         { number: formattedPhone }
       );
       
@@ -64,7 +64,7 @@ const LoginForm = ({ onLogin }) => {
         console.log("Login failed", response.data.message);
       }
     } catch (error) {
-      console.error("Error during login:", error?.response?.status);
+      // console.error("Error during login:", error?.response?.data);
       
       if (error?.response?.status === 403) {
         Alert.alert(

@@ -95,7 +95,7 @@ export default function TopFood({ show = false, refreshing, onRefresh }) {
             // console.log("Using location:", latitude, longitude);
             
             // Fetch restaurants based on location
-            const response = await axios.get(`https://demoapi.olyox.com/api/v1/tiffin/find_RestaurantTop`, {
+            const response = await axios.get(`http://192.168.1.12:3100/api/v1/tiffin/find_RestaurantTop`, {
                 params: {
                     lat: latitude,
                     lng: longitude

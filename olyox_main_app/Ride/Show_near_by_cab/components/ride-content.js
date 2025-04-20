@@ -145,7 +145,7 @@ export const RideContent = React.memo(({
         };
 
         // Send the pickup and dropoff coordinates to your backend API
-        const response = await axios.post('https://demoapi.olyox.com/directions', { pickup, dropoff });
+        const response = await axios.post('http://192.168.1.12:3100/directions', { pickup, dropoff });
 
         const json = response.data;
         console.log("Fetching directions json...", json);
