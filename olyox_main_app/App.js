@@ -51,6 +51,10 @@ import Help_On from './onboarding/Help/Help_On';
 import LocationErrorScreen from './LocationError';
 import SplashScreen from './screens/SplashScreen';
 import { GuestProvider } from './context/GuestLoginContext';
+import Get_Pickup_Drop from './Parcel_Booking/Get_Pickup_Drop';
+import { BookingParcelProvider } from './context/ParcelBookingContext/ParcelBookingContext';
+import Choose_Vehicle from './Parcel_Booking/Choose_Vehicle';
+import PaymentScreen from './Parcel_Booking/PaymentScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -296,7 +300,7 @@ const App = () => {
       <Stack.Screen name="Tiffins_Page" options={{ headerShown: true, title: "Tiffins Package" }} component={Tiffins_Page} />
       <Stack.Screen name="food_Page_By_Cats" options={{ headerShown: false }} component={Food_Dispay_Page} />
       <Stack.Screen name="restaurants_page" options={{ headerShown: false }} component={Restaurant} />
-      <Stack.Screen name="Checkout" options={{ headerShown: Platform.OS === "ios" ? false:true }} component={Checkout} />
+      <Stack.Screen name="Checkout" options={{ headerShown: Platform.OS === "ios" ? false : true }} component={Checkout} />
       <Stack.Screen name="Order_Process" options={{ headerShown: false }} component={OrderTracking} />
       {/* User Profile and Auth */}
       <Stack.Screen name="Profile" options={{ headerShown: true }} component={UserProfile} />
@@ -307,6 +311,11 @@ const App = () => {
       <Stack.Screen name="Parcel" options={{ headerShown: false }} component={Parcel_Orders} />
       <Stack.Screen name="OrderDetails" options={{ headerShown: false }} component={OrderDetails} />
       <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={OnboardingScreen} />
+
+      {/* Parcel_Booking Screens */}
+      <Stack.Screen name="Parcel_Booking" options={{ headerShown: false }} component={Get_Pickup_Drop} />
+      <Stack.Screen name="Choose_Vehicle" options={{ headerShown: false }} component={Choose_Vehicle} />
+      <Stack.Screen name="PaymentScreen" options={{ headerShown: true ,title:"Review Booking"}} component={PaymentScreen} />
 
       {/* App Policy */}
       <Stack.Screen name="spalsh" options={{ headerShown: false, title: "Olyox App Polices" }} component={SplashScreen} />
@@ -359,6 +368,7 @@ const App = () => {
           <SocketProvider>
             <LocationProvider initialLocation={locationRef.current}>
               <GuestProvider>
+                <BookingParcelProvider>
                 <SafeAreaProvider>
                   <StatusBar style="auto" />
                   <ErrorBoundaryWrapper>
@@ -368,31 +378,32 @@ const App = () => {
                       </Stack.Navigator>
 
                       {/* Overlay error banner if there's a location error but we're proceeding anyway */}
-                      {locationError && (                    
-                           <TouchableOpacity
-                           style={styles.errorBanner}
-                           onPress={async () => {
-                             if (Platform.OS === 'ios') {
-                               Linking.openURL('app-settings:'); 
-                             } else {
-                               // Open Android settings for the current app
-                               IntentLauncher.startActivityAsync(
-                                 IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
-                                 {
-                                   data: 'package:' + Application.applicationId,
-                                 }
-                               );
-                             }
-                           }}
-                         >
-                           <Text style={styles.errorBannerText}>
-                             Location service issue. Tap to fix.
-                           </Text>
-                         </TouchableOpacity>
+                      {locationError && (
+                        <TouchableOpacity
+                          style={styles.errorBanner}
+                          onPress={async () => {
+                            if (Platform.OS === 'ios') {
+                              Linking.openURL('app-settings:');
+                            } else {
+                              // Open Android settings for the current app
+                              IntentLauncher.startActivityAsync(
+                                IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
+                                {
+                                  data: 'package:' + Application.applicationId,
+                                }
+                              );
+                            }
+                          }}
+                        >
+                          <Text style={styles.errorBannerText}>
+                            Location service issue. Tap to fix.
+                          </Text>
+                        </TouchableOpacity>
                       )}
                     </NavigationContainer>
                   </ErrorBoundaryWrapper>
                 </SafeAreaProvider>
+                </BookingParcelProvider>
               </GuestProvider>
             </LocationProvider>
           </SocketProvider>

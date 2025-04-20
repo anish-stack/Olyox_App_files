@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('screen');
-const ITEM_WIDTH = (width - 75) / 4;
+const ITEM_WIDTH = (width - 60) / 5;
 
 export default function Categories() {
     const [categories, setCategories] = useState([]);
@@ -17,11 +17,11 @@ export default function Categories() {
             const response = await axios.get('https://api.olyox.com/api/v1/categories_get');
             if (response.data.success) {
                 let data = response.data.data;
-    
+
                 // Separate Cab Service
                 const cabService = data.find(cat => cat.title === 'Cab Service');
                 const rest = data.filter(cat => cat.title !== 'Cab Service');
-    
+
                 // Sort others by position (null/undefined pushed last)
                 const sorted = rest.sort((a, b) => {
                     if (a.position == null && b.position == null) return 0;
@@ -29,10 +29,10 @@ export default function Categories() {
                     if (b.position == null) return -1;
                     return a.position - b.position;
                 });
-    
+
                 // Check if any category already at position 1
                 const hasPosition1 = data.some(cat => cat.position === 1);
-    
+
                 // If no one has position 1 and Cab Service exists, insert it manually
                 if (!hasPosition1 && cabService) {
                     sorted.unshift({ ...cabService, position: 1 });
@@ -46,7 +46,7 @@ export default function Categories() {
                         return a.position - b.position;
                     });
                 }
-    
+
                 setCategories(sorted);
             }
         } catch (error) {
@@ -55,7 +55,7 @@ export default function Categories() {
             setLoading(false);
         }
     }, []);
-    
+
 
     useEffect(() => {
         fetchCategories();
@@ -67,6 +67,8 @@ export default function Categories() {
             navigation.navigate('Start_Booking_Ride');
         } else if (screen === "Transport") {
             navigation.navigate('Transport');
+        }else if (screen === "Parcel") {
+            navigation.navigate('Parcel_Booking');
         } else {
             navigation.navigate(screen);
         }
@@ -113,7 +115,7 @@ export default function Categories() {
 // Memoized image component to prevent unnecessary re-renders
 const CategoryImage = React.memo(({ icon }) => {
     const [imageError, setImageError] = useState(false);
-    
+
     return (
         <Image
             source={imageError ? require('./no-image.jpeg') : { uri: icon }}
@@ -138,7 +140,7 @@ const styles = StyleSheet.create({
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 10,
+        gap: 6,
     },
     categoryButton: {
         width: ITEM_WIDTH,
@@ -160,7 +162,7 @@ const styles = StyleSheet.create({
         resizeMode: 'contain',
     },
     title: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
         color: '#000',
         textAlign: 'center',

@@ -31,6 +31,7 @@ export default function SplashScreen() {
     }
   };
 
+
   if (isLogin === null) {
     return null; // or show a loader if needed
   }
