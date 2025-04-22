@@ -46,6 +46,7 @@ import Withdraw from './screens/Profile/Withdraw';
 import { LocalRideStorage } from './services/DatabaseService';
 import RideRequestScreen from './screens/Ride.come';
 import { RideStatusProvider } from './context/CheckRideHaveOrNot.context';
+import NewParcelLive from './screens/Parcel_Screens/NewParcelLive/NewParcelLive';
 
 LogBox.ignoreLogs(['Setting a timer']);
 
@@ -194,7 +195,7 @@ const App = () => {
                   <NavigationContainer ref={navigationRef}>
                     <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
                       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                      <Stack.Screen name="register" options={{headerShown:true}}  component={RegistrationForm} />
+                      <Stack.Screen name="register" options={{ headerShown: true }} component={RegistrationForm} />
                       <Stack.Screen name="UploadDocuments" component={Document} />
                       <Stack.Screen name="Wait_Screen" component={Wait_Screen} />
                       <Stack.Screen name="Home" component={HomeScreen} />
@@ -213,6 +214,12 @@ const App = () => {
                       <Stack.Screen name="WorkingData" component={WorkingData} />
                       <Stack.Screen name="referral-history" component={ReferalHistory} />
                       <Stack.Screen name="withdraw" component={Withdraw} />
+
+
+
+                      {/* Parcel Rides */}
+                      <Stack.Screen name="ParcelDetails" component={NewParcelLive} />
+
                     </Stack.Navigator>
 
                     {/* {activeRide && (

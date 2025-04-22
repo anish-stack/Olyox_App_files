@@ -17,11 +17,13 @@ import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { find_me } from '../utils/helpers';
+import { useSocket } from '../context/SocketContext';
 
 const PaymentScreen = () => {
     const route = useRoute();
     const navigation = useNavigation();
     const { orderDetails } = route.params || {};
+    const { isConnected, socket, userId } = useSocket();
 
     const [coupons, setCoupons] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -128,10 +130,15 @@ const PaymentScreen = () => {
                                     );
 
                                     if (response?.data?.success) {
+
                                         Alert.alert("Success", "Parcel booked successfully!");
-                                        navigation.navigate('Booking_Complete_Find_Rider', { id: response.data.booking_id });
+                                        // navigation.reset({
+                                        //     index: 0,
+                                        //     routes: [{ name: 'Booking_Complete_Find_Rider', params: { id: response.booking_id } }],
+                                        // })
+                                        navigation.navigate('Booking_Complete_Find_Rider', { id: response?.data?.booking_id });
                                     } else {
-                                        Alert.alert("Failed", "Failed to book parcel. Please try again.");
+                                        // Alert.alert("Failed", "Failed to book parcel. Please try again.");
                                     }
                                     setLoading(false)
 
@@ -155,6 +162,32 @@ const PaymentScreen = () => {
             Alert.alert("Error", "Something went wrong.");
         }
     };
+
+
+    useEffect(() => {
+        let socketInstance = socket();
+
+        const handleParcelConfirm = (response) => {
+            console.log("Socket response", response);
+            if (response.success) {
+                Alert.alert("Success", "Parcel booked successfully!");
+                // navigation.reset({
+                //     index: 0,
+                //     routes: [{ name: 'Booking_Complete_Find_Rider', params: { id: response.parcel } }],
+                // })
+                navigation.navigate('Booking_Complete_Find_Rider', { id: response.parcel });
+
+            } else {
+                // Alert.alert("Failed", "Failed to book parcel. Please try again.");
+            }
+        };
+
+        socketInstance.on("your_parcel_is_confirm", handleParcelConfirm);
+
+        return () => {
+            socketInstance.off("your_parcel_is_confirm", handleParcelConfirm);
+        };
+    }, []);
 
 
 

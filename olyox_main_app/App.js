@@ -55,6 +55,7 @@ import Get_Pickup_Drop from './Parcel_Booking/Get_Pickup_Drop';
 import { BookingParcelProvider } from './context/ParcelBookingContext/ParcelBookingContext';
 import Choose_Vehicle from './Parcel_Booking/Choose_Vehicle';
 import PaymentScreen from './Parcel_Booking/PaymentScreen';
+import FindRider from './Parcel_Booking/FindRider/FindRider';
 
 const Stack = createNativeStackNavigator();
 
@@ -316,6 +317,7 @@ const App = () => {
       <Stack.Screen name="Parcel_Booking" options={{ headerShown: false }} component={Get_Pickup_Drop} />
       <Stack.Screen name="Choose_Vehicle" options={{ headerShown: false }} component={Choose_Vehicle} />
       <Stack.Screen name="PaymentScreen" options={{ headerShown: true ,title:"Review Booking"}} component={PaymentScreen} />
+      <Stack.Screen name="Booking_Complete_Find_Rider" options={{ headerShown: false ,title:"Review Booking"}} component={FindRider} />
 
       {/* App Policy */}
       <Stack.Screen name="spalsh" options={{ headerShown: false, title: "Olyox App Polices" }} component={SplashScreen} />

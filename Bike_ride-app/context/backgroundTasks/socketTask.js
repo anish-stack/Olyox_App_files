@@ -23,7 +23,7 @@ TaskManager.defineTask(BACKGROUND_SOCKET_TASK, async () => {
             socket.emit("background_ping", { userId: user._id });
 
             setTimeout(() => {
-                socket.disconnect();
+                // socket.disconnect();
                 console.log("🔌 Socket disconnected after 10s");
             }, 10000);
         }

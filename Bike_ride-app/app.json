@@ -54,8 +54,8 @@
             "playInBackground": true
           }
         }
-      ]
-    
+      ],
+      "expo-audio"
     ],
     "extra": {
       "eas": {

@@ -3,43 +3,89 @@ const Rider = require("../../models/Rider.model");
 
 exports.notifyDriverService = async (data, req, res) => {
     try {
+        // Validate input
+        if (!data) {
+            throw new Error("❌ Invalid request: missing parcel ID");
+        }
+
+        // Check if socket.io is initialized
         const io = req.app.get("socketio");
-        const driverSocketMap = req.app.get("driverSocketMap");
-        const userSocketMap = req.app.get("userSocketMap");
-
         if (!io) {
-            return res.status(500).json({ message: "❌ Socket.io is not connected" });
+            throw new Error("❌ Socket.io is not initialized");
         }
 
-        const parcelRequest = await Parcel_Request.findById(data);
+        // Get socket maps
+        const driverSocketMap = req.app.get("driverSocketMap") || new Map();
+        const userSocketMap = req.app.get("userSocketMap") || new Map();
+
+        // Find parcel request
+        let parcelRequest;
+        try {
+            parcelRequest = await Parcel_Request.findById(data).populate('vehicle_id');
+        } catch (error) {
+            throw new Error(`❌ Invalid parcel ID format: ${error.message}`);
+        }
+
+        console.log("Parcel Request:", parcelRequest);
+
         if (!parcelRequest) {
-            return res.status(404).json({ message: "❌ Parcel Request not found" });
+            throw new Error("❌ Parcel Request not found");
         }
 
+        // Validate pickup location
         const pickup = parcelRequest?.locations?.pickup;
-        const pickupCoordinates = pickup?.location?.coordinates;
-
-        if (!pickupCoordinates || pickupCoordinates.length !== 2) {
-            return res.status(400).json({ message: "❌ Invalid pickup coordinates" });
+        if (!pickup || !pickup.location) {
+            throw new Error("❌ Pickup location not found in request");
         }
 
-        console.log("📍 Starting search for nearby riders around:", pickupCoordinates);
+        const pickupCoordinates = pickup?.location?.coordinates;
+        if (!Array.isArray(pickupCoordinates) || pickupCoordinates.length !== 2 ||
+            !Number.isFinite(pickupCoordinates[0]) || !Number.isFinite(pickupCoordinates[1])) {
+            throw new Error("❌ Invalid pickup coordinates");
+        }
 
-        let successfulNotification = false;
-        let retryCount = 0;
-        const maxRetries = 3;
-        let availableCouriers = [];
+        // Configuration for driver search
+        const searchRadii = [2000, 4000, 6000]; // 2km, 4km, 6km
+        const maxAttempts = 2;
+        let attempt = 0;
+        let notifiedCount = 0;
+        let finalRiders = [];
+        let customerSocketId = null;
 
-        // Retry logic for finding riders
-        while (!successfulNotification && retryCount < maxRetries) {
+        // Get customer socket ID
+        if (!parcelRequest.customerId) {
+            throw new Error("❌ Customer ID not found in parcel request");
+        }
+
+        const customerId = parcelRequest.customerId.toString();
+        if (userSocketMap instanceof Map) {
+            customerSocketId = userSocketMap.get(customerId);
+            if (!customerSocketId) {
+                // Try to find partial match
+                for (const [key, value] of userSocketMap.entries()) {
+                    if (key.includes(customerId) || customerId.includes(key)) {
+                        customerSocketId = value;
+                        break;
+                    }
+                }
+            }
+        } else if (typeof userSocketMap === 'object') {
+            customerSocketId = userSocketMap[customerId];
+        }
+
+        // Search for available drivers with increasing radius
+        while (attempt < maxAttempts) {
+            // Ensure we have a valid radius even if attempt exceeds searchRadii length
+            const radiusIndex = Math.min(attempt, searchRadii.length - 1);
+            const radius = searchRadii[radiusIndex];
+
+            if (!Number.isFinite(radius)) {
+                console.warn(`⚠️ Invalid radius at attempt ${attempt}, using default 6000m`);
+                radius = 6000; // Default to 6km if invalid
+            }
+
             try {
-                console.log(`📍 Attempt ${retryCount + 1}: Searching for riders...`);
-
-                // Increasing search radius with each retry
-                const searchRadius = 2000 * (retryCount + 1); // 2km, 4km, 6km
-
-                // Query riders within radius of pickup point
-                availableCouriers = await Rider.find({
+                let availableCouriers = await Rider.find({
                     isAvailable: true,
                     isPaid: true,
                     category: "parcel",
@@ -49,168 +95,115 @@ exports.notifyDriverService = async (data, req, res) => {
                                 type: "Point",
                                 coordinates: pickupCoordinates,
                             },
-                            $maxDistance: searchRadius,
+                            $maxDistance: radius,
                         },
                     },
-                });
-
-                if (availableCouriers.length > 0) {
-                    successfulNotification = true;
-                    console.log(`✅ Found ${availableCouriers.length} available drivers on attempt ${retryCount + 1}`);
-                    break;
-                }
-
-                retryCount++;
-
-                if (retryCount < maxRetries) {
-                    console.log(`⚠️ No riders found, retry attempt ${retryCount + 1} of ${maxRetries}`);
-                    // Wait for 3 seconds before retrying
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                }
-            } catch (error) {
-                console.error(`❌ Error during search attempt ${retryCount + 1}:`, error);
-                retryCount++;
-
-                if (retryCount < maxRetries) {
-                    console.log(`⚠️ Retrying search, attempt ${retryCount + 1} of ${maxRetries}`);
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                }
-            }
-        }
-
-        if (!successfulNotification) {
-            return res.status(404).json({ message: "🚫 No nearby available drivers found after multiple attempts" });
-        }
-
-        console.log("driverSocketMap", driverSocketMap);
-        console.log("userSocketMap", userSocketMap);
-
-        let isMapObject = driverSocketMap instanceof Map;
-        let isMapObjectUser = userSocketMap instanceof Map;
-        
-        // Get customer ID from parcel request
-        const customerId = parcelRequest.customerId.toString();
-        console.log(`👤 Customer ID: ${customerId}`);
-
-        // Find customer socket ID
-        let customerSocketId;
-        if (isMapObjectUser) {
-            customerSocketId = userSocketMap.get(customerId);
-            if (!customerSocketId) {
-                console.log("🔍 Searching for customer socket ID in map keys...");
-                for (const [key, value] of userSocketMap.entries()) {
-                    if (key.includes(customerId) || customerId.includes(key)) {
-                        customerSocketId = value;
-                        console.log(`🔍 Found customer socket ID: ${value} for key: ${key}`);
-                        break;
-                    }
-                }
-            }
-        } else {
-            customerSocketId = userSocketMap[customerId];
-        }
-
-        if (!customerSocketId) {
-            console.log(`⚠️ No socket connection found for customer ID: ${customerId}`);
-        } else {
-            console.log(`✅ Found customer socket ID: ${customerSocketId}`);
-        }
-        
-        let notifiedCount = 0;
-        for (const driver of availableCouriers) {
-            const driverId = driver._id.toString();
-
-            // Handle both Map and plain object cases
-            let socketId;
-            if (isMapObject) {
-                socketId = driverSocketMap.get(driverId);
-                if (!socketId) {
-                    // Try without converting to string
-                    socketId = driverSocketMap.get(driver._id);
-                }
-            } else {
-                socketId = driverSocketMap[driverId];
-            }
-
-            if (socketId) {
-                io.to(socketId).emit("new_parcel_come", {
-                    parcel: parcelRequest._id,
-                    pickup,
-                    message: "📦 New parcel request available near you!",
-                });
-                console.log(`✅ Notified driver ${driver._id} at socket ${socketId}`);
-                notifiedCount++;
                 
-                // Notify the customer that a rider has been confirmed
-                if (customerSocketId) {
-                    io.to(customerSocketId).emit("parcel_confirmed", {
-                        parcel: parcelRequest._id,
-                        rider: Rider._id,
-                        message: "🎉 A rider has been assigned to your parcel request!"
-                    });
-                    console.log(`✅ Notified customer ${customerId} at socket ${customerSocketId} about rider assignment`);
+
+                }).lean().exec();
+                console.log("Available Couriers:", availableCouriers.length);
+
+                availableCouriers = availableCouriers.filter((driver)=> driver.rideVehicleInfo.vehicleName === parcelRequest?.vehicle_id?.title);
+                console.log("Available Couriers sete:", availableCouriers.length);
+
+                if (!availableCouriers || availableCouriers.length === 0) {
+                    console.log(`No couriers found within ${radius}m radius. Attempt ${attempt + 1}/${maxAttempts}`);
+                    attempt++;
+                    await new Promise(resolve => setTimeout(resolve, 7000)); // wait 7s
+                    continue;
                 }
-            } else {
-                // Try to find the key in the map by iterating (debug purpose)
-                if (isMapObject) {
-                    console.log(`⚠️ Looking for driver ID ${driverId} in map keys:`);
-                    for (const [key, value] of driverSocketMap.entries()) {
-                        console.log(`Map entry: ${key} => ${value}`);
-                        // Check if the keys are similar but not strictly equal
-                        if (key.includes(driverId) || driverId.includes(key)) {
-                            console.log(`🔍 Found similar key: ${key}`);
-                            io.to(value).emit("new_parcel_come", {
+
+                finalRiders = availableCouriers;
+                for (const driver of availableCouriers) {
+                    if (!driver || !driver._id) {
+                        console.warn("⚠️ Driver without ID found, skipping");
+                        continue;
+                    }
+
+                    const driverId = driver._id.toString();
+                    let socketId = null;
+
+                    // Get driver socket ID
+                    if (driverSocketMap instanceof Map) {
+                        socketId = driverSocketMap.get(driverId);
+                        if (!socketId) {
+                            // Try to find partial match
+                            for (const [key, value] of driverSocketMap.entries()) {
+                                if ((key && key.includes(driverId)) || (driverId && driverId.includes(key))) {
+                                    socketId = value;
+                                    break;
+                                }
+                            }
+                        }
+                    } else if (typeof driverSocketMap === 'object') {
+                        socketId = driverSocketMap[driverId];
+                    }
+
+                    if (socketId) {
+                        try {
+                            io.to(socketId).emit("new_parcel_come", {
                                 parcel: parcelRequest._id,
                                 pickup,
                                 message: "📦 New parcel request available near you!",
                             });
-                            console.log(`✅ Notified driver ${driver._id} at socket ${value}`);
+
                             notifiedCount++;
-                            
-                            // Notify the customer that a rider has been confirmed
+                            console.log(`🔔 Notified driver ${driverId}`);
+
                             if (customerSocketId) {
                                 io.to(customerSocketId).emit("parcel_confirmed", {
                                     parcel: parcelRequest._id,
-                                    rider: Rider?._id,
+                                    rider: driver._id,
                                     message: "🎉 A rider has been assigned to your parcel request!"
                                 });
-                                console.log(`✅ Notified customer ${customerId} at socket ${customerSocketId} about rider assignment`);
                             }
-                            break;
+                        } catch (emitError) {
+                            console.error(`Error emitting to socket ${socketId}:`, emitError);
+                            // Continue with other drivers even if one emit fails
                         }
+                    } else {
+                        console.log(`⚠️ No active socket connection for driver ${driverId}`);
                     }
                 }
-                console.log(`⚠️ No socket connection for driver ${driver._id}`);
+
+                // If at least one driver was notified, break out of retry loop
+                if (notifiedCount > 0) break;
+
+                attempt++;
+                await new Promise(resolve => setTimeout(resolve, 3000)); // wait before next attempt
+            } catch (queryError) {
+                console.error(`❌ Error in courier search (attempt ${attempt}):`, queryError);
+                attempt++;
+                await new Promise(resolve => setTimeout(resolve, 3000)); // wait before next attempt
             }
         }
 
-        // Fix the missing searchRadii variable
-        const searchRadii = [2000, 4000, 6000]; // 2km, 4km, 6km
-
         if (notifiedCount === 0) {
-            return res.status(202).json({
-                success: true,
-                message: "⚠️ Found riders but could not notify any (no active socket connections)",
-                notifiedDrivers: 0,
-                searchRadius: searchRadii[retryCount] / 1000,
-                totalAttempts: retryCount + 1,
-            });
+            const customerSocketId = userSocketMap?.get?.(parcelRequest?.customerId?.toString());
+            // console.log("Customer Socket ID:", customerSocketId);
+            if (io && customerSocketId) {
+                io.to(customerSocketId).emit("parcel_error", {
+                    parcel: data,
+                    message: "Sorry, we couldn't find a rider at the moment. But your order has been successfully created — we'll assign a rider to you as soon as possible. Thank you for your patience!"
+                });
+            }
+            throw new Error("🚫 No available drivers with active socket connection after multiple attempts");
         }
 
         return {
             success: true,
-            message: `✅ ${notifiedCount} nearby drivers notified successfully after ${retryCount + 1} search attempts`,
+            message: `✅ ${notifiedCount} drivers notified successfully`,
             notifiedDrivers: notifiedCount,
-            searchRadius: searchRadii[retryCount - 1] / 1000,
+            searchRadius: searchRadii[Math.min(attempt, searchRadii.length - 1)] / 1000,
             customerNotified: !!customerSocketId,
-            totalAttempts: retryCount + 1,
+            totalAttempts: attempt + 1,
         };
+
     } catch (error) {
         console.error("❌ Error in notifyDriverService:", error);
-        return {
-            success: false,
-            message: "❌ Failed to notify drivers",
-            error: error.message,
-        };
+        // Send notification to customer if socket is available
+       
+
+        throw new Error(`❌ notifyDriverService failed: ${error.message}`);
     }
 };
