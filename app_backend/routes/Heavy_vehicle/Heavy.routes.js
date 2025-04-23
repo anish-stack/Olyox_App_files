@@ -40,7 +40,8 @@ Heavy.get('/heavy-vehicle-all-profile', getAllProfiles);
 Heavy.get('/heavy-vehicle-profile/:id', getPartnerById);
 Heavy.delete('/heavy-vehicle-profile-delete/:id', HeveyPartnerProtect, delete_account);
 
-
+Heavy.get('/get_all_hv_vendor', getAllHeavyVehicles);
+Heavy.put('/update_hv_vendor_is_block_status/:id', updateIsBlockedHeavyVehicle);
 
 
 module.exports = Heavy;

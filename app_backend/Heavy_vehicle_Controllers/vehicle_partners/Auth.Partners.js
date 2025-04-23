@@ -1083,6 +1083,56 @@ exports.login = async (req, res) => {
     }
 };
 
+exports.getAllHeavyVehicles = async (req, res) => {
+    try {
+        const allHeavy = await Heavy_vehicle_partners.find().populate('vehicle_info', 'name vehicleType isAvailable');
+        if(!allHeavy){
+            return res.status(404).json({
+                success: false,
+                message: 'No heavy vehicles found.'
+            });
+        }
+        return res.status(200).json({
+            success: true, 
+            data: allHeavy
+        })
+    } catch (error) {
+        console.log("Internal server error", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+}
+
+exports.updateIsBlockedHeavyVehicle = async (req, res) => {
+    try {
+        const {id} = req.params;
+        const {is_blocked} = req.body;
+        const vehicle = await Heavy_vehicle_partners.findById(id);
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: 'Vehicle not found.'
+            });
+        }
+        vehicle.is_blocked = is_blocked;
+        await vehicle.save();
+        return res.status(200).json({
+            success: true,
+            data: vehicle
+        });
+    } catch (error) {
+        console.log("Internal server error",error)
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
+
 
 
 // Shuffle Position Of Partner At Every Night
