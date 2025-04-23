@@ -48,8 +48,8 @@ exports.notifyDriverService = async (data, req, res) => {
         const searchRadii = [2000, 4000, 6000]; // 2km, 4km, 6km
         const maxAttempts = 2;
         let attempt = 0;
-        let notifiedCount = 0;
-        let finalRiders = [];
+        let riderNotified = false;
+        let notifiedRider = null;
         let customerSocketId = null;
 
         // Get customer socket ID
@@ -74,10 +74,10 @@ exports.notifyDriverService = async (data, req, res) => {
         }
 
         // Search for available drivers with increasing radius
-        while (attempt < maxAttempts) {
+        while (attempt < maxAttempts && !riderNotified) {
             // Ensure we have a valid radius even if attempt exceeds searchRadii length
             const radiusIndex = Math.min(attempt, searchRadii.length - 1);
-            const radius = searchRadii[radiusIndex];
+            let radius = searchRadii[radiusIndex];
 
             if (!Number.isFinite(radius)) {
                 console.warn(`⚠️ Invalid radius at attempt ${attempt}, using default 6000m`);
@@ -98,13 +98,15 @@ exports.notifyDriverService = async (data, req, res) => {
                             $maxDistance: radius,
                         },
                     },
-                
-
                 }).lean().exec();
+                
                 console.log("Available Couriers:", availableCouriers.length);
 
-                availableCouriers = availableCouriers.filter((driver)=> driver.rideVehicleInfo.vehicleName === parcelRequest?.vehicle_id?.title);
-                console.log("Available Couriers sete:", availableCouriers.length);
+                availableCouriers = availableCouriers.filter((driver) => 
+                    driver.rideVehicleInfo.vehicleName === parcelRequest?.vehicle_id?.title
+                );
+                
+                console.log("Available Couriers after vehicle filter:", availableCouriers.length);
 
                 if (!availableCouriers || availableCouriers.length === 0) {
                     console.log(`No couriers found within ${radius}m radius. Attempt ${attempt + 1}/${maxAttempts}`);
@@ -113,7 +115,7 @@ exports.notifyDriverService = async (data, req, res) => {
                     continue;
                 }
 
-                finalRiders = availableCouriers;
+                // Try to notify each driver until one is successfully notified
                 for (const driver of availableCouriers) {
                     if (!driver || !driver._id) {
                         console.warn("⚠️ Driver without ID found, skipping");
@@ -147,7 +149,8 @@ exports.notifyDriverService = async (data, req, res) => {
                                 message: "📦 New parcel request available near you!",
                             });
 
-                            notifiedCount++;
+                            riderNotified = true;
+                            notifiedRider = driver;
                             console.log(`🔔 Notified driver ${driverId}`);
 
                             if (customerSocketId) {
@@ -157,17 +160,20 @@ exports.notifyDriverService = async (data, req, res) => {
                                     message: "🎉 A rider has been assigned to your parcel request!"
                                 });
                             }
+                            
+                            // Exit the loop once a rider is notified
+                            break;
                         } catch (emitError) {
                             console.error(`Error emitting to socket ${socketId}:`, emitError);
-                            // Continue with other drivers even if one emit fails
+                            // Continue with other drivers if this emit fails
                         }
                     } else {
                         console.log(`⚠️ No active socket connection for driver ${driverId}`);
                     }
                 }
 
-                // If at least one driver was notified, break out of retry loop
-                if (notifiedCount > 0) break;
+                // If a rider was notified, break out of retry loop
+                if (riderNotified) break;
 
                 attempt++;
                 await new Promise(resolve => setTimeout(resolve, 3000)); // wait before next attempt
@@ -178,9 +184,7 @@ exports.notifyDriverService = async (data, req, res) => {
             }
         }
 
-        if (notifiedCount === 0) {
-            const customerSocketId = userSocketMap?.get?.(parcelRequest?.customerId?.toString());
-            // console.log("Customer Socket ID:", customerSocketId);
+        if (!riderNotified) {
             if (io && customerSocketId) {
                 io.to(customerSocketId).emit("parcel_error", {
                     parcel: data,
@@ -192,8 +196,8 @@ exports.notifyDriverService = async (data, req, res) => {
 
         return {
             success: true,
-            message: `✅ ${notifiedCount} drivers notified successfully`,
-            notifiedDrivers: notifiedCount,
+            message: `✅ Driver notified successfully`,
+            notifiedDriver: notifiedRider?._id,
             searchRadius: searchRadii[Math.min(attempt, searchRadii.length - 1)] / 1000,
             customerNotified: !!customerSocketId,
             totalAttempts: attempt + 1,
@@ -201,9 +205,6 @@ exports.notifyDriverService = async (data, req, res) => {
 
     } catch (error) {
         console.error("❌ Error in notifyDriverService:", error);
-        // Send notification to customer if socket is available
-       
-
         throw new Error(`❌ notifyDriverService failed: ${error.message}`);
     }
 };

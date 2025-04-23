@@ -29,10 +29,11 @@ const ParcelRequestSchema = new Schema({
 
     status: {
         type: String,
-        enum: ['pending', 'accepted', 'Reached at Pickup Location', 'Reached at Drop location', 'in_transit', 'delivered', 'cancelled'],
         default: 'pending'
     },
-
+    deliveryOtp:{
+        type: String,
+    },
     driver_accept: { type: Boolean, default: false },
     driver_accept_time: { type: Date },
     driver_deliver_time: { type: Date },
@@ -45,11 +46,14 @@ const ParcelRequestSchema = new Schema({
     money_collected_mode: { type: String, enum: ['cash', 'online', 'wallet'], default: 'cash' },
 
     is_parcel_delivered: { type: Boolean, default: false },
+    is_parcel_delivered_time: { type: Date },
+
     is_driver_reached: { type: Boolean, default: false },
     is_driver_reached_time: { type: Date },
     is_driver_reached_at_deliver_place: { type: Boolean, default: false },
     is_driver_reached_at_deliver_place_time: { type: Date },
     is_parcel_picked: { type: Boolean, default: false },
+    is_parcel_picked_time: { type: Date },
 
     locations: {
         pickup: {
@@ -92,6 +96,7 @@ const ParcelRequestSchema = new Schema({
 
     is_booking_completed: { type: Boolean, default: false },
     is_booking_cancelled: { type: Boolean, default: false },
+    is_booking_cancelled_time: { type: Date },
     is_pickup_complete: { type: Boolean, default: false },
     is_dropoff_complete: { type: Boolean, default: false }
 }, {

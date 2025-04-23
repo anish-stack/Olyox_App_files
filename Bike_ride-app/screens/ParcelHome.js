@@ -244,9 +244,9 @@ const ParcelHome = () => {
 
         try {
             // Check if location is available before going online
-            if (!isOnline && !location) {
-                throw new Error("Location not available. Please ensure your GPS is enabled.")
-            }
+            // if (!isOnline ) {
+            //     throw new Error("Location not available. Please ensure your GPS is enabled.")
+            // }
 
             // Check if recharge is expired before going online
             const expireDate = new Date(userData?.RechargeData?.expireData)

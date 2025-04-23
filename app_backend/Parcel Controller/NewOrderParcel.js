@@ -140,7 +140,7 @@ exports.getParcelDetails = async (req, res) => {
         if (!id) {
             return res.status(400).json({ message: "Parcel ID is required" });
         }
-        const parcelDetails = await Parcel_Request.findById(id).populate("customerId", "name number email")
+        const parcelDetails = await Parcel_Request.findById(id).populate("customerId", "name number email").populate("rider_id")
         if (!parcelDetails) {
             return res.status(404).json({ message: "Parcel not found" });
         }
@@ -162,72 +162,72 @@ exports.acceptParcelByRider = async (req, res) => {
 
         const { riderId } = req.body;
         const { parcelId } = req.params;
-        
+
         console.log("🧍‍♂️ Rider ID from body:", riderId);
         console.log("📦 Parcel ID from params:", parcelId);
-        
+
         // Extract rider ID from auth token if not in body
         let extractedRiderId = riderId;
         if (!extractedRiderId && req.user && req.user.id) {
             extractedRiderId = req.user.id;
             console.log("🔐 Extracted rider ID from auth token:", extractedRiderId);
         }
-        
+
         if (!parcelId) {
             console.warn("❌ Missing parcelId");
             return res.status(400).json({ success: false, message: "Parcel ID is required" });
         }
-        
+
         if (!extractedRiderId) {
             console.warn("❌ Missing riderId");
             return res.status(400).json({ success: false, message: "Rider ID is required" });
         }
-        
+
         console.log("🔍 Looking for parcel with ID:", parcelId);
         const parcel = await Parcel_Request.findById(parcelId);
-        
+
         if (!parcel) {
             console.warn(`❌ Parcel not found for ID: ${parcelId}`);
             return res.status(404).json({ success: false, message: "Parcel not found" });
         }
         console.log("✅ Parcel found:", parcel._id);
-        
+
         if (parcel.is_rider_assigned) {
             console.warn(`⚠️ Parcel ${parcelId} is already assigned`);
             return res.status(400).json({ success: false, message: "Parcel is already assigned to a rider" });
         }
         console.log("✅ Parcel is available for assignment");
-        
+
         console.log("🔍 Looking for rider with ID:", extractedRiderId);
         const rider = await RiderModel.findById(extractedRiderId);
-        
+
         if (!rider) {
             console.warn(`❌ Rider not found for ID: ${extractedRiderId}`);
             return res.status(404).json({ success: false, message: "Rider not found" });
         }
         console.log("✅ Rider found:", rider._id);
-        
+
         console.log("📝 Updating parcel status...");
         parcel.is_rider_assigned = true;
         parcel.rider_id = extractedRiderId;
         parcel.driver_accept = true;
         parcel.driver_accept_time = new Date();
         parcel.status = "accepted";
-        
+
         console.log("💾 Saving parcel changes...");
         await parcel.save();
         console.log(`✅ Parcel ${parcelId} accepted by rider ${extractedRiderId}`);
-        
+
         const io = req.app.get("socketio");
         const driverSocketMap = req.app.get("driverSocketMap") || new Map();
         const userSocketMap = req.app.get("userSocketMap") || new Map();
-        
+
         // Notify Rider
         console.log("🔍 Looking for rider socket...");
         const riderSocketId = driverSocketMap instanceof Map
             ? driverSocketMap.get(extractedRiderId) || [...driverSocketMap.entries()].find(([key]) => key.includes(extractedRiderId))?.[1]
             : driverSocketMap[extractedRiderId];
-        
+
         console.log("📡 Rider Socket ID:", riderSocketId);
         if (io && riderSocketId) {
             console.log("📢 Emitting 'parcel_accepted' to rider...");
@@ -240,14 +240,14 @@ exports.acceptParcelByRider = async (req, res) => {
         } else {
             console.log("⚠️ Unable to emit to rider - socket not found");
         }
-        
+
         // Notify Customer
         console.log("🔍 Looking for customer socket...");
         const customerId = parcel.customerId.toString();
         const customerSocketId = userSocketMap instanceof Map
             ? userSocketMap.get(customerId) || [...userSocketMap.entries()].find(([key]) => key.includes(customerId))?.[1]
             : userSocketMap[customerId];
-        
+
         console.log("📡 Customer Socket ID:", customerSocketId);
         if (io && customerSocketId) {
             console.log("📢 Emitting 'parcel_accepted' to customer...");
@@ -260,14 +260,15 @@ exports.acceptParcelByRider = async (req, res) => {
         } else {
             console.log("⚠️ Unable to emit to customer - socket not found");
         }
-        
+        rider.isAvailable = false;
+        await rider.save();
         console.log("📤 Sending success response...");
         return res.status(200).json({
             success: true,
             message: "Parcel accepted successfully",
             parcel,
         });
-        
+
     } catch (error) {
         console.error("❌ Error in acceptParcelByRider:", error);
         return res.status(500).json({
@@ -275,5 +276,106 @@ exports.acceptParcelByRider = async (req, res) => {
             message: "Server error while accepting parcel",
             error: error.message,
         });
+    }
+};
+
+
+exports.updateParcelStatus = async (req, res) => {
+    try {
+        const { parcelId, status } = req.body;
+
+        // Input validation
+        if (!parcelId || !status) {
+            return res.status(400).json({ message: "Parcel ID and status are required" });
+        }
+
+        // Fetch parcel from database
+        const parcel = await Parcel_Request.findById(parcelId).populate("rider_id");
+
+        if (!parcel) {
+            return res.status(404).json({ message: "Parcel not found" });
+        }
+
+        // Set up socket connection and maps
+        const io = req.app.get("socketio");
+        const driverSocketMap = req.app.get("driverSocketMap") || new Map();
+        const userSocketMap = req.app.get("userSocketMap") || new Map();
+
+        // Logic based on status
+        switch (status) {
+            case "Reached at Pickup Location":
+                parcel.is_driver_reached = true;
+                parcel.is_driver_reached_time = new Date();
+                break;
+
+            case "in_transit":
+                parcel.is_pickup_complete = true;
+                parcel.is_parcel_picked = true;
+                parcel.otp = Math.floor(1000 + Math.random() * 9000); // Generate OTP for the parcel
+                break;
+
+            case "Reached at drop Location":
+                parcel.is_driver_reached_at_deliver_place = true;
+                parcel.is_driver_reached_at_deliver_place_time = new Date();
+
+                const customerId = parcel.customerId.toString();
+                const customerSocketId = userSocketMap.get(customerId) || [...userSocketMap.entries()].find(([key]) => key.includes(customerId))?.[1];
+
+                if (customerSocketId) {
+                    io.to(customerSocketId).emit("parcel_rider_reached", {
+                        success: true,
+                        message: "Parcel reached at drop location",
+                        parcel: parcel._id,
+                    });
+                } else {
+                    console.error("Unable to emit to customer: socket not found");
+                }
+                break;
+
+            case "delivered":
+                parcel.is_parcel_delivered = true;
+                parcel.is_dropoff_complete = true;
+                parcel.is_parcel_delivered_time = new Date();
+                parcel.is_booking_completed = true;
+                parcel.money_collected = parcel.fares.payableAmount;
+
+                // Ensure rider status is available after delivery
+                if (parcel.rider_id) {
+                    parcel.rider_id.isAvailable = true;
+                    await parcel.rider_id.save();
+                }
+                break;
+
+            case "cancelled":
+                parcel.is_booking_cancelled = true;
+                parcel.is_booking_cancelled_time = new Date();
+
+                if (parcel.rider_id) {
+                    io.to(customerSocketId).emit("parcel_rider_cancel", {
+                        success: true,
+                        message: "Parcel has been cancelled",
+                        parcel: parcel._id,
+                    });
+                }
+                break;
+
+            default:
+                return res.status(400).json({ message: "Invalid status value" });
+        }
+
+        // Always update the status
+        parcel.status = status;
+
+        // Save the updated parcel document
+        await parcel.save();
+
+        return res.status(200).json({
+            message: "Parcel status updated successfully",
+            updatedStatus: status,
+        });
+
+    } catch (error) {
+        console.error("Error updating parcel status:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };

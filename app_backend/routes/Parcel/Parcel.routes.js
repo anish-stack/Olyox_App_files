@@ -5,7 +5,7 @@ const { register_parcel_partner, login, verifyOtp, resendOtp, details, partner_w
 const { request_of_parcel, my_parcel, single_my_parcel, my_parcel_driver, single_my_parcels, get_all_parcel } = require('../../Parcel Controller/Order.Parcel');
 const { createVehicleForParcel, getAllVehicles, getVehicleById, updateVehicle, deleteVehicle } = require('../../Parcel Controller/VehicleParcel');
 const { create_Coupons, getAll_Coupons, getOne_Coupon, update_Coupon, delete_Coupon } = require('../../Parcel Controller/ParcelCoupons');
-const { NewBooking, getParcelDetails,acceptParcelByRider } = require('../../Parcel Controller/NewOrderParcel');
+const { NewBooking, getParcelDetails,acceptParcelByRider, updateParcelStatus } = require('../../Parcel Controller/NewOrderParcel');
 
 const parcel = express.Router();
 const storage = multer.diskStorage({
@@ -66,6 +66,7 @@ parcel.delete('/parcel-coupon/:id',delete_Coupon);
 parcel.post('/book-parcel',NewBooking);   
 parcel.get('/get-parcel/:id',getParcelDetails);   
 parcel.post('/parcel-accept-ride/:parcelId',acceptParcelByRider);
+parcel.post('/parcel-status-update',updateParcelStatus);
 
 
 
