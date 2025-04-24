@@ -614,7 +614,7 @@ exports.uploadDocuments = async (req, res) => {
         const { id } = req.params;
         const { documentType } = req.body;
 
-  
+
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({
                 success: false,
@@ -850,7 +850,12 @@ exports.getPartnerById = async (req, res) => {
 
         const partner = await Heavy_vehicle_partners.findById(id)
             .populate('vehicle_info', 'name vehicleType isAvailable')
-            .populate('documents', 'document_type document_number expiry_date document_url');
+            .populate({
+                path: 'documents',
+                model: 'HeavyVehicleDocuments',
+                select: 'documentType documentFile document_status reject_reason uploadedAt'
+            });
+
 
         if (!partner) {
             return res.status(404).json({
@@ -1082,6 +1087,108 @@ exports.login = async (req, res) => {
         });
     }
 };
+
+exports.getAllHeavyVehicles = async (req, res) => {
+    try {
+        const allHeavy = await Heavy_vehicle_partners.find().populate('vehicle_info', 'name vehicleType isAvailable').populate('documents');
+        if (!allHeavy) {
+            return res.status(404).json({
+                success: false,
+                message: 'No heavy vehicles found.'
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            data: allHeavy
+        })
+    } catch (error) {
+        console.log("Internal server error", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
+    }
+}
+
+exports.updateIsBlockedHeavyVehicle = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { is_blocked } = req.body;
+        const vehicle = await Heavy_vehicle_partners.findById(id);
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: 'Vehicle not found.'
+            });
+        }
+        vehicle.is_blocked = is_blocked;
+        await vehicle.save();
+        return res.status(200).json({
+            success: true,
+            data: vehicle
+        });
+    } catch (error) {
+        console.log("Internal server error", error)
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
+
+exports.verifyDocumentOfHeavyTransport = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isAlldocumentsVerified } = req.body;
+        const vehicle = await Heavy_vehicle_partners.findById(id);
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: 'Vehicle not found.'
+            });
+        }
+        vehicle.isAlldocumentsVerified = isAlldocumentsVerified;
+        await vehicle.save();
+        return res.status(200).json({
+            success: true,
+            data: vehicle
+        });
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
+
+exports.deleteHeavyVendor = async(req,res) => {
+    try {
+        const {id} = req.params;
+        const vehicle = await Heavy_vehicle_partners.findByIdAndDelete(id);
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: 'Vehicle not found.'
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            message: 'Heavy Transport Vendor deleted successfully.',
+            data: vehicle
+        });
+    } catch (error) {
+        console.log("Internal servere error",error)
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
 
 
 

@@ -1372,3 +1372,21 @@ exports.HotelAnalyticData = async (req, res) => {
         res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
     }
 };
+
+exports.deleteHotelVendor = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const data = await HotelUser.findByIdAndDelete(id);
+        if (!data) {
+            return res.status(404).json({ success: false, message: "Hotel not found" })
+        }
+        res.status(200).json({ success: true, message: "Hotel deleted successfully", data })
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}

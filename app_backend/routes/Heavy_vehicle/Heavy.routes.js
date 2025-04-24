@@ -4,7 +4,7 @@ const upload = require('../../middleware/multerV2');
 const { createVehicle, getAllVehicles, getVehicle, updateVehicle, deleteVehicle, getcategoryIdVehicles } = require('../../Heavy_vehicle_Controllers/Vehicle_types/VehicleTypes');
 const Protect = require('../../middleware/Auth');
 const { createCategory, getAllCategories, getCategory, updateCategory, deleteCategory, toggleStatus } = require('../../Heavy_vehicle_Controllers/Vehicle_types/HeavyVehicleCategory');
-const { create_heavy_vehicle_partner, verifyOTP, resendOTP, updateProfile, uploadDocuments, getMyProfile, getAllProfiles, getPartnerById, delete_account, login, updateServiceAreaOnly } = require('../../Heavy_vehicle_Controllers/vehicle_partners/Auth.Partners');
+const { create_heavy_vehicle_partner, verifyOTP, resendOTP, updateProfile, uploadDocuments, getMyProfile, getAllProfiles, getPartnerById, delete_account, login, updateServiceAreaOnly, getAllHeavyVehicles, updateIsBlockedHeavyVehicle, verifyDocumentOfHeavyTransport, deleteHeavyVendor } = require('../../Heavy_vehicle_Controllers/vehicle_partners/Auth.Partners');
 const HeveyPartnerProtect = require('../../middleware/HeavyPartnerAuth');
 
 const Heavy = express.Router();
@@ -40,7 +40,10 @@ Heavy.get('/heavy-vehicle-all-profile', getAllProfiles);
 Heavy.get('/heavy-vehicle-profile/:id', getPartnerById);
 Heavy.delete('/heavy-vehicle-profile-delete/:id', HeveyPartnerProtect, delete_account);
 
-
+Heavy.get('/get_all_hv_vendor', getAllHeavyVehicles);
+Heavy.put('/update_hv_vendor_is_block_status/:id', updateIsBlockedHeavyVehicle);
+Heavy.put('/update_hv_vendor_document_verify/:id', verifyDocumentOfHeavyTransport);
+Heavy.delete('/heavy_vehicle_profile_delete/:id', deleteHeavyVendor);
 
 
 module.exports = Heavy;

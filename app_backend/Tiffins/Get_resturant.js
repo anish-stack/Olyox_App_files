@@ -287,3 +287,28 @@ exports.getPackages = async (req, res) => {
         return res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
+
+exports.deleteResturant = async (req, res) => {
+    try {
+        const {id} = req.params;
+        const deletedResturant = await Restaurant.findByIdAndDelete(id);
+        if (!deletedResturant) {
+            return res.status(404).json({
+                success: false,
+                message: "Resturant not found.",
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            message: "Resturant deleted successfully.",
+            data: deletedResturant,
+        });
+    } catch (error) {
+     console.log("Internal server error", error)   
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}

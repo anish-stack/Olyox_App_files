@@ -633,3 +633,50 @@ exports.getAllTiffinOrder = async (req, res) => {
         })
     }
 }
+
+
+exports.deleleteTiffinOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const order = await RestuarntOrderModel.findByIdAndDelete(id);
+        if (!order) {
+            return res.status(400).json({
+                success: false,
+                message: "Order not found"
+            })
+        }
+        return res.status(200).json({ success: true, message: "Order deleted successfully" });
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: "Internal servere error",
+            error: error.message
+        })
+    }
+}
+
+exports.changeOrderStatusByAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        console.log('status', status)
+        const order = await RestuarntOrderModel.findById(id);
+        if (!order) {
+            return res.status(400).json({
+                success: false,
+                message: "Order not found"
+            })
+        }
+        order.status = status;
+        await order.save();
+        return res.status(200).json({ success: true, message: "Order status updated successfully" });
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: "Internal servere error",
+            error: error.message
+        })
+    }
+}

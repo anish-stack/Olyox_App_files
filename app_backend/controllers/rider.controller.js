@@ -19,7 +19,7 @@ cloudinary.config({
 exports.registerRider = async (req, res) => {
   try {
     // console.log("rider", req.body)
-    const { name, phone, rideVehicleInfo, BH ,role} = req.body;
+    const { name, phone, rideVehicleInfo, BH, role } = req.body;
     const { vehicleName, vehicleType, PricePerKm, VehicleNumber, RcExpireDate } = rideVehicleInfo;
 
     if (!BH) {
@@ -78,7 +78,7 @@ exports.registerRider = async (req, res) => {
       phone,
       rideVehicleInfo: { vehicleName, vehicleType, VehicleNumber, RcExpireDate },
       BH,
-      category:role,
+      category: role,
       otp,
       isOtpVerify: false,
       isDocumentUpload: false,
@@ -1021,6 +1021,24 @@ exports.getOnlineTimeByRiderId = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Internal server error',
+      error: error.message
+    })
+  }
+}
+
+exports.deleteRider = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedRider = await Rider.findByIdAndDelete(id);
+    if (!deletedRider) {
+      return res.status(404).json({ success: false, message: "Rider not found" });
+    }
+    res.status(200).json({ success: true, message: "Rider deleted successfully", data: deletedRider });
+  } catch (error) {
+    console.log("Internal server error", error)
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
       error: error.message
     })
   }
