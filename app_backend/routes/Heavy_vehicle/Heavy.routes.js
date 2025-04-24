@@ -42,7 +42,10 @@ Heavy.get('/heavy-vehicle-all-profile', getAllProfiles);
 Heavy.get('/heavy-vehicle-profile/:id', getPartnerById);
 Heavy.delete('/heavy-vehicle-profile-delete/:id', HeveyPartnerProtect, delete_account);
 
+Heavy.get('/heavy-vehicle-partners',getheaveyPartners )
 
-
+// Call and Message Request
+Heavy.post('/generated-call-and-message-request',CreateCallAndMessageRequest)
+Heavy.get('/get-my-all-parcel/:userId',getAllMyParcelByCustomerId)
 
 module.exports = Heavy;
