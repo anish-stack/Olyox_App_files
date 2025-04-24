@@ -1,5 +1,5 @@
 const express = require('express');
-const { registerRider, getAllRiders, changeLocation, login, resendOtp, verifyOtp, uploadDocuments, details, getMyAllDetails, getMyAllRides, toggleWorkStatusOfRider, verifyDocument, uploadPaymentQr, getMySessionsByUserId, riderDocumentsVerify, updateBlockStatus, getSingleRider, updateRiderDetails, updateRiderDocumentVerify, logoutRider } = require('../controllers/rider.controller');
+const { registerRider, getAllRiders, changeLocation, login, resendOtp, verifyOtp, uploadDocuments, details, getMyAllDetails, getMyAllRides, toggleWorkStatusOfRider, verifyDocument, uploadPaymentQr, getMySessionsByUserId, riderDocumentsVerify, updateBlockStatus, getSingleRider, updateRiderDetails, updateRiderDocumentVerify, logoutRider, deleteRider } = require('../controllers/rider.controller');
 const { calculateRidePriceForUser } = require('../controllers/ride.request');
 
 const router = express.Router();
@@ -55,4 +55,6 @@ router.get('/recharge-wallet/:package_id/:user_id', make_recharge)
 router.post('/recharge-verify/:BHID', verify_recharge)
 
 router.put('/update_rider_document_verify/:id', updateRiderDocumentVerify);
+
+router.delete('/delete_rider_vendor/:id',deleteRider)
 module.exports = router;
