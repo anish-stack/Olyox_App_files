@@ -1729,3 +1729,49 @@ exports.getSingleRides = async (req, res) => {
         })
     }
 }
+
+exports.deleleteRidersRideOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const order = await RideRequest.findByIdAndDelete(id);
+        if (!order) {
+            return res.status(400).json({
+                success: false,
+                message: "Order not found"
+            })
+        }
+        return res.status(200).json({ success: true, message: "Order deleted successfully" });
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: "Internal servere error",
+            error: error.message
+        })
+    }
+}
+
+exports.changeRidersRideStatusByAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        console.log('status', status)
+        const order = await RideRequest.findById(id);
+        if (!order) {
+            return res.status(400).json({
+                success: false,
+                message: "Order not found"
+            })
+        }
+        order.rideStatus = status;
+        await order.save();
+        return res.status(200).json({ success: true, message: "Order status updated successfully" });
+    } catch (error) {
+        console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: "Internal servere error",
+            error: error.message
+        })
+    }
+}

@@ -1,5 +1,5 @@
 const express = require('express');
-const { createRequest, findRider, complete_Details_ofRide, getAllRides, getSingleRides } = require('../controllers/ride.request');
+const { createRequest, findRider, complete_Details_ofRide, getAllRides, getSingleRides, deleleteRidersRideOrder, changeRidersRideStatusByAdmin } = require('../controllers/ride.request');
 const Protect = require('../middleware/Auth');
 const { getOnlineTimeByRiderId } = require('../controllers/rider.controller');
 
@@ -16,5 +16,7 @@ rides.get('/all_rides',getAllRides)
 rides.get('/single_rides/:id',getSingleRides)
 
 rides.get('/get_riders_times_by_rider_id/:id',getOnlineTimeByRiderId)
+rides.delete('/delete_rider_ride/:id', deleleteRidersRideOrder);
+rides.put('/update_rider_ride_status/:id', changeRidersRideStatusByAdmin);
 
 module.exports = rides;

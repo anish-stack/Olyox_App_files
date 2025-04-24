@@ -1,8 +1,8 @@
 const express = require('express');
-const { register_hotel_user, add_hotel_listing,find_My_rooms, getHotelsNearByMe, getHotelsDetails, getHotelsListingDetails, verifyOtp, resendOtp, find_Hotel_Login, toggleHotelStatus, LoginHotel, toggleRoomStatus, deleteHotelRoom, uploadDocuments, getAllHotel, verifyDocuments, getSingleHotelDetails, updateHotelBlock, updateHotelUserDetail, updateHotelDetail, geHotelListingByHotelUser, HotelAnalyticData } = require('../hotel_controllers/hotel.user.controller');
+const { register_hotel_user, add_hotel_listing,find_My_rooms, getHotelsNearByMe, getHotelsDetails, getHotelsListingDetails, verifyOtp, resendOtp, find_Hotel_Login, toggleHotelStatus, LoginHotel, toggleRoomStatus, deleteHotelRoom, uploadDocuments, getAllHotel, verifyDocuments, getSingleHotelDetails, updateHotelBlock, updateHotelUserDetail, updateHotelDetail, geHotelListingByHotelUser, HotelAnalyticData, deleteHotelVendor } = require('../hotel_controllers/hotel.user.controller');
 const Protect = require('../middleware/Auth');
 const upload = require('../middleware/multer');
-const { makeBookingOffline, verifyOtpForBooking, resendOtpForBookingConfirm, UpdateBooking, getMyBookingAll, markCheckIn, markCheckOut, getAllUniqueGuestAndBookingAndHerAmount, UserMakesBooking, getAllHotelBooking, getSingleHotelBooking, cancelBooking, acceptBooking } = require('../hotel_controllers/BookingHotel');
+const { makeBookingOffline, verifyOtpForBooking, resendOtpForBookingConfirm, UpdateBooking, getMyBookingAll, markCheckIn, markCheckOut, getAllUniqueGuestAndBookingAndHerAmount, UserMakesBooking, getAllHotelBooking, getSingleHotelBooking, cancelBooking, acceptBooking, deleleteHotelOrder, changeOrderStatusBookingByAdmin } = require('../hotel_controllers/BookingHotel');
 const hotel_router = express.Router()
 const uploadFields = upload.fields([
     { name: 'aadhar_front', maxCount: 1 },
@@ -81,5 +81,9 @@ hotel_router.put('/update_hotel_detail/:id', upload.fields([
 ]), updateHotelDetail);
 
 hotel_router.get('/get_hotel_listing_by_hotel_user/:id',geHotelListingByHotelUser)
+
+hotel_router.delete('/delete_hotel_vendor/:id',deleteHotelVendor)
+hotel_router.delete('/delete_hotel_order/:id',deleleteHotelOrder)
+hotel_router.put('/update_status_hotel_order/:id',changeOrderStatusBookingByAdmin)
 
 module.exports = hotel_router;
