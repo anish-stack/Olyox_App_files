@@ -96,10 +96,10 @@ admin.delete('/delete-heavy/:id', deleteHeavyTransport);
 admin.post('/toggle-status-heavy/:id', toggleActiveStatus);
 
 // Suggestions
-admin.post('/createSuggestion', createSuggestion);
+admin.post('/createSuggestion', upload.single('icons_image'), createSuggestion);
 admin.get('/getAllSuggestions', getAllSuggestions);
 admin.get('/getSuggestionById/:id', getSuggestionById);
-admin.put('/updateSuggestion/update/:id', updateSuggestion);
+admin.put('/updateSuggestion/update/:id', upload.single('icons_image'), updateSuggestion);
 admin.put('/updateSuggestionStatus/:id', updateStatus);
 admin.delete('/deleteSuggestion/delete/:id', deleteSuggestion);
 
