@@ -539,11 +539,183 @@ exports.updateProfile = async (req, res) => {
     }
 };
 
+exports.updateHTVehicalByAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid partner ID.'
+            });
+        }
+
+        // Find partner
+        const partner = await Heavy_vehicle_partners.findById(id);
+
+        if (!partner) {
+            return res.status(404).json({
+                success: false,
+                message: 'Partner not found.'
+            });
+        }
+
+        // Extract fields to update
+        const {
+            name,
+            email,
+            phone_number,
+            call_timing,
+            status,
+            is_blocked,
+            profile_shows_at_position,
+            is_working
+        } = req.body;
+
+        // Create update object
+        const updateData = {};
+
+        // Update basic fields if provided
+        if (name) updateData.name = name;
+
+        // Check for email uniqueness if being updated
+        if (email && email !== partner.email) {
+            const emailExists = await Heavy_vehicle_partners.findOne({
+                email,
+                _id: { $ne: id }
+            });
+
+            if (emailExists) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email is already in use by another partner.'
+                });
+            }
+
+            // Validate email format
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]{2,}$/;
+            if (!emailRegex.test(email)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Please enter a valid email address!'
+                });
+            }
+
+            updateData.email = email;
+        }
+
+        // Check for phone number uniqueness if being updated
+        if (phone_number && phone_number !== partner.phone_number) {
+            const phoneExists = await Heavy_vehicle_partners.findOne({
+                phone_number,
+                _id: { $ne: id }
+            });
+
+            if (phoneExists) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Phone number is already in use by another partner.'
+                });
+            }
+
+            // Validate phone number format
+            const phoneRegex = /^[0-9]{10}$/;
+            if (!phoneRegex.test(phone_number)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Please enter a valid 10-digit phone number!'
+                });
+            }
+
+            updateData.phone_number = phone_number;
+        }
+
+        // Handle other fields
+        if (status) {
+            if (!['Active', 'Inactive', 'Suspended'].includes(status)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Status must be one of: Active, Inactive, Suspended'
+                });
+            }
+            updateData.status = status;
+        }
+
+        if (is_blocked !== undefined) updateData.is_blocked = is_blocked;
+        if (is_working !== undefined) updateData.is_working = is_working;
+
+        if (profile_shows_at_position) {
+            if (profile_shows_at_position < 1) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Profile position must be greater than or equal to 1.'
+                });
+            }
+            updateData.profile_shows_at_position = profile_shows_at_position;
+        }
+        // Handle call timing update if provided
+        if (call_timing) {
+            const parseTime = (timeString) => {
+                const [time, modifier] = timeString.split(' ');
+                let [hours, minutes] = time.split(':').map(Number);
+
+                if (modifier === 'PM' && hours !== 12) {
+                    hours += 12;
+                }
+                if (modifier === 'AM' && hours === 12) {
+                    hours = 0;
+                }
+
+                return new Date(1970, 0, 1, hours, minutes, 0); // Using a fixed date
+            };
+
+            const startTime = parseTime(call_timing.start_time);
+            const endTime = parseTime(call_timing.end_time);
+
+            if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid time format for call timing.'
+                });
+            }
+
+            if (startTime >= endTime) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'End time must be greater than start time.'
+                });
+            }
+        }
+
+
+        // Update partner profile
+        const updatedPartner = await Heavy_vehicle_partners.findByIdAndUpdate(
+            id,
+            updateData,
+            { new: true, runValidators: true }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: 'Partner profile updated successfully',
+            data: updatedPartner
+        });
+
+    } catch (error) {
+        console.log("Internal server error", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal Server Error",
+            error: error.message
+        })
+    }
+}
+
 exports.updateServiceAreaOnly = async (req, res) => {
     try {
         const { id } = req.params;
         const { service_areas } = req.body;
-        console.log("service_areas", service_areas)
+        // console.log("service_areas", service_areas)
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({
@@ -1165,9 +1337,9 @@ exports.verifyDocumentOfHeavyTransport = async (req, res) => {
     }
 }
 
-exports.deleteHeavyVendor = async(req,res) => {
+exports.deleteHeavyVendor = async (req, res) => {
     try {
-        const {id} = req.params;
+        const { id } = req.params;
         const vehicle = await Heavy_vehicle_partners.findByIdAndDelete(id);
         if (!vehicle) {
             return res.status(404).json({
@@ -1181,7 +1353,7 @@ exports.deleteHeavyVendor = async(req,res) => {
             data: vehicle
         });
     } catch (error) {
-        console.log("Internal servere error",error)
+        console.log("Internal servere error", error)
         return res.status(500).json({
             success: false,
             message: "Internal server error",
