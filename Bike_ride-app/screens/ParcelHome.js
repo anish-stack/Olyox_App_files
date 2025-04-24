@@ -23,7 +23,7 @@ import { useSocket } from "../context/SocketContext"
 import styles from "./parcelStyle"
 
 // API configuration
-const API_URL = "http://192.168.1.12:3100/api/v1"
+const API_URL = "http://192.168.1.47:3100/api/v1"
 const RIDER_API = `${API_URL}/rider`
 
 const ParcelHome = () => {

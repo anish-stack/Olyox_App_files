@@ -309,7 +309,7 @@ const App = () => {
       <Stack.Screen name="Transport" options={{ headerShown: false }} component={MainTransport} />
       <Stack.Screen name="delivery_parcel" options={{ headerShown: false }} component={Parcel_Transport} />
       <Stack.Screen name="Book-Parcel" options={{ headerShown: false }} component={BookParcel} />
-      <Stack.Screen name="Parcel" options={{ headerShown: false }} component={Parcel_Orders} />
+      <Stack.Screen name="Parcel" options={{ headerShown: true }} component={Parcel_Orders} />
       <Stack.Screen name="OrderDetails" options={{ headerShown: false }} component={OrderDetails} />
       <Stack.Screen name="Onboarding" options={{ headerShown: false }} component={OnboardingScreen} />
 

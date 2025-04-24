@@ -11,18 +11,18 @@ import Food_Cats from '../Foods/Food_Cats/Food_Cats';
 import SkeletonLoader from './SkeletonLoader';
 import * as Updates from 'expo-updates';
 const HomeScreen = () => {
-    const isMounted = useRef(false); // Prevent multiple fetch calls
+    const isMounted = useRef(false); 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    // Function to simulate data fetching
+
     const fetchData = async () => {
         try {
             if (isMounted.current) return;
             isMounted.current = true;
 
             setLoading(true);
-            // Simulate API call delay
+      
             await new Promise((resolve) => setTimeout(resolve, 3200));
         } catch (error) {
             console.error('Error fetching data:', error);

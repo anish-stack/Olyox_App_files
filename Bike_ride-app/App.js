@@ -84,7 +84,7 @@ const App = () => {
 
         if (token) {
           const response = await axios.get(
-            'http://192.168.1.12:3100/api/v1/rider/user-details',
+            'http://192.168.1.47:3100/api/v1/rider/user-details',
             { headers: { Authorization: `Bearer ${token}` } }
           );
 
@@ -121,7 +121,7 @@ const App = () => {
   const foundRideDetails = async (temp_ride_id) => {
     console.log("Temp", temp_ride_id)
     try {
-      const response = await axios.get(`http://192.168.1.12:3100/rider/${temp_ride_id}`)
+      const response = await axios.get(`http://192.168.1.47:3100/rider/${temp_ride_id}`)
       console.log("hello", response.data)
       setActiveRideData(response.data)
     } catch (error) {

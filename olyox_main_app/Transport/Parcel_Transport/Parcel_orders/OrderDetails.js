@@ -38,7 +38,7 @@ export default function OrderDetails() {
         }
 
         try {
-            const response = await axios.get(`http://192.168.1.12:3100/api/v1/parcel/single_my_parcel_user-details?id=${order?._id}`, {
+            const response = await axios.get(`http://192.168.1.47:3100/api/v1/parcel/single_my_parcel_user-details?id=${order?._id}`, {
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,

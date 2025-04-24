@@ -379,3 +379,80 @@ exports.updateParcelStatus = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
+
+
+exports.cancelOrder = async(req,res)=>{
+    try {
+        const { parcelId, status } = req.body;
+
+        // Input validation
+        if (!parcelId || !status) {
+            return res.status(400).json({ message: "Parcel ID and status are required" });
+        }
+
+        // Fetch parcel from database
+        const parcel = await Parcel_Request.findById(parcelId).populate("rider_id");
+
+        if (!parcel) {
+            return res.status(404).json({ message: "Parcel not found" });
+        }
+
+        const io = req.app.get("socketio");
+        const driverSocketMap = req.app.get("driverSocketMap") || new Map();
+
+        parcel.status = status;
+        parcel.is_booking_cancelled = true;
+        parcel.is_booking_cancelled_time = new Date();
+        parcel.is_parcel_cancel_by_user = true;
+        parcel.is_parcel_cancel_by_user_time = new Date();
+        await parcel.save();
+        if (parcel.rider_id) {
+            const customerId = parcel.customerId.toString();
+            const customerSocketId = userSocketMap.get(customerId) || [...userSocketMap.entries()].find(([key]) => key.includes(customerId))?.[1];
+
+            if (customerSocketId) {
+                io.to(customerSocketId).emit("parcel_rider_reached", {
+                    success: true,
+                    message: "Parcel reached at drop location",
+                    parcel: parcel._id,
+                });
+            } else {
+                console.error("Unable to emit to customer: socket not found");
+            }
+        }
+
+    } catch (error) {
+        
+    }
+}
+
+exports.getAllMyParcelByCustomerId = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        if (!userId) {
+            return res.status(400).json({ message: "Oops! We couldn't process your request. User ID is missing." });
+        }
+
+        const parcels = await Parcel_Request.find({ customerId: userId }).populate("vehicle_id");
+
+        if (!parcels || parcels.length === 0) {
+            return res.status(404).json({ message: "No parcel requests found for your account yet." });
+        }
+
+        // Successful response
+        return res.status(200).json({
+            success: true,
+            message: "Parcels fetched successfully.",
+            parcels
+        });
+
+    } catch (error) {
+        console.error("Error fetching parcels:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong while fetching your parcels. Please try again later.",
+            error: error.message
+        });
+    }
+};

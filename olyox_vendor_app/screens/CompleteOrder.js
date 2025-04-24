@@ -22,7 +22,7 @@ export default function CompleteOrder() {
                 }
 
                 const { data } = await axios.get(
-                    'http://192.168.1.12:3100/api/v1/tiffin/get_single_tiffin_profile',
+                    'http://192.168.1.47:3100/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -47,7 +47,7 @@ export default function CompleteOrder() {
     const handleFetchOrderDetails = async () => {
         setLoading(true);
         try {
-            const { data } = await axios.get(`http://192.168.1.12:3100/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
+            const { data } = await axios.get(`http://192.168.1.47:3100/api/v1/tiffin/get_order_for_resturant/${restaurantId}`);
             if (data.success) {
                 const reverse = data.data.reverse();
                 const filteredOrders = reverse.filter(order => order.status === 'Out for Delivery');

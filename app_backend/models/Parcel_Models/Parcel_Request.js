@@ -55,6 +55,15 @@ const ParcelRequestSchema = new Schema({
     is_parcel_picked: { type: Boolean, default: false },
     is_parcel_picked_time: { type: Date },
 
+    is_parcel_cancel_by_user:{
+        type: Boolean,
+        default: false
+    },
+    is_parcel_cancel_by_user_time:{
+        type: Date
+    },
+
+
     locations: {
         pickup: {
             address: { type: String },

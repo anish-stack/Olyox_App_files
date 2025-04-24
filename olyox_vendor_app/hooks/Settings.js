@@ -9,7 +9,7 @@ const useSettings = () => {
         const getSettings = async () => {
             setLoading(true)
             try {
-                const response = await axios.get(`http://192.168.1.12:3100/api/v1/admin/get_Setting`)
+                const response = await axios.get(`http://192.168.1.47:3100/api/v1/admin/get_Setting`)
                 setSettings(response.data);
             } catch (err) {
                 setError(err);

@@ -22,7 +22,7 @@ export default function All_Orders() {
             if (!token) return;
 
             const response = await axios.get(
-                'http://192.168.1.12:3100/api/v1/parcel/my_parcel_driver-details',
+                'http://192.168.1.47:3100/api/v1/parcel/my_parcel_driver-details',
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 }

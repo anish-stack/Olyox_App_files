@@ -185,7 +185,7 @@ export default function BookingConfirmation() {
                 }
 
                 const response = await axios.post(
-                    'http://192.168.1.12:3100/api/v1/rider/get-fare-info',
+                    'http://192.168.1.47:3100/api/v1/rider/get-fare-info',
                     {
                         origin,
                         destination,
@@ -478,7 +478,7 @@ export default function BookingConfirmation() {
 
             // Create ride request
             const response = await axios.post(
-                'http://192.168.1.12:3100/api/v1/rides/create-ride',
+                'http://192.168.1.47:3100/api/v1/rides/create-ride',
                 {
                     currentLocation,
                     pickupLocation: origin,

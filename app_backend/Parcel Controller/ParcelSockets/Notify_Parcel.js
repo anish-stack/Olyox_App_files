@@ -45,8 +45,8 @@ exports.notifyDriverService = async (data, req, res) => {
         }
 
         // Configuration for driver search
-        const searchRadii = [2000, 4000, 6000]; // 2km, 4km, 6km
-        const maxAttempts = 2;
+        const searchRadii = [2000, 4000, 6000];
+        const maxAttempts = 4;
         let attempt = 0;
         let riderNotified = false;
         let notifiedRider = null;
@@ -73,6 +73,10 @@ exports.notifyDriverService = async (data, req, res) => {
             customerSocketId = userSocketMap[customerId];
         }
 
+        // Wait 4 seconds before starting the first attempt
+        console.log("Waiting 4 seconds before starting rider search...");
+        await new Promise(resolve => setTimeout(resolve, 4000));
+
         // Search for available drivers with increasing radius
         while (attempt < maxAttempts && !riderNotified) {
             // Ensure we have a valid radius even if attempt exceeds searchRadii length
@@ -83,6 +87,8 @@ exports.notifyDriverService = async (data, req, res) => {
                 console.warn(`⚠️ Invalid radius at attempt ${attempt}, using default 6000m`);
                 radius = 6000; // Default to 6km if invalid
             }
+
+            console.log(`Starting attempt ${attempt + 1}/${maxAttempts} with radius ${radius}m`);
 
             try {
                 let availableCouriers = await Rider.find({
@@ -111,7 +117,12 @@ exports.notifyDriverService = async (data, req, res) => {
                 if (!availableCouriers || availableCouriers.length === 0) {
                     console.log(`No couriers found within ${radius}m radius. Attempt ${attempt + 1}/${maxAttempts}`);
                     attempt++;
-                    await new Promise(resolve => setTimeout(resolve, 7000)); // wait 7s
+                    
+                    // Only wait if there are more attempts to go
+                    if (attempt < maxAttempts) {
+                        console.log("Waiting 20 seconds before next attempt...");
+                        await new Promise(resolve => setTimeout(resolve, 20000)); // wait 20s between attempts
+                    }
                     continue;
                 }
 
@@ -176,14 +187,25 @@ exports.notifyDriverService = async (data, req, res) => {
                 if (riderNotified) break;
 
                 attempt++;
-                await new Promise(resolve => setTimeout(resolve, 3000)); // wait before next attempt
+                
+                // Only wait if there are more attempts to go
+                if (attempt < maxAttempts) {
+                    console.log("Waiting 20 seconds before next attempt...");
+                    await new Promise(resolve => setTimeout(resolve, 20000)); // wait 20s before next attempt
+                }
             } catch (queryError) {
                 console.error(`❌ Error in courier search (attempt ${attempt}):`, queryError);
                 attempt++;
-                await new Promise(resolve => setTimeout(resolve, 3000)); // wait before next attempt
+                
+                // Only wait if there are more attempts to go
+                if (attempt < maxAttempts) {
+                    console.log("Waiting 20 seconds before next attempt...");
+                    await new Promise(resolve => setTimeout(resolve, 20000)); // wait 20s before next attempt
+                }
             }
         }
 
+        // Notify customer about no available riders only after all attempts are completed
         if (!riderNotified) {
             if (io && customerSocketId) {
                 io.to(customerSocketId).emit("parcel_error", {
@@ -191,7 +213,7 @@ exports.notifyDriverService = async (data, req, res) => {
                     message: "Sorry, we couldn't find a rider at the moment. But your order has been successfully created — we'll assign a rider to you as soon as possible. Thank you for your patience!"
                 });
             }
-            throw new Error("🚫 No available drivers with active socket connection after multiple attempts");
+            throw new Error("🚫 No available drivers with active socket connection after all attempts");
         }
 
         return {

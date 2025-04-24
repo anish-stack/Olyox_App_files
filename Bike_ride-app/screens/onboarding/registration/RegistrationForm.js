@@ -7,7 +7,7 @@ import * as SecureStore from 'expo-secure-store'
 import { useNavigation, useRoute } from "@react-navigation/native"
 
 const API_BASE_URL = "https://api.olyox.com/api/v1"
-const MAIN_API_BASE_URL = "http://192.168.1.12:3100/api/v1"
+const MAIN_API_BASE_URL = "http://192.168.1.47:3100/api/v1"
 
 export default function RegistrationForm() {
   const route = useRoute()

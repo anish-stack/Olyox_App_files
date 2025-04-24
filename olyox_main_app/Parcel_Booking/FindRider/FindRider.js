@@ -27,7 +27,7 @@ import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get("window");
 const GOOGLE_MAPS_API_KEY = "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8";
-const API_BASE_URL = "http://192.168.1.12:3100/api/v1";
+const API_BASE_URL = "http://192.168.1.47:3100/api/v1";
 
 // Loading steps with more engaging descriptions
 const LOADING_STEPS = [
@@ -125,7 +125,7 @@ export default function FindRider() {
   // Get current destination based on status
   const currentDestination = useMemo(() => {
     if (!coordinates || !parcelDetails) return null;
-    
+
     const status = parcelDetails.status;
     if (status === "accepted" || status === "Reached at Pickup Location") {
       return coordinates.pickup;
@@ -139,20 +139,20 @@ export default function FindRider() {
     if (showLoader) {
       setRefreshing(true);
     }
-    
+
     try {
       const response = await axios.get(`${API_BASE_URL}/parcel/get-parcel/${id}`);
       const parcel = response?.data?.parcelDetails;
-      
+
       if (!parcel) {
         throw new Error("No parcel data found.");
       }
-      
+
       setParcelDetails(parcel);
       setRiderFound(parcel.driver_accept);
       setRiderDetails(parcel.rider_id);
       setStatusUpdateTime(new Date().toLocaleTimeString());
-      
+
       // If a driver has accepted the parcel
       if (parcel.driver_accept) {
         const coords = parcel?.rider_id?.location?.coordinates;
@@ -162,11 +162,11 @@ export default function FindRider() {
             longitude: coords[0],
           });
         }
-        
+
         setLoading(false);
         animateSlideUp();
       }
-      
+
       // Fit map to show all markers
       if (mapReady && mapRef.current) {
         fitMapToMarkers();
@@ -176,7 +176,7 @@ export default function FindRider() {
       // Don't show technical errors to user
       if (!parcelError) {
         setParcelError({
-          message: "We're having trouble connecting to our servers. Please try refreshing.",
+          message: "Sorry, we couldn't find a rider at the moment. But your order has been successfully created — we'll assign a rider to you as soon as possible. Thank you for your patience!",
           parcel: id
         });
       }
@@ -204,10 +204,10 @@ export default function FindRider() {
         useNativeDriver: true,
       }),
     ]).start();
-    
+
     // Provide haptic feedback
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
+
     fetchParcelDetails(true);
   }, [fetchParcelDetails]);
 
@@ -248,12 +248,12 @@ export default function FindRider() {
   // Fit map to show all markers
   const fitMapToMarkers = useCallback(() => {
     if (!mapRef.current || !coordinates) return;
-    
+
     const points = [];
     if (coordinates.pickup) points.push(coordinates.pickup);
     if (coordinates.dropoff) points.push(coordinates.dropoff);
     if (driverLocation) points.push(driverLocation);
-    
+
     if (points.length > 0) {
       mapRef.current.fitToCoordinates(points, {
         edgePadding: { top: 70, right: 70, bottom: 300, left: 70 },
@@ -266,7 +266,7 @@ export default function FindRider() {
   useEffect(() => {
     fetchParcelDetails();
     startLoadingStepAnimation();
-    
+
     // Stop searching after 2 minutes if no driver is found
     const searchTimeout = setTimeout(() => {
       if (loading && !parcelError && !riderFound) {
@@ -278,14 +278,14 @@ export default function FindRider() {
         animateSlideUp();
       }
     }, 2 * 60 * 1000); // 2 minutes
-    
+
     return () => clearTimeout(searchTimeout);
   }, []);
 
   // Socket event handlers
   useEffect(() => {
     if (!socketInstance) return;
-    
+
     // Handle rider acceptance
     const handleParcelAcceptByRider = (data) => {
       console.log("Parcel Accepted by Rider:", data);
@@ -297,7 +297,7 @@ export default function FindRider() {
         animateSlideUp();
       }
     };
-    
+
     // Handle parcel status updates
     const handleParcelStatusUpdate = (data) => {
       console.log("Parcel Status Update:", data);
@@ -307,7 +307,7 @@ export default function FindRider() {
         setStatusUpdateTime(new Date().toLocaleTimeString());
       }
     };
-    
+
     // Handle driver location updates
     const handleDriverLocationUpdate = (data) => {
       console.log("Driver Location Update:", data);
@@ -318,24 +318,26 @@ export default function FindRider() {
         });
       }
     };
-    
+
     // Handle errors
     const handleParcelError = (data) => {
       console.log("Parcel Error:", data);
       if (data.parcelId === id) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        setParcelError(data);
-        setLoading(false);
-        animateSlideUp();
+        setTimeout(() => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          setParcelError(data);
+          setLoading(false);
+          animateSlideUp();
+        }, 5000)
       }
     };
-    
+
     // Register socket event listeners
     socketInstance.on("parcel_accepted", handleParcelAcceptByRider);
     socketInstance.on("parcel_status_update", handleParcelStatusUpdate);
     socketInstance.on("driver_location_update", handleDriverLocationUpdate);
     socketInstance.on("parcel_error", handleParcelError);
-    
+
     // Cleanup socket event listeners
     return () => {
       socketInstance.off("parcel_accepted", handleParcelAcceptByRider);
@@ -349,7 +351,7 @@ export default function FindRider() {
   useFocusEffect(
     useCallback(() => {
       fetchParcelDetails(false);
-      return () => {};
+      return () => { };
     }, [fetchParcelDetails])
   );
 
@@ -390,7 +392,7 @@ export default function FindRider() {
       Alert.alert("Error", "Driver phone number is not available");
       return;
     }
-    
+
     Linking.openURL(`tel:${riderDetails.phone}`);
   }, [riderDetails]);
 
@@ -425,7 +427,7 @@ export default function FindRider() {
         >
           {/* Pickup Marker */}
           <Marker coordinate={coordinates.pickup}>
-            <Animated.View 
+            <Animated.View
               style={[
                 styles.markerPickup,
                 { transform: [{ scale: pulseAnim }] }
@@ -450,11 +452,11 @@ export default function FindRider() {
 
           {/* Driver Marker */}
           {driverLocation && (
-            <Marker 
+            <Marker
               coordinate={driverLocation}
               tracksViewChanges={false}
             >
-              <Animated.View 
+              <Animated.View
                 style={[
                   styles.driverMarker,
                   { transform: [{ scale: pulseAnim }] }
@@ -500,32 +502,32 @@ export default function FindRider() {
 
       {/* Map Controls */}
       <View style={styles.mapControls}>
-        <TouchableOpacity 
-          style={styles.mapControlButton} 
+        <TouchableOpacity
+          style={styles.mapControlButton}
           onPress={fitMapToMarkers}
         >
           <MaterialIcons name="fullscreen" size={22} color="#333" />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.mapControlButton} 
+
+        <TouchableOpacity
+          style={styles.mapControlButton}
           onPress={onRefresh}
         >
           <Animated.View style={{
-            transform: [{ 
+            transform: [{
               rotate: refreshIconAnim.interpolate({
                 inputRange: [0, 1],
                 outputRange: ['0deg', '360deg']
-              }) 
+              })
             }]
           }}>
             <MaterialIcons name="refresh" size={22} color="#333" />
           </Animated.View>
         </TouchableOpacity>
-        
+
         {riderFound && (
-          <TouchableOpacity 
-            style={styles.mapControlButton} 
+          <TouchableOpacity
+            style={styles.mapControlButton}
             onPress={callDriver}
           >
             <Ionicons name="call" size={22} color="#FF5722" />
@@ -536,7 +538,7 @@ export default function FindRider() {
       {/* Status Badge */}
       {parcelDetails && (
         <View style={[
-          styles.statusBadge, 
+          styles.statusBadge,
           { backgroundColor: STATUS_COLORS[parcelDetails.status] || '#666' }
         ]}>
           <Text style={styles.statusText}>{parcelDetails.status}</Text>
@@ -554,10 +556,10 @@ export default function FindRider() {
       <View style={styles.loadingCard}>
         <View style={styles.loadingStepsContainer}>
           {LOADING_STEPS.map((step, index) => (
-            <View 
-              key={index} 
+            <View
+              key={index}
               style={[
-                styles.loadingStep, 
+                styles.loadingStep,
                 index === currentLoadingStep && styles.activeLoadingStep
               ]}
             >
@@ -581,13 +583,13 @@ export default function FindRider() {
             </View>
           ))}
         </View>
-        
+
         <ActivityIndicator size="large" color="#FF5722" style={styles.loadingIndicator} />
-        
+
         <Text style={styles.loadingText}>{LOADING_STEPS[currentLoadingStep]}</Text>
-        
-        <TouchableOpacity 
-          style={styles.cancelSearchButton} 
+
+        <TouchableOpacity
+          style={styles.cancelSearchButton}
           onPress={handleCancel}
         >
           <Text style={styles.cancelSearchText}>Cancel Search</Text>
@@ -605,10 +607,10 @@ export default function FindRider() {
           <Text style={styles.errorTitle}>Driver Search Failed</Text>
           <Text style={styles.errorText}>
             {parcelError.message ||
-              "Sorry, we couldn't find any available drivers at the moment. Please try again later."}
+              " Sorry, we couldn't find a rider at the moment. But your order has been successfully created — we'll assign a rider to you as soon"}
           </Text>
-          <TouchableOpacity 
-            style={styles.retryButton} 
+          <TouchableOpacity
+            style={styles.retryButton}
             onPress={() => {
               setLoading(true);
               setParcelError(null);
@@ -626,8 +628,8 @@ export default function FindRider() {
           <Text style={styles.noRiderText}>
             We'll notify you as soon as a rider accepts your request. Thank you for your patience.
           </Text>
-          <TouchableOpacity 
-            style={styles.retryButton} 
+          <TouchableOpacity
+            style={styles.retryButton}
             onPress={onRefresh}
           >
             <Text style={styles.retryButtonText}>Refresh</Text>
@@ -657,7 +659,7 @@ export default function FindRider() {
 
         {/* Rider Found Badge */}
         {riderFound && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.riderBadge}
             onPress={() => setShowDriverInfo(!showDriverInfo)}
           >
@@ -665,10 +667,10 @@ export default function FindRider() {
             <Text style={styles.riderBadgeText}>
               {showDriverInfo ? "Hide driver details" : "View driver details"}
             </Text>
-            <Ionicons 
-              name={showDriverInfo ? "chevron-up" : "chevron-down"} 
-              size={16} 
-              color="#007c91" 
+            <Ionicons
+              name={showDriverInfo ? "chevron-up" : "chevron-down"}
+              size={16}
+              color="#007c91"
               style={{ marginLeft: 8 }}
             />
           </TouchableOpacity>
@@ -680,9 +682,9 @@ export default function FindRider() {
             <View style={styles.driverHeader}>
               <View style={styles.driverAvatarContainer}>
                 {riderDetails?.documents?.profile ? (
-                  <Image 
-                    source={{ uri: riderDetails.documents.profile }} 
-                    style={styles.driverAvatar} 
+                  <Image
+                    source={{ uri: riderDetails.documents.profile }}
+                    style={styles.driverAvatar}
                   />
                 ) : (
                   <View style={styles.driverAvatarPlaceholder}>
@@ -690,7 +692,7 @@ export default function FindRider() {
                   </View>
                 )}
               </View>
-              
+
               <View style={styles.driverInfo}>
                 <Text style={styles.driverName}>{riderDetails?.name || "Driver"}</Text>
                 {riderDetails?.rideVehicleInfo?.vehicleName && (
@@ -699,17 +701,17 @@ export default function FindRider() {
                   </Text>
                 )}
               </View>
-              
-              <TouchableOpacity 
-                style={styles.callDriverButton} 
+
+              <TouchableOpacity
+                style={styles.callDriverButton}
                 onPress={callDriver}
               >
                 <Ionicons name="call" size={20} color="#fff" />
               </TouchableOpacity>
             </View>
-            
+
             {riderDetails?.phone && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.driverContactRow}
                 onPress={callDriver}
               >
@@ -773,8 +775,8 @@ export default function FindRider() {
         {riderFound && parcelDetails.otp && (
           <View style={styles.otpCard}>
             <Text style={styles.otpHeading}>
-              {parcelDetails.status === "in_transit" || parcelDetails.status === "Reached at drop Location" 
-                ? "Delivery Verification" 
+              {parcelDetails.status === "in_transit" || parcelDetails.status === "Reached at drop Location"
+                ? "Delivery Verification"
                 : "Pickup Verification"}
             </Text>
             <Text style={styles.otpInstruction}>
@@ -801,28 +803,28 @@ export default function FindRider() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
+        <TouchableOpacity
+          style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        
+
         <Text style={styles.headerTitle}>
           {riderFound ? "Tracking Delivery" : "Finding Driver"}
         </Text>
-        
-        <TouchableOpacity 
-          style={styles.menuButton} 
+
+        <TouchableOpacity
+          style={styles.menuButton}
           onPress={() => setModalVisible(true)}
         >
           <Entypo name="dots-three-vertical" size={24} color="#333" />
         </TouchableOpacity>
       </View>
-      
+
       {/* Map */}
       {renderMap()}
 
@@ -841,9 +843,9 @@ export default function FindRider() {
       >
         <View style={styles.bottomSheetHandle} />
 
-        <ScrollView 
+        <ScrollView
           ref={scrollViewRef}
-          showsVerticalScrollIndicator={false} 
+          showsVerticalScrollIndicator={false}
           style={styles.detailsScroll}
           refreshControl={
             <RefreshControl
@@ -860,23 +862,23 @@ export default function FindRider() {
 
         {/* Action Buttons */}
         <View style={styles.buttonContainer}>
-          {parcelDetails && !parcelDetails.is_pickup_complete&& (
+          {parcelDetails && !parcelDetails.is_pickup_complete && (
 
-          <TouchableOpacity 
-            style={styles.cancelButton} 
-            onPress={handleCancel}
-            disabled={refreshing}
-          >
-            {refreshing ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Cancel Request</Text>
-            )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={handleCancel}
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Cancel Request</Text>
+              )}
+            </TouchableOpacity>
           )}
 
-          <TouchableOpacity 
-            style={styles.homeButton} 
+          <TouchableOpacity
+            style={styles.homeButton}
             onPress={() => navigation.navigate("Home")}
             disabled={refreshing}
           >
@@ -896,14 +898,14 @@ export default function FindRider() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Options</Text>
-              <TouchableOpacity 
-                style={styles.modalCloseButton} 
+              <TouchableOpacity
+                style={styles.modalCloseButton}
                 onPress={() => setModalVisible(false)}
               >
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
-            
+
             <TouchableOpacity
               style={styles.modalOption}
               onPress={() => {
@@ -926,8 +928,8 @@ export default function FindRider() {
               <Text style={styles.modalOptionText}>Refresh Status</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.modalOption, styles.cancelOption]} 
+            <TouchableOpacity
+              style={[styles.modalOption, styles.cancelOption]}
               onPress={() => {
                 setModalVisible(false);
                 handleCancel();

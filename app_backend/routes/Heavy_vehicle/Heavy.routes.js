@@ -6,6 +6,8 @@ const Protect = require('../../middleware/Auth');
 const { createCategory, getAllCategories, getCategory, updateCategory, deleteCategory, toggleStatus } = require('../../Heavy_vehicle_Controllers/Vehicle_types/HeavyVehicleCategory');
 const { create_heavy_vehicle_partner, verifyOTP, resendOTP, updateProfile, uploadDocuments, getMyProfile, getAllProfiles, getPartnerById, delete_account, login, updateServiceAreaOnly } = require('../../Heavy_vehicle_Controllers/vehicle_partners/Auth.Partners');
 const HeveyPartnerProtect = require('../../middleware/HeavyPartnerAuth');
+const { getheaveyPartners, CreateCallAndMessageRequest } = require('../../Heavy_vehicle_Controllers/Get_partners/Get.Controllers');
+const { getAllMyParcelByCustomerId } = require('../../Parcel Controller/NewOrderParcel');
 
 const Heavy = express.Router();
 
@@ -40,7 +42,10 @@ Heavy.get('/heavy-vehicle-all-profile', getAllProfiles);
 Heavy.get('/heavy-vehicle-profile/:id', getPartnerById);
 Heavy.delete('/heavy-vehicle-profile-delete/:id', HeveyPartnerProtect, delete_account);
 
+Heavy.get('/heavy-vehicle-partners',getheaveyPartners )
 
-
+// Call and Message Request
+Heavy.post('/generated-call-and-message-request',CreateCallAndMessageRequest)
+Heavy.get('/get-my-all-parcel/:userId',getAllMyParcelByCustomerId)
 
 module.exports = Heavy;
