@@ -190,7 +190,7 @@ const Header = () => {
       }
 
       // Fetch new address from API
-      const { data } = await axios.post(`http://192.168.1.47:3100/Fetch-Current-Location`, {
+      const { data } = await axios.post(`http://192.168.1.12:3100/Fetch-Current-Location`, {
         lat: location?.coords?.latitude,
         lng: location?.coords?.longitude,
       })
@@ -243,7 +243,7 @@ const Header = () => {
   // Handle logout
   const handleLogout = useCallback(async () => {
     try {
-      await axios.get("http://192.168.1.47:3100/api/v1/rider/logout", { withCredentials: true })
+      await axios.get("http://192.168.1.12:3100/api/v1/rider/logout", { withCredentials: true })
       await tokenCache.deleteToken("auth_token_db")
       setIsAuthenticated(false)
 

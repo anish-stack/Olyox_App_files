@@ -381,50 +381,64 @@ exports.updateParcelStatus = async (req, res) => {
 };
 
 
-exports.cancelOrder = async(req,res)=>{
+exports.cancelOrder = async (req, res) => {
     try {
-        const { parcelId, status } = req.body;
+        const { parcelId } = req.params;
 
-        // Input validation
-        if (!parcelId || !status) {
-            return res.status(400).json({ message: "Parcel ID and status are required" });
+        // Validate input
+        if (!parcelId) {
+            return res.status(400).json({ message: "Parcel ID is required" });
         }
 
-        // Fetch parcel from database
+        // Fetch parcel with rider info
         const parcel = await Parcel_Request.findById(parcelId).populate("rider_id");
 
         if (!parcel) {
             return res.status(404).json({ message: "Parcel not found" });
         }
 
-        const io = req.app.get("socketio");
-        const driverSocketMap = req.app.get("driverSocketMap") || new Map();
-
-        parcel.status = status;
+        // Update parcel status
+        parcel.status = "cancelled";
         parcel.is_booking_cancelled = true;
         parcel.is_booking_cancelled_time = new Date();
         parcel.is_parcel_cancel_by_user = true;
         parcel.is_parcel_cancel_by_user_time = new Date();
-        await parcel.save();
-        if (parcel.rider_id) {
-            const customerId = parcel.customerId.toString();
-            const customerSocketId = userSocketMap.get(customerId) || [...userSocketMap.entries()].find(([key]) => key.includes(customerId))?.[1];
 
-            if (customerSocketId) {
-                io.to(customerSocketId).emit("parcel_rider_reached", {
+        await parcel.save();
+
+        // Notify the driver via socket if assigned
+        const io = req.app.get("socketio");
+        const driverSocketMap = req.app.get("driverSocketMap") || new Map();
+
+        if (parcel.rider_id && parcel.rider_id._id) {
+            const driverId = parcel.rider_id._id.toString();
+            const driverSocketId = driverSocketMap.get(driverId);
+
+            if (driverSocketId) {
+                io.to(driverSocketId).emit("parcel_cancelled_by_user", {
                     success: true,
-                    message: "Parcel reached at drop location",
-                    parcel: parcel._id,
+                    message: "The customer has cancelled the parcel.",
+                    parcelId: parcel._id,
                 });
             } else {
-                console.error("Unable to emit to customer: socket not found");
+                console.warn(`Socket not found for driver ID: ${driverId}`);
             }
         }
 
+        return res.status(200).json({
+            success: true,
+            message: "Parcel cancelled successfully",
+            parcel,
+        });
+
     } catch (error) {
-        
+        console.error("Error cancelling parcel:", error);
+        return res.status(500).json({
+            success: false,
+            message: "An error occurred while cancelling the parcel",
+        });
     }
-}
+};
 
 exports.getAllMyParcelByCustomerId = async (req, res) => {
     try {

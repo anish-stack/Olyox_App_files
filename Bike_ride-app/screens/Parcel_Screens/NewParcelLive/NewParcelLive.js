@@ -51,7 +51,7 @@ export default function NewParcelLive() {
             }
 
             // Make API call to reject the ride
-            await axios.post(`http://192.168.1.47:3100/api/v1/driver/reject-ride/${parcelId}`, {
+            await axios.post(`http://192.168.1.12:3100/api/v1/driver/reject-ride/${parcelId}`, {
                 reason: 'timeout'
             });
 
@@ -111,7 +111,7 @@ export default function NewParcelLive() {
     const handleFetchDetails = async () => {
         setLoading(true);
         try {
-            const { data } = await axios.get(`http://192.168.1.47:3100/api/v1/parcel/get-parcel/${parcelId}`);
+            const { data } = await axios.get(`http://192.168.1.12:3100/api/v1/parcel/get-parcel/${parcelId}`);
             setParcelDetails(data?.parcelDetails);
         } catch (error) {
             console.log("Error fetching parcel details:", error?.response?.data?.message || error.message);
@@ -167,11 +167,11 @@ export default function NewParcelLive() {
 
                             // Make API request
                             console.log("📤 Sending API request to accept parcel");
-                            console.log("🔗 API URL:", `http://192.168.1.47:3100/api/v1/parcel/parcel-accept-ride/${parcelId}`);
+                            console.log("🔗 API URL:", `http://192.168.1.12:3100/api/v1/parcel/parcel-accept-ride/${parcelId}`);
                             console.log("📦 Request payload:", { riderId: userData._id });
 
                             const response = await axios.post(
-                                `http://192.168.1.47:3100/api/v1/parcel/parcel-accept-ride/${parcelId}`,
+                                `http://192.168.1.12:3100/api/v1/parcel/parcel-accept-ride/${parcelId}`,
                                 { riderId: userData._id },
                                 {
                                     headers: {
@@ -244,7 +244,7 @@ export default function NewParcelLive() {
                             }
 
                             // Make API call to reject the ride
-                            await axios.post(`http://192.168.1.47:3100/api/v1/driver/reject-ride/${parcelId}`);
+                            await axios.post(`http://192.168.1.12:3100/api/v1/driver/reject-ride/${parcelId}`);
 
                             // Navigate back to home
                             navigation.reset({

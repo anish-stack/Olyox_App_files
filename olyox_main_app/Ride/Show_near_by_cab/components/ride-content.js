@@ -22,6 +22,7 @@ import { OtpCard } from './otp-card';
 import { DriverCard } from './driver-card';
 import { LocationCard } from './location-card';
 import { PriceCard } from './price-card';
+import { useRide } from '../../../context/RideContext';
 
 // Default locations (Delhi, India)
 const DEFAULT_USER_LOCATION = { latitude: 28.7041, longitude: 77.1025 };
@@ -53,7 +54,7 @@ export const RideContent = React.memo(({
   const [distance, setDistance] = useState(0);
   const [duration, setDuration] = useState(0);
   const [coordinates, setCoordinates] = useState([]);
-
+  const { clearCurrentRide, updateRideStatus } = useRide();
   const [isMapReady, setIsMapReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [mapError, setMapError] = useState(null);
@@ -145,7 +146,7 @@ export const RideContent = React.memo(({
         };
 
         // Send the pickup and dropoff coordinates to your backend API
-        const response = await axios.post('http://192.168.1.47:3100/directions', { pickup, dropoff });
+        const response = await axios.post('http://192.168.1.12:3100/directions', { pickup, dropoff });
 
         const json = response.data;
         console.log("Fetching directions json...", json);

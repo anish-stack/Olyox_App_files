@@ -39,7 +39,7 @@ export default function UserProfile() {
             const gmail_token = await tokenCache.getToken('auth_token');
             const db_token = await tokenCache.getToken('auth_token_db');
             const token = db_token || gmail_token
-            const response = await axios.get('http://192.168.1.47:3100/api/v1/user/find-Orders-details', {
+            const response = await axios.get('http://192.168.1.12:3100/api/v1/user/find-Orders-details', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setOrderData(response.data.data);
@@ -60,12 +60,12 @@ export default function UserProfile() {
     }, []);
 
 
-    const handleLogout = async()=>{
+    const handleLogout = async () => {
         await SecureStore.deleteItemAsync('auth_token')
         await SecureStore.deleteItemAsync('cached_location')
         await SecureStore.deleteItemAsync('cached_coords')
         await SecureStore.deleteItemAsync('auth_token_db')
-      
+
         navigation.reset({
             index: 0,
             routes: [{ name: 'Onboarding' }],
@@ -73,7 +73,7 @@ export default function UserProfile() {
 
     }
 
-    
+
     const pickImage = async () => {
         console.log("Opening image picker...");
 
@@ -111,7 +111,7 @@ export default function UserProfile() {
             });
 
 
-            const response = await axios.post('http://192.168.1.47:3100/api/v1/user/update-profile', form, {
+            const response = await axios.post('http://192.168.1.12:3100/api/v1/user/update-profile', form, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     Authorization: `Bearer ${token}`,
@@ -154,7 +154,7 @@ export default function UserProfile() {
             }
 
             // Send the request to update profile
-            const response = await axios.post('http://192.168.1.47:3100/api/v1/user/update-profile', form, {
+            const response = await axios.post('http://192.168.1.12:3100/api/v1/user/update-profile', form, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     Authorization: `Bearer ${token}`,
@@ -180,16 +180,16 @@ export default function UserProfile() {
         }
     };
 
-    const deleteAccount = async(id)=>{
+    const deleteAccount = async (id) => {
         try {
-            const response = await axios.post(`http://192.168.1.47:3100/api/v1/user/delete-my-account/${id}`)
+            const response = await axios.post(`http://192.168.1.12:3100/api/v1/user/delete-my-account/${id}`)
             console.log("response", response.data);
             Alert.alert(response.data.message);
             await handleLogout()
         } catch (error) {
-            console.error('Error deleting account:', error.response.data,message);
+            console.error('Error deleting account:', error.response.data, message);
             Alert.alert('Error', 'There was an issue deleting your account. Please try again.');
-            
+
         }
     }
 
@@ -790,12 +790,12 @@ const styles = StyleSheet.create({
         width: '28%',
         alignItems: 'center',
     },
-    deleteButton:{
+    deleteButton: {
         backgroundColor: '#d64444', // Dark blue color for edit
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 8,
-        marginLeft:8,
+        marginLeft: 8,
         width: '30%',
         alignItems: 'center',
     },
@@ -805,7 +805,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         textTransform: 'uppercase',
     },
-   deleteext: {
+    deleteext: {
         color: '#fff',
         fontSize: 10,
         fontWeight: 'bold',

@@ -62,7 +62,7 @@ export default function App() {
         }
 
         const { data } = await axios.get(
-          'http://192.168.1.47:3100/api/v1/tiffin/get_single_tiffin_profile',
+          'http://192.168.1.12:3100/api/v1/tiffin/get_single_tiffin_profile',
           {
             headers: { 'Authorization': `Bearer ${storedToken}` }
           }

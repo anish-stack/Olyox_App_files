@@ -20,13 +20,14 @@ import Map from '../Map/Map';
 import { tokenCache } from '../../Auth/cache';
 import { useSocket } from '../../context/SocketContext';
 import { useLocation } from '../../context/LocationContext';
+import { useRide } from '../../context/RideContext';
 
 export default function BookingConfirmation() {
     const route = useRoute();
     const navigation = useNavigation();
     const { location } = useLocation();
     const { isConnected, socket, userId } = useSocket();
-
+    const { saveRide, updateRideStatus } = useRide()
     // State variables
     const [fareDetails, setFareDetails] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -185,7 +186,7 @@ export default function BookingConfirmation() {
                 }
 
                 const response = await axios.post(
-                    'http://192.168.1.47:3100/api/v1/rider/get-fare-info',
+                    'http://192.168.1.12:3100/api/v1/rider/get-fare-info',
                     {
                         origin,
                         destination,
@@ -303,6 +304,8 @@ export default function BookingConfirmation() {
                 if (data && data.rideDetails) {
                     setTimeout(() => {
                         setLoading(false);
+                        saveRide(data.rideDetails);
+                        updateRideStatus('confirmed');
                         navigation.navigate('driver_match', {
                             ride: data.rideDetails,
                             origin,
@@ -478,7 +481,7 @@ export default function BookingConfirmation() {
 
             // Create ride request
             const response = await axios.post(
-                'http://192.168.1.47:3100/api/v1/rides/create-ride',
+                'http://192.168.1.12:3100/api/v1/rides/create-ride',
                 {
                     currentLocation,
                     pickupLocation: origin,
@@ -538,7 +541,7 @@ export default function BookingConfirmation() {
                 setError('No drivers found nearby. Please try again later.');
                 if (loading) {
                     setLoading(false);
-                    
+
                     setTimeoutActive(false);
 
                     if (timerRef.current) {
@@ -576,7 +579,7 @@ export default function BookingConfirmation() {
                     setTimeout(() => {
                         if (loading) setBookingStep(2);
                     }, 3000);
-                    
+
                 } catch (err) {
                     console.error("Error emitting socket event:", err);
                     setLoading(false);
@@ -681,18 +684,18 @@ export default function BookingConfirmation() {
                                     onPress: () => {
                                         setLoading(false);
                                         setTimeoutActive(false);
-                                        
+
                                         // Clear timers
                                         if (socketTimeoutRef.current) {
                                             clearTimeout(socketTimeoutRef.current);
                                             socketTimeoutRef.current = null;
                                         }
-                                        
+
                                         if (timerRef.current) {
                                             clearInterval(timerRef.current);
                                             timerRef.current = null;
                                         }
-                                        
+
                                         navigation.goBack();
                                     }
                                 }
@@ -712,7 +715,7 @@ export default function BookingConfirmation() {
 
     // Component for the loading animation
     const LoaderComponent = () => (
-        <Animated.View 
+        <Animated.View
             style={[
                 styles.loaderContainer,
                 { opacity: fadeAnim }
@@ -786,13 +789,13 @@ export default function BookingConfirmation() {
                                 onPress: () => {
                                     setLoading(false);
                                     setTimeoutActive(false);
-                                    
+
                                     // Clear timers
                                     if (socketTimeoutRef.current) {
                                         clearTimeout(socketTimeoutRef.current);
                                         socketTimeoutRef.current = null;
                                     }
-                                    
+
                                     if (timerRef.current) {
                                         clearInterval(timerRef.current);
                                         timerRef.current = null;
@@ -922,7 +925,7 @@ export default function BookingConfirmation() {
     return (
         <SafeAreaView style={styles.container}>
             <Header />
-            
+
             {!socketConnected && (
                 <View style={styles.connectionStatus}>
                     <Icon name="wifi-off" size={16} color="#721C24" />
@@ -1059,7 +1062,7 @@ const styles = StyleSheet.create({
         margin: 16,
         borderRadius: 12,
         overflow: 'hidden',
-       
+
     },
     initialLoadingContainer: {
         flex: 1,

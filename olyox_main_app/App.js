@@ -56,6 +56,7 @@ import { BookingParcelProvider } from './context/ParcelBookingContext/ParcelBook
 import Choose_Vehicle from './Parcel_Booking/Choose_Vehicle';
 import PaymentScreen from './Parcel_Booking/PaymentScreen';
 import FindRider from './Parcel_Booking/FindRider/FindRider';
+import { RideProvider } from './context/RideContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -317,7 +318,7 @@ const App = () => {
       <Stack.Screen name="Parcel_Booking" options={{ headerShown: false }} component={Get_Pickup_Drop} />
       <Stack.Screen name="Choose_Vehicle" options={{ headerShown: false }} component={Choose_Vehicle} />
       <Stack.Screen name="PaymentScreen" options={{ headerShown: true ,title:"Review Booking"}} component={PaymentScreen} />
-      <Stack.Screen name="Booking_Complete_Find_Rider" options={{ headerShown: false ,title:"Review Booking"}} component={FindRider} />
+      <Stack.Screen name="Booking_Complete_Find_Rider" options={{ headerShown: true ,title:"Parcel Info"}} component={FindRider} />
 
       {/* App Policy */}
       <Stack.Screen name="spalsh" options={{ headerShown: false, title: "Olyox App Polices" }} component={SplashScreen} />
@@ -370,6 +371,9 @@ const App = () => {
           <SocketProvider>
             <LocationProvider initialLocation={locationRef.current}>
               <GuestProvider>
+                <RideProvider>
+
+            
                 <BookingParcelProvider>
                 <SafeAreaProvider>
                   <StatusBar style="auto" />
@@ -406,6 +410,7 @@ const App = () => {
                   </ErrorBoundaryWrapper>
                 </SafeAreaProvider>
                 </BookingParcelProvider>
+                </RideProvider>
               </GuestProvider>
             </LocationProvider>
           </SocketProvider>

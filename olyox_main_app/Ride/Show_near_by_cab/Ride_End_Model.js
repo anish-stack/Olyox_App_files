@@ -36,7 +36,7 @@ export default function RideEndModal({ open, close, handleRideEnd, handlePayment
       const timer = setTimeout(async () => {
         await handlePaymentEndRide();
         close();
-      }, 3000);
+      }, 5000);
 
       return () => clearTimeout(timer);
     }

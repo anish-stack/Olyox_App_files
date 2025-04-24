@@ -27,7 +27,7 @@ import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get("window");
 const GOOGLE_MAPS_API_KEY = "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8";
-const API_BASE_URL = "http://192.168.1.47:3100/api/v1";
+const API_BASE_URL = "http://192.168.1.12:3100/api/v1";
 
 // Loading steps with more engaging descriptions
 const LOADING_STEPS = [
@@ -370,13 +370,16 @@ export default function FindRider() {
               setRefreshing(true);
               await axios.post(`${API_BASE_URL}/parcel/cancel-request/${id}`);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              navigation.navigate("Home");
+              navigation.goBack()
+              setRefreshing(false);
             } catch (error) {
               console.error("Error cancelling request:", error);
               Alert.alert(
                 "Cancellation Failed",
                 "We couldn't cancel your request at this time. Please try again."
               );
+              setRefreshing(false);
+
             } finally {
               setRefreshing(false);
             }
@@ -508,7 +511,12 @@ export default function FindRider() {
         >
           <MaterialIcons name="fullscreen" size={22} color="#333" />
         </TouchableOpacity>
-
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={() => setModalVisible(true)}
+        >
+          <Entypo name="dots-three-vertical" size={24} color="#333" />
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.mapControlButton}
           onPress={onRefresh}
@@ -805,25 +813,7 @@ export default function FindRider() {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>
-          {riderFound ? "Tracking Delivery" : "Finding Driver"}
-        </Text>
-
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => setModalVisible(true)}
-        >
-          <Entypo name="dots-three-vertical" size={24} color="#333" />
-        </TouchableOpacity>
-      </View>
 
       {/* Map */}
       {renderMap()}

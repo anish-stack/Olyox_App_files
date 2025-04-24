@@ -35,7 +35,7 @@ import {
         }
   
         const response = await axios.get(
-          'http://192.168.1.47:3100/api/v1/rider/getMyAllRides',
+          'http://192.168.1.12:3100/api/v1/rider/getMyAllRides',
           {
             headers: {
               Authorization: `Bearer ${token}`,

@@ -29,7 +29,7 @@ const HomeFood = ({ isRefresh }) => {
                 return;
             }
             const { data } = await axios.get(
-                'http://192.168.1.47:3100/api/v1/tiffin/get_food_by_resutrant_id', {
+                'http://192.168.1.12:3100/api/v1/tiffin/get_food_by_resutrant_id', {
                 headers: {
                     'Authorization': `Bearer ${storedToken}`
                 }

@@ -23,9 +23,10 @@ import { CancelReasonModal } from './components/cancel-reason-modal';
 import { LoadingOverlay } from './components/loading-overlay';
 import Ride_End_Model from './Ride_End_Model';
 import axios from 'axios';
+import { useRide } from '../../context/RideContext';
 
 const { width, height } = Dimensions.get('window');
-const API_BASE_URL = 'http://192.168.1.47:3100/api/v1';
+const API_BASE_URL = 'http://192.168.1.12:3100/api/v1';
 
 export function RideConfirmed() {
     const route = useRoute();
@@ -36,6 +37,8 @@ export function RideConfirmed() {
     const { driver, ride } = route.params || {};
 
     // State variables
+      const { clearCurrentRide, updateRideStatus } = useRide();
+    
     const [rideStart, setRideStart] = useState(false);
     const [driverData, setDriverData] = useState(driver);
     const [isLoading, setIsLoading] = useState(false);
@@ -189,6 +192,9 @@ export function RideConfirmed() {
                 "Your pickup has been canceled. Thank you for choosing Olyox!",
                 [{ text: "OK", onPress: () => resetToHome() }]
             );
+            clearCurrentRide()
+
+
         } catch (error) {
             console.error("⚠️ Error in handleCancelRide:", error);
             Alert.alert("Error", "Something went wrong while canceling the ride.");
@@ -260,6 +266,8 @@ export function RideConfirmed() {
                     data.message || "Your ride has been cancelled by the driver.",
                     [{ text: "OK", onPress: () => resetToHome() }]
                 );
+                clearCurrentRide()
+
             };
 
             // Handle incorrect ride completion
@@ -339,6 +347,8 @@ export function RideConfirmed() {
         // Navigate to rating screen
         const handleRateRide = (data) => {
             console.log('isPay data come');
+            clearCurrentRide()
+
             navigation.navigate('Rate_Your_ride', { data });
         };
 
@@ -367,6 +377,8 @@ export function RideConfirmed() {
     useEffect(() => {
         if (rideDetails.is_done === true) {
             navigation.navigate('Home');
+            clearCurrentRide()
+
         }
     }, [rideDetails.is_done, navigation]);
 

@@ -224,13 +224,11 @@ export default function BookARide() {
                     <Animated.View
                         style={[
                             styles.carContainer,
-                            {
-                                transform: [{ translateY: carTranslateY }, { rotate: carRotate }],
-                            },
+
                         ]}
                     >
                         <Image
-                            source={require('../../assets/Book_Ride/car.png')}
+                            source={require('./taxi.png')}
                             style={styles.carImage} resizeMode="contain" />
 
                         {/* Car shadow */}
@@ -338,7 +336,7 @@ const styles = StyleSheet.create({
     },
     carContainer: {
         alignSelf: "center",
-        marginTop: -20,
+        marginTop: -60,
         marginBottom: 20,
         zIndex: 10,
     },
@@ -346,16 +344,7 @@ const styles = StyleSheet.create({
         width: 120,
         height: 60,
     },
-    carShadow: {
-        position: "absolute",
-        bottom: -10,
-        left: 20,
-        right: 20,
-        height: 10,
-        backgroundColor: "rgba(0,0,0,0.2)",
-        borderRadius: 50,
-        zIndex: -1,
-    },
+
     optionsContainer: {
         backgroundColor: "rgba(255, 255, 255, 0.9)",
         borderRadius: 16,
@@ -435,7 +424,7 @@ const styles = StyleSheet.create({
         marginVertical: 20,
     },
     button: {
-        width: "90%",
+        width: "50%",
         borderRadius: 30,
         overflow: "hidden",
         elevation: 5,
@@ -448,12 +437,12 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
-        paddingVertical: 16,
-        paddingHorizontal: 24,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
     },
     buttonText: {
         color: "#FFFFFF",
-        fontSize: 18,
+        fontSize: 10,
         fontWeight: "bold",
         marginRight: 8,
     },
