@@ -1,5 +1,6 @@
 const RidesSuggestion = require('../../models/Admin/RidesSuggestion.model');
 const RideSubSuggestionModel = require('../../models/Admin/RideSubSuggestion.model');
+const { uploadSingleImage, deleteImage } = require('../../utils/cloudinary');
 
 exports.createSuggestion = async (req, res) => {
     try {
@@ -10,6 +11,15 @@ exports.createSuggestion = async (req, res) => {
         }
 
         const newSuggestion = new RidesSuggestion({ name, type, description, time, priceRange });
+        // console.log("req.file)",req.file)
+        if (req.file) {
+            const imgUrl = await uploadSingleImage(req.file.buffer)
+            // console.log("imgUrl",imgUrl)
+            const { image, public_id } = imgUrl;
+            // console.log("image, public_id",image, public_id)
+            newSuggestion.icons_image.url = image;
+            newSuggestion.icons_image.public_id = public_id
+        }
         await newSuggestion.save();
 
         res.status(201).json({ success: true, message: "Ride suggestion created successfully", data: newSuggestion });
@@ -56,6 +66,24 @@ exports.updateSuggestion = async (req, res) => {
         if (!updatedSuggestion) {
             return res.status(404).json({ success: false, message: "Ride suggestion not found" });
         }
+        if (req.file) {
+            try {
+                if (updatedSuggestion.icons_image.public_id) {
+                    await deleteImage(updatedSuggestion.icons_image.public_id)
+                }
+                const imgUrl = await uploadSingleImage(req.file.buffer)
+                const { image, public_id } = imgUrl;
+                // const {image, public_id} = imgUrl;
+                // console.log('image, public_id',image, public_id)
+                updatedSuggestion.icons_image.url = image;
+                updatedSuggestion.icons_image.public_id = public_id
+            } catch (error) {
+                console.error("Image upload failed:", error.message);
+            }
+
+        }
+
+        await updatedSuggestion.save();
 
         res.status(200).json({ success: true, message: "Ride suggestion updated", data: updatedSuggestion });
 
