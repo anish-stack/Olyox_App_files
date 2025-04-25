@@ -171,7 +171,7 @@ exports.login = async (req, res) => {
     if (!partner) {
       try {
 
-        const response = await axios.post(`https://api.olyox.com/api/v1/getProviderDetailsByNumber`, {
+        const response = await axios.post(`https://www.webapi.olyox.com/api/v1/getProviderDetailsByNumber`, {
           number: number
         });
         if (response.data.success) {

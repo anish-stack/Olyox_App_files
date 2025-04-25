@@ -1205,7 +1205,7 @@ exports.login = async (req, res) => {
 
         if (!partner) {
             try {
-                const response = await axios.post("https://api.olyox.com/api/v1/getProviderDetailsByBhId", {
+                const response = await axios.post("https://www.webapi.olyox.com/api/v1/getProviderDetailsByBhId", {
                     BhId: Bh_Id
                 });
 

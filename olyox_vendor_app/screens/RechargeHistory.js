@@ -59,7 +59,7 @@ export default function RechargeHistoryTiffin() {
     }
 
     try {
-      const response = await axios.get(`https://api.olyox.com/api/v1/get-recharge?_id=${restaurant.restaurant_BHID}`)
+      const response = await axios.get(`https://www.webapi.olyox.com/api/v1/get-recharge?_id=${restaurant.restaurant_BHID}`)
 
       if (response.data && response.data.data) {
         setRechargeData(response.data.data)

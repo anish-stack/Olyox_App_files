@@ -1,5 +1,5 @@
 export const api = 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8';
-export const API_URL_V1 = 'https://api.olyox.com/api/v1';
+export const API_URL_V1 = 'https://www.webapi.olyox.com/api/v1';
 
 
 

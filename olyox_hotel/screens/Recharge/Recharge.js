@@ -115,7 +115,7 @@ export default function Recharge() {
         setLoading(true);
         try {
             const { data } = await axios.post(
-                `https://api.olyox.com/api/v1/do-recharge?_id=${userData?.bh}`,
+                `https://www.webapi.olyox.com/api/v1/do-recharge?_id=${userData?.bh}`,
                 {
                     userId: userData?._id,
                     plan_id: selectedMemberId,

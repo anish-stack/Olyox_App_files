@@ -329,7 +329,7 @@ exports.updateIsWorking = async (req, res) => {
 
         try {
             // Check plan details from external API
-            const response = await axios.post('https://api.olyox.com/api/v1/getProviderDetailsByBhId', {
+            const response = await axios.post('https://www.webapi.olyox.com/api/v1/getProviderDetailsByBhId', {
                 BhId: restaurant.restaurant_BHID
             });
 
@@ -462,7 +462,7 @@ exports.register_restaurant_fake = async (req, res) => {
 
         // Validate restaurant_BHID with Olyox API
         // try {
-        //     const { data } = await axios.post('https://api.olyox.com/api/v1/check-bh-id', {
+        //     const { data } = await axios.post('https://www.webapi.olyox.com/api/v1/check-bh-id', {
         //         bh: restaurant_BHID
         //     });
         //     if (!data.data.success) {
@@ -715,7 +715,7 @@ exports.login = async (req, res) => {
         // Check if restaurant exists
         if (!restaurant) {
             try {
-                const response = await axios.post("https://api.olyox.com/api/v1/getProviderDetailsByBhId", {
+                const response = await axios.post("https://www.webapi.olyox.com/api/v1/getProviderDetailsByBhId", {
                     BhId: restaurant_BHID
                 });
 

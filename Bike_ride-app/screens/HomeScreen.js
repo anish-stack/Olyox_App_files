@@ -8,7 +8,7 @@ import * as SecureStore from 'expo-secure-store';
 import { useSocket } from '../context/SocketContext';
 import { useNavigation } from '@react-navigation/native';
 
-const API_BASE_URL = "http://192.168.1.12:3100/api/v1";
+const API_BASE_URL = "https://www.appapi.olyox.com/api/v1";
 
 export default function HomeScreen() {
   const navigation = useNavigation();

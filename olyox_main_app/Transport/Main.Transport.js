@@ -46,7 +46,7 @@ export default function MainTransport() {
   const handleFetch = async () => {
     setCategoriesLoading(true)
     try {
-      const { data } = await axios.get(`http://192.168.1.12:3100/api/v1/admin/get-heavy`)
+      const { data } = await axios.get(`https://www.appapi.olyox.com/api/v1/admin/get-heavy`)
       if (data.data) {
         console.log("Vehicle categories:", data.data)
 
@@ -78,7 +78,7 @@ export default function MainTransport() {
     setPartnersLoading(true)
     try {
       const { data } = await axios.get(
-        `http://192.168.1.12:3100/api/v1/heavy/heavy-vehicle-partners?lat=${location?.coords?.latitude || 28.7136
+        `https://www.appapi.olyox.com/api/v1/heavy/heavy-vehicle-partners?lat=${location?.coords?.latitude || 28.7136
         }&lng=${location?.coords?.longitude || 77.0981}&page=1&limit=10`,
       )
 
@@ -157,7 +157,7 @@ export default function MainTransport() {
       const user = await find_me();
       try {
 
-        const response = await axios.post('http://192.168.1.12:3100/api/v1/heavy/generated-call-and-message-request', {
+        const response = await axios.post('https://www.appapi.olyox.com/api/v1/heavy/generated-call-and-message-request', {
           receiverId: selectedPartner._id,
           message: message,
           senderId: user?.user?._id,
@@ -187,7 +187,7 @@ export default function MainTransport() {
       const user = await find_me();
       try {
 
-        const response = await axios.post('http://192.168.1.12:3100/api/v1/heavy/generated-call-and-message-request', {
+        const response = await axios.post('https://www.appapi.olyox.com/api/v1/heavy/generated-call-and-message-request', {
           receiverId: selectedPartner._id,
           message: message,
           senderId: user?.user?._id,

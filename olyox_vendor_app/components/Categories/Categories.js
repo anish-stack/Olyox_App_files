@@ -18,7 +18,7 @@ export default function Categories() {
 
     const fetchCategories = async () => {
         try {
-            const response = await axios.get('https://api.olyox.com/api/v1/categories_get');
+            const response = await axios.get('https://www.webapi.olyox.com/api/v1/categories_get');
             if (response.data.success) {
                 setCategories(response.data.data);
             }

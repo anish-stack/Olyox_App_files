@@ -57,7 +57,7 @@ export function Withdraw() {
 
             // Fetch user details
             const userResponse = await axios.get(
-                "http://192.168.1.12:3100/api/v1/tiffin/get_single_tiffin_profile",
+                "https://www.appapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile",
                 { headers: { Authorization: `Bearer ${storedToken}` } }
             );
 
@@ -71,7 +71,7 @@ export function Withdraw() {
 
             // Fetch provider details by BhId
             const providerResponse = await axios.post(
-                "https://api.olyox.com/api/v1/getProviderDetailsByBhId",
+                "https://www.webapi.olyox.com/api/v1/getProviderDetailsByBhId",
                 { BhId }
             );
 
@@ -91,7 +91,7 @@ export function Withdraw() {
     const fetchWithdrawals = async (id) => {
         setLoading(true);
         try {
-            const response = await axios.get(`https://api.olyox.com/api/v1/withdrawal?_id=${id}`);
+            const response = await axios.get(`https://www.webapi.olyox.com/api/v1/withdrawal?_id=${id}`);
             // console.log("withdraw", response.data)
             setWithdrawals(response.data.withdrawal || []);
 
@@ -158,7 +158,7 @@ export function Withdraw() {
             console.log('pardes', parsed.data?._id);
 
             // Uncomment this for actual API call
-            const response = await axios.post(`https://api.olyox.com/api/v1/create-withdrawal?_id=${parsed.data?._id}`, withdrawForm);
+            const response = await axios.post(`https://www.webapi.olyox.com/api/v1/create-withdrawal?_id=${parsed.data?._id}`, withdrawForm);
             console.log("response", response.data)
             // Simulate API response
             await new Promise(resolve => setTimeout(resolve, 1500));

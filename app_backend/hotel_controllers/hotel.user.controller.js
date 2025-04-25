@@ -305,7 +305,7 @@ exports.LoginHotel = async (req, res) => {
         if (!foundHotel) {
             try {
                 // Fetch details from external API if hotel not found
-                const response = await axios.post('https://api.olyox.com/api/v1/getProviderDetailsByBhId', { BhId: BH });
+                const response = await axios.post('https://www.webapi.olyox.com/api/v1/getProviderDetailsByBhId', { BhId: BH });
 
                 if (response.data?.success) {
                     return res.status(403).json({
@@ -603,7 +603,7 @@ exports.toggleHotelStatus = async (req, res) => {
         try {
             console.log("Fetching provider details for BH ID:", foundFreshDetails?.bh);
             const response = await axios.post(
-                "https://api.olyox.com/api/v1/getProviderDetailsByBhId",
+                "https://www.webapi.olyox.com/api/v1/getProviderDetailsByBhId",
                 { BhId: foundFreshDetails?.bh }
             );
 
@@ -1327,7 +1327,7 @@ exports.HotelAnalyticData = async (req, res) => {
 
         try {
             const response = await axios.post(
-                "https://api.olyox.com/api/v1/getProviderDetailsByBhId",
+                "https://www.webapi.olyox.com/api/v1/getProviderDetailsByBhId",
                 { BhId: hotel.bh }
             );
 

@@ -34,7 +34,7 @@ export default function Recharge() {
     try {
       const token = await SecureStore.getItemAsync('auth_token_cab');
       if (token) {
-        const response = await axios.get('http://192.168.1.12:3100/api/v1/rider/user-details', {
+        const response = await axios.get('https://www.appapi.olyox.com/api/v1/rider/user-details', {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUserData(response.data.partner);
@@ -92,7 +92,7 @@ export default function Recharge() {
     try {
       const token = await SecureStore.getItemAsync('auth_token_cab');
       const { data } = await axios.post(
-        `https://api.olyox.com/api/v1/do-recharge?_id=${userData?.BH}`,
+        `https://www.webapi.olyox.com/api/v1/do-recharge?_id=${userData?.BH}`,
         {
           userId: userData?._id,
           plan_id: selectedMemberId,

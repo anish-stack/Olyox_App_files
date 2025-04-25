@@ -123,7 +123,7 @@ export default function RideRequestScreen() {
         if (!token) return;
 
         try {
-            const response = await fetch('http://192.168.1.12:3100/webhook/cab-receive-location', {
+            const response = await fetch('https://www.appapi.olyox.com/webhook/cab-receive-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -146,7 +146,7 @@ export default function RideRequestScreen() {
             }
 
             const response = await axios.get(
-                'http://192.168.1.12:3100/api/v1/rider/user-details',
+                'https://www.appapi.olyox.com/api/v1/rider/user-details',
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 

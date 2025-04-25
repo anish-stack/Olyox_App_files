@@ -49,7 +49,7 @@ export default function Profile() {
         setLoading(true)
 
         try {
-            const { data } = await axios.post(`https://api.olyox.com/api/v1/getProviderDetailsByBhId`, {
+            const { data } = await axios.post(`https://www.webapi.olyox.com/api/v1/getProviderDetailsByBhId`, {
                 BhId: bhId
             })
             // console.log("Bh Details", data.data)

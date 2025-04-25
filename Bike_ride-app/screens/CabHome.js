@@ -105,7 +105,7 @@ const CabHome = () => {
 
       try {
 
-        const response = await axios.get(`http://192.168.1.12:3100/rider/${temp_ride_id}`);
+        const response = await axios.get(`https://www.appapi.olyox.com/rider/${temp_ride_id}`);
         console.log("Ride details:", response.data);
         if (response.data) {
           updateRideStatus(true)
@@ -146,7 +146,7 @@ const CabHome = () => {
       }
 
       // Attempt the logout API call
-      const response = await axios.get(`http://192.168.1.12:3100/api/v1/rider/rider-logout/${user_data._id}`);
+      const response = await axios.get(`https://www.appapi.olyox.com/api/v1/rider/rider-logout/${user_data._id}`);
       console.log("Logout successful:", response.data);
 
       // On success, reset navigation and exit
@@ -233,7 +233,7 @@ const CabHome = () => {
       const token = await SecureStore.getItemAsync("auth_token_cab")
       console.log(token)
       if (token) {
-        const response = await axios.get("http://192.168.1.12:3100/api/v1/rider/user-details", {
+        const response = await axios.get("https://www.appapi.olyox.com/api/v1/rider/user-details", {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (response.data.partner) {
@@ -280,12 +280,12 @@ const CabHome = () => {
 
       // Always allow the API call if going OFFLINE regardless of recharge status
       const response = await axios.post(
-        "http://192.168.1.12:3100/api/v1/rider/toggleWorkStatusOfRider",
+        "https://www.appapi.olyox.com/api/v1/rider/toggleWorkStatusOfRider",
         { status: goingOnline },
         { headers: { Authorization: `Bearer ${token}` } },
       )
 
-      const response_two = await axios.get("http://192.168.1.12:3100/api/v1/rider/user-details", {
+      const response_two = await axios.get("https://www.appapi.olyox.com/api/v1/rider/user-details", {
         headers: { Authorization: `Bearer ${token}` },
       })
 

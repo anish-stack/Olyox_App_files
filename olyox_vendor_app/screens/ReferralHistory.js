@@ -31,7 +31,7 @@ export default function ReferralHistory({ navigation }) {
   const fetchDetails = useCallback(async (bhId) => {
     try {
       const { data } = await axios.post(
-        'https://api.olyox.com/api/v1/getProviderDetailsByBhId',
+        'https://www.webapi.olyox.com/api/v1/getProviderDetailsByBhId',
         { BhId: bhId }
       );
     //   console.log(data)
@@ -51,7 +51,7 @@ export default function ReferralHistory({ navigation }) {
       }
 
       const { data } = await axios.get(
-        'http://192.168.1.12:3100/api/v1/tiffin/get_single_tiffin_profile',
+        'https://www.appapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
         {
           headers: { Authorization: `Bearer ${token}` }
         }

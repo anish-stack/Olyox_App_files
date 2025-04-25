@@ -14,7 +14,7 @@ export default function Categories() {
     // Memoized fetch function that won't be recreated on re-renders
     const fetchCategories = useCallback(async () => {
         try {
-            const response = await axios.get('https://api.olyox.com/api/v1/categories_get');
+            const response = await axios.get('https://www.webapi.olyox.com/api/v1/categories_get');
             if (response.data.success) {
                 let data = response.data.data;
 

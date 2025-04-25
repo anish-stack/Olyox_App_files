@@ -84,7 +84,7 @@ export function Recharge() {
         try {
         
           const { data } = await axios.post(
-            `https://api.olyox.com/api/v1/do-recharge?_id=${restaurant?.restaurant_BHID}`,
+            `https://www.webapi.olyox.com/api/v1/do-recharge?_id=${restaurant?.restaurant_BHID}`,
             {
               userId:restaurant?._id,
               plan_id: selectedPlan,

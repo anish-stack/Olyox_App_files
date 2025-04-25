@@ -53,7 +53,7 @@ export default function RechargeHistoryTiffin() {
     }
     try {
       const response = await axios.get(
-        `https://api.olyox.com/api/v1/get-recharge?_id=${userData.bh}`
+        `https://www.webapi.olyox.com/api/v1/get-recharge?_id=${userData.bh}`
       );
       setRechargeData(response.data?.data || []);
     } catch (error) {

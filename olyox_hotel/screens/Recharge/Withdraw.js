@@ -68,7 +68,7 @@ export function Withdraw() {
 
             // Fetch provider details by BhId
             const providerResponse = await axios.post(
-                "https://api.olyox.com/api/v1/getProviderDetailsByBhId",
+                "https://www.webapi.olyox.com/api/v1/getProviderDetailsByBhId",
                 { BhId }
             );
 
@@ -88,7 +88,7 @@ export function Withdraw() {
     const fetchWithdrawals = async (id) => {
         setLoading(true);
         try {
-            const response = await axios.get(`https://api.olyox.com/api/v1/withdrawal?_id=${id}`);
+            const response = await axios.get(`https://www.webapi.olyox.com/api/v1/withdrawal?_id=${id}`);
             // console.log("withdraw", response.data)
             setWithdrawals(response.data.withdrawal || []);
 
@@ -152,7 +152,7 @@ export function Withdraw() {
         setLoading(true);
         try {
 
-             await axios.post(`https://api.olyox.com/api/v1/create-withdrawal?_id=${parsed.data?._id}`, withdrawForm);
+             await axios.post(`https://www.webapi.olyox.com/api/v1/create-withdrawal?_id=${parsed.data?._id}`, withdrawForm);
 
             await new Promise(resolve => setTimeout(resolve, 1500));
 

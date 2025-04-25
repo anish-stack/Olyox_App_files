@@ -58,7 +58,7 @@ export default function ReferralHistory() {
         setLoading(true)
 
         try {
-            const { data } = await axios.post(`https://api.olyox.com/api/v1/getProviderDetailsByBhId`, {
+            const { data } = await axios.post(`https://www.webapi.olyox.com/api/v1/getProviderDetailsByBhId`, {
                 BhId: bhId
             })
             if (data.data) {

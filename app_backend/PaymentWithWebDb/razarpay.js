@@ -19,7 +19,7 @@ const SECOND_RECHARGE_COMMISONS = 2
 
 const check_user_presence = async (user_id) => {
     try {
-        const response = await axios.post(`https://api.olyox.com/api/v1/check-bh-id`, {
+        const response = await axios.post(`https://www.webapi.olyox.com/api/v1/check-bh-id`, {
             bh: user_id
         });
         return response.data?.complete;
@@ -209,7 +209,7 @@ exports.verify_recharge = async (req, res) => {
 
         // Step 10: Trigger approval API
         try {
-            await axios.get(`https://api.olyox.com/api/v1/approve_recharge?_id=${rechargeData?._id}`);
+            await axios.get(`https://www.webapi.olyox.com/api/v1/approve_recharge?_id=${rechargeData?._id}`);
         } catch (error) {
             const logsData = {
                 BHID: user.my_referral_id,

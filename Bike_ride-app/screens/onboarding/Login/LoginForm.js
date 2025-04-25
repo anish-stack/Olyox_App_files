@@ -51,7 +51,7 @@ const LoginForm = ({ onLogin }) => {
     
     try {
       const response = await axios.post(
-        'http://192.168.1.12:3100/api/v1/rider/rider-login', 
+        'https://www.appapi.olyox.com/api/v1/rider/rider-login', 
         { number: formattedPhone }
       );
       
