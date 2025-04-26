@@ -1285,7 +1285,7 @@ exports.parcelDashboardData = async (req, res) => {
 
 
 
-    const howManyDeliverDone = await Parcel_Request.countDocuments({ rider_id: userId, status: "deliverd" });
+    const howManyDeliverDone = await Parcel_Request.countDocuments({ rider_id: userId, status: "delivered" });
 
     const inProgress = await Parcel_Request.find({
       rider_id: userId,
@@ -1294,7 +1294,7 @@ exports.parcelDashboardData = async (req, res) => {
       }
     });
 
-    const deliveredRequests = await Parcel_Request.find({ rider_id: userId, status: "deliverd" });
+    const deliveredRequests = await Parcel_Request.find({ rider_id: userId, status: "delivered" });
 
     const totalMoneyEarned = deliveredRequests.reduce((acc, cur) => acc + Number(cur?.fares?.payableAmount || 0), 0);
 
