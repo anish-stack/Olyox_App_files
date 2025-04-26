@@ -55,7 +55,7 @@ exports.getSuggestionById = async (req, res) => {
     } catch (error) {
         console.error("Error fetching suggestion:", error);
         res.status(500).json({ success: false, message: "Server Error" });
-    }
+    }   
 };
 
 
