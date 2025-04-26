@@ -13,6 +13,12 @@ exports.createAppHomeBanner = async (req, res) => {
 
         // Upload image to Cloudinary
         const uploadedImage = await uploadSingleImage(req.file.buffer);
+        if(!uploadedImage) {
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to upload image'
+            });
+        }
         const { image, public_id } = uploadedImage;
 
         // Save banner
@@ -136,7 +142,7 @@ exports.deleteAppHomeBanner = async (req, res) => {
         }
 
         if(banner.image.public_id){
-            dddddddddddddddddddddddddk
+            await deleteImage(banner.image.public_id);
         }
 
         res.status(200).json({
@@ -147,6 +153,33 @@ exports.deleteAppHomeBanner = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to delete banner',
+            error: error.message
+        });
+    }
+};
+
+exports.updateAppHomeBannerStatus = async (req, res) => {
+    try {
+        const banner = await AppHomeBanner.findById(req.params.id);
+        if (!banner) {
+            return res.status(404).json({
+                success: false,
+                message: 'Banner not found'
+            });
+        }
+
+        banner.is_active = !banner.is_active;
+        await banner.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Banner status updated successfully',
+            data: banner
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update banner status',
             error: error.message
         });
     }

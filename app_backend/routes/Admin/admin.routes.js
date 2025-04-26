@@ -59,6 +59,7 @@ const { markPaid } = require('../../controllers/rider.controller');
 const { createNotification, getNotifications, getNotificationById, markAsRead, deleteNotification } = require('../../Admin Controllers/settings/notificationController');
 const { createPolicy, updatePolicy, getPolicyById, findPolicyByTitle, deletePolicy, getPolicies } = require('../../Admin Controllers/settings/privacyPolicyController');
 const { createReport, getAllReports, getSingleReport, updateReport, deleteReport } = require('../../Admin Controllers/Bugs/LoginBugsReportsController');
+const { createAppHomeBanner, getAllAppHomeBanners, getSingleAppHomeBanner, updateAppHomeBanner, deleteAppHomeBanner, updateAppHomeBannerStatus } = require('../../Admin Controllers/AppHomeBanner');
 
 const admin = express.Router();
 
@@ -157,6 +158,14 @@ admin.get('/report/:id', getSingleReport);
 admin.put('/report/:id', updateReport);
 admin.delete('/report/:id', deleteReport);
 
+// app home banner 
+
+admin.post('/create_home_banner', upload.single('image'), createAppHomeBanner);
+admin.get('/get_home_banners', getAllAppHomeBanners);
+admin.get('/get_single_home_banner/:id', getSingleAppHomeBanner);
+admin.put('/update_home_banner/:id', upload.single('image'), updateAppHomeBanner);
+admin.delete('/delete_home_banner/:id', deleteAppHomeBanner);
+admin.patch('/toggle_home_banner/:id', updateAppHomeBannerStatus);
 
 
 module.exports = admin;
