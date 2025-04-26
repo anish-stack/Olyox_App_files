@@ -52,7 +52,7 @@ Heavy.get('/get-my-all-parcel/:userId',getAllMyParcelByCustomerId)
 
 Heavy.get('/get_all_hv_vendor', getAllHeavyVehicles);
 
-Heavy.put('/update_hv_vendor_is_block_status/:id', updateIsBlockedHeavyVehicle);
+// Heavy.put('/update_hv_vendor_is_block_status/:id', updateIsBlockedHeavyVehicle);
 Heavy.put('/update_hv_vendor_document_verify/:id', verifyDocumentOfHeavyTransport);
 Heavy.delete('/heavy_vehicle_profile_delete/:id', deleteHeavyVendor);
 module.exports = Heavy;

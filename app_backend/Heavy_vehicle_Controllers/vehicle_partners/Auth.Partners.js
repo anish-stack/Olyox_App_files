@@ -1319,7 +1319,32 @@ exports.getAllHeavyVehicles = async (req, res) => {
     }
 }
 
-
+exports.updateIsBlockedHeavyVehicle = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { is_blocked } = req.body;
+        const vehicle = await Heavy_vehicle_partners.findById(id);
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: 'Vehicle not found.'
+            });
+        }
+        vehicle.is_blocked = is_blocked;
+        await vehicle.save();
+        return res.status(200).json({
+            success: true,
+            data: vehicle
+        });
+    } catch (error) {
+        console.log("Internal server error", error)
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        })
+    }
+}
 exports.verifyDocumentOfHeavyTransport = async (req, res) => {
     try {
         const { id } = req.params;
