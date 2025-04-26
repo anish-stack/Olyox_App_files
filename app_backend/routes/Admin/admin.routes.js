@@ -60,6 +60,7 @@ const { createNotification, getNotifications, getNotificationById, markAsRead, d
 const { createPolicy, updatePolicy, getPolicyById, findPolicyByTitle, deletePolicy, getPolicies } = require('../../Admin Controllers/settings/privacyPolicyController');
 const { createReport, getAllReports, getSingleReport, updateReport, deleteReport } = require('../../Admin Controllers/Bugs/LoginBugsReportsController');
 const { createBonus, getAllBonuses, getBonusById, updateBonus, deleteBonus } = require('../../Admin Controllers/createBonus/BonusController');
+const { createAppHomeBanner, getAllAppHomeBanners, getSingleAppHomeBanner, updateAppHomeBanner, deleteAppHomeBanner, updateAppHomeBannerStatus } = require('../../Admin Controllers/AppHomeBanner');
 
 const admin = express.Router();
 
@@ -164,6 +165,15 @@ admin.get('/admin/bonuses', getAllBonuses);
 admin.get('/admin/bonuses/:id', getBonusById);
 admin.put('/admin/bonuses/:id', updateBonus);
 admin.delete('/admin/bonuses/:id', deleteBonus);
+
+
+// app home banner
+admin.post('/create_home_banner', upload.single('image'), createAppHomeBanner);
+admin.get('/get_home_banners', getAllAppHomeBanners);
+admin.get('/get_single_home_banner/:id', getSingleAppHomeBanner);
+admin.put('/update_home_banner/:id', upload.single('image'), updateAppHomeBanner);
+admin.delete('/delete_home_banner/:id', deleteAppHomeBanner);
+admin.patch('/toggle_home_banner/:id', updateAppHomeBannerStatus);
 
 
 module.exports = admin;
