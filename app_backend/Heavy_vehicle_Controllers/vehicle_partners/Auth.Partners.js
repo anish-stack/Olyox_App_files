@@ -1296,33 +1296,29 @@ exports.getAllHeavyVehicles = async (req, res) => {
         });
     }
 }
-
-exports.updateIsBlockedHeavyVehicle = async (req, res) => {
+exports.getAllHeavyVehicles = async (req, res) => {
     try {
-        const { id } = req.params;
-        const { is_blocked } = req.body;
-        const vehicle = await Heavy_vehicle_partners.findById(id);
-        if (!vehicle) {
+        const allHeavy = await Heavy_vehicle_partners.find().populate('vehicle_info', 'name vehicleType isAvailable').populate('documents');
+        if (!allHeavy) {
             return res.status(404).json({
                 success: false,
-                message: 'Vehicle not found.'
+                message: 'No heavy vehicles found.'
             });
         }
-        vehicle.is_blocked = is_blocked;
-        await vehicle.save();
         return res.status(200).json({
             success: true,
-            data: vehicle
-        });
+            data: allHeavy
+        })
     } catch (error) {
-        console.log("Internal server error", error)
+        console.log("Internal server error", error);
         return res.status(500).json({
             success: false,
             message: "Internal server error",
             error: error.message
-        })
+        });
     }
 }
+
 
 exports.verifyDocumentOfHeavyTransport = async (req, res) => {
     try {
