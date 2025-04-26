@@ -63,10 +63,10 @@ export default function NewParcelLive() {
         } catch (error) {
         // console.log("Error auto-rejecting ride:", error?.response?.data?.message || error.message);
             // Still navigate away even if rejection API fails
-            // navigation.reset({
-            //     index: 0,
-            //     routes: [{ name: 'Home' }],
-            // });
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'Home' }],
+            });
         }
     };
 

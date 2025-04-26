@@ -96,7 +96,7 @@ export default function HomeScreen() {
     if (!socket || role !== 'parcel') return;
     
     const handleNewParcel = (response) => {
-      console.log("📦 New Parcel Received:", response);
+      // console.log("📦 New Parcel Received:", response);
       
       if (!response || !response.parcel) {
         console.error("Invalid parcel data received:", response);

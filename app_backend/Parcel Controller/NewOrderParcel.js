@@ -470,3 +470,40 @@ exports.getAllMyParcelByCustomerId = async (req, res) => {
         });
     }
 };
+exports.getMyNearParcel = async (req, res) => {
+    try {
+        const { lat, lng, radius } = req.query;
+
+        const findNearByParcelOrder = await Parcel_Request.find({
+            $and: [
+                {
+                    'locations.pickup.location': {
+                        $near: {
+                            $geometry: {
+                                type: 'Point',
+                                coordinates: [parseFloat(lng), parseFloat(lat)]
+                            },
+                            $maxDistance: radius || 5000
+                        }
+                    }
+                },
+                {
+                    $or: [
+                        { driver_accept: false },
+                        { status: 'pending' }
+                    ]
+                },
+                {
+                    rider_id: { $exists: false }, // Only select documents where rider_id is not set
+                },
+                {
+                    status: { $ne: 'cancelled' } // Exclude parcels with status 'cancelled'
+                }
+            ]
+        });
+
+        res.status(200).json({ data: findNearByParcelOrder });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal Server Error', error });
+    }
+};

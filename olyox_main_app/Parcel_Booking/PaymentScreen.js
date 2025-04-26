@@ -148,7 +148,7 @@ const PaymentScreen = () => {
                                 setLoading(false)
 
                             } catch (err) {
-                                console.error("Booking Error:", err);
+                                console.error("Booking Error:", err).response.data;
                                 setLoading(false)
 
                                 Alert.alert("Error", "Something went wrong while booking the parcel.");

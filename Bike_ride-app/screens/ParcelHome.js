@@ -577,6 +577,22 @@ const ParcelHome = () => {
 
                     {/* Status Cards */}
                     {StatusCards}
+                    <TouchableOpacity style={{
+                        backgroundColor: '#4CAF50', 
+                        paddingVertical: 12,
+                        paddingHorizontal: 20,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }} activeOpacity={0.9} onPress={()=> navigation.navigate('available-orders')} >
+                        <Text style={{
+                            color: '#fff',
+                            fontSize: 16,
+                            fontWeight: 'bold'
+                        }}>
+                            Check Available Orders
+                        </Text>
+                    </TouchableOpacity>
 
                 </View>
             </ScrollView>
