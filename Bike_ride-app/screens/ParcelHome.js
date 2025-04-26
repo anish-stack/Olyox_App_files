@@ -593,16 +593,17 @@ const ParcelHome = () => {
           <View style={[styles.statIconContainer, { backgroundColor: "rgba(52, 152, 219, 0.15)" }]}>
             <Feather name="package" size={20} color="#3498db" />
           </View>
-          <Text style={styles.statValue}>{performanceStats.deliveries.week}</Text>
+          <Text style={styles.statValue}>{performanceStats.deliveries.month}</Text>
           <Text style={styles.statLabel}>Deliveries</Text>
           <Text style={styles.statPeriod}>This Week</Text>
         </View>
 
         <View style={styles.statCard}>
           <View style={[styles.statIconContainer, { backgroundColor: "rgba(46, 204, 113, 0.15)" }]}>
-            <Feather name="dollar-sign" size={20} color="#2ecc71" />
+          <FontAwesome5 name="rupee-sign" size={20} color="#2ecc71" />
+
           </View>
-          <Text style={styles.statValue}>Rs {performanceStats.earnings.week}</Text>
+          <Text style={styles.statValue}>Rs {performanceStats.earnings.month  }</Text>
           <Text style={styles.statLabel}>Earnings</Text>
           <Text style={styles.statPeriod}>This Week</Text>
         </View>

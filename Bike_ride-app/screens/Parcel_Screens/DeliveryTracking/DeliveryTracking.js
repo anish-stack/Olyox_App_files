@@ -103,7 +103,7 @@ export default function DeliveryTracking() {
       setLocationSubscription(subscription);
     } catch (err) {
       console.error('Error starting location tracking:', err);
-      Alert.alert('Location Error', 'Failed to track location. Please check your device settings.');
+      // Alert.alert('Location Error', 'Failed to track location. Please check your device settings.');
     }
   }, []);
 
