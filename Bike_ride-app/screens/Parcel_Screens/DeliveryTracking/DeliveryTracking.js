@@ -65,7 +65,7 @@ export default function DeliveryTracking() {
     return (pickupTimer / (PICKUP_TIMER_MINUTES * 60)) * 100;
   }, [pickupTimer]);
 
-  // Start tracking location
+
   const startLocationTracking = useCallback(async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -74,7 +74,7 @@ export default function DeliveryTracking() {
         return;
       }
 
-      // Get initial location
+
       const initialLocation = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High
       });
@@ -94,9 +94,7 @@ export default function DeliveryTracking() {
         (location) => {
           const { latitude, longitude } = location.coords;
           setCurrentLocation({ latitude, longitude });
-          
-          // Update driver location on server
-          updateDriverLocation(latitude, longitude);
+  
         }
       );
 
@@ -107,19 +105,7 @@ export default function DeliveryTracking() {
     }
   }, []);
 
-  // Update driver location on server
-  const updateDriverLocation = useCallback(async (latitude, longitude) => {
-    try {
-      await axios.post('https://www.appapi.olyox.com/webhook/cab-receive-location', {
-        riderId: userData?.id,
-        latitude,
-        longitude,
-        parcelId
-      });
-    } catch (err) {
-      console.error('Error updating driver location:', err);
-    }
-  }, [userData, parcelId]);
+
 
   // Start pickup timer
   const startPickupTimer = useCallback(() => {

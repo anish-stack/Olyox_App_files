@@ -289,7 +289,7 @@ export default function FindRider() {
     // Handle rider acceptance
     const handleParcelAcceptByRider = (data) => {
       console.log("Parcel Accepted by Rider:", data);
-      if (data.parcelId === id) {
+      if (data.parcel === id) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         fetchParcelDetails(false);
         setRiderFound(true);

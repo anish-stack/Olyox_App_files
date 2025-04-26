@@ -206,7 +206,7 @@ export default function UserProfile() {
     const tabs = [
         { name: 'Orders', icon: 'restaurant-menu', count: orderData?.orderCounts?.foodOrders || 0 },
         { name: 'Rides', icon: 'local-taxi', count: orderData?.orderCounts?.rideRequests || 0 },
-        { name: 'Parcels', icon: 'local-shipping', count: orderData?.orderCounts?.parcels || 0 },
+        // { name: 'Parcels', icon: 'local-shipping', count: orderData?.orderCounts?.parcels || 0 },
         { name: 'Hotels', icon: 'hotel', count: orderData?.orderCounts?.hotelBookings || 0 },
     ];
 

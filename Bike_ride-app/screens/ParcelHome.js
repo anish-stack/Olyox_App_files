@@ -33,6 +33,7 @@ import { BlurView } from "expo-blur";
 import { initializeSocket } from "../context/socketService";
 import { useSocket } from "../context/SocketContext";
 import Bonus from "./Bonus/Bonus";
+import { useLocation } from "../context/LocationContext";
 
 // API configuration
 const API_URL = "https://www.appapi.olyox.com/api/v1";
@@ -42,6 +43,7 @@ const { width, height } = Dimensions.get("window");
 
 const ParcelHome = () => {
   // States
+  const { driverLocation } = useLocation()
   const [menuVisible, setMenuVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
@@ -92,7 +94,7 @@ const ParcelHome = () => {
     setRefreshModalVisible(false);
     try {
       await fetchUserDetails();
-      
+
       await new Promise((resolve) => setTimeout(resolve, 800));
       Alert.alert("Success", "Data refreshed successfully");
     } catch (error) {
@@ -329,6 +331,25 @@ const ParcelHome = () => {
       setStatusBarHeight(40);
     }, 800);
   }, []);
+
+  const updateDriverLocation = useCallback(async (latitude, longitude) => {
+    try {
+      await axios.post('https://www.appapi.olyox.com/webhook/cab-receive-location', {
+        riderId: userData?._id,
+        latitude,
+        longitude
+      });
+      console.log("i am updated")
+    } catch (err) {
+      console.error('Error updating driver location:', err.response.data);
+    }
+  }, [userData]);
+
+  useEffect(() => {
+    updateDriverLocation(driverLocation?.latitude, driverLocation?.longitude)
+  },[driverLocation])
+
+  console.log("I am Parcel Home",)
 
   // Toggle online/offline status
   const toggleOnlineStatus = async () => {
@@ -569,7 +590,7 @@ const ParcelHome = () => {
               <Text style={styles.menuText}>Recharge</Text>
             </TouchableOpacity>
 
-       
+
 
             <View style={styles.menuDivider} />
 
@@ -600,15 +621,15 @@ const ParcelHome = () => {
 
         <View style={styles.statCard}>
           <View style={[styles.statIconContainer, { backgroundColor: "rgba(46, 204, 113, 0.15)" }]}>
-          <FontAwesome5 name="rupee-sign" size={20} color="#2ecc71" />
+            <FontAwesome5 name="rupee-sign" size={20} color="#2ecc71" />
 
           </View>
-          <Text style={styles.statValue}>Rs {performanceStats.earnings.month  }</Text>
+          <Text style={styles.statValue}>Rs {performanceStats.earnings.month}</Text>
           <Text style={styles.statLabel}>Earnings</Text>
           <Text style={styles.statPeriod}>This Week</Text>
         </View>
 
-        <TouchableOpacity onPress={()=> navigation.navigate('progress-order',{id:userData?._id})} style={styles.statCard}>
+        <TouchableOpacity onPress={() => navigation.navigate('progress-order', { id: userData?._id })} style={styles.statCard}>
           <View style={[styles.statIconContainer, { backgroundColor: "rgba(241, 196, 15, 0.15)" }]}>
             <Feather name="star" size={20} color="#f1c40f" />
           </View>

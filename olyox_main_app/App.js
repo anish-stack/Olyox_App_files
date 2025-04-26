@@ -299,7 +299,7 @@ const App = () => {
       <Stack.Screen name="Booking_hotel_success" options={{ headerShown: false }} component={BookingSuccess} />
       {/* Food Screens */}
       <Stack.Screen name="Tiffin" options={{ headerShown: false }} component={AllFoods} />
-      <Stack.Screen name="Tiffins_Page" options={{ headerShown: true, title: "Tiffins Package" }} component={Tiffins_Page} />
+      <Stack.Screen name="Tiffins_Page" options={{ headerShown: false, title: "Tiffins Package" }} component={Tiffins_Page} />
       <Stack.Screen name="food_Page_By_Cats" options={{ headerShown: false }} component={Food_Dispay_Page} />
       <Stack.Screen name="restaurants_page" options={{ headerShown: false }} component={Restaurant} />
       <Stack.Screen name="Checkout" options={{ headerShown: Platform.OS === "ios" ? false : true }} component={Checkout} />

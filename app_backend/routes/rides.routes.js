@@ -2,6 +2,7 @@ const express = require('express');
 const { createRequest, findRider, complete_Details_ofRide, getAllRides, getSingleRides, deleleteRidersRideOrder, changeRidersRideStatusByAdmin } = require('../controllers/ride.request');
 const Protect = require('../middleware/Auth');
 const { getOnlineTimeByRiderId, getMyEligibleBonus, parcelDashboardData, inProgressOrder } = require('../controllers/rider.controller');
+const { registerToken } = require('../Admin Controllers/notification/notificationController');
 
 const rides = express.Router();
 
@@ -25,5 +26,9 @@ rides.put('/update_rider_ride_status/:id', changeRidersRideStatusByAdmin);
 rides.get('/getMyEligibleBonus/:userId',getMyEligibleBonus)
 rides.get('/parcelDashboardData/:userId',parcelDashboardData)
 rides.get('/inProgressOrder/:userId',inProgressOrder)
+
+
+//expo token push
+rides.post('/register-token',registerToken)
 
 module.exports = rides;

@@ -11,7 +11,7 @@ const Footer = ({ light = true }) => {
 
     const socialLinks = [
         { icon: 'facebook', url: settings?.fbUrl || 'https://facebook.com' },
-        { icon: 'twitter', url: settings?.twitterUrl || 'https://twitter.com' },
+        { icon: 'youtube', url: settings?.twitterUrl || 'https://twitter.com' },
         { icon: 'instagram', url: settings?.instagramUrl || 'https://instagram.com' },
     ];
 

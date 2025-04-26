@@ -177,7 +177,7 @@ exports.find_Restaurant_And_Her_foods = async (req, res) => {
 };
 exports.find_RestaurantTop = async (req, res) => {
     try {
-        let { lat, lng } = req.query;
+        let { lat, lng ,page,limit} = req.query;
         let query = { restaurant_in_top_list: true };
         if (lat && lng) {
             lat = parseFloat(lat);

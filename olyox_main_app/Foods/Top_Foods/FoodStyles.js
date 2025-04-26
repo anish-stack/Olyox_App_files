@@ -32,7 +32,7 @@ export const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     foodCard: {
-        width: '48%',
+        width: '45%',
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
         marginBottom: 16,
@@ -145,4 +145,132 @@ export const styles = StyleSheet.create({
         fontSize: 12,
         color: '#666666',
     },
+
+searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+    height: 40,
+},
+searchIcon: {
+    marginRight: 8,
+},
+searchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 14,
+},
+clearButton: {
+    padding: 4,
+},
+filtersContainer: {
+    marginBottom: 15,
+},
+filterOptionsContainer: {
+    marginTop: 8,
+},
+filterSection: {
+    marginBottom: 10,
+},
+filterLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 6,
+},
+categoryScrollView: {
+    flexDirection: 'row',
+},
+categoryChip: {
+    backgroundColor: '#F2F2F2',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginRight: 8,
+},
+selectedCategoryChip: {
+    backgroundColor: '#FF6B00',
+},
+categoryChipText: {
+    fontSize: 13,
+    color: '#333',
+},
+selectedCategoryChipText: {
+    color: '#FFF',
+},
+priceButtonsContainer: {
+    flexDirection: 'row',
+},
+priceButton: {
+    backgroundColor: '#F2F2F2',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginRight: 8,
+},
+selectedPriceButton: {
+    backgroundColor: '#FF6B00',
+},
+priceButtonText: {
+    fontSize: 13,
+    color: '#333',
+},
+iconButton: {
+    padding: 6,
+    marginRight: 8,
+},
+headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+},
+resultsContainer: {
+    flex: 1,
+},
+resultCount: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 8,
+},
+noResultsContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+},
+noResultsText: {
+    fontSize: 16,
+    color: '#888',
+    marginVertical: 12,
+},
+resetButton: {
+    backgroundColor: '#FF6B00',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginTop: 8,
+},
+resetButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '500',
+},
+flatListContainer: {
+    paddingBottom: 20,
+},
+footerLoader: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+},
+footerLoaderText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#666',
+},
+selectedPriceButtonText: {
+    color: '#FFF',
+},
 });

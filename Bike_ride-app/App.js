@@ -229,9 +229,7 @@ const App = () => {
                 
                     </Stack.Navigator>
 
-                    {/* {activeRide && (
-                      <ActiveRideButton rideDetails={activeRideData} />
-                    )}r */}
+               
                   </NavigationContainer>
                 </SafeAreaProvider>
               </GestureHandlerRootView>

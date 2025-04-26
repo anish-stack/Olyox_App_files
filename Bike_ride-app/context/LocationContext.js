@@ -5,37 +5,76 @@ const LocationContext = createContext();
 
 export const LocationProvider = ({ children }) => {
   const [driverLocation, setDriverLocation] = useState(null);
+  const [hasPermission, setHasPermission] = useState(null);  // To track permission status
 
-  // Function to request and update location
-  const requestLocation = async () => {
+  // Function to request location permissions
+  const requestLocationPermissions = async () => {
     try {
-      // Request permission
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      console.log("status",status)
-      if (status !== "granted") {
-        console.error("Permission to access location was denied");
+      // Request foreground location permission
+      const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+      if (foregroundStatus !== "granted") {
+        console.error("Foreground location permission was denied");
+        setHasPermission(false);
         return;
       }
 
-      // Get current location
-      let location = await Location.getCurrentPositionAsync({});
-      console.log("location",location)
-      setDriverLocation({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
+      // Request background location permission if needed
+      const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+      if (backgroundStatus !== "granted") {
+        console.error("Background location permission was denied");
+        setHasPermission(false);
+        return;
+      }
+
+      setHasPermission(true);
     } catch (error) {
-      console.error("Error getting location:", error);
+      console.error("Error requesting location permissions:", error);
+      setHasPermission(false);
     }
   };
 
-  useEffect(() => {
-    if (!driverLocation) {
-      requestLocation();
+  // Function to start watching location
+  const startLocationUpdates = async () => {
+    if (!hasPermission) {
+      console.error("No permission to access location");
+      return;
     }
-  }, [driverLocation]);
 
-  console.log("driverLocation", driverLocation);
+    // Watch the location continuously every 10 seconds
+    const locationSubscription = await Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.High, // Set the accuracy level for location updates
+        timeInterval: 10000, // 10 seconds interval for updates
+        distanceInterval: 0, // Only update when the location changes
+      },
+      (location) => {
+        console.log("Location updated:", location);
+        setDriverLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      }
+    );
+
+    // Clean up when the component is unmounted
+    return () => {
+      locationSubscription.remove();
+    };
+  };
+
+  // Request permissions and start location updates
+  useEffect(() => {
+    requestLocationPermissions();
+  }, []);
+
+  useEffect(() => {
+    if (hasPermission) {
+      const stopLocationUpdates = startLocationUpdates();
+      return () => {
+        stopLocationUpdates && stopLocationUpdates(); // Clean up the subscription on unmount
+      };
+    }
+  }, [hasPermission]);
 
   return (
     <LocationContext.Provider value={{ driverLocation, updateLocation: setDriverLocation }}>

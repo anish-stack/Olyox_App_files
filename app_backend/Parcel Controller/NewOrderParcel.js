@@ -406,6 +406,12 @@ exports.cancelOrder = async (req, res) => {
             return res.status(404).json({ message: "Parcel not found" });
         }
 
+        if(parcel.status === 'delivered'){
+            return res.status(402).json({
+                success:false,
+                message:'This Order is already has been delivered'
+            })
+        }
         // Update parcel status
         parcel.status = "cancelled";
         parcel.is_booking_cancelled = true;
