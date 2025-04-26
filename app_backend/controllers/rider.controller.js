@@ -7,9 +7,11 @@ const SendWhatsAppMessage = require('../utils/whatsapp_send');
 const axios = require('axios')
 const cloudinary = require('cloudinary').v2
 const moment = require('moment');
-
+const momentTz = require('moment-timezone');
 
 const fs = require('fs');
+const Bonus_Model = require('../models/Bonus_Model/Bonus_Model');
+const Parcel_Request = require('../models/Parcel_Models/Parcel_Request');
 cloudinary.config({
   cloud_name: 'dsd8nepa5',
   api_key: '634914486911329',
@@ -18,14 +20,14 @@ cloudinary.config({
 // Register a new rider
 exports.registerRider = async (req, res) => {
   try {
-    // console.log("rider", req.body)
+
     const { name, phone, rideVehicleInfo, BH, role } = req.body;
     const { vehicleName, vehicleType, PricePerKm, VehicleNumber, RcExpireDate } = rideVehicleInfo;
 
     if (!BH) {
       return res.status(400).json({ message: "Please enter your BH Number" });
     }
-    // Validate required fields
+
     if (!name || !phone || !vehicleName || !vehicleType || !VehicleNumber) {
       return res.status(400).json({ success: false, message: "All fields are required." });
     }
@@ -35,7 +37,7 @@ exports.registerRider = async (req, res) => {
       return res.status(400).json({ success: false, message: "BH Number already exists " })
     }
 
-    // Check if the phone number is already registered
+
     let existingRider = await Rider.findOne({ phone });
 
     if (existingRider) {
@@ -788,7 +790,6 @@ exports.getMySessionsByUserId = async (req, res) => {
       return res.status(400).json({ message: "User ID is required in query." });
     }
 
-    // Fetch all CabRider sessions for the user
     const sessionsData = await CabRiderTimes.find({ riderId: userId }).sort({ date: -1 });
 
     if (!sessionsData.length) {
@@ -802,7 +803,7 @@ exports.getMySessionsByUserId = async (req, res) => {
       // Calculate total duration and format individual sessions
       const formattedSessions = daySession.sessions.map((session) => {
         if (session.onlineTime && session.offlineTime) {
-          totalDurationInSeconds += session.duration * 60; // Convert minutes to seconds
+          totalDurationInSeconds += session.duration * 60;
         }
 
         return {
@@ -927,18 +928,77 @@ exports.getSingleRider = async (req, res) => {
 exports.updateRiderDocumentVerify = async (req, res) => {
   try {
     const { id } = req.params;
-    const { DocumentVerify } = req.body;
+    const { DocumentVerify } = req.body || req.query;
+
     const rider = await Rider.findById(id);
     if (!rider) {
-      return res.status(404).json({ success: false, message: "Rider not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Rider not found",
+      });
     }
+
+    // Update document verification status
     rider.DocumentVerify = DocumentVerify;
+
+    const currentDate = new Date();
+
+    if (rider.category === "parcel") {
+
+      rider.isFreeMember = true;
+      rider.isPaid = true;
+
+      const oneYearLater = new Date(currentDate.setFullYear(currentDate.getFullYear() + 1));
+      rider.freeTierEndData = oneYearLater;
+
+      rider.RechargeData = {
+        rechargePlan: "Free Tier",
+        expireData: oneYearLater,
+        approveRecharge: true,
+      };
+
+      await SendWhatsAppMessage(
+        `🎉 Dear ${rider.name}, your documents have been successfully verified, and you've been granted 1 year of Free Tier membership as a Parcel Rider! 🗓️
+
+✅ Plan: Free Tier  
+✅ Valid Till: ${oneYearLater.toDateString()}  
+✅ Recharge Status: Approved
+
+We’re excited to have you on board. Let’s make your journey productive and rewarding. Stay safe and deliver with pride! 🚀  
+— Team Support`,
+        rider.phone
+      );
+
+    } else {
+      // For other rider categories, just send verification success message
+      await SendWhatsAppMessage(
+        `✅ Hello ${rider.name}, your documents have been successfully verified! 🎉
+
+You are now fully approved to continue providing your services on our platform.
+
+Thank you for your patience and welcome to the community! If you have any questions, feel free to reach out. 😊  
+— Team Support`,
+        rider.phone
+      );
+    }
+
     const result = await rider.save();
-    return res.status(200).json({ success: true, message: "Documents verified successfully", data: result });
+
+    return res.status(200).json({
+      success: true,
+      message: "Rider documents verified and updated successfully.",
+      data: result,
+    });
+
   } catch (error) {
-    console.log("Internal server error", error)
+    console.error("Internal server error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while verifying the documents.",
+    });
   }
-}
+};
+
 exports.updateRiderDetails = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1043,3 +1103,221 @@ exports.deleteRider = async (req, res) => {
     })
   }
 }
+
+
+exports.getMyEligibleBonus = async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.query.userId || req.params.userId;
+    console.log("UserId:", userId);
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required in query." });
+    }
+
+    const sessionsData = await CabRiderTimes.find({ riderId: userId }).sort({ date: -1 });
+    console.log("Fetched sessionsData:", sessionsData.length);
+
+    if (!sessionsData.length) {
+      return res.status(404).json({ message: "No session data found for this user." });
+    }
+
+    const BonusAvailableInDb = await Bonus_Model.find();
+    console.log("Fetched BonusAvailableInDb:", BonusAvailableInDb.length);
+
+    if (!BonusAvailableInDb.length) {
+      return res.status(404).json({ message: "No bonuses available." });
+    }
+
+    let eligibleBonus = [];
+    let notEligibleBonus = [];
+
+    let totalDurationHours = 0;
+
+    // Calculate total working hours
+    for (let sessionData of sessionsData) {
+      for (let session of sessionData.sessions) {
+        console.log("Processing session:", session);
+
+        const onlineTime = momentTz(session.onlineTime).tz("Asia/Kolkata");
+        const offlineTime = momentTz(session.offlineTime).tz("Asia/Kolkata");
+
+        console.log("OnlineTime:", onlineTime.isValid() ? onlineTime.format() : "Invalid");
+        console.log("OfflineTime:", offlineTime.isValid() ? offlineTime.format() : "Invalid");
+
+        if (!onlineTime.isValid() || !offlineTime.isValid()) {
+          console.log("Skipping invalid session times.");
+          continue; // skip this session
+        }
+
+        const durationMinutes = offlineTime.diff(onlineTime, 'minutes');
+        const durationHours = durationMinutes / 60;
+
+        console.log("Session durationMinutes:", durationMinutes, "durationHours:", durationHours);
+
+        if (!isNaN(durationHours)) {
+          totalDurationHours += durationHours;
+        } else {
+          console.log("Invalid durationHours, skipping...");
+        }
+      }
+    }
+
+    console.log("Total Duration Hours:", totalDurationHours);
+
+    // Now check for bonuses
+    BonusAvailableInDb.forEach((bonus) => {
+      console.log("Checking bonus:", bonus);
+
+      const anyRequiredField = [
+        `Complete login hours: ${bonus.requiredHours} hours worked.`,
+        "Do not reject more than 5 bonus claims per month to maintain eligibility.",
+        "Requires regular check-ins and updates for performance."
+      ];
+
+      if (totalDurationHours >= bonus.requiredHours) {
+        console.log(`Eligible: totalDurationHours(${totalDurationHours}) >= requiredHours(${bonus.requiredHours})`);
+
+        eligibleBonus.push({
+          requiredHours: bonus.requiredHours,
+          bonusCouponCode: bonus.bonusCouponCode,
+          bonusType: bonus.bonusType,
+          bonusValue: bonus.bonusValue,
+          bonusStatus: bonus.bonusStatus,
+          any_required_field: anyRequiredField,
+          remainingHours: parseFloat((totalDurationHours - bonus.requiredHours).toFixed(2))
+        });
+      } else {
+        console.log(`Not Eligible: totalDurationHours(${totalDurationHours}) < requiredHours(${bonus.requiredHours})`);
+
+        notEligibleBonus.push({
+          requiredHours: bonus.requiredHours,
+          bonusCouponCode: bonus.bonusCouponCode,
+          bonusType: bonus.bonusType,
+          bonusValue: bonus.bonusValue,
+          bonusStatus: bonus.bonusStatus,
+          any_required_field: anyRequiredField,
+          remainingHours: parseFloat((bonus.requiredHours - totalDurationHours).toFixed(2))
+        });
+      }
+    });
+
+    console.log("Eligible Bonuses:", eligibleBonus);
+    console.log("Not Eligible Bonuses:", notEligibleBonus);
+
+    return res.status(200).json({
+      message: "Rider's eligible and not eligible bonuses fetched successfully.",
+      eligibleBonus,
+      notEligibleBonus
+    });
+
+  } catch (error) {
+    console.error("Error fetching eligible bonus:", error);
+    return res.status(500).json({
+      message: "An error occurred while fetching eligible bonuses.",
+      error: error.message
+    });
+  }
+};
+
+exports.inProgressOrder = async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.query.userId || req.params.userId;
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required in query." });
+    }
+
+    const rider = await Rider.findOne({ _id: userId, category: 'parcel' });
+    if (!rider) {
+      return res.status(404).json({ success: false, message: "Rider not found" });
+    }
+
+
+
+    // Fetch all accepted orders for this rider
+    const inProgress = await Parcel_Request.find({
+      rider_id: userId,
+      status: {
+        $not: /^(pending|delivered|cancelled)$/i
+      }
+    });
+
+    if (inProgress.length === 0) {
+      // No in-progress orders found
+      return res.status(200).json({
+        success: true,
+        message: "No in-progress orders found.",
+        inProgressOrders: []
+      });
+    }
+
+
+    return res.status(200).json({
+      success: true,
+      message: "In-progress orders fetched successfully.",
+      inProgressOrders: inProgress
+    });
+
+  } catch (error) {
+    console.error("Error fetching in-progress orders:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching in-progress orders.",
+      error: error.message
+    });
+  }
+};
+
+
+
+exports.parcelDashboardData = async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.query.userId || req.params.userId;
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required in query." });
+    }
+
+    const rider = await Rider.findOne({ _id: userId, category: 'parcel' });
+    if (!rider) {
+      return res.status(404).json({ success: false, message: "Rider not found" });
+    }
+
+
+
+    const howManyDeliverDone = await Parcel_Request.countDocuments({ rider_id: userId, status: "deliverd" });
+
+    const inProgress = await Parcel_Request.find({
+      rider_id: userId,
+      status: {
+        $not: /^(pending|delivered|cancelled)$/i
+      }
+    });
+
+    const deliveredRequests = await Parcel_Request.find({ rider_id: userId, status: "deliverd" });
+
+    const totalMoneyEarned = deliveredRequests.reduce((acc, cur) => acc + Number(cur?.fares?.payableAmount || 0), 0);
+
+
+
+    return res.status(200).json({
+      success: true,
+      message: "Parcel dashboard data fetched successfully.",
+      data: {
+
+        totalDeliveries: howManyDeliverDone,
+        inProgressDeliveries: inProgress.length,
+        totalEarnings: totalMoneyEarned,
+        ridesRejected: rider.ridesRejected,
+      }
+    });
+
+  } catch (error) {
+    console.error("Internal server error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while fetching dashboard data.",
+      error: error.message,
+    });
+  }
+};

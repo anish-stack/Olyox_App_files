@@ -16,7 +16,7 @@ const serviceAreaSchema = new mongoose.Schema({
             type: [Number],
             required: true,
             validate: {
-                validator: function(v) {
+                validator: function (v) {
                     return v.length === 2;
                 },
                 message: props => `Coordinates should be an array of 2 numbers, but got ${props.value.length}.`
@@ -31,11 +31,11 @@ const callTimingSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    
+
     end_time: {
         type: String,
         required: true
-        
+
     }
 });
 
@@ -84,23 +84,41 @@ const Heavy_vehicle_partners = new mongoose.Schema({
         type: mongoose.Types.ObjectId,
         ref: 'HeavyVehicleDocuments'
     }],
-    isAlldocumentsVerified:{
+    isAlldocumentsVerified: {
         type: Boolean,
         default: false
     },
     profile_shows_at_position: {
         type: Number,
-        
+
         min: [1, 'Profile position must be greater than or equal to 1.']
     },
+    isFreeMember: {
+        type: Boolean,
+        default: false
+    },
+    freeTierEndData: {
+        type: Date,
+        default: null
+    },
+    isPaid: {
+        type: Boolean,
+        default: false
+    },
+    RechargeData: {
+        rechargePlan: String,
+        expireData: Date,
+        approveRecharge: Boolean
+    },
+
     otp: {
         type: Number
     },
     otp_expires: {
         type: Date
     },
-    profile_image:{
-        url:String,
+    profile_image: {
+        url: String,
     },
     is_working: {
         type: Boolean,

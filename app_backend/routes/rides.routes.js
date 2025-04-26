@@ -1,7 +1,7 @@
 const express = require('express');
 const { createRequest, findRider, complete_Details_ofRide, getAllRides, getSingleRides, deleleteRidersRideOrder, changeRidersRideStatusByAdmin } = require('../controllers/ride.request');
 const Protect = require('../middleware/Auth');
-const { getOnlineTimeByRiderId } = require('../controllers/rider.controller');
+const { getOnlineTimeByRiderId, getMyEligibleBonus, parcelDashboardData, inProgressOrder } = require('../controllers/rider.controller');
 
 const rides = express.Router();
 
@@ -18,5 +18,12 @@ rides.get('/single_rides/:id',getSingleRides)
 rides.get('/get_riders_times_by_rider_id/:id',getOnlineTimeByRiderId)
 rides.delete('/delete_rider_ride/:id', deleleteRidersRideOrder);
 rides.put('/update_rider_ride_status/:id', changeRidersRideStatusByAdmin);
+
+
+
+// get My eligible 
+rides.get('/getMyEligibleBonus/:userId',getMyEligibleBonus)
+rides.get('/parcelDashboardData/:userId',parcelDashboardData)
+rides.get('/inProgressOrder/:userId',inProgressOrder)
 
 module.exports = rides;

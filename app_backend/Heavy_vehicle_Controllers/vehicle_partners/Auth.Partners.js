@@ -1096,86 +1096,100 @@ exports.DocumentVerify = async (req, res) => {
         let { id } = req.params || {};
         const { reject_reason } = req.body;
 
-
+        // Validate ID format
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            try {
-                id = new mongoose.Types.ObjectId(id);
-            } catch (error) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid document ID format.'
-                });
-            }
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid document ID format.',
+            });
         }
 
-
+        // Find partner
         const checkPartner = await Heavy_vehicle_partners.findById(id);
         if (!checkPartner) {
             return res.status(404).json({
                 success: false,
-                message: 'Partner not found.'
+                message: 'Partner not found.',
             });
         }
 
-
-        const checkDocumentUpload = checkPartner.documents.length > 0;
-        if (!checkDocumentUpload) {
+        // Check if documents are uploaded
+        if (!checkPartner.documents || checkPartner.documents.length === 0) {
             return res.status(400).json({
                 success: false,
-                message: 'No document uploaded for verification.'
+                message: 'No documents uploaded for verification.',
             });
         }
 
-
+        // Rejection flow
         if (reject_reason) {
             for (const document of checkPartner.documents) {
-                // Mark the document as rejected
                 if (document.document_status === 'Pending') {
                     document.document_status = 'Rejected';
                     document.reject_reason = reject_reason;
                     await document.save();
                 }
             }
-            const message = `🚫 Olyox Heavy Vehicle Partner Portal: Your document has been rejected. 🚛 
 
-            Reason: ${reject_reason}
-            
-            Please review the document and upload a valid version for further verification. If you need assistance or have any questions, don't hesitate to contact us. 
-            
-            Stay connected with Olyox! 🎉`;
+            const rejectionMessage = `🚫 Olyox Heavy Vehicle Partner Portal:
+  
+  Your document has been rejected after careful review.  
+  Reason: *${reject_reason}*  
+  
+  Please re-upload valid documents for further verification.  
+  Feel free to contact support for any help.  
+  — Team Olyox`;
 
-            await SendWhatsAppMessage(message, checkPartner?.phone_number);
-
+            await SendWhatsAppMessage(rejectionMessage, checkPartner?.phone_number);
 
             return res.status(200).json({
                 success: true,
                 message: 'Documents rejected with the provided reason.',
             });
-        } else {
-
-            for (const document of checkPartner.documents) {
-
-                if (document.document_status === 'Pending') {
-                    document.document_status = 'Approved';
-                    await document.save();
-                }
-            }
-            const message = `✅ Olyox Heavy Vehicle Partner Portal: Your document has been successfully verified! 🚛 
-
-            Document Type: ${document.documentType}  
-            Verification Status: Verified
-            
-            You are now one step closer to completing your registration. If you have any other documents to upload or need assistance, feel free to reach out.
-            
-            Thank you for partnering with Olyox! 🎉`;
-
-            await SendWhatsAppMessage(message, checkPartner?.phone_number);
-
-            return res.status(200).json({
-                success: true,
-                message: 'All documents verified successfully.',
-            });
         }
+
+        // Approval flow
+        let approvedDocumentTypes = [];
+
+        for (const document of checkPartner.documents) {
+            if (document.document_status === 'Pending') {
+                document.document_status = 'Approved';
+                await document.save();
+                approvedDocumentTypes.push(document.documentType || "Document");
+            }
+        }
+
+        // Grant 1-year free membership
+        checkPartner.isFreeMember = true;
+        const oneYearLater = new Date(currentDate.setFullYear(currentDate.getFullYear() + 1));
+        checkPartner.freeTierEndData = oneYearLater;
+        checkPartner.isPaid = true;
+        checkPartner.RechargeData = {
+            rechargePlan: 'Free Tier',
+            expireData: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+            approveRecharge: true,
+        };
+
+        await checkPartner.save();
+
+        const approvalMessage = `✅ Olyox Heavy Vehicle Partner Portal:
+  
+  Your document(s) [${approvedDocumentTypes.join(", ")}] have been successfully verified! 🚛  
+  You’ve been granted *1 Year Free Tier Membership* as a verified partner.  
+  
+  📝 Plan: Free Tier  
+  📆 Valid Until: ${checkPartner.RechargeData.expireData.toDateString()}  
+  🔐 Recharge Status: Approved  
+  
+  Thank you for choosing Olyox! Let’s drive forward together. 💼  
+  — Team Olyox`;
+
+        await SendWhatsAppMessage(approvalMessage, checkPartner?.phone_number);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Documents verified and free membership granted.',
+        });
 
     } catch (error) {
         console.error("Error in DocumentVerify:", error);

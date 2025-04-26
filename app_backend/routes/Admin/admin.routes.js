@@ -59,6 +59,7 @@ const { markPaid } = require('../../controllers/rider.controller');
 const { createNotification, getNotifications, getNotificationById, markAsRead, deleteNotification } = require('../../Admin Controllers/settings/notificationController');
 const { createPolicy, updatePolicy, getPolicyById, findPolicyByTitle, deletePolicy, getPolicies } = require('../../Admin Controllers/settings/privacyPolicyController');
 const { createReport, getAllReports, getSingleReport, updateReport, deleteReport } = require('../../Admin Controllers/Bugs/LoginBugsReportsController');
+const { createBonus, getAllBonuses, getBonusById, updateBonus, deleteBonus } = require('../../Admin Controllers/createBonus/BonusController');
 
 const admin = express.Router();
 
@@ -151,12 +152,18 @@ admin.delete('/policy/:id', deletePolicy);
 
 
 //Login register  bugs
-admin.post('/report',upload.single('image'), createReport);
+admin.post('/report', upload.single('image'), createReport);
 admin.get('/reports', getAllReports);
 admin.get('/report/:id', getSingleReport);
 admin.put('/report/:id', updateReport);
 admin.delete('/report/:id', deleteReport);
 
+//  bonuses
+admin.post('/admin/bonuses', createBonus);
+admin.get('/admin/bonuses', getAllBonuses);
+admin.get('/admin/bonuses/:id', getBonusById);
+admin.put('/admin/bonuses/:id', updateBonus);
+admin.delete('/admin/bonuses/:id', deleteBonus);
 
 
 module.exports = admin;

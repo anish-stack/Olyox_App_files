@@ -4,8 +4,9 @@ import * as Location from 'expo-location';
 import axios from 'axios';
 import { Ionicons, MaterialIcons, FontAwesome } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 
-const API_END_POINT_URL = `http://192.168.1.11:3100/api/v1/parcel`;
+const API_END_POINT_URL = `https://www.appapi.olyox.com/api/v1/parcel`;
 const { width } = Dimensions.get('window');
 
 export default function AvailableOrder() {
@@ -15,9 +16,10 @@ export default function AvailableOrder() {
     const [radius, setRadius] = useState(5000);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const navigation = useNavigation()
     const [errorMsg, setErrorMsg] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [priceFilter, setPriceFilter] = useState('all'); // 'all', 'low', 'medium', 'high'
+    const [priceFilter, setPriceFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
 
@@ -25,6 +27,7 @@ export default function AvailableOrder() {
     useEffect(() => {
         async function getCurrentLocation() {
             let { status } = await Location.requestForegroundPermissionsAsync();
+            console.log("status", status)
             if (status !== 'granted') {
                 setErrorMsg('Permission to access location was denied');
                 return;
@@ -162,7 +165,15 @@ export default function AvailableOrder() {
                 </View>
             </View>
 
-            <TouchableOpacity style={styles.viewDetailsButton}>
+            <TouchableOpacity
+                onPress={() =>
+                    navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'ParcelDetails', params: { parcelId: item._id } }],
+                    })
+                }
+                style={styles.viewDetailsButton}
+            >
                 <Text style={styles.viewDetailsText}>View Details</Text>
                 <MaterialIcons name="arrow-forward-ios" size={16} color="#ffffff" />
             </TouchableOpacity>

@@ -49,6 +49,7 @@ import { RideStatusProvider } from './context/CheckRideHaveOrNot.context';
 import NewParcelLive from './screens/Parcel_Screens/NewParcelLive/NewParcelLive';
 import DeliveryTracking from './screens/Parcel_Screens/DeliveryTracking/DeliveryTracking';
 import AvailableOrder from './screens/Parcel_Screens/Available_Orders/AvailableOrder';
+import ProgressOrder from './screens/Parcel_Screens/ProgressOrder/ProgressOrder';
 
 LogBox.ignoreLogs(['Setting a timer']);
 
@@ -221,8 +222,9 @@ const App = () => {
 
                       {/* Parcel Rides */}
                       <Stack.Screen name="ParcelDetails" component={NewParcelLive} />
-                      <Stack.Screen name="DeliveryTracking" options={{headerShown:true}} component={DeliveryTracking} />
+                      <Stack.Screen name="DeliveryTracking" options={{headerShown:false}} component={DeliveryTracking} />
                       <Stack.Screen name="available-orders" options={{headerShown:false , title:"Available Orders"}} component={AvailableOrder} />
+                      <Stack.Screen name="progress-order" options={{headerShown:true , title:"Progress Orders"}} component={ProgressOrder} />
 
                 
                     </Stack.Navigator>

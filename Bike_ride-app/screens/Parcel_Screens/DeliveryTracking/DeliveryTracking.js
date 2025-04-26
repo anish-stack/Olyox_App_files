@@ -173,7 +173,7 @@ export default function DeliveryTracking() {
     try {
       console.log("Fetching parcel details...");
       const { data } = await axios.get(`https://www.appapi.olyox.com/api/v1/parcel/get-parcel/${parcelId}`);
-      console.log("Fetched parcel details:", data?.parcelDetails);
+      // console.log("Fetched parcel details:", data?.parcelDetails);
       setParcelDetails(data?.parcelDetails);
       
       // Check if we need to start or stop the timer based on status
@@ -187,17 +187,11 @@ export default function DeliveryTracking() {
       logError("Failed to fetch parcel details", err);
       setError(errMsg);
 
-      if (retryCount < 2) {
-        console.log(`Retrying fetch (attempt ${retryCount + 1})...`);
-        setRetryCount(prev => prev + 1);
-        setTimeout(() => handleFetchDetails(), 1500); // Retry after 1.5s
-      } else {
-        Alert.alert("Error", "Failed to load parcel details after multiple attempts.");
-      }
+     
     } finally {
       setLoading(false);
     }
-  }, [parcelId, retryCount, timerActive, startPickupTimer, stopPickupTimer]);
+  }, [parcelId, timerActive, startPickupTimer, stopPickupTimer]);
 
   // Change parcel status
   const handleChangeStatus = useCallback(async (status) => {
@@ -278,7 +272,7 @@ export default function DeliveryTracking() {
               Alert.alert('Success', 'Ride cancelled successfully');
               navigation.goBack();
             } catch (err) {
-              logError("Failed to cancel ride", err);
+              logError("Failed to cancel ride", err.response.data);
               Alert.alert('Error', 'Failed to cancel ride');
             } finally {
               setLoadingAction(false);
@@ -696,7 +690,7 @@ export default function DeliveryTracking() {
       </View>
 
       {/* Pickup Timer (only show when active) */}
-      {timerActive && (
+      {/* {timerActive && (
         <View style={styles.timerContainer}>
           <Text style={styles.timerLabel}>Free Pickup Time:</Text>
           <Text style={styles.timerText}>{formattedTimer}</Text>
@@ -713,7 +707,7 @@ export default function DeliveryTracking() {
             />
           </View>
         </View>
-      )}
+      )} */}
 
       {/* Details Panel */}
       <View style={styles.detailsContainer}>

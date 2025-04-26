@@ -100,6 +100,10 @@ const RiderSchema = new Schema({
         type: Boolean,
         default: false
     },
+    freeTierEndData: {
+        type: Date,
+        default: null
+    },
     amountPaid: {
         type: Number,
         default: 0

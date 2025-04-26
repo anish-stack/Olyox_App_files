@@ -30,6 +30,7 @@ import { LocalRideStorage } from "../services/DatabaseService"
 import styles from "./HomeScreen.styles"
 import { useRideStatus } from "../context/CheckRideHaveOrNot.context"
 import ActiveRideButton from "../ActiveRideButton"
+import Bonus from "./Bonus/Bonus"
 
 const CabHome = () => {
   const { isSocketReady, socket } = useSocket()
@@ -579,6 +580,7 @@ const CabHome = () => {
             </View>
           )}
           {mapVisible && DriverMap}
+          <Bonus/>
 
 
 

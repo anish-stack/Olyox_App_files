@@ -291,7 +291,6 @@ exports.updateParcelStatus = async (req, res) => {
 
         // Fetch parcel from database
         const parcel = await Parcel_Request.findById(parcelId).populate("rider_id");
-
         if (!parcel) {
             return res.status(404).json({ message: "Parcel not found" });
         }
@@ -300,6 +299,12 @@ exports.updateParcelStatus = async (req, res) => {
         const io = req.app.get("socketio");
         const driverSocketMap = req.app.get("driverSocketMap") || new Map();
         const userSocketMap = req.app.get("userSocketMap") || new Map();
+
+        // Prepare customerSocketId outside switch
+        const customerId = parcel.customerId?.toString();
+        let customerSocketId = customerId
+            ? userSocketMap.get(customerId) || [...userSocketMap.entries()].find(([key]) => key.includes(customerId))?.[1]
+            : null;
 
         // Logic based on status
         switch (status) {
@@ -318,9 +323,6 @@ exports.updateParcelStatus = async (req, res) => {
                 parcel.is_driver_reached_at_deliver_place = true;
                 parcel.is_driver_reached_at_deliver_place_time = new Date();
 
-                const customerId = parcel.customerId.toString();
-                const customerSocketId = userSocketMap.get(customerId) || [...userSocketMap.entries()].find(([key]) => key.includes(customerId))?.[1];
-
                 if (customerSocketId) {
                     io.to(customerSocketId).emit("parcel_rider_reached", {
                         success: true,
@@ -337,9 +339,8 @@ exports.updateParcelStatus = async (req, res) => {
                 parcel.is_dropoff_complete = true;
                 parcel.is_parcel_delivered_time = new Date();
                 parcel.is_booking_completed = true;
-                parcel.money_collected = parcel.fares.payableAmount;
+                parcel.money_collected = parcel.fares?.payableAmount || 0;
 
-                // Ensure rider status is available after delivery
                 if (parcel.rider_id) {
                     parcel.rider_id.isAvailable = true;
                     await parcel.rider_id.save();
@@ -350,12 +351,19 @@ exports.updateParcelStatus = async (req, res) => {
                 parcel.is_booking_cancelled = true;
                 parcel.is_booking_cancelled_time = new Date();
 
-                if (parcel.rider_id) {
+                if (customerSocketId) {
                     io.to(customerSocketId).emit("parcel_rider_cancel", {
                         success: true,
                         message: "Parcel has been cancelled",
                         parcel: parcel._id,
                     });
+                } else {
+                    console.error("Unable to emit parcel cancellation: socket not found");
+                }
+
+                if (parcel.rider_id) {
+                    parcel.rider_id.isAvailable = true;
+                    await parcel.rider_id.save();
                 }
                 break;
 
@@ -379,6 +387,7 @@ exports.updateParcelStatus = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
+
 
 
 exports.cancelOrder = async (req, res) => {

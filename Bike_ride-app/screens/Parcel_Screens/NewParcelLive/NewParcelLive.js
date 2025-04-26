@@ -1,33 +1,69 @@
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSocket } from '../../../context/SocketContext';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { Audio } from 'expo-av';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import useUserDetails from '../../../hooks/user/User.hook';
 
+const API_BASE_URL = 'https://www.appapi.olyox.com/api/v1';
+
 export default function NewParcelLive() {
     const route = useRoute();
     const navigation = useNavigation();
-    const { userData } = useUserDetails()
+    const { userData } = useUserDetails();
     const { parcelId } = route.params || {};
     const { isSocketReady, socket } = useSocket();
 
     const [parcelDetails, setParcelDetails] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [sound, setSound] = useState(null);
+    const [error, setError] = useState(null);
     const [timeLeft, setTimeLeft] = useState(30);
 
     const soundRef = useRef(null);
+    const timerRef = useRef(null);
+
+    // Handle socket connection and cleanup
+    useEffect(() => {
+        // Setup socket listeners if needed
+        if (socket && isSocketReady) {
+            // Listen for any updates to this parcel
+            socket.on(`parcel:${parcelId}:update`, handleParcelUpdate);
+        }
+
+        // Cleanup function
+        return () => {
+            if (socket && isSocketReady) {
+                socket.off(`parcel:${parcelId}:update`);
+            }
+        };
+    }, [socket, isSocketReady, parcelId]);
+
+    // Handle parcel updates from socket
+    const handleParcelUpdate = (data) => {
+        if (data && data.status) {
+            // Update local state based on socket data
+            if (data.status === 'cancelled') {
+                stopSound();
+                Alert.alert(
+                    "Delivery Cancelled",
+                    "This delivery request has been cancelled.",
+                    [{ text: "OK", onPress: () => navigateToHome() }]
+                );
+            } else if (data.parcelDetails) {
+                setParcelDetails(data.parcelDetails);
+            }
+        }
+    };
 
     // Handle timer to auto-reject after 30 seconds
     useEffect(() => {
-        const timer = setInterval(() => {
+        timerRef.current = setInterval(() => {
             setTimeLeft((prevTime) => {
                 if (prevTime <= 1) {
-                    clearInterval(timer);
+                    clearInterval(timerRef.current);
                     handleAutoReject();
                     return 0;
                 }
@@ -35,8 +71,68 @@ export default function NewParcelLive() {
             });
         }, 1000);
 
-        return () => clearInterval(timer);
+        return () => {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+            }
+        };
     }, []);
+
+    // Fetch parcel details and load sound
+    useEffect(() => {
+        handleFetchDetails();
+        loadSound();
+
+        return () => {
+            stopSound();
+        };
+    }, [parcelId]);
+
+    // Make sure to clean up when component loses focus
+    useFocusEffect(
+        useCallback(() => {
+            return () => {
+                stopSound();
+                if (timerRef.current) {
+                    clearInterval(timerRef.current);
+                }
+            };
+        }, [])
+    );
+
+    // Load notification sound
+    async function loadSound() {
+        try {
+            const { sound: newSound } = await Audio.Sound.createAsync(
+                require('./notification.mp3'),
+                { shouldPlay: true, isLooping: true }
+            );
+            soundRef.current = newSound;
+        } catch (error) {
+            console.log('Error loading sound:', error);
+        }
+    }
+
+    // Stop and unload sound
+    async function stopSound() {
+        if (soundRef.current) {
+            try {
+                await soundRef.current.stopAsync();
+                await soundRef.current.unloadAsync();
+                soundRef.current = null;
+            } catch (error) {
+                console.log('Error stopping sound:', error);
+            }
+        }
+    }
+
+    // Navigate to home screen
+    const navigateToHome = () => {
+        navigation.reset({
+            index: 0,
+            routes: [{ name: 'Home' }],
+        });
+    };
 
     // Auto reject when timer runs out
     const handleAutoReject = async () => {
@@ -45,212 +141,133 @@ export default function NewParcelLive() {
             if (socket && isSocketReady) {
                 socket.emit('driver:reject_ride', {
                     parcelId: parcelId,
-                    driverId: userData._id || 'unknown',
+                    driverId: userData?._id || 'unknown',
                     reason: 'timeout'
                 });
             }
 
             // Make API call to reject the ride
-            await axios.post(`https://www.appapi.olyox.com/api/v1/driver/reject-ride/${parcelId}`, {
+            await axios.post(`${API_BASE_URL}/driver/reject-ride/${parcelId}`, {
                 reason: 'timeout'
             });
-
-            // Navigate back to home
-            navigation.reset({
-                index: 0,
-                routes: [{ name: 'Home' }],
-            });
         } catch (error) {
-        // console.log("Error auto-rejecting ride:", error?.response?.data?.message || error.message);
-            // Still navigate away even if rejection API fails
-            navigation.reset({
-                index: 0,
-                routes: [{ name: 'Home' }],
-            });
+            console.log("Error auto-rejecting ride:", error?.response?.data?.message || error.message);
+        } finally {
+            // Always navigate away
+            stopSound();
+            navigateToHome();
         }
     };
 
     // Fetch parcel details
-    useEffect(() => {
-        handleFetchDetails();
-
-        // Play notification sound
-        loadSound();
-
-        return () => {
-            unloadSound();
-        };
-    }, [parcelId]);
-
-    // Load sound file
-    async function loadSound() {
-        try {
-            const { sound: newSound } = await Audio.Sound.createAsync(
-                require('./notification.mp3'), // Updated path - make sure this is correct
-                { shouldPlay: true, isLooping: true }
-            );
-            soundRef.current = newSound;
-            setSound(newSound);
-        } catch (error) {
-            console.log('Error loading sound:', error);
-        }
-    }
-
-    // Unload sound when component unmounts
-    async function unloadSound() {
-        if (soundRef.current) {
-            try {
-                await soundRef.current.stopAsync();
-                await soundRef.current.unloadAsync();
-            } catch (error) {
-                console.log('Error unloading sound:', error);
-            }
-        }
-    }
-
     const handleFetchDetails = async () => {
         setLoading(true);
+        setError(null);
+        
         try {
-            const { data } = await axios.get(`https://www.appapi.olyox.com/api/v1/parcel/get-parcel/${parcelId}`);
-            setParcelDetails(data?.parcelDetails);
+            const { data } = await axios.get(`${API_BASE_URL}/parcel/get-parcel/${parcelId}`);
+            if (data?.parcelDetails) {
+                setParcelDetails(data.parcelDetails);
+            } else {
+                throw new Error("No parcel details found");
+            }
         } catch (error) {
-            console.log("Error fetching parcel details:", error?.response?.data?.message || error.message);
-            Alert.alert("Error", "Failed to load parcel details");
-            // Navigate back on error
-            navigation.goBack();
+            const errorMessage = error?.response?.data?.message || error.message || "Failed to load parcel details";
+            setError(errorMessage);
+            console.log("Error fetching parcel details:", errorMessage);
         } finally {
             setLoading(false);
         }
     };
+
+    // Handle accept delivery
     const handleAccept = () => {
         // Ensure userData is available
         if (!userData || !userData._id) {
-            console.warn("❌ User data not found or user not logged in");
             Alert.alert("Error", "User information is missing. Please login again.");
             return;
         }
-
-        console.log("✅ User Data:", userData);
-        console.log("📦 Parcel ID:", parcelId);
 
         Alert.alert(
             "Accept Delivery",
             "Are you sure you want to accept this delivery?",
             [
-                {
-                    text: "Cancel",
-                    style: "cancel"
-                },
+                { text: "Cancel", style: "cancel" },
                 {
                     text: "Accept",
                     onPress: async () => {
                         try {
-                            // Stop alert sound if playing
-                            if (soundRef.current) {
-                                await soundRef.current.stopAsync();
-                            }
-
-                            console.log("🔊 Sound stopped");
-                            console.log("🧍‍♂️ Driver ID:", userData._id);
+                            // Stop alert sound
+                            stopSound();
 
                             // Emit socket event
                             if (socket && isSocketReady) {
-                                console.log("📡 Emitting socket event Parcel:accept_ride");
                                 socket.emit('Parcel:accept_ride', {
                                     parcelId,
                                     driverId: userData._id
                                 });
-                                console.log("✅ Socket event emitted");
-                            } else {
-                                console.warn("⚠️ Socket not ready");
                             }
 
                             // Make API request
-                            console.log("📤 Sending API request to accept parcel");
-                            console.log("🔗 API URL:", `https://www.appapi.olyox.com/api/v1/parcel/parcel-accept-ride/${parcelId}`);
-                            console.log("📦 Request payload:", { riderId: userData._id });
-
                             const response = await axios.post(
-                                `https://www.appapi.olyox.com/api/v1/parcel/parcel-accept-ride/${parcelId}`,
-                                { riderId: userData._id },
-                                {
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        // Add auth header if needed
-                                        // 'Authorization': `Bearer ${token}`
-                                    }
-                                }
+                                `${API_BASE_URL}/parcel/parcel-accept-ride/${parcelId}`,
+                                { riderId: userData._id }
                             );
-
-                            console.log("📥 API Response:", response.data);
-                            console.log("✅ Parcel accepted successfully");
 
                             // Show success message
                             Alert.alert(
                                 "Success",
-                                "Delivery accepted successfully! Taking you to tracking screen.",
-                                [{ text: "OK" }]
+                                "Delivery accepted successfully!",
+                                [{ 
+                                    text: "OK", 
+                                    onPress: () => navigation.navigate('DeliveryTracking', { parcelId }) 
+                                }]
                             );
-
-                            // Navigate to tracking screen
-                            navigation.navigate('DeliveryTracking', { parcelId });
-
                         } catch (error) {
-                            console.error("❌ Error accepting ride:", error);
-                            console.error("❌ Error details:", {
+                            const errorMessage = error?.response?.data?.message || 
+                                "Failed to accept the delivery. Please try again.";
+                            
+                            Alert.alert("Error", errorMessage);
+                            console.error("Error accepting ride:", {
                                 message: error.message,
                                 response: error.response?.data,
                                 status: error.response?.status
                             });
-
-                            // Show detailed error message
-                            Alert.alert(
-                                "Error",
-                                error.response?.data?.message || "Failed to accept the delivery. Please try again.",
-                                [{ text: "OK" }]
-                            );
                         }
                     }
                 }
             ]
         );
     };
+
+    // Handle reject delivery
     const handleReject = () => {
-        // Logic to reject the ride
         Alert.alert(
             "Reject Delivery",
             "Are you sure you want to reject this delivery?",
             [
-                {
-                    text: "Cancel",
-                    style: "cancel"
-                },
+                { text: "Cancel", style: "cancel" },
                 {
                     text: "Reject",
                     onPress: async () => {
                         try {
                             // Stop sound
-                            if (soundRef.current) {
-                                await soundRef.current.stopAsync();
-                            }
+                            stopSound();
 
                             // Emit socket event for rejecting ride
                             if (socket && isSocketReady) {
                                 socket.emit('driver:reject_ride', {
                                     parcelId: parcelId,
-                                    driverId: userData._id || 'unknown',
+                                    driverId: userData?._id || 'unknown',
                                     reason: 'Parcel_driver_rejected'
                                 });
                             }
 
                             // Make API call to reject the ride
-                            await axios.post(`https://www.appapi.olyox.com/api/v1/driver/reject-ride/${parcelId}`);
-
+                            await axios.post(`${API_BASE_URL}/driver/reject-ride/${parcelId}`);
+                            
                             // Navigate back to home
-                            navigation.reset({
-                                index: 0,
-                                routes: [{ name: 'Home' }],
-                            });
+                            navigateToHome();
                         } catch (error) {
                             console.log("Error rejecting ride:", error?.response?.data?.message || error.message);
                             Alert.alert("Error", "Failed to reject the delivery");
@@ -261,21 +278,34 @@ export default function NewParcelLive() {
         );
     };
 
+    // Render loading state
     if (loading) {
         return (
-            <SafeAreaView style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Loading delivery details...</Text>
+            <SafeAreaView style={styles.centeredContainer}>
+                <View style={styles.loadingCard}>
+                    <MaterialIcons name="delivery-dining" size={40} color="#4a89f3" />
+                    <Text style={styles.loadingText}>Loading delivery details...</Text>
+                </View>
             </SafeAreaView>
         );
     }
 
-    if (!parcelDetails) {
+    // Render error state
+    if (error || !parcelDetails) {
         return (
-            <SafeAreaView style={styles.errorContainer}>
-                <Text style={styles.errorText}>No parcel details found</Text>
-                <TouchableOpacity style={styles.retryButton} onPress={handleFetchDetails}>
-                    <Text style={styles.retryButtonText}>Retry</Text>
-                </TouchableOpacity>
+            <SafeAreaView style={styles.centeredContainer}>
+                <View style={styles.errorCard}>
+                    <MaterialIcons name="error-outline" size={40} color="#e74c3c" />
+                    <Text style={styles.errorText}>{error || "No parcel details found"}</Text>
+                    <View style={styles.errorButtonsContainer}>
+                        <TouchableOpacity style={styles.backButton} onPress={navigateToHome}>
+                            <Text style={styles.backButtonText}>Go Home</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.retryButton} onPress={handleFetchDetails}>
+                            <Text style={styles.retryButtonText}>Retry</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
             </SafeAreaView>
         );
     }
@@ -284,19 +314,34 @@ export default function NewParcelLive() {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-                <View style={styles.header}>
+            {/* Header with back button */}
+            <View style={styles.headerContainer}>
+                <TouchableOpacity 
+                    style={styles.backButtonSmall} 
+                    onPress={navigateToHome}
+                >
+                    <Ionicons name="arrow-back" size={24} color="#333" />
+                </TouchableOpacity>
+                <View style={styles.headerTextContainer}>
                     <Text style={styles.headerTitle}>New Delivery Request</Text>
                     <Text style={styles.rideId}>ID: {ride_id}</Text>
                 </View>
+            </View>
 
-                <View style={styles.timerContainer}>
-                    <Text style={styles.timerText}>Auto-reject in: </Text>
-                    <Text style={[styles.timerCounter, timeLeft <= 10 && styles.timerWarning]}>
-                        {timeLeft}s
-                    </Text>
-                </View>
+            {/* Timer */}
+            <View style={styles.timerContainer}>
+                <Text style={styles.timerText}>Auto-reject in: </Text>
+                <Text style={[styles.timerCounter, timeLeft <= 10 && styles.timerWarning]}>
+                    {timeLeft}s
+                </Text>
+            </View>
 
+            {/* Main content */}
+            <ScrollView 
+                style={styles.container} 
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
                 <View style={styles.priceCard}>
                     <Text style={styles.fareTitle}>Earnings</Text>
                     <Text style={styles.fareAmount}>₹{fares.netFare}</Text>
@@ -371,52 +416,103 @@ export default function NewParcelLive() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#f8f9fa',
     },
-    container: {
-        flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    scrollContent: {
-        padding: 16,
-        paddingBottom: 100, // Extra padding for fixed buttons
-    },
-    loadingContainer: {
+    centeredContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#f8f9fa',
+        padding: 20,
+    },
+    loadingCard: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 24,
+        alignItems: 'center',
+        width: '90%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
     loadingText: {
         fontSize: 16,
         color: '#555',
+        marginTop: 16,
+        textAlign: 'center',
     },
-    errorContainer: {
-        flex: 1,
-        justifyContent: 'center',
+    errorCard: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 24,
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        width: '90%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
     errorText: {
         fontSize: 16,
         color: '#e74c3c',
-        marginBottom: 16,
+        marginTop: 16,
+        marginBottom: 24,
+        textAlign: 'center',
+    },
+    errorButtonsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+    },
+    backButton: {
+        backgroundColor: '#6c757d',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+        flex: 1,
+        marginRight: 8,
+        alignItems: 'center',
+    },
+    backButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
     retryButton: {
         backgroundColor: '#3498db',
-        paddingVertical: 10,
+        paddingVertical: 12,
         paddingHorizontal: 20,
         borderRadius: 8,
+        flex: 1,
+        marginLeft: 8,
+        alignItems: 'center',
     },
     retryButtonText: {
         color: '#fff',
         fontWeight: 'bold',
+        fontSize: 16,
     },
-    header: {
-        marginBottom: 8,
+    headerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        backgroundColor: '#fff',
+    },
+    backButtonSmall: {
+        padding: 8,
+    },
+    headerTextContainer: {
+        marginLeft: 8,
+        flex: 1,
     },
     headerTitle: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: 'bold',
         color: '#333',
     },
@@ -424,11 +520,23 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#666',
     },
+    container: {
+        flex: 1,
+        backgroundColor: '#f8f9fa',
+    },
+    scrollContent: {
+        padding: 16,
+        paddingBottom: 100, // Extra padding for fixed buttons
+    },
     timerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        marginBottom: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
     },
     timerText: {
         fontSize: 14,
