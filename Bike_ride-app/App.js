@@ -198,7 +198,7 @@ const App = () => {
                   <NavigationContainer ref={navigationRef}>
                     <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
                       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                      <Stack.Screen name="register" options={{ headerShown: true }} component={RegistrationForm} />
+                      <Stack.Screen name="register" options={{ headerShown: true ,title:'Complete Profile' }} component={RegistrationForm} />
                       <Stack.Screen name="UploadDocuments" component={Document} />
                       <Stack.Screen name="Wait_Screen" component={Wait_Screen} />
                       <Stack.Screen name="Home" component={HomeScreen} />

@@ -29,6 +29,10 @@ const RiderSchema = new Schema({
         VehicleImage: [String]
 
     },
+    isFirstRechargeDone:{
+        type: Boolean,
+        default: false
+    },
     isProfileComplete: {
         type: Boolean,
         default: false

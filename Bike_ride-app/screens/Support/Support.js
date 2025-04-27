@@ -11,8 +11,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import useSettings from '../../hooks/settings.hook';
 
 export default function SupportScreen() {
+    const { settings, loading, error } = useSettings();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
@@ -21,6 +23,7 @@ export default function SupportScreen() {
     const emailAddress = 'support@example.com';
     const whatsappNumber = '+919996991739';
 
+    // console.log(settings)
     const handleSubmit = () => {
         // Handle form submission here
         console.log({ name, email, message });
@@ -29,6 +32,7 @@ export default function SupportScreen() {
         setEmail('');
         setMessage('');
     };
+    console.log(settings)
 
     const openWhatsApp = () => {
         const url = `https://wa.me/${whatsappNumber}`;
@@ -56,13 +60,19 @@ export default function SupportScreen() {
                     <TouchableOpacity style={styles.card} onPress={makeCall}>
                         <Ionicons name="call" size={24} color="#F59E0B" />
                         <Text style={styles.cardTitle}>Call Us</Text>
-                        <Text style={styles.cardText}>{phoneNumber}</Text>
+                        <Text style={styles.cardText}>
+  {settings?.support_number 
+    ? (settings.support_number.toString().startsWith('0') 
+        ? settings.support_number 
+        : '0' + settings.support_number)
+    : phoneNumber}
+</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.card} onPress={sendEmail}>
                         <Ionicons name="mail" size={24} color="#F59E0B" />
                         <Text style={styles.cardTitle}>Email Us</Text>
-                        <Text style={styles.cardText}>{emailAddress}</Text>
+                        <Text style={styles.cardText}>{settings?.adminEmail || emailAddress}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.card} onPress={openWhatsApp}>

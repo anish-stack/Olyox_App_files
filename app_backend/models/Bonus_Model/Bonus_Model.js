@@ -31,6 +31,9 @@ const BonusSchema = new mongoose.Schema({
   anyRequiredField: [{
     type: String,
   }],
+  any_required_field: [{
+    type: String,
+  }],
 
   createdAt: {
     type: Date,

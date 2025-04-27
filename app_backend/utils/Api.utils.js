@@ -90,13 +90,20 @@ exports.updateRechargeDetails = async ({ rechargePlan, expireData, approveRechar
 
     // If approveRecharge is true, update the recharge details
     if (approveRecharge) {
+      // Mark first recharge as done
+      foundRider.isFirstRechargeDone = true;
+
+      // Update recharge data
       foundRider.RechargeData = {
         rechargePlan,
         expireData,
         approveRecharge: true
       };
+
+      // Mark rider as paid
       foundRider.isPaid = true;
 
+      // Save changes
       await foundRider.save();
 
       return {

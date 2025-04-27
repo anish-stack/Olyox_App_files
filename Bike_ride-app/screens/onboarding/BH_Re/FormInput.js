@@ -6,6 +6,7 @@ export default function FormInput({
   label,
   value,
   onChangeText,
+  editable=true,
   error,
   placeholder,
   secureTextEntry,
@@ -20,6 +21,7 @@ export default function FormInput({
         onChangeText={onChangeText}
         placeholder={placeholder}
         secureTextEntry={secureTextEntry}
+        editable={editable}
         keyboardType={keyboardType}
       />
       {error && <Text style={styles.errorText}>{error}</Text>}

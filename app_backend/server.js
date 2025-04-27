@@ -1192,7 +1192,7 @@ app.post('/directions', async (req, res) => {
 });
 
 /**
- * Location webhook for parcel delivery personnel
+ * Location webhook for parcel delivery personnela
  * Updates the current location of a parcel delivery person
  */
 // Conditionally apply the Protect middleware based on riderId presence

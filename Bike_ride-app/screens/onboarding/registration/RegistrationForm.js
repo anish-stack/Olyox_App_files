@@ -5,6 +5,7 @@ import axios from "axios"
 import { Alert } from "react-native"
 import * as SecureStore from 'expo-secure-store'
 import { useNavigation, useRoute } from "@react-navigation/native"
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const API_BASE_URL = "https://www.webapi.olyox.com/api/v1"
 const MAIN_API_BASE_URL = "https://www.appapi.olyox.com/api/v1"
@@ -13,12 +14,14 @@ export default function RegistrationForm() {
   const route = useRoute()
   const navigation = useNavigation()
   const { bh } = route.params || {}
-  
+
   // Form steps
   const [step, setStep] = useState(1)
-  
+
   // Form data
   const [userData, setUserData] = useState(null)
+  const [date, setDate] = useState(new Date());
+  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
   const [bhId, setBhId] = useState(bh ?? "BH")
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
@@ -29,12 +32,12 @@ export default function RegistrationForm() {
   const [vehicleNumber, setVehicleNumber] = useState("")
   const [rcExpireDate, setRcExpireDate] = useState("")
   const [otp, setOtp] = useState("")
-  
+
   // Data lists
   const [vehicleTypes, setVehicleTypes] = useState([])
   const [vehicleBrands, setVehicleBrands] = useState([])
   const [parcelVehicles, setParcelVehicles] = useState([])
-  
+
   // UI states
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -65,7 +68,7 @@ export default function RegistrationForm() {
 
     setLoading(true)
     setError("")
-    
+
     try {
       const response = await axios.get(`${API_BASE_URL}/app-get-details?Bh=${bhId}`)
 
@@ -124,18 +127,49 @@ export default function RegistrationForm() {
     }
   }
 
+  const showDatePicker = () => {
+    setIsDatePickerVisible(true);
+  };
+
+  const hideDatePicker = () => {
+    setIsDatePickerVisible(false);
+  };
+
+  const formatDate = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+  const handleDateChange = (event, selectedDate) => {
+    if (event.type === "set") {
+      const newDate = selectedDate || date; // Handle potential null value
+
+
+      // ✅ Store the Date object directly (NOT formatted string)
+      setRcExpireDate(newDate)
+
+      hideDatePicker();
+    } else {
+      hideDatePicker();
+    }
+  };
+
+  console.log(formatDate(rcExpireDate))
   const registerRider = async () => {
     if (!validateForm()) {
       return
     }
-    
+
     setLoading(true)
     setError("")
-    
+
     try {
       const endpoint = `${MAIN_API_BASE_URL}/rider/register`
-     
-      
+
+
       const payload = {
         name,
         phone,
@@ -148,7 +182,7 @@ export default function RegistrationForm() {
           VehicleNumber: vehicleNumber,
         }
       }
-      
+
       const response = await axios.post(endpoint, payload)
 
       if (response.data.success) {
@@ -170,10 +204,10 @@ export default function RegistrationForm() {
       setError("Please enter the OTP")
       return
     }
-    
+
     setLoading(true)
     setError("")
-    
+
     try {
       const endpoint = `${MAIN_API_BASE_URL}/rider/rider-verify`
 
@@ -181,7 +215,7 @@ export default function RegistrationForm() {
         number: phone,
         otp,
       })
-      
+
       if (data.success && data.token) {
         const tokenKey = role === "cab" ? 'auth_token_cab' : 'auth_token_cab'
         await SecureStore.setItemAsync(tokenKey, data.token)
@@ -201,12 +235,12 @@ export default function RegistrationForm() {
   const resendOtp = async () => {
     setLoading(true)
     setError("")
-    
+
     try {
       const endpoint = `${MAIN_API_BASE_URL}/rider/rider-resend`
-      
+
       const { data } = await axios.post(endpoint, { number: phone })
-      
+
       if (data.success) {
         setSuccess("OTP resent successfully!")
       } else {
@@ -225,14 +259,14 @@ export default function RegistrationForm() {
 
     if (!name) missingFields.push("Name")
     if (!phone) missingFields.push("Phone")
-    
+
     if (role === "cab") {
       if (!vehicleType) missingFields.push("Vehicle Type")
       if (!vehicleName) missingFields.push("Vehicle Brand")
     } else {
       if (!vehicleType) missingFields.push("Parcel Vehicle Type")
     }
-    
+
     if (!vehicleNumber) missingFields.push("Vehicle Number")
     if (!rcExpireDate) missingFields.push("RC Expiry Date")
 
@@ -246,20 +280,13 @@ export default function RegistrationForm() {
       return false
     }
 
-    // Basic date validation (YYYY-MM-DD format)
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
-    if (!dateRegex.test(rcExpireDate)) {
-      setError("Please enter RC expiry date in YYYY-MM-DD format")
-      return false
-    }
-
     return true
   }
 
   // UI Components
   const renderUserInfo = () => {
     if (!userData) return null
-    
+
     return (
       <Card style={styles.card}>
         <Card.Content>
@@ -284,12 +311,12 @@ export default function RegistrationForm() {
         mode="outlined"
         keyboardType="phone-pad"
         style={styles.input}
-        theme={{ colors: { primary: "#f7de02" } }}
+
       />
-      <Button 
-        mode="contained" 
-        onPress={fetchUserDetails} 
-        style={styles.button} 
+      <Button
+        mode="contained"
+        onPress={fetchUserDetails}
+        style={styles.button}
         labelStyle={styles.buttonLabel}
         disabled={loading}
       >
@@ -329,7 +356,7 @@ export default function RegistrationForm() {
     <View style={styles.stepContainer}>
       {renderUserInfo()}
       {renderRoleSelection()}
-      
+
       <TextInput
         label="Name"
         value={name}
@@ -338,7 +365,7 @@ export default function RegistrationForm() {
         style={styles.input}
         theme={{ colors: { primary: "#f7de02" } }}
       />
-      
+
       <TextInput
         label="Phone Number"
         value={phone}
@@ -356,9 +383,9 @@ export default function RegistrationForm() {
             visible={vehicleTypeMenuVisible}
             onDismiss={() => setVehicleTypeMenuVisible(false)}
             anchor={
-              <Button 
-                onPress={() => setVehicleTypeMenuVisible(true)} 
-                mode="outlined" 
+              <Button
+                onPress={() => setVehicleTypeMenuVisible(true)}
+                mode="outlined"
                 style={styles.input}
               >
                 {vehicleType || "Select Vehicle Type"}
@@ -384,9 +411,9 @@ export default function RegistrationForm() {
               visible={vehicleNameMenuVisible}
               onDismiss={() => setVehicleNameMenuVisible(false)}
               anchor={
-                <Button 
-                  onPress={() => setVehicleNameMenuVisible(true)} 
-                  mode="outlined" 
+                <Button
+                  onPress={() => setVehicleNameMenuVisible(true)}
+                  mode="outlined"
                   style={styles.input}
                 >
                   {vehicleName || "Select Vehicle Brand"}
@@ -413,9 +440,9 @@ export default function RegistrationForm() {
             visible={parcelTypeMenuVisible}
             onDismiss={() => setParcelTypeMenuVisible(false)}
             anchor={
-              <Button 
-                onPress={() => setParcelTypeMenuVisible(true)} 
-                mode="outlined" 
+              <Button
+                onPress={() => setParcelTypeMenuVisible(true)}
+                mode="outlined"
                 style={styles.input}
               >
                 {vehicleType || "Select Parcel Vehicle Type"}
@@ -459,21 +486,48 @@ export default function RegistrationForm() {
         placeholder="e.g., DL01AB1234"
         theme={{ colors: { primary: "#f7de02" } }}
       />
-      
+      <View style={{ marginVertical: 10 }}>
+        <TouchableOpacity
+          onPress={showDatePicker}
+          style={{
+            backgroundColor: '#000',
+            paddingVertical: 12,
+            paddingHorizontal: 20,
+            borderRadius: 8,
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>
+            Select RC Expiry Date
+          </Text>
+        </TouchableOpacity>
+
+        {isDatePickerVisible && (
+          <DateTimePicker
+            value={date}
+            mode="date"
+            display="calendar"
+            onChange={handleDateChange}
+            minimumDate={new Date()}
+          />
+        )}
+      </View>
+
+
       <TextInput
         label="RC Expiry Date"
-        value={rcExpireDate}
-        onChangeText={setRcExpireDate}
+        value={rcExpireDate ? formatDate(rcExpireDate) : ""}
+        editable={false}
         mode="outlined"
         placeholder="YYYY-MM-DD"
         style={styles.input}
-        theme={{ colors: { primary: "#f7de02" } }}
       />
-      
-      <Button 
-        mode="contained" 
-        onPress={registerRider} 
-        style={styles.button} 
+
+
+      <Button
+        mode="contained"
+        onPress={registerRider}
+        style={styles.button}
         labelStyle={styles.buttonLabel}
         disabled={loading}
       >
@@ -490,7 +544,7 @@ export default function RegistrationForm() {
           <Paragraph style={styles.otpMessage}>
             We have sent an OTP to {phone}. Please enter it below.
           </Paragraph>
-          
+
           <TextInput
             label="Enter OTP"
             value={otp}
@@ -501,20 +555,20 @@ export default function RegistrationForm() {
             maxLength={6}
             theme={{ colors: { primary: "#f7de02" } }}
           />
-          
-          <Button 
-            mode="contained" 
-            onPress={verifyOtp} 
+
+          <Button
+            mode="contained"
+            onPress={verifyOtp}
             style={styles.button}
             labelStyle={styles.buttonLabel}
             disabled={loading}
           >
             {loading ? 'Verifying...' : 'Verify OTP'}
           </Button>
-          
-          <Button 
-            mode="text" 
-            onPress={resendOtp} 
+
+          <Button
+            mode="text"
+            onPress={resendOtp}
             style={styles.resendButton}
             labelStyle={styles.resendButtonLabel}
             disabled={loading}
@@ -532,33 +586,33 @@ export default function RegistrationForm() {
     //   style={styles.backgroundImage}
     //   defaultSource={require('../assets/background-placeholder.jpg')}
     // >
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
-        <Card style={styles.formCard}>
-          <Card.Content>
-            <Title style={styles.title}>
-              {step === 1 ? "Enter Your BH ID" : 
-               step === 2 ? "Driver Registration" : 
-              null}
-            </Title>
-            {step === 1 && renderStep1()}
-            {step === 2 && renderStep2()}
-            {step === 3 && renderStep3()}
-            {loading && <ActivityIndicator animating={true} style={styles.loader} color="#f7de02" />}
-          </Card.Content>
-        </Card>
-        
-        <Snackbar
-          visible={!!error || !!success}
-          onDismiss={() => {
-            setError("")
-            setSuccess("")
-          }}
-          duration={3000}
-          style={error ? styles.errorSnackbar : styles.successSnackbar}
-        >
-          {error || success}
-        </Snackbar>
-      </ScrollView>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.container}>
+      <Card style={styles.formCard}>
+        <Card.Content>
+          <Title style={styles.title}>
+            {step === 1 ? "Enter Your BH ID" :
+              step === 2 ? "Driver Registration" :
+                null}
+          </Title>
+          {step === 1 && renderStep1()}
+          {step === 2 && renderStep2()}
+          {step === 3 && renderStep3()}
+          {loading && <ActivityIndicator animating={true} style={styles.loader} color="#f7de02" />}
+        </Card.Content>
+      </Card>
+
+      <Snackbar
+        visible={!!error || !!success}
+        onDismiss={() => {
+          setError("")
+          setSuccess("")
+        }}
+        duration={3000}
+        style={error ? styles.errorSnackbar : styles.successSnackbar}
+      >
+        {error || success}
+      </Snackbar>
+    </ScrollView>
     // </ImageBackground>
   )
 }

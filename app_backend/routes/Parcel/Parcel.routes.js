@@ -4,7 +4,7 @@ const Protect = require('../../middleware/Auth');
 const { register_parcel_partner, login, verifyOtp, resendOtp, details, partner_work_status, manage_offline_online, uploadDocuments, getAllParcelUser, getSingleParcelUser, updateParcelIsBlockStatus, ParcelDocumentVerify, updateParcelDetail } = require('../../Parcel Controller/Register_Partner');
 const { request_of_parcel, my_parcel, single_my_parcel, my_parcel_driver, single_my_parcels, get_all_parcel, get_parcel_by_id, update_parcel_order_status, delete_parcel_order } = require('../../Parcel Controller/Order.Parcel');
 const { createVehicleForParcel, getAllVehicles, getVehicleById, updateVehicle, deleteVehicle } = require('../../Parcel Controller/VehicleParcel');
-const { create_Coupons, getAll_Coupons, getOne_Coupon, update_Coupon, delete_Coupon } = require('../../Parcel Controller/ParcelCoupons');
+const { create_Coupons, getAll_Coupons, getOne_Coupon, update_Coupon, delete_Coupon, updateisActiveToggle } = require('../../Parcel Controller/ParcelCoupons');
 const { NewBooking, getParcelDetails,acceptParcelByRider, updateParcelStatus, cancelOrder, getMyNearParcel } = require('../../Parcel Controller/NewOrderParcel');
 
 const parcel = express.Router();
@@ -62,7 +62,8 @@ parcel.post('/parcel-coupon',create_Coupons);
 parcel.get('/parcel-coupon',getAll_Coupons);          
 parcel.get('/parcel-coupon/:id',getOne_Coupon);       
 parcel.put('/parcel-coupon/:id',update_Coupon);      
-parcel.delete('/parcel-coupon/:id',delete_Coupon);   
+parcel.delete('/parcel-coupon/:id',delete_Coupon); 
+parcel.put('/update_parcel_coupon_status/:id',updateisActiveToggle);  
 
 //Booking parcels 
 

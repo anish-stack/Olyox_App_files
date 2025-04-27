@@ -67,6 +67,7 @@ const LoginForm = ({ onLogin }) => {
       // console.error("Error during login:", error?.response?.data);
       
       if (error?.response?.status === 403) {
+        
         Alert.alert(
           'Complete Profile', 
           error?.response?.data?.message, 

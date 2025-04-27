@@ -59,7 +59,7 @@ const { markPaid } = require('../../controllers/rider.controller');
 const { createNotification, getNotifications, getNotificationById, markAsRead, deleteNotification } = require('../../Admin Controllers/settings/notificationController');
 const { createPolicy, updatePolicy, getPolicyById, findPolicyByTitle, deletePolicy, getPolicies } = require('../../Admin Controllers/settings/privacyPolicyController');
 const { createReport, getAllReports, getSingleReport, updateReport, deleteReport } = require('../../Admin Controllers/Bugs/LoginBugsReportsController');
-const { createBonus, getAllBonuses, getBonusById, updateBonus, deleteBonus } = require('../../Admin Controllers/createBonus/BonusController');
+const { createBonus, getAllBonuses, getBonusById, updateBonus, deleteBonus, updateBonusStatus } = require('../../Admin Controllers/createBonus/BonusController');
 const { createAppHomeBanner, getAllAppHomeBanners, getSingleAppHomeBanner, updateAppHomeBanner, deleteAppHomeBanner, updateAppHomeBannerStatus } = require('../../Admin Controllers/AppHomeBanner');
 
 const admin = express.Router();
@@ -165,6 +165,7 @@ admin.get('/admin/bonuses', getAllBonuses);
 admin.get('/admin/bonuses/:id', getBonusById);
 admin.put('/admin/bonuses/:id', updateBonus);
 admin.delete('/admin/bonuses/:id', deleteBonus);
+admin.put('/admin/update_bonus_status/:id', updateBonusStatus);
 
 
 // app home banner

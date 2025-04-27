@@ -347,7 +347,7 @@ const ParcelHome = () => {
 
   useEffect(() => {
     updateDriverLocation(driverLocation?.latitude, driverLocation?.longitude)
-  },[driverLocation])
+  }, [driverLocation])
 
   console.log("I am Parcel Home",)
 
@@ -583,12 +583,22 @@ const ParcelHome = () => {
               style={styles.menuItem}
               onPress={() => {
                 setMenuVisible(false);
-                navigation.navigate("Recharge");
+                navigation.navigate("Recharge", {
+                  showOnlyBikePlan:
+                    userData?.rideVehicleInfo?.vehicleName === '2 Wheeler' ||
+                    userData?.rideVehicleInfo?.vehicleName === 'Bike'
+                      ? true
+                      : false,
+                  role: userData?.category,
+                  firstRecharge : userData?.isFirstRechargeDone || false                  
+                });
               }}
+              
             >
               <Ionicons name="card" size={24} color="#3498db" />
               <Text style={styles.menuText}>Recharge</Text>
             </TouchableOpacity>
+
 
 
 

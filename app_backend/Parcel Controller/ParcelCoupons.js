@@ -63,3 +63,27 @@ exports.delete_Coupon = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+
+exports.updateisActiveToggle = async(req,res) => {
+  try {
+    const {id} = req.params;
+    const {isActive} = req.body;
+    const findCoupon = await Parcel_CouponsModel.findById(id)
+    if(!findCoupon){
+      return res.status(400).json({
+        success: false,
+        message: 'Coupon not found'
+      })
+    }
+    findCoupon.isActive = isActive;
+    await findCoupon.save()
+  } catch (error) {
+    console.log('Internal server error',error)
+    res.status(500).json({
+      success: false,
+      message: 'Internal servere error',
+      error: error.message
+    })
+  }
+}

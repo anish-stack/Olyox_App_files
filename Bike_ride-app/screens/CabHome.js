@@ -357,8 +357,16 @@ const CabHome = () => {
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
-                setMenuVisible(false)
-                navigation.navigate("Recharge")
+                setMenuVisible(false);
+                navigation.navigate("Recharge", {
+                  showOnlyBikePlan:
+                    user_data?.rideVehicleInfo?.vehicleName === '2 Wheeler' ||
+                    user_data?.rideVehicleInfo?.vehicleName === 'Bike'
+                      ? true
+                      : false,
+                  role: user_data?.category,
+                  firstRecharge : user_data?.isFirstRechargeDone || false                  
+                });
               }}
             >
               <MaterialCommunityIcons name="contactless-payment" size={24} color="#FFB300" />

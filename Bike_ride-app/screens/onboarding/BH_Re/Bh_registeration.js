@@ -6,6 +6,7 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
+  Button,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
@@ -13,12 +14,13 @@ import axios from 'axios';
 import FormInput from './FormInput';
 import AddressForm from './AddressForm';
 import BhVerificationError from './BhVerificationError';
-
+import DateTimePicker from '@react-native-community/datetimepicker';
 export default function RegisterWithBh() {
   const route = useRoute();
   const navigation = useNavigation();
   const { bh_id } = route.params || {};
-
+  const [date, setDate] = useState(new Date());
+  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
   const [isBhVerify, setIsBhVerify] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -53,6 +55,49 @@ export default function RegisterWithBh() {
     fetchCategory();
   }, [bh_id]);
 
+
+  const showDatePicker = () => {
+    setIsDatePickerVisible(true);
+  };
+
+  const hideDatePicker = () => {
+    setIsDatePickerVisible(false);
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    if (event.type === "set") {
+      const newDate = selectedDate || date; // Handle potential null value
+
+      // Calculate age
+      const today = new Date();
+      const birthDate = new Date(newDate);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDifference = today.getMonth() - birthDate.getMonth();
+
+      if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+
+      if (age < 18) {
+        alert("You must be at least 18 years old.");
+        hideDatePicker();
+        return;
+      }
+
+      // ✅ Store the Date object directly (NOT formatted string)
+      setFormData((prev) => ({
+        ...prev,
+        dob: newDate,  // <-- Date object, NOT formatted string
+      }));
+
+      hideDatePicker();
+    } else {
+      hideDatePicker();
+    }
+  };
+
+
+
   const checkBhId = async () => {
     try {
       const { data } = await axios.post('https://www.api.olyox.com/api/v1/check-bh-id', { bh: bh_id });
@@ -78,13 +123,10 @@ export default function RegisterWithBh() {
     const newErrors = {};
     const currentDate = new Date();
     const dobDate = new Date(formData.dob);
-
+    console.log(formData)
     if (!formData.name.trim()) newErrors.name = 'Please enter your name.';
-    if (!formData.dob.trim()) {
+    if (!formData.dob) {
       newErrors.dob = 'Please enter your date of birth.';
-    } else {
-      const age = currentDate.getFullYear() - dobDate.getFullYear();
-      if (age < 18) newErrors.dob = 'You must be at least 18 years old.';
     }
 
     if (!formData.email.trim()) {
@@ -137,12 +179,22 @@ export default function RegisterWithBh() {
         });
       }
     } catch (error) {
+      console.log(error.response.data)
       const errorMessage = error.response?.data?.message || 'Registration failed';
       alert(errorMessage);
     } finally {
       setSubmitting(false);
     }
   };
+  const formatDate = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
 
   if (!isBhVerify && bh_id) {
     return <BhVerificationError />;
@@ -169,14 +221,24 @@ export default function RegisterWithBh() {
           error={errors.name}
           placeholder="Enter your name"
         />
-
+        <View>
+          <Button title="Select Date of Birth" onPress={showDatePicker} />
+          {isDatePickerVisible && (
+            <DateTimePicker
+              value={date}
+              mode="date" // or "time"
+              onChange={handleDateChange}
+              display="default" // "default" or "spinner" or "calendar" or "clock"
+            />
+          )}
+        </View>
         <FormInput
-          label="Date of Birth (YYYY-MM-DD)"
-          value={formData.dob}
-          onChangeText={(text) => setFormData({ ...formData, dob: text })}
+          editable={false}
+          value={formData.dob ? formatDate(formData.dob) : ""}
           error={errors.dob}
-          placeholder="YYYY-MM-DD"
+          placeholder="DD-MM-YYYY"
         />
+
 
         <FormInput
           label="Email"
@@ -204,6 +266,7 @@ export default function RegisterWithBh() {
           placeholder="Enter your phone number"
           keyboardType="phone-pad"
         />
+
 
         <FormInput
           label="Password"

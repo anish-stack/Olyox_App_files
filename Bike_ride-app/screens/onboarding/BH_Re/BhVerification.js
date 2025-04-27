@@ -31,6 +31,7 @@ const BhVerification = () => {
       }, 1200);
     } catch (err) {
       setResponse(null);
+      console.log(err)
       setError(err.response?.data?.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);

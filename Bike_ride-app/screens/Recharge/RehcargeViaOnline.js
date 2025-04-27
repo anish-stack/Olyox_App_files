@@ -15,7 +15,7 @@ import {
 import RazorpayCheckout from 'react-native-razorpay';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -152,6 +152,8 @@ const MembershipCard = ({ plan, selected, onSelect }) => (
 
 export default function RechargeViaOnline() {
   const navigation = useNavigation();
+  const route = useRoute()
+  const { showOnlyBikePlan, role ,firstRecharge} = route.params || {}
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState(null);
   const [memberships, setMemberships] = useState([]);
@@ -161,6 +163,7 @@ export default function RechargeViaOnline() {
     status: '',
     message: ''
   });
+  console.log(showOnlyBikePlan)
 
   useEffect(() => {
     fetchUserDetails();
@@ -180,15 +183,29 @@ export default function RechargeViaOnline() {
       showPaymentModal('failed', 'Failed to fetch user details. Please try again.');
     }
   };
+  console.log("role",role)
 
   const fetchMembershipPlans = async () => {
     try {
       const { data } = await axios.get('https://www.api.olyox.com/api/v1/membership-plans');
-      setMemberships(data.data);
+  
+      let plans = data.data.filter((item) =>
+        item.category === (showOnlyBikePlan ? 'bike' : role)
+      );
+  
+      // 👉 Filter based on firstRecharge condition
+      if (firstRecharge) {
+        plans = plans.filter((plan) => plan.price > 1);
+      }
+  
+      console.log(plans);
+      setMemberships(plans);
     } catch (error) {
       showPaymentModal('failed', 'Failed to fetch membership plans. Please try again.');
     }
   };
+  
+
 
   const showPaymentModal = (status, message) => {
     setModalConfig({

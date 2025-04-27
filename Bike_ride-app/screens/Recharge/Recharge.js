@@ -15,11 +15,13 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
 export default function Recharge() {
+  const route= useRoute()
+  const {showOnlyBikePlan} = route.params || {}
   const navigation = useNavigation();
   const [showQR, setShowQR] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,6 +30,8 @@ export default function Recharge() {
   const [selectedMemberId, setSelectedMemberId] = useState(null);
   const [transactionId, setTransactionId] = useState('');
   const [timer, setTimer] = useState(30 * 60);
+
+  console.log(showOnlyBikePlan)
 
   const fetchUserDetails = async () => {
     setLoading(true);
