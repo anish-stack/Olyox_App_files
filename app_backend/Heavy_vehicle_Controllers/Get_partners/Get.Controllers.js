@@ -173,3 +173,51 @@ exports.getAllCallAndMessage = async (req, res) => {
     }
 };
 
+
+exports.getCallAndMessageByHevyVehicleId = async (req,res) => {
+    try {
+        const {id} = req.params;
+        const requests = await CallAndMessageRequest.find({receiverId: id}).populate("senderId").populate("receiverId")
+        if(!requests){
+            return res.status(400).json({ 
+                success: false,
+                message: "No request found" 
+            });
+        }
+        return res.status(200).json({ success: true, message: "All requests fetched successfully", data: requests });
+    } catch (error) {
+        console.error("Error fetching heavy vehicle partners:", error);
+        return res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+    }
+}
+
+exports.changeCallAndMessageRequestStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        const request = await CallAndMessageRequest.findById(id);
+        if (!request) {
+            return res.status(404).json({ message: "Request not found" });
+        }
+        request.status = status;
+        const updatedRequest = await request.save();
+        return res.status(200).json({ message: "Request status updated successfully", request: updatedRequest });
+    } catch (error) {
+        console.error("Error updating request status:", error);
+        return res.status(500).json({ message: "Failed to update request status" });
+    }
+};
+
+exports.deleteCallAndMessageRequest = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const request = await CallAndMessageRequest.findByIdAndDelete(id);
+        if (!request) {
+            return res.status(404).json({ message: "Request not found" });
+        }
+        return res.status(200).json({ message: "Request deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting request:", error);
+        return res.status(500).json({ message: "Failed to delete request" });
+    }
+}

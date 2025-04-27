@@ -342,7 +342,7 @@ exports.single_my_parcels = async (req, res) => {
 
 exports.get_all_parcel = async (req, res) => {
     try {
-        const allParcelOrder = await Parcel_Request.find().populate('rider_id')
+        const allParcelOrder = await Parcel_Request.find().populate('vehicle_id').populate('customerId').populate('rider_id','-documents')
             .sort({ createdAt: -1 });
         if (!allParcelOrder) {
             return res.status(400).json({
@@ -357,6 +357,82 @@ exports.get_all_parcel = async (req, res) => {
         })
     } catch (error) {
         console.log("Internal server error", error)
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        })
+    }
+}
+
+exports.get_parcel_by_id = async (req, res) => {
+    try {
+        const {id} = req.params;
+        const parcelOrder = await Parcel_Request.findById(id).populate('vehicle_id').populate('customerId').populate('rider_id');
+        if (!parcelOrder) {
+            return res.status(400).json({
+                success: false,
+                message: "Parcel order not found"
+            })
+        }
+        return res.status(200).json({
+            success: true,
+            message: "Parcel order founded",
+            data: parcelOrder
+        })
+    } catch (error) {
+        console.log('Internal server error',error)
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        })
+    }
+}
+
+exports.update_parcel_order_status = async (req,res) => {
+    try {
+        const {id} = req.params;
+        const {status} = req.body;
+        const parcelOrder = await Parcel_Request.findByIdAndUpdate(id,{status});
+        if (!parcelOrder) {
+            return res.status(400).json({
+                success: false,
+                message: "Parcel order not found"
+            })
+        }
+        return res.status(200).json({
+            success: true,
+            message: "Parcel order status updated",
+            data: parcelOrder
+        })
+    } catch (error) {
+        console.log('Internal server error',error)
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        })
+    }
+}
+
+exports.delete_parcel_order = async (req,res) => {
+    try {
+        const {id} = req.params;
+        const parcelOrder = await Parcel_Request.findByIdAndDelete(id);
+        if (!parcelOrder) {
+            return res.status(400).json({
+                success: false,
+                message: "Parcel order not found"
+            })
+        }
+        return res.status(200).json({
+            success: true,
+            message: "Parcel order deleted",
+            data: parcelOrder
+        })
+    } catch (error) {
+        console.log('Internal server error',error)
         res.status(500).json({
             success: false,
             message: 'Internal server error',

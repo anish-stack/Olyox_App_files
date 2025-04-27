@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const Protect = require('../../middleware/Auth');
 const { register_parcel_partner, login, verifyOtp, resendOtp, details, partner_work_status, manage_offline_online, uploadDocuments, getAllParcelUser, getSingleParcelUser, updateParcelIsBlockStatus, ParcelDocumentVerify, updateParcelDetail } = require('../../Parcel Controller/Register_Partner');
-const { request_of_parcel, my_parcel, single_my_parcel, my_parcel_driver, single_my_parcels, get_all_parcel } = require('../../Parcel Controller/Order.Parcel');
+const { request_of_parcel, my_parcel, single_my_parcel, my_parcel_driver, single_my_parcels, get_all_parcel, get_parcel_by_id, update_parcel_order_status, delete_parcel_order } = require('../../Parcel Controller/Order.Parcel');
 const { createVehicleForParcel, getAllVehicles, getVehicleById, updateVehicle, deleteVehicle } = require('../../Parcel Controller/VehicleParcel');
 const { create_Coupons, getAll_Coupons, getOne_Coupon, update_Coupon, delete_Coupon } = require('../../Parcel Controller/ParcelCoupons');
 const { NewBooking, getParcelDetails,acceptParcelByRider, updateParcelStatus, cancelOrder, getMyNearParcel } = require('../../Parcel Controller/NewOrderParcel');
@@ -34,6 +34,9 @@ parcel.get('/my_parcel_driver-details', Protect, my_parcel_driver)
 parcel.post('/manage_offline_online', Protect, manage_offline_online)
 parcel.get('/partner_work_status_details', Protect, partner_work_status)
 parcel.get('/get_parcel_order', get_all_parcel)
+parcel.get('/get_Single_parcel_by_id/:id',get_parcel_by_id)
+parcel.put('/update_parcel_order_status/:id',update_parcel_order_status)
+parcel.delete('/delete_parcel_order/:id',delete_parcel_order)
 parcel.post('/request_of_parcel', Protect, request_of_parcel)
 
 

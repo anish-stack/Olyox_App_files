@@ -6,7 +6,7 @@ const Protect = require('../../middleware/Auth');
 const { createCategory, getAllCategories, getCategory, updateCategory, deleteCategory, toggleStatus } = require('../../Heavy_vehicle_Controllers/Vehicle_types/HeavyVehicleCategory');
 const { create_heavy_vehicle_partner, verifyOTP, resendOTP, updateProfile, uploadDocuments, getMyProfile, getAllProfiles, getPartnerById, delete_account, login, updateServiceAreaOnly, getAllHeavyVehicles, updateIsBlockedHeavyVehicle, verifyDocumentOfHeavyTransport, deleteHeavyVendor, updateHTVehicalByAdmin } = require('../../Heavy_vehicle_Controllers/vehicle_partners/Auth.Partners');
 const HeveyPartnerProtect = require('../../middleware/HeavyPartnerAuth');
-const { getheaveyPartners, CreateCallAndMessageRequest, getAllCallAndMessage } = require('../../Heavy_vehicle_Controllers/Get_partners/Get.Controllers');
+const { getheaveyPartners, CreateCallAndMessageRequest, getAllCallAndMessage, changeCallAndMessageRequestStatus, deleteCallAndMessageRequest, getCallAndMessageByHevyVehicleId } = require('../../Heavy_vehicle_Controllers/Get_partners/Get.Controllers');
 const { getAllMyParcelByCustomerId } = require('../../Parcel Controller/NewOrderParcel');
 
 const Heavy = express.Router();
@@ -48,7 +48,10 @@ Heavy.get('/heavy-vehicle-partners',getheaveyPartners )
 // Call and Message Request
 Heavy.post('/generated-call-and-message-request',CreateCallAndMessageRequest)
 Heavy.get('/get-my-all-parcel/:userId',getAllMyParcelByCustomerId)
-
+Heavy.get('/get-all-call-and-message-request',getAllCallAndMessage)
+Heavy.get('/get-all-call-and-message-request-by-partner',getCallAndMessageByHevyVehicleId)
+Heavy.put('/toggle-call-and-message-request/:id',changeCallAndMessageRequestStatus)
+Heavy.delete('/delete-call-and-message-request/:id',deleteCallAndMessageRequest)
 
 Heavy.get('/get_all_hv_vendor', getAllHeavyVehicles);
 
@@ -56,5 +59,4 @@ Heavy.put('/update_hv_vendor_is_block_status/:id', updateIsBlockedHeavyVehicle);
 Heavy.put('/update_hv_vendor_document_verify/:id', verifyDocumentOfHeavyTransport);
 Heavy.delete('/heavy_vehicle_profile_delete/:id', deleteHeavyVendor);
 
-Heavy.get('/get-all-call-and-message-request',getAllCallAndMessage)
 module.exports = Heavy;
