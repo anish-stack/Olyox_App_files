@@ -342,7 +342,7 @@ exports.single_my_parcels = async (req, res) => {
 
 exports.get_all_parcel = async (req, res) => {
     try {
-        const allParcelOrder = await Parcel_Request.find().populate('driverId')
+        const allParcelOrder = await Parcel_Request.find().populate('Rider')
             .sort({ createdAt: -1 });
         if (!allParcelOrder) {
             return res.status(400).json({
