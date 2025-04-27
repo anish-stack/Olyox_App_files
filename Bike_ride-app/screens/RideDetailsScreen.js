@@ -342,6 +342,7 @@ export default function RideDetailsScreen() {
     socket.on('ride_cancelled', (data) => {
       logDebug('Ride cancelled event received', data);
       startSound();
+      navigation.navigate('Home')
       showLocalNotification("🚨 Ride Cancelled", "The ride has been cancelled by the customer.");
     });
 

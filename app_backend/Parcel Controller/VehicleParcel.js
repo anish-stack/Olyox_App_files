@@ -168,3 +168,32 @@ exports.deleteVehicle = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+
+
+exports.updateVehicleStatus = async (req, res) => {
+    try{
+        const {id} = req.params;
+        const {status} = req.body;
+        const vehicle = await Parcel_VehicleModel.findById(id);
+        if(!vehicle){
+            return res.status(404).json({
+                success: false,
+                message: 'Vehicle not found'
+            })
+        }
+        vehicle.status = status;
+        await vehicle.save();
+        res.status(200).json({
+            success: true,
+            data: vehicle
+        })
+    }catch(error){
+        console.log('Internal server error',error)
+        res.status(500).json({
+            success: false,
+            messsage: 'Internal server error',
+            error: error.message
+        })
+    }
+}

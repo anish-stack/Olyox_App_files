@@ -85,8 +85,8 @@ const SettingsSchema = new mongoose.Schema({
         default: 0
     },
     support_number: {
-        type: Number,
-        default: 1234567890
+        type: String,
+        default: "1234567890"
     }
 
 

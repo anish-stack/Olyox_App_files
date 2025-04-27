@@ -19,9 +19,7 @@ export default function SupportScreen() {
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
 
-    const phoneNumber = '+919996991739';
-    const emailAddress = 'support@example.com';
-    const whatsappNumber = '+919996991739';
+
 
     // console.log(settings)
     const handleSubmit = () => {
@@ -34,18 +32,19 @@ export default function SupportScreen() {
     };
     console.log(settings)
 
+    const whatsappNumber = '+91 7015716178';
     const openWhatsApp = () => {
         const url = `https://wa.me/${whatsappNumber}`;
         Linking.openURL(url);
     };
 
     const makeCall = () => {
-        const url = Platform.OS === 'ios' ? `telprompt:${phoneNumber}` : `tel:${phoneNumber}`;
+        const url = Platform.OS === 'ios' ? `telprompt:${settings?.support_number || '01141236789'}` : `tel:${settings?.support_number || '01141236789'}`;
         Linking.openURL(url);
     };
 
     const sendEmail = () => {
-        Linking.openURL(`mailto:${emailAddress}`);
+        Linking.openURL(`mailto:${settings?.adminEmail || 'helpcenter@olyox.com'}`);
     };
 
     return (
@@ -61,12 +60,12 @@ export default function SupportScreen() {
                         <Ionicons name="call" size={24} color="#F59E0B" />
                         <Text style={styles.cardTitle}>Call Us</Text>
                         <Text style={styles.cardText}>
-  {settings?.support_number 
-    ? (settings.support_number.toString().startsWith('0') 
-        ? settings.support_number 
-        : '0' + settings.support_number)
-    : phoneNumber}
-</Text>
+                            {settings?.support_number
+                                ? (settings.support_number.toString().startsWith('0')
+                                    ? settings.support_number
+                                    : '0' + settings.support_number)
+                                : phoneNumber}
+                        </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.card} onPress={sendEmail}>
