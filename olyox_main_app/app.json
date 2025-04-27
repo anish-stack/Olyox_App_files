@@ -63,8 +63,7 @@
             "DEFAULT"
           ]
         }
-      ],
-      "package": "com.happy_coding.olyox"
+      ]
     },
     "web": {
       "favicon": "./assets/appicon.png",
@@ -76,7 +75,7 @@
       "clerkFrontendApi": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk",
       "clerkApiKey": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk",
       "eas": {
-        "projectId": "e73c718b-d6aa-45ea-a12a-c496424892ba"
+        "projectId": "2af4c2db-b7f7-49a8-9e67-edad5246aaec"
       }
     }
   }

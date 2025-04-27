@@ -201,7 +201,7 @@ export default StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#951235",
+    backgroundColor: "#000",
     borderRadius: 12,
     paddingVertical: 16,
   },

@@ -4,8 +4,6 @@ const rechargeLogSchema = new mongoose.Schema(
     {
         BHID: {
             type: String,
-         
-            required: true,
         },
         amount: {
             type: Number,

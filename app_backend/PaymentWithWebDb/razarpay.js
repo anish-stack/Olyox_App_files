@@ -218,7 +218,7 @@ exports.verify_recharge = async (req, res) => {
                 transactionId: razorpay_payment_id,
                 status: "FAILED",
                 error_msg: error?.response?.data?.message || error.message || "Error is Undefined",
-                paymentMethod: "PAYPAL"
+                paymentMethod: "razarpay"
             };
             await createRechargeLogs({ data: logsData });
 

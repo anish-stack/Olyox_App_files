@@ -13,7 +13,7 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import MapView, { Marker,Polyline, PROVIDER_DEFAULT, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_DEFAULT, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import PolylineDecoder from '@mapbox/polyline';
 import axios from 'axios'
@@ -44,7 +44,7 @@ export const RideContent = React.memo(({
   setSupportModalVisible
 }) => {
   // Refs
-  console.log("rideDetails",rideDetails)
+  console.log("rideDetails", rideDetails);
   const mapRef = useRef(null);
 
   // State
@@ -58,13 +58,12 @@ export const RideContent = React.memo(({
   const [isMapReady, setIsMapReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [mapError, setMapError] = useState(null);
+  const [useUserPathForDriver, setUseUserPathForDriver] = useState(false);
+  const [lastValidDriverLocation, setLastValidDriverLocation] = useState(null);
 
-  // Safely extract coordinates from rideDetails
   useEffect(() => {
     try {
       setIsLoading(true);
-
-      // Safely extract drop coordinates
       if (rideDetails && rideDetails.drop_cord) {
         // Handle different possible structures
         if (rideDetails.drop_cord.coordinates && Array.isArray(rideDetails.drop_cord.coordinates)) {
@@ -109,7 +108,7 @@ export const RideContent = React.memo(({
       setMapError('Failed to load map coordinates');
       setIsLoading(false);
     }
-  }, [rideDetails, currentLocation])
+  }, [rideDetails, currentLocation]);
 
   // Update user location from props
   useEffect(() => {
@@ -119,16 +118,24 @@ export const RideContent = React.memo(({
         typeof currentLocation.latitude === 'number' &&
         typeof currentLocation.longitude === 'number'
       ) {
-        console.log("Maps ")
+        console.log("Maps updating user location");
         setUserLocation({
           latitude: currentLocation.latitude,
           longitude: currentLocation.longitude
         });
+        
+        // If we need to use user path for driver, update driver location as well
+        if (useUserPathForDriver) {
+          setDriverLocation({
+            latitude: currentLocation.latitude,
+            longitude: currentLocation.longitude
+          });
+        }
       }
     } catch (error) {
       console.error('Error updating user location:', error);
     }
-  }, [currentLocation]);
+  }, [currentLocation, useUserPathForDriver]);
 
   useEffect(() => {
     const fetchDirections = async () => {
@@ -162,38 +169,78 @@ export const RideContent = React.memo(({
         if (json?.distance) setDistance(json.distance);
         if (json?.duration) setDuration(json.duration);
       } catch (err) {
-        console.error("Error fetching directions:", err.response.data);
+        console.error("Error fetching directions:", err.response?.data || err.message);
       }
     };
 
     // Only fetch directions if rideData is available and valid
-    fetchDirections()
-  }, []); // Dependency array includes rideData so it refetches when it changes.
+    if (rideDetails?.pickupLocation?.coordinates && rideDetails?.drop_cord?.coordinates) {
+      fetchDirections();
+    }
+  }, [rideDetails]);
 
-
-  // Update driver location from props
+  // Update driver location from props with improved validation
   useEffect(() => {
     try {
+      // Check if driverLocationCurrent exists and is valid
+      let isValidDriverLocation = false;
+      let newDriverLocation = null;
+
       if (driverLocationCurrent) {
         if (Array.isArray(driverLocationCurrent) && driverLocationCurrent.length >= 2) {
           // Format: [longitude, latitude]
-          setDriverLocation({
-            latitude: driverLocationCurrent[1] || DEFAULT_DRIVER_LOCATION.latitude,
-            longitude: driverLocationCurrent[0] || DEFAULT_DRIVER_LOCATION.longitude
-          });
+          if (typeof driverLocationCurrent[0] === 'number' && typeof driverLocationCurrent[1] === 'number') {
+            newDriverLocation = {
+              latitude: driverLocationCurrent[1],
+              longitude: driverLocationCurrent[0]
+            };
+            isValidDriverLocation = true;
+          }
         } else if (
           typeof driverLocationCurrent === 'object' &&
           'latitude' in driverLocationCurrent &&
-          'longitude' in driverLocationCurrent
+          'longitude' in driverLocationCurrent &&
+          typeof driverLocationCurrent.latitude === 'number' &&
+          typeof driverLocationCurrent.longitude === 'number'
         ) {
           // Format: { latitude, longitude }
-          setDriverLocation(driverLocationCurrent);
+          newDriverLocation = driverLocationCurrent;
+          isValidDriverLocation = true;
+        }
+      }
+
+      if (isValidDriverLocation) {
+        console.log("Setting valid driver location:", newDriverLocation);
+        setDriverLocation(newDriverLocation);
+        setLastValidDriverLocation(newDriverLocation);
+        setUseUserPathForDriver(false);
+      } else {
+        console.warn("Invalid driver location data received:", driverLocationCurrent);
+        
+        // If we have a lastValidDriverLocation, use it
+        if (lastValidDriverLocation) {
+          setDriverLocation(lastValidDriverLocation);
+        } 
+        // Otherwise, fallback to using user's path
+        else {
+          console.log("Using user path for driver movement");
+          setUseUserPathForDriver(true);
+          
+          // If user location is already available, immediately set driver to that location
+          if (userLocation && userLocation.latitude && userLocation.longitude) {
+            setDriverLocation({
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude
+            });
+          }
         }
       }
     } catch (error) {
       console.error('Error updating driver location:', error);
+      // Fallback to user path on error
+      setUseUserPathForDriver(true);
     }
-  }, [driverLocationCurrent]);
+  }, [driverLocationCurrent, userLocation, lastValidDriverLocation]);
 
   // Share current location
   const shareLocation = useCallback(async () => {
@@ -324,11 +371,6 @@ export const RideContent = React.memo(({
     }
   }, [userLocation, driverLocation, calculateDistance]);
 
-
-  // console.log("Origin",userLocation)
-  // console.log("driver",driverLocation)
-
-
   // Validate that we have valid coordinates for directions
   const hasValidDirections = useCallback(() => {
     if (!userLocation || !driverLocation) return false;
@@ -401,7 +443,7 @@ export const RideContent = React.memo(({
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
-          provider={Platform.OS === "android" ? PROVIDER_GOOGLE:PROVIDER_DEFAULT}
+          provider={Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
           initialRegion={{
             latitude: userLocation.latitude,
             longitude: userLocation.longitude,
@@ -431,7 +473,7 @@ export const RideContent = React.memo(({
           <Marker
             coordinate={driverLocation}
             title="Driver's Location"
-            description={`${driverData?.name || 'Driver'} is here`}
+            description={`${driverData?.name || 'Driver'} is here${useUserPathForDriver ? ' (following your path)' : ''}`}
           >
             <View style={styles.driverMarker}>
               <MaterialCommunityIcons name="car" size={20} color="#fff" />
@@ -452,42 +494,35 @@ export const RideContent = React.memo(({
           )}
 
           {/* Directions between points */}
-
-
-              {Platform.OS === "ios" ? (
-                coordinates.length > 0 && (
-                  <Polyline
-                    coordinates={coordinates}
-                    strokeWidth={4}
-                    strokeColor="#000000"
-                  />
-                )
-              ) : (
-                hasValidDirections() && origin && destination && (
-                  <MapViewDirections
-                    origin={origin}
-                    destination={destination}
-                    apikey={GOOGLE_MAPS_API_KEY}
-                    strokeWidth={4}
-                    strokeColor="#C82333"
-                    optimizeWaypoints={true}
-                    onReady={(result) => {
-                      // If the directions API returns data, update with more accurate info
-                      if (result) {
-                        setDuration(result.duration);
-                      }
-                    }}
-                    onError={(error) => {
-                      console.error('Directions error:', error);
-                    }}
-                  />
-                )
-              )}
-
-
-
-
-        
+          {Platform.OS === "ios" ? (
+            coordinates.length > 0 && (
+              <Polyline
+                coordinates={coordinates}
+                strokeWidth={4}
+                strokeColor="#000000"
+              />
+            )
+          ) : (
+            hasValidDirections() && origin && destination && (
+              <MapViewDirections
+                origin={origin}
+                destination={destination}
+                apikey={GOOGLE_MAPS_API_KEY}
+                strokeWidth={4}
+                strokeColor="#C82333"
+                optimizeWaypoints={true}
+                onReady={(result) => {
+                  // If the directions API returns data, update with more accurate info
+                  if (result) {
+                    setDuration(result.duration);
+                  }
+                }}
+                onError={(error) => {
+                  console.error('Directions error:', error);
+                }}
+              />
+            )
+          )}
         </MapView>
 
         {/* Map Controls */}
@@ -508,20 +543,15 @@ export const RideContent = React.memo(({
             <Text style={styles.mapButtonText}>Show Both</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Driver status indicator */}
+        {useUserPathForDriver && (
+          <View style={styles.driverStatusBanner}>
+            <MaterialCommunityIcons name="information" size={16} color="#fff" />
+            <Text style={styles.driverStatusText}>Driver is following your path</Text>
+          </View>
+        )}
       </View>
-        {/* <TouchableOpacity style={styles.googleMapsButton} onPress={openInGoogleMaps}>
-          <MaterialCommunityIcons name="google-maps" size={24} color="#fff" />
-          <Text style={styles.googleMapsButtonText}>Open in Google Maps</Text>
-        </TouchableOpacity> */}
-
-      {/* Google Maps Button */}
-
-
-      {/* Share Location Button */}
-      {/* <TouchableOpacity style={styles.shareButton} onPress={shareLocation}>
-        <MaterialCommunityIcons name="share-variant" size={24} color="#fff" />
-        <Text style={styles.shareButtonText}>Share My Location</Text>
-      </TouchableOpacity> */}
 
       {/* Conditional Rendering for OTP Card */}
       {!rideStart && rideDetails?.otp && <OtpCard otp={rideDetails.otp} />}
@@ -536,15 +566,6 @@ export const RideContent = React.memo(({
 
       {/* Price Card */}
       {rideDetails?.price && <PriceCard price={rideDetails.price} />}
-
-      {/* Support Button */}
-      {/* <TouchableOpacity
-        style={styles.supportButton}
-        onPress={() => setSupportModalVisible && setSupportModalVisible(true)}
-      >
-        <MaterialCommunityIcons name="headset" size={24} color="#fff" />
-        <Text style={styles.supportButtonText}>Contact Support</Text>
-      </TouchableOpacity> */}
     </ScrollView>
   );
 });
@@ -643,37 +664,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 4,
   },
-  distanceInfo: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 12,
-    padding: 10,
+  driverStatusBanner: {
     position: 'absolute',
     bottom: 10,
     left: 10,
     right: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  distanceItem: {
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 20,
+    padding: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  distanceText: {
-    marginLeft: 4,
+  driverStatusText: {
+    color: '#fff',
+    marginLeft: 6,
     fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '500',
   },
   userMarker: {
     backgroundColor: '#4F46E5',
@@ -777,4 +784,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default RideContent;
+export default RideContent; 
