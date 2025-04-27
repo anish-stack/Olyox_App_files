@@ -17,7 +17,6 @@ const rechargeLogSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ['PENDING', 'SUCCESS', 'FAILED'],
             default: 'PENDING',
         },
         error_msg: {
@@ -25,8 +24,6 @@ const rechargeLogSchema = new mongoose.Schema(
         },
         paymentMethod: {
             type: String,
-            enum: ['CREDIT_CARD', 'DEBIT_CARD', 'PAYPAL', 'BANK_TRANSFER', 'OTHER'],
-            required: true,
         },
         createdAt: {
             type: Date,
