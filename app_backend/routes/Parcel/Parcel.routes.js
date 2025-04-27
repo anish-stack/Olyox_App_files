@@ -3,7 +3,7 @@ const multer = require('multer');
 const Protect = require('../../middleware/Auth');
 const { register_parcel_partner, login, verifyOtp, resendOtp, details, partner_work_status, manage_offline_online, uploadDocuments, getAllParcelUser, getSingleParcelUser, updateParcelIsBlockStatus, ParcelDocumentVerify, updateParcelDetail } = require('../../Parcel Controller/Register_Partner');
 const { request_of_parcel, my_parcel, single_my_parcel, my_parcel_driver, single_my_parcels, get_all_parcel, get_parcel_by_id, update_parcel_order_status, delete_parcel_order } = require('../../Parcel Controller/Order.Parcel');
-const { createVehicleForParcel, getAllVehicles, getVehicleById, updateVehicle, deleteVehicle } = require('../../Parcel Controller/VehicleParcel');
+const { createVehicleForParcel, getAllVehicles, getVehicleById, updateVehicle, deleteVehicle, updateVehicleStatus } = require('../../Parcel Controller/VehicleParcel');
 const { create_Coupons, getAll_Coupons, getOne_Coupon, update_Coupon, delete_Coupon, updateisActiveToggle } = require('../../Parcel Controller/ParcelCoupons');
 const { NewBooking, getParcelDetails,acceptParcelByRider, updateParcelStatus, cancelOrder, getMyNearParcel } = require('../../Parcel Controller/NewOrderParcel');
 
