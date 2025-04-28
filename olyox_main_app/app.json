@@ -50,6 +50,7 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION"
       ],
+      "versionCode": 17,
       "intentFilters": [
         {
           "action": "VIEW",
@@ -75,7 +76,7 @@
       "clerkFrontendApi": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk",
       "clerkApiKey": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk",
       "eas": {
-        "projectId": "2af4c2db-b7f7-49a8-9e67-edad5246aaec"
+        "projectId": "520953ad-4ed2-413d-87bb-b050b56dd3d0"
       }
     }
   }
