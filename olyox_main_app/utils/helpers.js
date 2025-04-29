@@ -8,7 +8,7 @@ export const formatDate = (date) => {
 
 
 export const createUserRegister = async (formdata) => {
-  console.log("register", formdata)
+ 
   try {
     const data = await axios.post(`${BACKEND_URL}/register`, formdata)
     console.log(data.data)

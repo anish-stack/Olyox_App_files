@@ -34,7 +34,7 @@ const PhoneAuthModal = ({
     }, [visible]);
     const { handleGuestLogin } = useGuest()
 
-    const loggedAsAGuest = ()=>{
+    const loggedAsAGuest = () => {
         handleGuestLogin()
         navigation.navigate('Home')
     }
@@ -64,9 +64,10 @@ const PhoneAuthModal = ({
                         </View>
 
                         <View style={styles.modalContent}>
-                            <Text style={styles.modalDescription}>
-                                We'll send a verification code to your WhatsApp phone Number to continue
-                            </Text>
+                        <Text style={styles.modalDescription}>
+    You'll receive a code via WhatsApp and SMS to continue.
+</Text>
+
 
                             <View style={styles.phoneInputContainer}>
                                 <View style={styles.countryCode}>
@@ -154,7 +155,8 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     modalDescription: {
-        fontSize: 14,
+        fontSize: 12,
+        textAlign:'center',
         color: '#666',
         marginBottom: 20,
         lineHeight: 20,

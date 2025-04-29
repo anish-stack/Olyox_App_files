@@ -120,7 +120,7 @@ const CollectData = () => {
   const isAndroid = Platform.OS === 'android';
   const [distance, setDistance] = useState(null);
   const [duration, setDuration] = useState(null);
-  const {isGuest} = useGuest()
+  const { isGuest } = useGuest()
   const [coordinates, setCoordinates] = useState([]);
   const [state, setState] = useState({
     pickup: "",
@@ -600,7 +600,7 @@ const CollectData = () => {
 
   const handleSubmit = () => {
 
-    if(isGuest){
+    if (isGuest) {
       Alert.alert(
         "Create an Account to Continue",
         "To book a ride, please create an account. It only takes a moment, and you'll be ready to go!",
@@ -608,14 +608,14 @@ const CollectData = () => {
           {
             text: "OK",
             onPress: () => {
-          
+
               navigation.navigate("Onboarding");
             },
           },
         ],
         { cancelable: false }
       );
-      return; 
+      return;
     }
 
 
@@ -644,12 +644,7 @@ const CollectData = () => {
       </View>
 
       <View style={Styles.mapContainer}>
-        {state.loading && (
-          <View style={Styles.mapLoadingContainer}>
-            <ActivityIndicator size="small" color={state.mapType === "pickup" ? "#35C14F" : "#D93A2D"} />
-            <Text style={Styles.mapLoadingText}>Getting address...</Text>
-          </View>
-        )}
+
 
         <MapView
           ref={mapRef}
@@ -665,6 +660,7 @@ const CollectData = () => {
           onRegionChangeComplete={handleMapRegionChange}
           showsUserLocation
           showsMyLocationButton
+
           showsCompass
           minZoomLevel={5} // Prevent zooming out too far
           maxZoomLevel={18} // Prevent zooming in too far
@@ -908,13 +904,18 @@ const CollectData = () => {
         )}
 
         {/* Map preview when both locations are set */}
-        {rideData.pickup.latitude && rideData.dropoff.latitude && !state.suggestions.length && !state.activeInput && (
+        {rideData?.pickup?.latitude && !state.suggestions.length && !state.activeInput && (
           <View style={Styles.previewMapContainer}>
             <MapView
               ref={mapRef}
               provider={Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
               style={Styles.previewMap}
-              initialRegion={region}
+              initialRegion={{
+                latitude: rideData.pickup.latitude,
+                longitude: rideData.pickup.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }}
               customMapStyle={mapStyle}
               showsUserLocation
               showsCompass={true}
@@ -937,29 +938,25 @@ const CollectData = () => {
                 </View>
               </Marker>
 
-              {/* Dropoff marker */}
-              <Marker
-                coordinate={{
-                  latitude: rideData.dropoff.latitude,
-                  longitude: rideData.dropoff.longitude,
-                }}
-                title="Drop-off"
-                description={rideData.dropoff.description}
-              >
-                <View style={Styles.customMarker}>
-                  <Icon name="square" size={12} color="#D93A2D" />
-                </View>
-              </Marker>
 
-              {Platform.OS === "ios" ? (
-                coordinates.length > 0 && (
-                  <Polyline
-                    coordinates={coordinates}
-                    strokeWidth={4}
-                    strokeColor="#000000"
-                  />
-                )
-              ) : (
+              {/* Dropoff marker (if exists) */}
+              {rideData?.dropoff?.latitude && (
+                <Marker
+                  coordinate={{
+                    latitude: rideData.dropoff.latitude,
+                    longitude: rideData.dropoff.longitude,
+                  }}
+                  title="Drop-off"
+                  description={rideData.dropoff.description}
+                >
+                  <View style={Styles.customMarker}>
+                    <Icon name="square" size={12} color="#D93A2D" />
+                  </View>
+                </Marker>
+              )}
+
+              {/* Directions (Android only and if dropoff exists) */}
+              {Platform.OS === "android" && rideData?.dropoff?.latitude && (
                 <MapViewDirections
                   origin={{
                     latitude: rideData.pickup.latitude,
@@ -972,11 +969,10 @@ const CollectData = () => {
                   apikey={'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8'}
                   strokeWidth={4}
                   strokeColor="#000000"
-                  lineDashPattern={[0]}
                   mode="DRIVING"
                   onReady={(result) => {
-                    console.log(`Distance: ${result.distance} km`)
-                    console.log(`Duration: ${result.duration} min`)
+                    console.log(`Distance: ${result.distance} km`);
+                    console.log(`Duration: ${result.duration} min`);
                   }}
                   onError={(errorMessage) => {
                     console.warn('MapViewDirections Error:', errorMessage);
@@ -984,10 +980,30 @@ const CollectData = () => {
                 />
               )}
 
-
-              {/* Route line */}
-
+              {/* Polyline fallback for iOS (if coordinates exist) */}
+              {Platform.OS === "ios" && coordinates.length > 0 && (
+                <Polyline
+                  coordinates={coordinates}
+                  strokeWidth={4}
+                  strokeColor="#000000"
+                />
+              )}
             </MapView>
+            <TouchableOpacity
+              style={Styles.recenterButton}
+              onPress={() => {
+                if (mapRef.current) {
+                  mapRef.current.animateToRegion({
+                    latitude: rideData.pickup.latitude,
+                    longitude: rideData.pickup.longitude,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  });
+                }
+              }}
+            >
+              <Icon name="crosshairs" size={24} color="#000" />
+            </TouchableOpacity>
 
             <View style={Styles.mapOverlayInfo}>
               <View style={Styles.mapInfoItem}>
@@ -996,16 +1012,22 @@ const CollectData = () => {
                   {rideData.pickup.description}
                 </Text>
               </View>
-              <View style={Styles.mapInfoDivider} />
-              <View style={Styles.mapInfoItem}>
-                <Icon name="square" size={10} color="#D93A2D" />
-                <Text numberOfLines={1} style={Styles.mapInfoText}>
-                  {rideData.dropoff.description}
-                </Text>
-              </View>
+
+              {rideData?.dropoff?.latitude && (
+                <>
+                  <View style={Styles.mapInfoDivider} />
+                  <View style={Styles.mapInfoItem}>
+                    <Icon name="square" size={10} color="#D93A2D" />
+                    <Text numberOfLines={1} style={Styles.mapInfoText}>
+                      {rideData.dropoff.description}
+                    </Text>
+                  </View>
+                </>
+              )}
             </View>
           </View>
         )}
+
       </ScrollView>
 
       {/* Sticky Find Riders button */}

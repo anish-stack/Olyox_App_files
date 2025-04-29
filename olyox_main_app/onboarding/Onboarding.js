@@ -458,6 +458,7 @@ export default function OnboardingScreen() {
           setShowOtpModal(false);
           setShowPhoneModal(true);
         }}
+        onSubmit={handlePhoneSubmit}
         phoneNumber={phoneNumber}
         isSubmitting={isSubmitting}
       />

@@ -41,7 +41,8 @@ export default function SplashScreen() {
       <Video
         ref={videoRef}
         source={require('../assets/splash.mp4')}
-        rate={1.0}
+        rate={2.5}
+        
         isMuted={true}
         resizeMode="cover"
         shouldPlay

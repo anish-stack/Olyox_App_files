@@ -448,7 +448,7 @@ export default function UserProfile() {
                     <TouchableOpacity onPress={pickImage}>
                         <View style={{ position: 'relative' }}>
                             <Image
-                                source={{ uri: userData?.profileImage?.image || image || 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400' }}
+                                source={{ uri: userData?.profileImage?.image || image || 'https://i.ibb.co/4ZhfBryk/image.png' }}
                                 style={styles.avatar}
                             />
                             <View style={styles.avatarBadge}>
@@ -787,7 +787,7 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 8,
-        width: '28%',
+        width: '30%',
         alignItems: 'center',
     },
     deleteButton: {

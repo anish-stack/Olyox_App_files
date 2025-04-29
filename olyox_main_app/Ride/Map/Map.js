@@ -152,7 +152,7 @@ const Map = ({ origin, destination, isFakeRiderShow = false }) => {
                 showsUserLocation
                 showsMyLocationButton
                 showsCompass
-                rotateEnabled={false}
+                rotateEnabled={true}
             >
                 {origin && (
                     <Marker coordinate={origin} title="Pickup">

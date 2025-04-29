@@ -1,5 +1,4 @@
-
-import { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import {
   StyleSheet,
   View,
@@ -11,56 +10,78 @@ import {
   Dimensions,
   Image,
   Platform,
+  Animated,
+  StatusBar,
 } from "react-native"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import Map from "../Map/Map"
-import { Video } from 'expo-av';
+import { Video } from 'expo-av'
 import axios from "axios"
-import { AntDesign, MaterialIcons, Ionicons } from "@expo/vector-icons"
+import { AntDesign, MaterialIcons, Ionicons, FontAwesome, Feather, MaterialCommunityIcons } from "@expo/vector-icons"
 import useShowRiders from "../../hooks/Show_Riders"
-import useSettings from "../../hooks/Settings";
+import useSettings from "../../hooks/Settings"
+
+const { width, height } = Dimensions.get("window")
+const API_BASE_URL = "https://www.appapi.olyox.com/api/v1"
 
 export default function ShowMap() {
+  // Navigation and route
   const route = useRoute()
+  const navigation = useNavigation()
+
+  // State management
   const [loading, setLoading] = useState(true)
   const [initialLoading, setInitialLoading] = useState(true)
   const [selectedRide, setSelectedRide] = useState(null)
   const [rides, setRides] = useState([])
   const [fareDetails, setFareDetails] = useState([])
   const [error, setError] = useState(null)
-  const navigation = useNavigation()
-  const {settings}= useSettings()
+  const [mapExpanded, setMapExpanded] = useState(false)
+  const [showPromo, setShowPromo] = useState(true)
+  const [promoApplied, setPromoApplied] = useState(false)
+  const [estimatedTime, setEstimatedTime] = useState("10-15")
+
+  // Animation values
+  const scrollY = useRef(new Animated.Value(0)).current
+  const mapHeightAnimation = useRef(new Animated.Value(height * 0.35)).current
+
+  // Settings and riders
+  const { settings } = useSettings()
 
   // Extract data from route params or use defaults
   const data = route?.params?.data || {}
   const { dropoff, pickup } = data || {}
 
-  const origin =
-    pickup?.latitude && pickup?.longitude
-      ? { latitude: pickup.latitude, longitude: pickup.longitude }
-      : { latitude: 28.7161663, longitude: 77.1240672 }
+  const origin = pickup?.latitude && pickup?.longitude
+    ? { latitude: pickup.latitude, longitude: pickup.longitude }
+    : { latitude: 28.7161663, longitude: 77.1240672 }
 
-  const destination =
-    dropoff?.latitude && dropoff?.longitude
-      ? { latitude: dropoff.latitude, longitude: dropoff.longitude }
-      : { latitude: 28.70406, longitude: 77.102493 }
+  const destination = dropoff?.latitude && dropoff?.longitude
+    ? { latitude: dropoff.latitude, longitude: dropoff.longitude }
+    : { latitude: 28.70406, longitude: 77.102493 }
 
+  const { riders, loading: riderLoading, error: riderError } = useShowRiders(origin)
 
+  // Toggle map size
+  const toggleMapSize = () => {
+    Animated.timing(mapHeightAnimation, {
+      toValue: mapExpanded ? height * 0.35 : height * 0.6,
+      duration: 300,
+      useNativeDriver: false,
+    }).start()
+    setMapExpanded(!mapExpanded)
+  }
 
-  const { riders, loading: riderLoading, error: riderError } = useShowRiders(origin);
-
-
-  // console.log("riders",riders)
   // Initial loading simulation
   useEffect(() => {
-    setTimeout(() => setLoading(false), 2000)
+    setTimeout(() => setLoading(false), 1500)
   }, [])
 
   // Fetch available ride options
   const fetchRidesVehicle = async () => {
     try {
       setInitialLoading(true)
-      const { data } = await axios.get(`https://www.appapi.olyox.com/api/v1/admin/getAllSuggestions`)
+      const { data } = await axios.get(`${API_BASE_URL}/admin/getAllSuggestions`)
       if (data?.data?.length) {
         setRides(data.data)
       } else {
@@ -89,7 +110,7 @@ export default function ShowMap() {
 
         try {
           const response = await axios.post(
-            "https://www.appapi.olyox.com/api/v1/rider/get-fare-info",
+            `${API_BASE_URL}/rider/get-fare-info`,
             {
               origin,
               destination,
@@ -100,10 +121,15 @@ export default function ShowMap() {
           )
 
           if (response.data) {
+            // Calculate estimated time based on distance
+            const distance = response.data.distanceInKm
+            const estimatedMinutes = Math.round(distance * 2) + 5 // Simple estimation
+
             // Combine ride info with fare details
             fareResponses.push({
               ...ride,
               fareInfo: response.data,
+              estimatedTime: `${estimatedMinutes}-${estimatedMinutes + 5} min`,
             })
           }
         } catch (err) {
@@ -136,6 +162,13 @@ export default function ShowMap() {
     }
   }, [rides])
 
+  // Apply promo code
+  const applyPromo = () => {
+    setPromoApplied(true)
+    // Show success message
+    alert("Promo code applied successfully! Enjoy 10% off your ride.")
+  }
+
   // Handle booking the selected ride
   const handleBookNow = () => {
     if (!selectedRide) {
@@ -152,6 +185,7 @@ export default function ShowMap() {
       selectedRide: rideWithFare,
       dropoff,
       pickup,
+      promoApplied,
     })
   }
 
@@ -173,17 +207,45 @@ export default function ShowMap() {
     </View>
   )
 
+  // Map controls component
+  const MapControls = () => (
+    <View style={styles.mapControls}>
+      <TouchableOpacity style={styles.mapControlButton} onPress={toggleMapSize}>
+        <MaterialIcons name={mapExpanded ? "fullscreen-exit" : "fullscreen"} size={22} color="#000" />
+      </TouchableOpacity>
+     
+    </View>
+  )
+
   // Reward banner component
   const RewardBanner = () => (
-    <View style={styles.rewardBanner}>
-      <Image
-        source={{
-          uri: "https://images.unsplash.com/photo-1618005198919-d3d4b5a23cbb?q=80&w=1000&auto=format&fit=crop",
-        }}
-        style={styles.coinIcon}
-      />
-      <Text style={styles.rewardText}>Get up to 8 OlyoxCoin with this booking</Text>
-    </View>
+    <TouchableOpacity
+      style={styles.rewardBanner}
+      onPress={() => setShowPromo(false)}
+      activeOpacity={0.8}
+    >
+      {showPromo ? (
+        <>
+          <View style={styles.promoLeft}>
+            <MaterialCommunityIcons name="ticket-percent-outline" size={20} color="#8B4513" />
+            <Text style={styles.rewardText}>Use code FIRST10 for 10% off your first ride</Text>
+          </View>
+          <TouchableOpacity style={styles.applyButton} onPress={applyPromo}>
+            <Text style={styles.applyButtonText}>Apply</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          <Image
+            source={{
+              uri: "https://images.unsplash.com/photo-1618005198919-d3d4b5a23cbb?q=80&w=1000&auto=format&fit=crop",
+            }}
+            style={styles.coinIcon}
+          />
+          <Text style={styles.rewardText}>Get up to 8 OlyoxCoin with this booking</Text>
+        </>
+      )}
+    </TouchableOpacity>
   )
 
   // Location section component
@@ -205,26 +267,31 @@ export default function ShowMap() {
         <Text style={styles.locationText} numberOfLines={1}>
           {dropoff?.description || "Destination"}
         </Text>
+        <View style={styles.distanceBox}>
+          <MaterialIcons name="directions" size={12} color="#666" />
+          <Text style={styles.timeText}>
+            {fareDetails.length > 0 ? `${fareDetails[0]?.fareInfo?.distanceInKm.toFixed(1)} km` : "Calculating..."}
+          </Text>
+        </View>
       </View>
     </View>
   )
 
   // Ride option component
   const RideOption = ({ ride }) => {
-   
     const isSelected = selectedRide?._id === ride._id
-    const fareInfo = ride.fareInfo;
-    const ridePercentage = parseFloat(settings?.ride_percentage_off) || 0;
-    
+    const fareInfo = ride.fareInfo
+    const ridePercentage = parseFloat(settings?.ride_percentage_off) || 0
+
     // Convert percentage to decimal and add it to total price
-    const extraFareAmount = (fareInfo?.totalPrice * ridePercentage / 100).toFixed(2);
-    
+    const extraFareAmount = (fareInfo?.totalPrice * ridePercentage / 100).toFixed(2)
+
     // Add that amount to the totalPrice
-    const updatedTotalPrice = (fareInfo?.totalPrice + parseFloat(extraFareAmount)).toFixed(2);
-    
-    // console.log("Base Price:", fareInfo?.totalPrice);
-    // console.log("Extra Fare (Percentage):", extraFareAmount);
-    // console.log("Total with Extra:", updatedTotalPrice);
+    const updatedTotalPrice = (fareInfo?.totalPrice + parseFloat(extraFareAmount)).toFixed(2)
+
+    // Apply promo discount if applicable
+    const finalPrice = promoApplied ? fareInfo?.totalPrice * 0.9 : fareInfo?.totalPrice
+
     // Get vehicle icon based on type
     const getVehicleIcon = () => {
       switch (ride.name.toUpperCase()) {
@@ -238,63 +305,90 @@ export default function ShowMap() {
           return "🚐"
         case "AUTO":
           return "🛺"
-        case "Bike":
+        case "BIKE":
           return "🏍️"
         default:
           return "🏍️"
       }
     }
 
+    // Animation for selected ride
+    const scaleAnim = useRef(new Animated.Value(1)).current
+
+    useEffect(() => {
+      if (isSelected) {
+        Animated.sequence([
+          Animated.timing(scaleAnim, {
+            toValue: 1.03,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          })
+        ]).start()
+      }
+    }, [isSelected])
+
     return (
-      <TouchableOpacity
-        style={[styles.rideOption, isSelected && styles.selectedRide]}
-        onPress={() => setSelectedRide(ride)}
-        activeOpacity={0.7}
+      <Animated.View
+        style={{
+          transform: [{ scale: scaleAnim }],
+        }}
       >
-        <View style={styles.rideLeft}>
-          {ride?.icons_image?.url ? (
-            <View style={styles.rideIconContainer}>
-              <Image source={{uri:ride?.icons_image?.url}}  resizeMode="contain" width={40} height={40} />
-            </View>
+        <TouchableOpacity
+          style={[styles.rideOption, isSelected && styles.selectedRide]}
+          onPress={() => setSelectedRide(ride)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.rideLeft}>
+            {ride?.icons_image?.url ? (
+              <View style={[styles.rideIconContainer, isSelected && styles.selectedRideIcon]}>
+                <Image source={{ uri: ride?.icons_image?.url }} style={styles.vehicleImage} resizeMode="contain" />
+              </View>
+            ) : (
+              <View style={[styles.rideIconContainer, isSelected && styles.selectedRideIcon]}>
+                <Text style={styles.rideIcon}>{getVehicleIcon()}</Text>
+              </View>
+            )}
+            <View style={styles.rideInfo}>
+              <Text style={styles.rideName}>{ride.name}</Text>
+              <Text style={styles.rideDescription}>{ride.description || `Comfortable ${ride.name} for your journey`}</Text>
+              <View style={styles.rideDetailRow}>
+                <MaterialIcons name="access-time" size={12} color="#666" />
+                <Text style={styles.rideTime}>{ride.estimatedTime || "10-15 min"}</Text>
 
-          ):(
-
-            <View style={styles.rideIconContainer}>
-              <Text style={styles.rideIcon}>{getVehicleIcon()}</Text>
-            </View>
-          )}
-          <View style={styles.rideInfo}>
-            <Text style={styles.rideName}>{ride.name}</Text>
-            <Text style={styles.rideDescription}>{ride.description}</Text>
-            <View style={styles.rideDetailRow}>
-              <MaterialIcons name="access-time" size={12} color="#666" />
-              <Text style={styles.rideTime}>{ride.time || "10 min"}</Text>
-
-              {fareInfo?.totalPrice && (
-                <>
-                  <View style={styles.detailDivider} />
-                  <Text style={styles.rideDistance}>{fareInfo.distanceInKm.toFixed(1)} km</Text>
-                </>
-              )}
+                {fareInfo?.totalPrice && (
+                  <>
+                    <View style={styles.detailDivider} />
+                    <Text style={styles.rideDistance}>{fareInfo.distanceInKm.toFixed(1)} km</Text>
+                  </>
+                )}
+              </View>
             </View>
           </View>
-        </View>
-        <View style={styles.rideRight}>
-
-          {fareInfo?.totalPrice ? (
-            <View style={{ flexDirection: 'row', marginHorizontal: 4 }}>
-              <Text style={styles.ridePrice}>{formatPrice(fareInfo?.totalPrice)}</Text>
+          <View style={styles.rideRight}>
+            {fareInfo?.totalPrice ? (
+              <View style={styles.priceContainer}>
+                {promoApplied && (
+                  <View style={styles.discountBadge}>
+                    <Text style={styles.discountText}>10% OFF</Text>
+                  </View>
+                )}
+                <Text style={styles.ridePrice}>{formatPrice(finalPrice)}</Text>
+                <Text style={[styles.ridePrice, styles.strikeThrough]}>{formatPrice(updatedTotalPrice)}</Text>
+              </View>
+            ) : (
+              <ActivityIndicator size="small" color="#00BCD4" />
+            )}
+            <View style={[styles.selectIndicator, isSelected && styles.selectedIndicator]}>
+              {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
             </View>
-
-          ) : (
-            <ActivityIndicator size="small" color="#00BCD4" />
-          )}
-          <Text style={[styles.ridePrice, styles.strikeThrough]}>{formatPrice(updatedTotalPrice)}</Text>
-          <View style={[styles.selectIndicator, isSelected && styles.selectedIndicator]} />
-        </View>
-
-
-      </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
     )
   }
 
@@ -328,6 +422,7 @@ export default function ShowMap() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
         <Header />
         <LoadingScreen />
       </SafeAreaView>
@@ -335,42 +430,83 @@ export default function ShowMap() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Header />
-      <View style={styles.mapWrapper}>
-        <Map isFakeRiderShow={true} origin={origin} destination={destination} />
-      </View>
-      <View style={styles.contentWrapper}>
-        <ScrollView style={styles.contentContainer} showsVerticalScrollIndicator={false}>
-          <RewardBanner />
-          <LocationSection />
+    <>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <Header />
+        <Animated.View style={[styles.mapWrapper, { height: mapHeightAnimation }]}>
+          <Map
+            isFakeRiderShow={true}
+            origin={origin}
+            destination={destination}
+            useRealDriverIcons={true}
+          />
+          <MapControls />
+        </Animated.View>
+        <Animated.View
+          style={[
+            styles.contentWrapper,
+            {
+              transform: [
+                {
+                  translateY: scrollY.interpolate({
+                    inputRange: [0, 50],
+                    outputRange: [0, -20],
+                    extrapolate: 'clamp',
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Animated.ScrollView
+            style={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: true }
+            )}
+          >
+            <LocationSection />
 
-          {error ? (
-            <ErrorMessage />
-          ) : (
-            <View style={styles.ridesSection}>
-              <Text style={styles.sectionTitle}>Recommended for you</Text>
-
-              {initialLoading ? (
-                <View style={styles.loadingRidesContainer}>
-                  <ActivityIndicator size="large" color="#00BCD4" />
-                  <Text style={styles.loadingRidesText}>Calculating fares...</Text>
+            {error ? (
+              <ErrorMessage />
+            ) : (
+              <View style={styles.ridesSection}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Recommended for you</Text>
+                  {/* <TouchableOpacity style={styles.filterButton}>
+                    <Feather name="sliders" size={16} color="#333" />
+                    <Text style={styles.filterText}>Filter</Text>
+                  </TouchableOpacity> */}
                 </View>
-              ) : fareDetails.length > 0 ? (
-                fareDetails.map((ride) => <RideOption key={ride._id} ride={ride} />)
-              ) : (
-                <View style={styles.noRidesContainer}>
-                  <Text style={styles.noRidesText}>No rides available at the moment</Text>
-                </View>
-              )}
-            </View>
-          )}
 
+                {initialLoading ? (
+                  <View style={styles.loadingRidesContainer}>
+                    <ActivityIndicator size="large" color="#00BCD4" />
+                    <Text style={styles.loadingRidesText}>Calculating fares...</Text>
+                  </View>
+                ) : fareDetails.length > 0 ? (
+                  fareDetails.map((ride) => <RideOption key={ride._id} ride={ride} />)
+                ) : (
+                  <View style={styles.noRidesContainer}>
+                    <Text style={styles.noRidesText}>No rides available at the moment</Text>
+                  </View>
+                )}
+              </View>
+            )}
 
-          <View style={{ height: 80 }} />
-        </ScrollView>
-      </View>
+            <View style={{ height: 100 }} />
+          </Animated.ScrollView>
+        </Animated.View>
+
+        {/* Sticky bottom bar with high z-index */}
+
+      </SafeAreaView>
       <View style={styles.bookButtonContainer}>
+        
         <TouchableOpacity
           onPress={handleBookNow}
           style={[styles.bookButton, !selectedRide && styles.disabledButton]}
@@ -379,30 +515,24 @@ export default function ShowMap() {
         >
           <Text style={styles.bookButtonText}>
             {selectedRide
-              ? `Book ${selectedRide.name} ${selectedRide.fareInfo ? formatPrice(selectedRide.fareInfo.totalPrice) : ""}`
+              ? `Book ${selectedRide.name} ${selectedRide.fareInfo
+                ? formatPrice(promoApplied ? selectedRide.fareInfo.totalPrice * 0.9 : selectedRide.fareInfo.totalPrice)
+                : ""
+              }`
               : "Select a Ride"}
           </Text>
           <AntDesign name="arrowright" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </>
+
   )
 }
-
-const { width, height } = Dimensions.get("window")
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-    ...Platform.select({
-      ios: {
-        paddingTop: 0,
-      },
-      android: {
-        paddingTop: 0,
-      },
-    }),
   },
   header: {
     flexDirection: "row",
@@ -444,16 +574,41 @@ const styles = StyleSheet.create({
   mapWrapper: {
     height: height * 0.35,
     backgroundColor: "#f0f0f0",
+    position: 'relative',
+  },
+  mapControls: {
+    position: 'absolute',
+    right: 16,
+    bottom: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 8,
+    padding: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  mapControlButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
   },
   contentWrapper: {
     flex: 1,
-    // height:height-295,
     position: 'relative',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     marginTop: -20,
     backgroundColor: "#fff",
-
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -472,11 +627,17 @@ const styles = StyleSheet.create({
   rewardBanner: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: "#FFF9E6",
     padding: 12,
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 8,
+  },
+  promoLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
   },
   coinIcon: {
     width: 20,
@@ -487,6 +648,19 @@ const styles = StyleSheet.create({
   rewardText: {
     color: "#8B4513",
     fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
+  },
+  applyButton: {
+    backgroundColor: "#8B4513",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+  },
+  applyButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 12,
   },
   locationContainer: {
     margin: 16,
@@ -544,20 +718,47 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginLeft: 8,
   },
+  distanceBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
   timeText: {
     fontSize: 12,
     marginLeft: 4,
     color: "#666",
   },
-  ridesSection: {
-    flex: 1,
-    // paddingBottom: 80,
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    padding: 16,
     color: "#333",
+  },
+  filterButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  filterText: {
+    fontSize: 14,
+    marginLeft: 4,
+    color: "#333",
+  },
+  ridesSection: {
+    flex: 1,
   },
   rideOption: {
     flexDirection: "row",
@@ -591,13 +792,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rideIconContainer: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#eee",
-    borderRadius: 20,
+    borderRadius: 22,
     marginRight: 12,
+  },
+  selectedRideIcon: {
+    backgroundColor: "#B2EBF2",
+  },
+  vehicleImage: {
+    width: 30,
+    height: 30,
   },
   rideIcon: {
     fontSize: 24,
@@ -640,6 +848,24 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     justifyContent: "center",
   },
+  priceContainer: {
+    alignItems: "flex-end",
+    position: "relative",
+  },
+  discountBadge: {
+    position: "absolute",
+    top: -15,
+    right: 0,
+    backgroundColor: "#FF5722",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  discountText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
   ridePrice: {
     fontSize: 16,
     fontWeight: "bold",
@@ -649,28 +875,17 @@ const styles = StyleSheet.create({
   strikeThrough: {
     textDecorationLine: 'line-through',
     fontSize: 12,
-    color: '#444',
-  },
-  fareItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 5,
-  },
-  fareItemText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  fareItemValue: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#d64444', // Red color for discount text
+    color: '#777',
+    marginBottom: 4,
   },
   selectIndicator: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
     borderColor: "#ccc",
+    justifyContent: "center",
+    alignItems: "center",
   },
   selectedIndicator: {
     borderColor: "#00BCD4",
@@ -681,11 +896,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-
     padding: 16,
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#eee",
+    zIndex: 999,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -694,9 +909,21 @@ const styles = StyleSheet.create({
         shadowRadius: 3,
       },
       android: {
-        elevation: 3,
+        elevation: 8,
       },
     }),
+  },
+  selectedRideBadge: {
+    backgroundColor: "#E0F7FA",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginBottom: 8,
+    alignSelf: "center",
+  },
+  selectedRideText: {
+    color: "#00838F",
+    fontWeight: "500",
   },
   bookButton: {
     backgroundColor: "#000",
@@ -790,4 +1017,3 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 })
-

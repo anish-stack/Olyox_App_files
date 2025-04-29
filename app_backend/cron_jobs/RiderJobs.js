@@ -3,7 +3,6 @@ const Riders = require('../models/Rider.model');
 const moment = require('moment');
 const SendWhatsAppMessage = require('../utils/whatsapp_send');
 
-// Function to start cron job
 const startExpiryCheckJob = () => {
     cron.schedule('*/10 * * * * *', async () => {
         console.log('🔄 [CRON] Running every 10 seconds -', new Date().toLocaleString());

@@ -10,13 +10,11 @@ export default function Show_Cabs() {
   const { data } = route.params || {}
   console.log(data)
   return (
-    <SafeAreaView>
-      <ScrollView>
-        <View>
+    <SafeAreaView style={{flex:1}}>
+   
 
           <ShowMap data={data} />
-        </View>
-      </ScrollView>
+      
     </SafeAreaView>
   )
 }

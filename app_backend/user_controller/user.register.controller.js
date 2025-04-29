@@ -64,7 +64,8 @@ Please verify it to kickstart your Olyox journey. We’re thrilled to have you o
 
 If you have any questions, feel free to reach out.`;
 
-            await SendWhatsAppMessage(message, number);
+
+            await SendWhatsAppMessage(message, number, otp);
 
             return res.status(200).json({
                 message: "OTP sent successfully",
@@ -91,7 +92,7 @@ Please verify it to kickstart your Olyox journey. We’re thrilled to have you o
 
 If you have any questions, feel free to reach out.`;
 
-        await SendWhatsAppMessage(newUserMessage, number);
+        await SendWhatsAppMessage(newUserMessage, number, otp);
 
         return res.status(201).json({
             message: "User created successfully. OTP sent.",

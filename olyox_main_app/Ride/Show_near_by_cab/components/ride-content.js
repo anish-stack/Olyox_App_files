@@ -557,7 +557,7 @@ export const RideContent = React.memo(({
       {!rideStart && rideDetails?.otp && <OtpCard otp={rideDetails.otp} />}
 
       {/* Driver Card */}
-      {driverData && <DriverCard driverData={driverData} rideDetails={rideDetails} />}
+      {driverData && <DriverCard driverData={driverData} isRideStart={rideStart} rideDetails={rideDetails} />}
 
       {/* Location Card */}
       {rideDetails?.pickup && rideDetails?.dropoff && (

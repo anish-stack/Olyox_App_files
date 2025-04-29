@@ -16,12 +16,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
+import { createUserRegister } from '../../utils/helpers';
 
 const OtpVerificationModal = ({
   visible,
   otp,
   onChangeOtp,
   onVerify,
+  onSubmit,
   onClose,
   phoneNumber,
   isSubmitting,
@@ -58,11 +60,14 @@ const OtpVerificationModal = ({
     }, 1000);
   };
 
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     if (canResend) {
       // Implement resend OTP logic here
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       startTimer();
+      const formData = { number: phoneNumber };
+      const response = await createUserRegister(formData);
+      console.log(response)
       // Call your resend API here
     }
   };

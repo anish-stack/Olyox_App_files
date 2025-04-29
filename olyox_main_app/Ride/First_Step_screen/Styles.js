@@ -293,5 +293,23 @@ export default StyleSheet.create({
     borderColor: "#000000",
     alignItems: "center",
     justifyContent: "center",
+  },
+  recenterButton: {
+    position: 'absolute',
+    bottom: 10,
+    right: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5, // for Android
+    shadowColor: '#000', // for iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    zIndex: 999,
   }
+  
 })

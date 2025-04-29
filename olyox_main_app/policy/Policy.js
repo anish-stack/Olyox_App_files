@@ -1,10 +1,12 @@
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native';
 import axios from 'axios';
+import RenderHtml from 'react-native-render-html';
 
 export default function Policy() {
     const [policies, setPolicies] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { width } = useWindowDimensions();
 
     const fetchPolicies = async () => {
         try {
@@ -35,7 +37,21 @@ export default function Policy() {
                 <View key={policy._id} style={styles.policyCard}>
                     <Text style={styles.heading}>{policy.title}</Text>
                     <Text style={styles.smallText}>{policy.description}</Text>
-                    <Text style={styles.smallText}>{policy.content}</Text>
+
+                    <RenderHtml
+                        contentWidth={width}
+                        source={{ html: policy.content || "<p>No content available</p>" }}
+                        tagsStyles={{
+                            p: { fontSize: 14, color: '#333', lineHeight: 20, marginBottom: 6 },
+                            strong: { fontWeight: 'bold' },
+                            ul: { marginBottom: 6 },
+                            li: { marginLeft: 15 },
+                            h1: { fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
+                            h2: { fontSize: 18, fontWeight: 'bold', marginBottom: 6 },
+                            a: { color: '#d53333', textDecorationLine: 'underline' },
+                        }}
+                    />
+
                     <Text style={styles.date}>
                         Created: {new Date(policy.createdAt).toLocaleDateString()} | Updated: {new Date(policy.updatedAt).toLocaleDateString()}
                     </Text>
