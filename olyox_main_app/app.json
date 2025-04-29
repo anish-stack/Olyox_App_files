@@ -48,6 +48,9 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION"
       ],
       "versionCode": 17,
@@ -63,8 +66,21 @@
             "BROWSABLE",
             "DEFAULT"
           ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "host": "auth/callback"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
-      ]
+      ],
+      "package": "com.olyoxuser.olyox"
     },
     "web": {
       "favicon": "./assets/appicon.png",

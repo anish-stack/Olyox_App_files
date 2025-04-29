@@ -15,22 +15,29 @@
         "simulator": true
       }
     },
+    "simulator": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
     "preview": {
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": false,
+      "autoIncrement": true,
       "ios": {
         "buildConfiguration": "Release",
-        "simulator": false
+        "simulator": true
       }
     }
   },
   "submit": {
     "production": {
-      "ios":{
-        "appleId":"naveenkumarof01@gmail.com",
-        "ascAppId":"6744582670"
+      "ios": {
+        "appleId": "naveenkumarof01@gmail.com",
+        "ascAppId": "6744582670"
       }
     }
   }

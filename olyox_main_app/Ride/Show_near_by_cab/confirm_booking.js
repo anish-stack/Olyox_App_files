@@ -956,9 +956,9 @@ export default function BookingConfirmation() {
                             color="#059669"
                         />
                         <Text style={styles.paymentText}>{paymentMethod} Payment</Text>
-                        <TouchableOpacity onPress={handleChangePayment}>
+                        {/* <TouchableOpacity onPress={handleChangePayment}>
                             <Text style={styles.changeText}>Change</Text>
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
                     </View>
 
                     <TouchableOpacity
@@ -1279,7 +1279,7 @@ const styles = StyleSheet.create({
     totalAmount: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#E3838D'
+        color: '#de4051'
     },
     fareNote: {
         marginTop: 12,

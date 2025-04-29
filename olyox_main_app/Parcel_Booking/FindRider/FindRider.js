@@ -18,7 +18,7 @@ import {
   Image,
 } from "react-native";
 import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native";
-import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from "react-native-maps";
+import MapView, { Marker, PROVIDER_DEFAULT, PROVIDER_GOOGLE, Polyline } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
 import axios from "axios";
 import { MaterialIcons, Ionicons, FontAwesome5, MaterialCommunityIcons, Entypo } from "@expo/vector-icons";
@@ -28,7 +28,6 @@ import * as Haptics from 'expo-haptics';
 const { width, height } = Dimensions.get("window");
 const GOOGLE_MAPS_API_KEY = "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8";
 const API_BASE_URL = "https://www.appapi.olyox.com/api/v1";
-
 // Loading steps with more engaging descriptions
 const LOADING_STEPS = [
   "Initializing your delivery request...",
@@ -65,7 +64,8 @@ export default function FindRider() {
   const mapRef = useRef(null);
   const scrollViewRef = useRef(null);
   const socketInstance = useSocket().socket();
-
+  const isIOS = Platform.OS === 'ios';
+  const isAndroid = Platform.OS === 'android';
   // State
   const [driverLocation, setDriverLocation] = useState(null);
   const [parcelDetails, setParcelDetails] = useState(null);
@@ -410,7 +410,8 @@ export default function FindRider() {
       {coordinates && (
         <MapView
           ref={mapRef}
-          provider={PROVIDER_GOOGLE}
+                 provider={isAndroid ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}  // Use Google Maps on Android, default (Apple Maps) on iOS
+       
           style={styles.map}
           initialRegion={{
             latitude: coordinates.pickup.latitude,

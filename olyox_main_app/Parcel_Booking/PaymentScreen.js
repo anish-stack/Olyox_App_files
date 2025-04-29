@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F5F5F5',
-        paddingTop: Platform.OS === 'ios' ? 50 : 16,
+        paddingTop: Platform.OS === 'ios' ? 0 : 16,
     },
     scrollView: {
         flex: 1,
@@ -948,7 +948,7 @@ const styles = StyleSheet.create({
     },
     footer: {
         position: 'absolute',
-        bottom: 0,
+        bottom: Platform.OS === 'ios' ? 40:0,
         left: 0,
         right: 0,
         backgroundColor: '#FFFFFF',

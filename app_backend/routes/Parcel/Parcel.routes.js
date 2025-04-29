@@ -72,7 +72,7 @@ parcel.get('/get-parcel/:id',getParcelDetails);
 parcel.get('/get-My-Near-Parcel',getMyNearParcel)
 parcel.post('/parcel-accept-ride/:parcelId',acceptParcelByRider);
 parcel.post('/parcel-status-update',updateParcelStatus);
-parcel.post('/cancel-request/:parcelId',cancelOrder);
+parcel.post('/cancel-parcel/:parcelId',cancelOrder);
 
 parcel.put('/update_parcel_vehical_status/:id',updateVehicleStatus)
 

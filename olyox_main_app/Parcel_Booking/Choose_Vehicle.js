@@ -182,12 +182,15 @@ export default function Choose_Vehicle() {
       <StatusBar barStyle={isIOS ? "dark-content" : "light-content"} backgroundColor="#e53935" />
 
       {/* Header */}
-      <LinearGradient colors={["#e53935", "#d32f2f"]} style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <ChevronLeft size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Select Vehicle</Text>
-      </LinearGradient>
+      {Platform.OS === 'ios' ? null :(
+  <LinearGradient colors={["#e53935", "#d32f2f"]} style={styles.header}>
+  <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+    <ChevronLeft size={24} color="#fff" />
+  </TouchableOpacity>
+  <Text style={styles.headerTitle}>Select Vehicle</Text>
+</LinearGradient>
+      )}
+    
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Location Card */}
@@ -614,7 +617,7 @@ const styles = StyleSheet.create({
   },
   bottomContainer: {
     position: "absolute",
-    bottom: 0,
+    bottom: Platform.OS === 'ios' ? 40:0,
     left: 0,
     right: 0,
     backgroundColor: "white",

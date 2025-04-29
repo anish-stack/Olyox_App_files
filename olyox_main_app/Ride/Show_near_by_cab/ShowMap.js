@@ -503,9 +503,7 @@ export default function ShowMap() {
         </Animated.View>
 
         {/* Sticky bottom bar with high z-index */}
-
-      </SafeAreaView>
-      <View style={styles.bookButtonContainer}>
+        <View style={styles.bookButtonContainer}>
         
         <TouchableOpacity
           onPress={handleBookNow}
@@ -524,6 +522,8 @@ export default function ShowMap() {
           <AntDesign name="arrowright" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
+      </SafeAreaView>
+    
     </>
 
   )

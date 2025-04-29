@@ -86,12 +86,12 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.happy_coding.olyox'
+    namespace 'com.olyoxuser.olyox'
     defaultConfig {
-        applicationId 'com.happy_coding.olyox'
+        applicationId 'com.olyoxuser.olyox'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 16
+        versionCode 17
         versionName "1.0.0"
     }
     signingConfigs {
