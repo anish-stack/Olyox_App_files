@@ -406,10 +406,10 @@ exports.cancelOrder = async (req, res) => {
             return res.status(404).json({ message: "Parcel not found" });
         }
 
-        if(parcel.status === 'delivered'){
+        if (parcel.status === 'delivered') {
             return res.status(402).json({
-                success:false,
-                message:'This Order is already has been delivered'
+                success: false,
+                message: 'This Order is already has been delivered'
             })
         }
         // Update parcel status
@@ -463,7 +463,9 @@ exports.getAllMyParcelByCustomerId = async (req, res) => {
             return res.status(400).json({ message: "Oops! We couldn't process your request. User ID is missing." });
         }
 
-        const parcels = await Parcel_Request.find({ customerId: userId }).populate("vehicle_id");
+        const parcels = await Parcel_Request.find({ customerId: userId }) // Find all parcels for the user
+            .populate("vehicle_id") // Replace vehicle_id with the referenced vehicle document
+            .sort({ createdAt: -1 }); // Sort results by newest first
 
         if (!parcels || parcels.length === 0) {
             return res.status(404).json({ message: "No parcel requests found for your account yet." });
