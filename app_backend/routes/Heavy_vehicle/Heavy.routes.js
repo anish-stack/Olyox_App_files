@@ -7,7 +7,7 @@ const { createCategory, getAllCategories, getCategory, updateCategory, deleteCat
 const { create_heavy_vehicle_partner, verifyOTP, resendOTP, updateProfile, uploadDocuments, getMyProfile, getAllProfiles, getPartnerById, delete_account, login, updateServiceAreaOnly, getAllHeavyVehicles, updateIsBlockedHeavyVehicle, verifyDocumentOfHeavyTransport, deleteHeavyVendor, updateHTVehicalByAdmin } = require('../../Heavy_vehicle_Controllers/vehicle_partners/Auth.Partners');
 const HeveyPartnerProtect = require('../../middleware/HeavyPartnerAuth');
 const { getheaveyPartners, CreateCallAndMessageRequest, getAllCallAndMessage, changeCallAndMessageRequestStatus, deleteCallAndMessageRequest, getCallAndMessageByHevyVehicleId } = require('../../Heavy_vehicle_Controllers/Get_partners/Get.Controllers');
-const { getAllMyParcelByCustomerId } = require('../../Parcel Controller/NewOrderParcel');
+const { getAllMyParcelByCustomerId, cancelOrder } = require('../../Parcel Controller/NewOrderParcel');
 
 const Heavy = express.Router();
 
@@ -58,5 +58,8 @@ Heavy.get('/get_all_hv_vendor', getAllHeavyVehicles);
 Heavy.put('/update_hv_vendor_is_block_status/:id', updateIsBlockedHeavyVehicle);
 Heavy.put('/update_hv_vendor_document_verify/:id', verifyDocumentOfHeavyTransport);
 Heavy.delete('/heavy_vehicle_profile_delete/:id', deleteHeavyVendor);
+
+
+Heavy.post('/cancel-parcel/:parcelId',cancelOrder);
 
 module.exports = Heavy;
