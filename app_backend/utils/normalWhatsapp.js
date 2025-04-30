@@ -33,17 +33,19 @@ const SendWhatsAppMessageNormal = async (Message, MobileNumber) => {
             };
         }
 
+        // URL-encode the message
+        const encodedMessage = encodeURIComponent(Message);
+
         console.log('Sending WhatsApp message...');
         const waResponse = await axios.get('https://api.wtap.sms4power.com/wapp/v2/api/send', {
             params: {
                 apikey: apiKey,
                 mobile: MobileNumber,
-                msg: Message,
+                msg: encodedMessage, // Use the encoded message here
             },
         });
 
         console.log('WhatsApp API response received:', waResponse.status);
-        console.log('WhatsApp API response received:', waResponse);
         console.log('Response data:', waResponse.data);
 
         if (waResponse.status === 200) {
@@ -61,7 +63,7 @@ const SendWhatsAppMessageNormal = async (Message, MobileNumber) => {
         }
 
     } catch (error) {
-        console.error('Error sending WhatsApp message:', error);
+        console.error('Error sending WhatsApp message:', error.message || error);
         return {
             success: false,
             message: 'An error occurred while sending the WhatsApp message.',
