@@ -99,7 +99,7 @@ exports.CreateCallAndMessageRequest = async (req, res) => {
     try {
         const { senderId, receiverId, requestType, message } = req.body;
 
-       
+
         if (!requestType) {
             return res.status(400).json({ message: "Please select a request type (Call or Message)." });
         }
@@ -108,14 +108,14 @@ exports.CreateCallAndMessageRequest = async (req, res) => {
             return res.status(400).json({ message: "Invalid request type. Only 'call' or 'message' are allowed." });
         }
 
-       
+
         const partner = await Heavy_vehicle_partners.findById(receiverId);
         if (!partner) {
             return res.status(404).json({ message: "We couldn’t find the selected partner. Please try again." });
         }
 
         const user = await User.findById(senderId);
-       
+
 
         const newRequest = new CallAndMessageRequest({
             senderId,
@@ -126,7 +126,7 @@ exports.CreateCallAndMessageRequest = async (req, res) => {
 
         const savedRequest = await newRequest.save();
 
-   
+
         let notificationMessage = '';
         if (requestType === 'call') {
             notificationMessage = `Hello ${partner.name || ''},\nYou have received a new *CALL* request from ${user.name} (${user.number || 'N/A'}).\nPlease reach out to them as soon as possible.`;
@@ -161,10 +161,10 @@ exports.getAllCallAndMessage = async (req, res) => {
             return res.status(404).json({ message: 'No call or message records found' });
         }
 
-      
+
         res.status(200).json({
-            success:true,
-            data:data
+            success: true,
+            data: data
         });
     } catch (error) {
         // Catch any errors that occur during the query execution
@@ -174,14 +174,15 @@ exports.getAllCallAndMessage = async (req, res) => {
 };
 
 
-exports.getCallAndMessageByHevyVehicleId = async (req,res) => {
+exports.getCallAndMessageByHevyVehicleId = async (req, res) => {
     try {
-        const {id} = req.params;
-        const requests = await CallAndMessageRequest.find({receiverId: id}).populate("senderId").populate("receiverId")
-        if(!requests){
-            return res.status(400).json({ 
+        const { id } = req.params;
+
+        const requests = await CallAndMessageRequest.find({ receiverId: id }).populate("senderId").populate("receiverId")
+        if (!requests) {
+            return res.status(400).json({
                 success: false,
-                message: "No request found" 
+                message: "No request found"
             });
         }
         return res.status(200).json({ success: true, message: "All requests fetched successfully", data: requests });
@@ -221,3 +222,204 @@ exports.deleteCallAndMessageRequest = async (req, res) => {
         return res.status(500).json({ message: "Failed to delete request" });
     }
 }
+
+exports.updateStatusRequest = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Oops! Something went wrong. Request ID is missing.',
+            });
+        }
+
+        const checkRequest = await CallAndMessageRequest.findById(id);
+        if (!checkRequest) {
+            return res.status(404).json({
+                success: false,
+                message: 'Sorry, we couldn’t find the request you are trying to update.',
+            });
+        }
+
+        const { status } = req.body;
+        const validStatus = [
+            'pending',
+            'accepted',
+            'rejected',
+            'Checked',
+            'Bookmark',
+            'Not Interested',
+            'User By Mistake',
+        ];
+
+        if (!validStatus.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid status. Please select a valid status to update.',
+            });
+        }
+
+        checkRequest.status = status;
+        await checkRequest.save();
+
+        return res.status(200).json({
+            success: true,
+            message: `The request status has been updated to "${status}" successfully.`,
+            data: checkRequest,
+        });
+    } catch (error) {
+        console.error('Error updating status:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Something went wrong while updating the status. Please try again later.',
+        });
+    }
+};
+
+exports.addNote = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Oops! Something went wrong. Request ID is missing.',
+            });
+        }
+
+        const checkRequest = await CallAndMessageRequest.findById(id);
+        if (!checkRequest) {
+            return res.status(404).json({
+                success: false,
+                message: 'Sorry, we couldn’t find the request you are trying to update.',
+            });
+        }
+
+        const { note } = req.body;
+        if (!note || typeof note !== 'string' || note.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                message: 'Note cannot be empty. Please provide a valid note.',
+            });
+        }
+
+        // Get current date and time in IST
+        const istDate = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        console.log('istDate',istDate)
+
+        // Push note with IST timestamp
+        checkRequest.noteByReciver.push({
+            note: note.trim(),
+            date: istDate,
+        });
+
+        await checkRequest.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Your note has been added successfully with Indian date and time.',
+            data: checkRequest.noteByReciver,
+        });
+
+    } catch (error) {
+        console.error('Error adding note:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Something went wrong while adding your note. Please try again later.',
+        });
+    }
+};
+
+
+exports.editNote = async (req, res) => {
+    try {
+        const { requestId, noteId } = req.params;
+        const { updatedNote } = req.body;
+
+        if (!requestId || !noteId || !updatedNote?.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing request ID, note ID, or updated note text.',
+            });
+        }
+
+        const request = await CallAndMessageRequest.findById(requestId);
+        if (!request) {
+            return res.status(404).json({
+                success: false,
+                message: 'Request not found.',
+            });
+        }
+
+        const note = request.noteByReciver.id(noteId);
+        if (!note) {
+            return res.status(404).json({
+                success: false,
+                message: 'Note not found.',
+            });
+        }
+
+        note.note = updatedNote.trim();
+        note.date = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+        await request.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Note updated successfully.',
+            data: request.noteByReciver,
+        });
+    } catch (error) {
+        console.error('Error editing note:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Something went wrong while editing the note.',
+        });
+    }
+};
+
+
+exports.deleteNote = async (req, res) => {
+    try {
+        const { requestId, noteId } = req.params;
+
+        if (!requestId || !noteId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing request ID or note ID.',
+            });
+        }
+
+        const request = await CallAndMessageRequest.findById(requestId);
+        if (!request) {
+            return res.status(404).json({
+                success: false,
+                message: 'Request not found.',
+            });
+        }
+
+        const note = request.noteByReciver.id(noteId);
+        if (!note) {
+            return res.status(404).json({
+                success: false,
+                message: 'Note not found.',
+            });
+        }
+
+        await note.deleteOne(); // Mongoose subdocument removal
+        await request.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Note deleted successfully.',
+            data: request.noteByReciver,
+        });
+    } catch (error) {
+        console.error('Error deleting note:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Something went wrong while deleting the note.',
+        });
+    }
+};

@@ -6,7 +6,7 @@ const Protect = require('../../middleware/Auth');
 const { createCategory, getAllCategories, getCategory, updateCategory, deleteCategory, toggleStatus } = require('../../Heavy_vehicle_Controllers/Vehicle_types/HeavyVehicleCategory');
 const { create_heavy_vehicle_partner, verifyOTP, resendOTP, updateProfile, uploadDocuments, getMyProfile, getAllProfiles, getPartnerById, delete_account, login, updateServiceAreaOnly, getAllHeavyVehicles, updateIsBlockedHeavyVehicle, verifyDocumentOfHeavyTransport, deleteHeavyVendor, updateHTVehicalByAdmin } = require('../../Heavy_vehicle_Controllers/vehicle_partners/Auth.Partners');
 const HeveyPartnerProtect = require('../../middleware/HeavyPartnerAuth');
-const { getheaveyPartners, CreateCallAndMessageRequest, getAllCallAndMessage, changeCallAndMessageRequestStatus, deleteCallAndMessageRequest, getCallAndMessageByHevyVehicleId } = require('../../Heavy_vehicle_Controllers/Get_partners/Get.Controllers');
+const { getheaveyPartners, CreateCallAndMessageRequest, getAllCallAndMessage, changeCallAndMessageRequestStatus, deleteCallAndMessageRequest, getCallAndMessageByHevyVehicleId, updateStatusRequest, addNote, editNote, deleteNote } = require('../../Heavy_vehicle_Controllers/Get_partners/Get.Controllers');
 const { getAllMyParcelByCustomerId, cancelOrder } = require('../../Parcel Controller/NewOrderParcel');
 
 const Heavy = express.Router();
@@ -49,9 +49,17 @@ Heavy.get('/heavy-vehicle-partners',getheaveyPartners )
 Heavy.post('/generated-call-and-message-request',CreateCallAndMessageRequest)
 Heavy.get('/get-my-all-parcel/:userId',getAllMyParcelByCustomerId)
 Heavy.get('/get-all-call-and-message-request',getAllCallAndMessage)
-Heavy.get('/get-all-call-and-message-request-by-partner',getCallAndMessageByHevyVehicleId)
+Heavy.get('/get-all-call-and-message-request-by-partner/:id',getCallAndMessageByHevyVehicleId)
 Heavy.put('/toggle-call-and-message-request/:id',changeCallAndMessageRequestStatus)
 Heavy.delete('/delete-call-and-message-request/:id',deleteCallAndMessageRequest)
+
+Heavy.post('/update-request-stauts/:id',updateStatusRequest)
+Heavy.post('/add-note-request/:id',addNote)
+Heavy.put('/edit-note-request/:requestId/:noteId',editNote)
+Heavy.delete('/delete-note-request/:requestId/:noteId',deleteNote)
+
+
+
 
 Heavy.get('/get_all_hv_vendor', getAllHeavyVehicles);
 

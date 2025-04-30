@@ -15,15 +15,19 @@ const CallAndMessageRequestSchema = new mongoose.Schema({
         enum: ['call', 'message'],
         required: true,
     },
-    message:{
+    message: {
         type: String,
-       
+
     },
     status: {
         type: String,
-        enum: ['pending', 'accepted', 'rejected'],
+        enum: ['pending', 'accepted', 'rejected', 'Checked','Bookmark','Not Interested','User By Mistake'],
         default: 'pending',
     },
+    noteByReciver: [{
+        note: String,
+        date: Date
+    }],
     createdAt: {
         type: Date,
         default: Date.now,

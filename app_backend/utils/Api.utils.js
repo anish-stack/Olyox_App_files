@@ -1,7 +1,8 @@
 const RiderModel = require('../models/Rider.model');
 
 const Settings = require('../models/Admin/Settings');
-const axios = require('axios')
+const axios = require('axios');
+const Heavy_vehicle_partners = require('../models/Heavy_vehicle/Heavy_vehicle_partners');
 
 exports.FindWeather = async (lat, lon) => {
   if (!lat || !lon) {
@@ -78,21 +79,29 @@ exports.CheckTolls = async (origin, destination) => {
 exports.updateRechargeDetails = async ({ rechargePlan, expireData, approveRecharge, BH }) => {
   try {
     // Validate required fields
+    console.log(BH)
     if (!BH) {
       return { success: false, message: "BH is required." };
     }
 
     // Find the rider by BH
-    const foundRider = await RiderModel.findOne({ BH });
+    let foundRider = await RiderModel.findOne({ BH });
+  
+
+    foundRider = await Heavy_vehicle_partners.findOne({ Bh_Id: BH })
+    console.log("foundRider", foundRider)
     if (!foundRider) {
       return { success: false, message: "Rider not found." };
     }
-
     // If approveRecharge is true, update the recharge details
     if (approveRecharge) {
       // Mark first recharge as done
       foundRider.isFirstRechargeDone = true;
 
+      if(foundRider.isFreeMember){
+        foundRider.isFreeMember = false
+        foundRider.freeTierEndData = null
+      }
       // Update recharge data
       foundRider.RechargeData = {
         rechargePlan,
