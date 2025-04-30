@@ -43,6 +43,7 @@ const SendWhatsAppMessageNormal = async (Message, MobileNumber) => {
         });
 
         console.log('WhatsApp API response received:', waResponse.status);
+        console.log('WhatsApp API response received:', waResponse);
         console.log('Response data:', waResponse.data);
 
         if (waResponse.status === 200) {
