@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const SendWhatsAppMessage = require("../utils/whatsapp_send");
 const { uploadSingleImage, deleteImage } = require("../utils/cloudinary");
 const generateOtp = require("../utils/Otp.Genreator");
+const SendWhatsAppMessageUser = require("../utils/forUserWhatsapp");
 
 exports.createUser = async (req, res) => {
     try {
@@ -65,7 +66,7 @@ Please verify it to kickstart your Olyox journey. We’re thrilled to have you o
 If you have any questions, feel free to reach out.`;
 
 
-            await SendWhatsAppMessage(message, number, otp);
+            await SendWhatsAppMessageUser(message, number, otp);
 
             return res.status(200).json({
                 message: "OTP sent successfully",
