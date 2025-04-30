@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const SendWhatsAppMessage = require('../../utils/whatsapp_send');
 const axios = require('axios');
+const SendWhatsAppMessageNormal = require('../../utils/normalWhatsapp');
 // Configure Cloudinary
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -1417,7 +1418,7 @@ Thank you for choosing Olyox! Let’s drive forward together. 💼
 
         console.log('Sending WhatsApp message:', approvalMessage);
 
-        await SendWhatsAppMessage(approvalMessage, vehicle?.phone_number);
+        await SendWhatsAppMessageNormal(approvalMessage, vehicle?.phone_number);
         console.log('WhatsApp message sent successfully.');
 
         await vehicle.save();
