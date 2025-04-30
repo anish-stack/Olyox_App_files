@@ -24,7 +24,7 @@ const SendWhatsAppMessageNormal = async (Message, MobileNumber) => {
             };
         }
 
-        const apiKey = process.env.WHATSAPP_API_KEY || '968791cad69d4ec0a97639f33c19ce68';
+        const apiKey = process.env.WHATSAPP_API_KEY;
         if (!apiKey) {
             console.log('Missing WhatsApp API key.');
             return {
@@ -42,7 +42,6 @@ const SendWhatsAppMessageNormal = async (Message, MobileNumber) => {
             },
         });
 
-        // Log the full response for better insight, including status, data, or errors
         console.log('WhatsApp API response received:', waResponse.status);
         console.log('Response data:', waResponse.data);
 
@@ -56,6 +55,7 @@ const SendWhatsAppMessageNormal = async (Message, MobileNumber) => {
             return {
                 success: false,
                 message: 'Failed to send WhatsApp message.',
+                errorDetails: waResponse.data,  // Capture detailed response for troubleshooting
             };
         }
 
@@ -64,6 +64,7 @@ const SendWhatsAppMessageNormal = async (Message, MobileNumber) => {
         return {
             success: false,
             message: 'An error occurred while sending the WhatsApp message.',
+            errorDetails: error.response ? error.response.data : error.message, // Log more error details
         };
     }
 };
