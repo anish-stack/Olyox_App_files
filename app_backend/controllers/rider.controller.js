@@ -941,14 +941,13 @@ exports.updateRiderDocumentVerify = async (req, res) => {
     // Update document verification status
     rider.DocumentVerify = DocumentVerify;
 
-    const currentDate = new Date();
 
-    if (rider.category === "parcel") {
-
+    async function grantFreeTier(rider) {
       rider.isFreeMember = true;
       rider.isPaid = true;
 
-      const oneYearLater = new Date(currentDate.setFullYear(currentDate.getFullYear() + 1));
+      const oneYearLater = new Date();
+      oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
       rider.freeTierEndData = oneYearLater;
 
       rider.RechargeData = {
@@ -958,29 +957,44 @@ exports.updateRiderDocumentVerify = async (req, res) => {
       };
 
       await SendWhatsAppMessage(
-        `🎉 Dear ${rider.name}, your documents have been successfully verified, and you've been granted 1 year of Free Tier membership as a Parcel Rider! 🗓️
-
-✅ Plan: Free Tier  
-✅ Valid Till: ${oneYearLater.toDateString()}  
-✅ Recharge Status: Approved
-
-We’re excited to have you on board. Let’s make your journey productive and rewarding. Stay safe and deliver with pride! 🚀  
-— Team Support`,
-        rider.phone
-      );
-
-    } else {
-      // For other rider categories, just send verification success message
-      await SendWhatsAppMessage(
-        `✅ Hello ${rider.name}, your documents have been successfully verified! 🎉
-
-You are now fully approved to continue providing your services on our platform.
-
-Thank you for your patience and welcome to the community! If you have any questions, feel free to reach out. 😊  
-— Team Support`,
+        `🎉 Dear ${rider.name}, your documents have been successfully verified, and you've been granted 1 year of Free Tier membership! 🗓️
+    
+    ✅ Plan: Free Tier  
+    ✅ Valid Till: ${oneYearLater.toDateString()}  
+    ✅ Recharge Status: Approved
+    
+    We’re excited to have you on board. Let’s make your journey productive and rewarding. Stay safe and deliver with pride! 🚀  
+    — Team Support`,
         rider.phone
       );
     }
+
+
+    const vehicleName = rider.rideVehicleInfo?.vehicleName?.toLowerCase();
+    const vehicleType = rider.rideVehicleInfo?.vehicleType?.toLowerCase();
+
+    if (rider.category === "parcel") {
+
+      grantFreeTier(rider);
+    } else if (
+      rider.category === "cab" &&
+      (vehicleName === "bike" || vehicleType === "bike")
+    ) {
+
+      grantFreeTier(rider);
+    } else {
+      // All other cases
+      await SendWhatsAppMessage(
+        `✅ Hello ${rider.name}, your documents have been successfully verified! 🎉
+    
+    You are now fully approved to continue providing your services on our platform.
+    
+    Thank you for your patience and welcome to the community! 😊  
+    — Team Support`,
+        rider.phone
+      );
+    }
+
 
     const result = await rider.save();
 
