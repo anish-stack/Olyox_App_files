@@ -1096,7 +1096,6 @@ exports.DocumentVerify = async (req, res) => {
         let { id } = req.params || {};
         const { reject_reason } = req.body;
 
-        // Validate ID format
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({
                 success: false,
@@ -1104,7 +1103,7 @@ exports.DocumentVerify = async (req, res) => {
             });
         }
 
-        // Find partner
+
         const checkPartner = await Heavy_vehicle_partners.findById(id);
         if (!checkPartner) {
             return res.status(404).json({
@@ -1113,7 +1112,7 @@ exports.DocumentVerify = async (req, res) => {
             });
         }
 
-        // Check if documents are uploaded
+
         if (!checkPartner.documents || checkPartner.documents.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -1121,7 +1120,7 @@ exports.DocumentVerify = async (req, res) => {
             });
         }
 
-        // Rejection flow
+
         if (reject_reason) {
             for (const document of checkPartner.documents) {
                 if (document.document_status === 'Pending') {
@@ -1204,60 +1203,76 @@ exports.DocumentVerify = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const { Bh_Id } = req.body;
-
+        const { Bh_Id, msgType } = req.body;
+        console.log("Login request body:", req.body);
 
         if (!Bh_Id) {
             return res.status(400).json({
                 success: false,
-                message: " BHID is required to login",
+                message: "BHID is required to login",
                 error: "Missing Bh_Id"
             });
         }
 
+
         let partner = await Heavy_vehicle_partners.findOne({ Bh_Id });
 
-        if (!partner) {
-            try {
-                const response = await axios.post("https://www.webapi.olyox.com/api/v1/getProviderDetailsByBhId", {
-                    BhId: Bh_Id
-                });
+        // Step 2: Check external website (always do this)
+        let websitePartner = null;
+        try {
+            const response = await axios.post("https://www.webapi.olyox.com/api/v1/getProviderDetailsByBhId", {
+                BhId: Bh_Id
+            });
 
-
-                if (response.data?.success) {
-                    return res.status(403).json({
-                        success: false,
-                        BhID: response.data.BH_ID,
-                        information: {
-                            name: response?.data?.data.name,
-                            phone_number: response?.data?.data.number,
-                            email: response.data?.data.email
-                        },
-                        message: "You are registered on the website but need to complete your profile on the Vendor App!",
-                        redirect: "complete-profile"
-                    });
-                }
-            } catch (error) {
-                console.error("API Error:", error?.response?.data || error.message);
-                return res.status(404).json({
-                    success: false,
-                    message: "Profile not found on website or app. Please register first!",
-                });
+            if (response.data?.success && response.data?.data) {
+                websitePartner = response.data.data;
             }
+        } catch (error) {
+            console.error("Error checking provider on website:", error?.response?.data || error.message);
+            return res.status(403).json({
+                success: false,
+                error: error?.response?.data.message
+            })
         }
 
+        // Step 3: Respond based on availability
+        if (!partner && websitePartner) {
+            return res.status(403).json({
+                success: false,
+                BhID: Bh_Id,
+                information: {
+                    name: websitePartner.name,
+                    phone_number: websitePartner.number,
+                    email: websitePartner.email
+                },
+                message: "You are registered on the website but need to complete your profile on the Vendor App!",
+                redirect: "complete-profile"
+            });
+        }
 
+        if (!partner && !websitePartner) {
+            return res.status(404).json({
+                success: false,
+                message: "Profile not found on website or app. Please register first!",
+            });
+        }
+
+        // Step 4: Generate and store OTP
         const otp = Math.floor(100000 + Math.random() * 900000);
         const otpExpiry = new Date(Date.now() + 2 * 60 * 1000).toISOString();
 
-        // Update restaurant with OTP
         partner.otp = otp;
         partner.otp_expires = otpExpiry;
         await partner.save();
 
-        // Send OTP via WhatsApp
-        const message = `Your OTP for login As A Hevay Duty Partner is: ${otp}. It is valid for 2 minutes. Please do not share it.`;
-        await SendWhatsAppMessage(message, partner.phone_number);
+        const message = `Your OTP for login As A Heavy Duty Partner is: ${otp}. It is valid for 2 minutes. Please do not share it.`;
+
+        // Step 5: Send OTP
+        if (msgType === 'text') {
+            await SendWhatsAppMessage(message, partner.phone_number, otp, true);
+        } else {
+            await SendWhatsAppMessage(message, partner.phone_number);
+        }
 
         return res.status(200).json({
             success: true,
@@ -1265,14 +1280,15 @@ exports.login = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Error logging in Hevay Duty Partner:", error.message);
+        console.error("Error logging in Heavy Duty Partner:", error.message);
         return res.status(500).json({
             success: false,
-            message: "An error occurred while logging in the Hevay Duty Partner.",
+            message: "An error occurred while logging in the Heavy Duty Partner.",
             error: error.message
         });
     }
 };
+
 
 exports.getAllHeavyVehicles = async (req, res) => {
     try {
@@ -1349,6 +1365,7 @@ exports.verifyDocumentOfHeavyTransport = async (req, res) => {
     try {
         const { id } = req.params;
         const { isAlldocumentsVerified } = req.body;
+
         const vehicle = await Heavy_vehicle_partners.findById(id);
         if (!vehicle) {
             return res.status(404).json({
@@ -1356,21 +1373,52 @@ exports.verifyDocumentOfHeavyTransport = async (req, res) => {
                 message: 'Vehicle not found.'
             });
         }
+
+        const currentDate = new Date();
+        const oneYearLater = new Date(currentDate.setFullYear(currentDate.getFullYear() + 1));
+
         vehicle.isAlldocumentsVerified = isAlldocumentsVerified;
+        vehicle.isFreeMember = true;
+        vehicle.freeTierEndData = oneYearLater;
+        vehicle.isPaid = true;
+        vehicle.RechargeData = {
+            rechargePlan: 'Free Tier',
+            expireData: oneYearLater,
+            approveRecharge: true,
+        };
+
+        const approvedDocumentTypes = ['RC Book', 'Insurance', 'Permit']; // or derive from DB
+
+        const approvalMessage = `✅ Olyox Heavy Vehicle Partner Portal:
+
+Your document(s) [${approvedDocumentTypes.join(", ")}] have been successfully verified! 🚛  
+You’ve been granted *1 Year Free Tier Membership* as a verified partner.  
+
+📝 Plan: Free Tier  
+📆 Valid Until: ${vehicle.RechargeData.expireData.toDateString()}  
+🔐 Recharge Status: Approved  
+
+Thank you for choosing Olyox! Let’s drive forward together. 💼  
+— Team Olyox`;
+
+        await SendWhatsAppMessage(approvalMessage, vehicle?.phone_number);
+
         await vehicle.save();
         return res.status(200).json({
             success: true,
             data: vehicle
         });
+
     } catch (error) {
         console.log("Internal server error", error)
         res.status(500).json({
             success: false,
             message: "Internal server error",
             error: error.message
-        })
+        });
     }
-}
+};
+
 
 exports.deleteHeavyVendor = async (req, res) => {
     try {
