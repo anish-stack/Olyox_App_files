@@ -1363,19 +1363,30 @@ exports.updateIsBlockedHeavyVehicle = async (req, res) => {
 }
 exports.verifyDocumentOfHeavyTransport = async (req, res) => {
     try {
+        console.log("Received request to verify documents for heavy transport.");
+
         const { id } = req.params;
         const { isAlldocumentsVerified } = req.body;
 
+        console.log(`Vehicle ID: ${id}`);
+        console.log(`Documents verified status: ${isAlldocumentsVerified}`);
+
         const vehicle = await Heavy_vehicle_partners.findById(id);
         if (!vehicle) {
+            console.log('Vehicle not found.');
             return res.status(404).json({
                 success: false,
                 message: 'Vehicle not found.'
             });
         }
 
+        console.log('Vehicle found:', vehicle);
+
         const currentDate = new Date();
+        console.log('Current date:', currentDate);
+
         const oneYearLater = new Date(currentDate.setFullYear(currentDate.getFullYear() + 1));
+        console.log('One year later:', oneYearLater);
 
         vehicle.isAlldocumentsVerified = isAlldocumentsVerified;
         vehicle.isFreeMember = true;
@@ -1387,7 +1398,10 @@ exports.verifyDocumentOfHeavyTransport = async (req, res) => {
             approveRecharge: true,
         };
 
+        console.log('Vehicle updated with new recharge data:', vehicle);
+
         const approvedDocumentTypes = ['RC Book', 'Insurance', 'Permit']; // or derive from DB
+        console.log('Approved document types:', approvedDocumentTypes);
 
         const approvalMessage = `✅ Olyox Heavy Vehicle Partner Portal:
 
@@ -1401,16 +1415,21 @@ You’ve been granted *1 Year Free Tier Membership* as a verified partner.
 Thank you for choosing Olyox! Let’s drive forward together. 💼  
 — Team Olyox`;
 
+        console.log('Sending WhatsApp message:', approvalMessage);
+
         await SendWhatsAppMessage(approvalMessage, vehicle?.phone_number);
+        console.log('WhatsApp message sent successfully.');
 
         await vehicle.save();
+        console.log('Vehicle data saved successfully.');
+
         return res.status(200).json({
             success: true,
             data: vehicle
         });
 
     } catch (error) {
-        console.log("Internal server error", error)
+        console.log("Internal server error:", error);
         res.status(500).json({
             success: false,
             message: "Internal server error",
