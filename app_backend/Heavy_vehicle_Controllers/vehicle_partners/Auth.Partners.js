@@ -364,12 +364,12 @@ exports.updateProfile = async (req, res) => {
             profile_shows_at_position,
             is_working
         } = req.body;
-        console.log("vehicle_info", vehicle_info)
 
-        // Create update object
+        const file = req.file
+
         const updateData = {};
 
-        // Update basic fields if provided
+
         if (name) updateData.name = name;
 
         // Check for email uniqueness if being updated
@@ -517,6 +517,20 @@ exports.updateProfile = async (req, res) => {
             }
         }
 
+        if (req.file) {
+            const result = await cloudinary.uploader.upload(req.file.path, {
+                folder: 'heavy_vehicle_partners/profile'
+            });
+    
+            console.log(result)
+            // Delete the local file after uploading
+            fs.unlinkSync(req.file.path);
+    
+            updateData.profile_image = result.secure_url
+        }
+
+        // Upload the file to Cloudinary
+    
 
         // Update partner profile
         const updatedPartner = await Heavy_vehicle_partners.findByIdAndUpdate(
@@ -1401,20 +1415,20 @@ exports.verifyDocumentOfHeavyTransport = async (req, res) => {
 
         console.log('Vehicle updated with new recharge data:', vehicle);
 
-        const approvedDocumentTypes = ['RC Book', 'Insurance', 'Permit']; // or derive from DB
+        const approvedDocumentTypes = ['RC Book', 'Insurance', 'Permit'];
         console.log('Approved document types:', approvedDocumentTypes);
 
-        const approvalMessage = `✅ Olyox Heavy Vehicle Partner Portal:
+        const approvalMessage = `Olyox Heavy Vehicle Partner Portal:
 
-Your document(s) [${approvedDocumentTypes.join(", ")}] have been successfully verified! 🚛  
-You’ve been granted *1 Year Free Tier Membership* as a verified partner.  
-
-📝 Plan: Free Tier  
-📆 Valid Until: ${vehicle.RechargeData.expireData.toDateString()}  
-🔐 Recharge Status: Approved  
-
-Thank you for choosing Olyox! Let’s drive forward together. 💼  
-— Team Olyox`;
+        Your document(s) [${approvedDocumentTypes.join(", ")}] have been successfully verified!  
+        You’ve been granted *1 Year Free Tier Membership* as a verified partner.  
+        
+        Plan: Free Tier  
+        Valid Until: ${vehicle.RechargeData.expireData.toDateString()}  
+        Recharge Status: Approved  
+        
+        Thank you for choosing Olyox! Let’s drive forward together.  
+        — Team Olyox`;
 
         console.log('Sending WhatsApp message:', approvalMessage);
 

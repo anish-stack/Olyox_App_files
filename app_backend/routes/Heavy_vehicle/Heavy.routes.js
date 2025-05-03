@@ -34,7 +34,7 @@ Heavy.post('/heavy-vehicle-login', login);
 Heavy.post('/heavy-vehicle-register', create_heavy_vehicle_partner);
 Heavy.post('/heavy-vehicle-verify-otp', verifyOTP);
 Heavy.post('/heavy-vehicle-resend-otp', resendOTP);
-Heavy.put('/heavy-vehicle-profile-update/:id', updateProfile);
+Heavy.put('/heavy-vehicle-profile-update/:id',upload.single('profileImage'), updateProfile);
 Heavy.put('/heavy-vehicle-profile-update-by-admin/:id', updateHTVehicalByAdmin);
 Heavy.post('/heavy-vehicle-services-area/:id', HeveyPartnerProtect, updateServiceAreaOnly);
 Heavy.post('/heavy-vehicle-profile-document/:id', upload.single('image'), HeveyPartnerProtect, uploadDocuments);

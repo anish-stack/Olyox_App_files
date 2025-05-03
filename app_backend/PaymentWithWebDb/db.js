@@ -79,6 +79,16 @@ const RechargeSchema = new mongoose.Schema({
     razorpay_status: {
         type: String,
     },
+    couponDiscount: {
+        type: Number,
+    },
+    isCouponApplied: {
+        type: Boolean,
+        default: false
+    },
+    couponCode: {
+        type: String,
+    },
 }, { timestamps: true });
 
 const ActiveReferralSchema = new mongoose.Schema({
@@ -99,17 +109,17 @@ const ActiveReferralSchema = new mongoose.Schema({
     },
     isRecharge: {
         type: Boolean,
-        default: false, 
+        default: false,
     },
-    vendor_id:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:'Vendor'
+    vendor_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Vendor'
     },
     isRegistered: {
-        type: Boolean, 
-        default: false, 
+        type: Boolean,
+        default: false,
     },
-}, { timestamps: true }); 
+}, { timestamps: true });
 
 const vendorSchema = new mongoose.Schema({
     name: {
@@ -347,7 +357,7 @@ const vendorSchema = new mongoose.Schema({
     },
     dob: {
         type: Date,
-        default:new Date()
+        default: new Date()
     },
     higherLevel: {
         type: Number
@@ -366,9 +376,9 @@ const vendorSchema = new mongoose.Schema({
     panNumber: {
         type: String,
     },
-    isProfileCompleteOnApp:{
-        type:Boolean,
-        default:false
+    isProfileCompleteOnApp: {
+        type: Boolean,
+        default: false
     },
     Profile_id: {
         type: mongoose.Schema.Types.ObjectId,
@@ -399,7 +409,7 @@ const getMembershipPlanModel = () => {
 };
 const getvendorModel = () => {
     if (!webDb) throw new Error("Web DB not connected. Call connectwebDb() first.");
-    if (!vendor ) {
+    if (!vendor) {
 
         vendor = webDb.model('Vendor', vendorSchema);
     }
@@ -409,7 +419,7 @@ const getvendorModel = () => {
 const getRechargeModel = () => {
     if (!webDb) throw new Error("Web DB not connected. Call connectwebDb() first.");
     if (!Recharge) {
-      
+
         Recharge = webDb.model('Recharge', RechargeSchema);
     }
     return Recharge;
@@ -417,7 +427,7 @@ const getRechargeModel = () => {
 const getActiveReferralSchema = () => {
     if (!webDb) throw new Error("Web DB not connected. Call connectwebDb() first.");
     if (!ActiveReferral) {
-      
+
         ActiveReferral = webDb.model('ActiveReferral', ActiveReferralSchema);
     }
     return ActiveReferral;

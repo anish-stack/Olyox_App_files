@@ -34,7 +34,7 @@ const SendWhatsAppMessageNormal = async (Message, MobileNumber) => {
         }
 
         // URL-encode the message
-        const encodedMessage = encodeURIComponent(Message);
+        const encodedMessage = Message;
 
         console.log('Sending WhatsApp message...');
         const waResponse = await axios.get('https://api.wtap.sms4power.com/wapp/v2/api/send', {

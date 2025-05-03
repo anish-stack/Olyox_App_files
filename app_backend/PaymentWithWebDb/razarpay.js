@@ -11,6 +11,7 @@ const razorpayInstance = new Razorpay({
 });
 const settings = require('../models/Admin/Settings');
 const { createRechargeLogs } = require('../Admin Controllers/Bugs/rechargeLogs');
+const PersonalCoupons = require('../models/Admin/PersonalCoupons');
 
 
 const FIRST_RECHARGE_COMMISONS = 10
@@ -33,6 +34,8 @@ const check_user_presence = async (user_id) => {
 exports.make_recharge = async (req, res) => {
     try {
         const { package_id, user_id } = req.params || {};
+        const { coupon, type } = req.query || {};
+
         const MembershipPlan = getMembershipPlanModel();
         const RechargeModel = getRechargeModel();
 
@@ -44,61 +47,101 @@ exports.make_recharge = async (req, res) => {
             return res.status(400).json({ message: 'Please select a package to recharge.' });
         }
 
-
+        // Find the package
         const selectedPackage = await MembershipPlan.findById(package_id);
-
-        console.log('Selected Package:', selectedPackage);
-
         if (!selectedPackage) {
-            return res.status(404).json({ message: 'Selected package not found. Please try again.' });
+            return res.status(404).json({ message: 'Selected package not found.' });
         }
 
         const { price: package_price, title: package_name, description: package_description } = selectedPackage;
-
-
         if (!package_price || package_price <= 0) {
             return res.status(400).json({ message: 'Invalid package price. Please contact support.' });
         }
-
+        console.log(user_id)
+        // Check if user exists
         const userCheck = await check_user_presence(user_id);
-
-        console.log('Selected User:', userCheck?._id);
-
         if (!userCheck) {
-            return res.status(404).json({ message: 'User not found. Please contact support.' });
+            return res.status(404).json({ message: 'User not found.' });
         }
 
+        let finalAmount = package_price;
+        let isCouponApplied = false;
+        let couponDiscount = 0;
+
+        if (coupon) {
+            const matchedCoupons = await PersonalCoupons.find({ code: coupon }).populate('assignedTo');
+            if (!matchedCoupons || matchedCoupons.length === 0) {
+                return res.status(404).json({ success: false, message: 'Invalid coupon code.' });
+            }
+            let couponData
+            if (type === 'heavy') {
+                couponData = matchedCoupons.find(c =>
+                    c.assignedTo &&
+                    c.assignedTo.Bh_Id &&
+                    c.assignedTo.Bh_Id === user_id
+                );
+
+                if (!couponData) {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Coupon is not assigned to this user.'
+                    });
+                }
+            }
+            console.log(couponData)
+
+
+
+            if (couponData.isUsed) {
+                return res.status(402).json({ success: false, message: 'This coupon code has already been used.' });
+            }
+
+            if (new Date(couponData.expirationDate) < new Date()) {
+                return res.status(410).json({ success: false, message: 'This coupon code has expired.' });
+            }
+
+            couponDiscount = (package_price * couponData.discount) / 100;
+            finalAmount = Math.max(package_price - couponDiscount, 0); // ensure it's not negative
+            isCouponApplied = true;
+
+
+        }
 
         // Create Razorpay order
         const orderOptions = {
-            amount: package_price * 100,
+            amount: finalAmount * 100,
             currency: 'INR',
             receipt: `receipt_${Date.now()}`,
             notes: {
                 user_id,
                 package_name,
                 package_description,
-                package_price
+                package_price: finalAmount
             }
         };
 
         const razorpayOrder = await razorpayInstance.orders.create(orderOptions);
-
         if (!razorpayOrder) {
             return res.status(500).json({ message: 'Failed to create Razorpay order.' });
         }
+        console.log(razorpayOrder)
 
-
+        // Save recharge entry
         const rechargeData = new RechargeModel({
-            vendor_id: userCheck?._id,
+            vendor_id: userCheck._id,
             member_id: package_id,
-            amount: package_price,
+            amount: finalAmount,
+            original_amount: package_price,
             razarpay_order_id: razorpayOrder.id,
             razorpay_payment_id: null,
-            razorpay_status: razorpayOrder.status,
+            isCouponApplied,
+            couponDiscount,
+            couponCode: isCouponApplied ? coupon : null,
+            razorpay_status: razorpayOrder.status
         });
+
         await rechargeData.save();
-        console.log('Recharge Data:', rechargeData);
+
         return res.status(200).json({
             message: 'Recharge initiated successfully.',
             order: razorpayOrder,
@@ -107,9 +150,10 @@ exports.make_recharge = async (req, res) => {
 
     } catch (error) {
         console.error('Recharge Error:', error.message);
-        return res.status(500).json({ message: 'Internal Server Error', error: error.message });
+        return res.status(500).json({ message: error.message, error: error.message });
     }
 };
+
 
 exports.verify_recharge = async (req, res) => {
     console.log("Starting recharge verification process");
@@ -119,7 +163,7 @@ exports.verify_recharge = async (req, res) => {
             razorpay_payment_id,
             razorpay_signature
         } = req.body;
-        
+
         console.log("Request body:", { razorpay_order_id, razorpay_payment_id, razorpay_signature });
 
         const { BHID } = req.params || {};
@@ -253,7 +297,7 @@ exports.verify_recharge = async (req, res) => {
         }
 
         // Step 8: Handle referral update
-        console.log("Step 8: Handling referral update");
+        console.log("Step 8: Handling referral update", user);
         try {
             const referral = await ActiveReferral_Model.findOne({ contactNumber: user.number });
             console.log("Referral found:", referral ? "Yes" : "No");
@@ -289,7 +333,7 @@ exports.verify_recharge = async (req, res) => {
             console.log("Approval API called successfully");
         } catch (error) {
             console.error("Error calling approval API:", error?.response?.data || error.message);
-            
+
             try {
                 const logsData = {
                     BHID: user.my_referral_id,
@@ -338,9 +382,18 @@ exports.verify_recharge = async (req, res) => {
             console.warn("Failed to update external recharge details");
             // We continue despite this error to ensure user gets success message
         }
+        if (rechargeData?.isCouponApplied) {
+            const foundCop = await PersonalCoupons.findOne({ code: rechargeData?.couponCode })
+            if (!foundCop) {
 
+            }
+            foundCop.isUsed = true
+            console.log("foundCop updated",foundCop)
+            await foundCop.save()
+        }
         // Step 12: Send WhatsApp notifications
         console.log("Step 12: Sending WhatsApp notifications");
+
         try {
             const vendorMessage = `Dear ${user.name},\n\n✅ Your recharge is successful!\nPlan: ${plan.title}\nAmount: ₹${plan.price}\nTransaction ID: ${razorpay_payment_id}\n\nThank you for choosing us!`;
             await SendWhatsAppMessage(vendorMessage, user.number);

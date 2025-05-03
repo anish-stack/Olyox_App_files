@@ -118,7 +118,7 @@ const Heavy_vehicle_partners = new mongoose.Schema({
         type: Date
     },
     profile_image: {
-        url: String,
+        type: String,
     },
     is_working: {
         type: Boolean,
