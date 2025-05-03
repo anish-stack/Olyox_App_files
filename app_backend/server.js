@@ -1126,10 +1126,7 @@ app.use('/api/v1/parcel', parcel);
 app.use('/api/v1/heavy', Heavy);
 app.use('/api/v1/admin', admin);
 
-/**
- * Image upload endpoint
- * Handles file uploads using multer
- */
+
 app.post('/image-upload', upload.any(), async (req, res) => {
     try {
         console.log(`[${new Date().toISOString()}] Image upload request received`, {
