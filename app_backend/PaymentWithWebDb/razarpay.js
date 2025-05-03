@@ -99,9 +99,12 @@ exports.make_recharge = async (req, res) => {
             if (new Date(couponData.expirationDate) < new Date()) {
                 return res.status(410).json({ success: false, message: 'This coupon code has expired.' });
             }
-
             couponDiscount = (package_price * couponData.discount) / 100;
-            finalAmount = Math.max(package_price - couponDiscount, 0); // ensure it's not negative
+            finalAmount = Math.max(package_price - couponDiscount, 0);
+
+
+            finalAmount = parseFloat(finalAmount.toFixed(1));
+
             isCouponApplied = true;
 
 
@@ -388,7 +391,7 @@ exports.verify_recharge = async (req, res) => {
 
             }
             foundCop.isUsed = true
-            console.log("foundCop updated",foundCop)
+            console.log("foundCop updated", foundCop)
             await foundCop.save()
         }
         // Step 12: Send WhatsApp notifications
