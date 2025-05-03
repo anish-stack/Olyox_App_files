@@ -651,8 +651,8 @@ const CollectData = () => {
           provider={isAndroid ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}  // Use Google Maps on Android, default (Apple Maps) on iOS
           style={Styles.map}
           region={{
-            latitude: 28.7041,
-            longitude: 77.1025,
+            latitude: region?.latitude ? region.latitude : 28.7041,
+            longitude: region?.longitude ? region.longitude : 77.1025,
             latitudeDelta: 0.01,
             longitudeDelta: 0.01,
           }}

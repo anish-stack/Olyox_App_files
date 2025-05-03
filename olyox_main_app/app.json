@@ -2,7 +2,7 @@
   "expo": {
     "name": "Olyox",
     "slug": "olyox",
-    "version": "1.0.0",
+   "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/appicon.png",
     "userInterfaceStyle": "light",
@@ -15,6 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
+      
       "bundleIdentifier": "com.olyoxuser.olyox",
       "development": {
         "distribution": "internal",

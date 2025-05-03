@@ -29,7 +29,7 @@
       "autoIncrement": true,
       "ios": {
         "buildConfiguration": "Release",
-        "simulator": true
+        "simulator": false
       }
     }
   },
