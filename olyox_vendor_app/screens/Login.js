@@ -6,7 +6,7 @@ import { COLORS } from '../constants/colors';
 import { useNavigation } from '@react-navigation/native';
 
 export function Login() {
-    const [restaurant_BHID, setRestaurant_BHID] = useState('');
+    const [restaurant_BHID, setRestaurant_BHID] = useState('BH');
     const [otp, setOtp] = useState('');
     const [typeOfMessage, setTypeOfMessage] = useState('text')
     const [loading, setLoading] = useState(false);

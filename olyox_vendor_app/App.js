@@ -36,6 +36,7 @@ import RegisterWithBh from './screens/BH_Re/Bh_registeration';
 import BhOtpVerification from './screens/BH_Re/BhOtpVerification';
 import RechargeHistoryTiffin from './screens/RechargeHistory';
 import UnlockCoupons from './screens/UnlockCoupons';
+import AppUpdater from './updater/AppUpdater';
 
 Sentry.init({
   dsn: 'https://517d3fb5279b487fb84063c1fb2804c9@o4508835632185344.ingest.us.sentry.io/4508835637493760',
@@ -130,6 +131,18 @@ export default function App() {
                 <Stack.Screen name="Complete Order" options={{ headerShown: true }} component={CompleteOrder} />
                 <Stack.Screen name="Unlock-Deals" options={{ headerShown: true }} component={UnlockCoupons} />
               </Stack.Navigator>
+              <AppUpdater
+                apiUrl="https://appapi.olyox.com/api/v1/admin/app-version/by-type/tiffin_vendor"
+                onClose={() => console.log('Update modal closed')}
+                customStyles={{
+        
+                  updateButton: {
+                    backgroundColor: '#007BFF',
+                  }
+                }}
+
+
+              />
             </NavigationContainer>
           </SafeAreaProvider>
 

@@ -62,6 +62,7 @@ const { createReport, getAllReports, getSingleReport, updateReport, deleteReport
 const { createBonus, getAllBonuses, getBonusById, updateBonus, deleteBonus, updateBonusStatus } = require('../../Admin Controllers/createBonus/BonusController');
 const { createAppHomeBanner, getAllAppHomeBanners, getSingleAppHomeBanner, updateAppHomeBanner, deleteAppHomeBanner, updateAppHomeBannerStatus } = require('../../Admin Controllers/AppHomeBanner');
 const { getActiveCoupons, createPCoupon, getActivePCoupons, getCouponPById, updatePCoupon, deletePCoupon, getCouponpAById } = require('../../Admin Controllers/PersonalCoupons');
+const { createAppVersion, deleteAppVersion, getLatestAppVersionByType, getAllAppVersions } = require('../../Admin Controllers/AppVersion');
 
 const admin = express.Router();
 
@@ -185,6 +186,12 @@ admin.get('/personal-coupons/:id', getCouponPById);
 admin.get('/personal-coupon/:id', getCouponpAById);
 admin.put('/personal-coupons/:id', updatePCoupon);
 admin.delete('/personal-coupons/:id', deletePCoupon);
+
+
+admin.post('/app-version/create', createAppVersion);
+admin.delete('/app-version/delete/:id', deleteAppVersion);
+admin.get('/app-version/by-type/:app_type', getLatestAppVersionByType);
+admin.get('/app-version/all', getAllAppVersions);
 
 
 module.exports = admin;
