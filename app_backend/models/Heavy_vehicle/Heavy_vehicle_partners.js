@@ -123,7 +123,12 @@ const Heavy_vehicle_partners = new mongoose.Schema({
     is_working: {
         type: Boolean,
         default: false
-    }
+    },
+    lastNotificationSent: {
+        type: Date,
+        default: null,
+      },
+      
 }, { timestamps: true });
 
 // Create index for location-based queries

@@ -41,7 +41,7 @@ export default function Food_Display_Page() {
 
     const handleSearch = (query) => {
         setSearchQuery(query)
-        console.log("objecqueryt", query)
+       
     }
 
     const filteredFoodData = foodData

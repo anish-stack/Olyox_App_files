@@ -4,19 +4,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS } from '../constants/colors';
 import { useNavigation } from '@react-navigation/native';
-import { initializeSocket } from '../context/SocketService';
 
 export function Login() {
     const [restaurant_BHID, setRestaurant_BHID] = useState('');
     const [otp, setOtp] = useState('');
+    const [typeOfMessage, setTypeOfMessage] = useState('text')
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
     const [resendDisabled, setResendDisabled] = useState(false);
     const navigation = useNavigation()
-    // const data = await initializeSocket({
-    //     userType: "tiffin_partner",
-    //     userId: data.user._id,
-    // });
+
     const sendOTP = async () => {
         if (!restaurant_BHID) {
             Alert.alert('Error', 'Please enter your Restaurant BHID');
@@ -28,7 +25,7 @@ export function Login() {
             const response = await fetch('https://www.appapi.olyox.com/api/v1/tiffin/tiffin_login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ restaurant_BHID }),
+                body: JSON.stringify({ restaurant_BHID ,typeOfMessage }),
             });
 
             const data = await response.json();
@@ -60,23 +57,7 @@ export function Login() {
         setResendDisabled(true); // Disable button for 30 seconds
         setTimeout(() => setResendDisabled(false), 30000); // Re-enable after 30s
 
-        try {
-            const response = await fetch('https://www.appapi.olyox.com/api/v1/tiffin/resend-otp', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ restaurant_BHID }),
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                Alert.alert('Success', 'OTP resent successfully');
-            } else {
-                Alert.alert('Error', data.message || 'Failed to resend OTP');
-            }
-        } catch (error) {
-            Alert.alert('Error', 'Network error. Please try again.');
-        }
+      await sendOTP()
     };
 
     // Handle OTP verification
@@ -121,6 +102,61 @@ export function Login() {
             <View style={styles.logoContainer}>
                 <Icon name="restaurant-menu" size={80} color={COLORS.error} />
                 <Text style={styles.logoText}>Tiffin Service</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 12 }}>
+                <TouchableOpacity
+                    style={[
+                        {
+                            backgroundColor: typeOfMessage === 'text' ? COLORS.error : '#111', // Active blue or default dark
+                            paddingVertical: 12,
+                            paddingHorizontal: 20,
+                            borderRadius: 8,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.2,
+                            shadowRadius: 3,
+                            elevation: 3,
+                        }
+                    ]}
+
+                    onPress={() => setTypeOfMessage('text')}
+                >
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>SMS OTP</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[
+                        {
+                            backgroundColor: typeOfMessage === 'whatsapp' ? COLORS.error : '#111',
+                            paddingVertical: 12,
+                            paddingHorizontal: 20,
+                            borderRadius: 8,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.2,
+                            shadowRadius: 3,
+                            elevation: 3,
+                        }
+                    ]}
+                    onPress={() => setTypeOfMessage('whatsapp')}
+
+                >
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>WHATSAPP OTP</Text>
+                </TouchableOpacity>
+            </View>
+
+
+            <View style={{ marginTop: 12,marginBottom:12, padding: 10, backgroundColor: '#f0fffe', borderRadius: 8 }}>
+                {typeOfMessage === 'text' && (
+                    <Text style={{ color: '#003873', fontSize: 14, fontWeight: '500' }}>
+                        OTP has been sent via SMS to your registered number.
+                    </Text>
+                )}
+                {typeOfMessage === 'whatsapp' && (
+                    <Text style={{ color: '#003873', fontSize: 14, fontWeight: '500' }}>
+                        OTP has been sent via WhatsApp to your registered number.
+                    </Text>
+                )}
             </View>
 
             <View style={styles.inputContainer}>
@@ -211,7 +247,7 @@ const styles = StyleSheet.create({
     },
     logoContainer: {
         alignItems: 'center',
-        marginTop: 60,
+        marginTop: 25,
         marginBottom: 40,
     },
     logoText: {

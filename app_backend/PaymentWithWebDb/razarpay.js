@@ -81,6 +81,16 @@ exports.make_recharge = async (req, res) => {
                     c.assignedTo.Bh_Id === user_id
                 );
 
+             
+            }else if(type === 'tiffin'){
+                couponData = matchedCoupons.find(c =>
+                    c.assignedTo &&
+                    c.assignedTo.restaurant_BHID &&
+                    c.assignedTo.restaurant_BHID === user_id
+                );
+
+              
+            }else{
                 if (!couponData) {
                     return res.status(403).json({
                         success: false,
@@ -375,6 +385,7 @@ exports.verify_recharge = async (req, res) => {
                 expireData: endDate,
                 approveRecharge: true,
                 BH: user?.myReferral
+             
             });
             console.log("External recharge details update result:", updateResult);
         } catch (externalUpdateError) {

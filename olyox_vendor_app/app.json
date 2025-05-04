@@ -17,7 +17,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aanu9745.OlyoxTiffinsApp",
+      "bundleIdentifier": "",
       "buildNumber": "1.0.0",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Allow Olyox Tiffins to use your location.",
@@ -41,7 +41,7 @@
           "apiKey": "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8"
         }
       },
-      "package": "com.aanu9745.OlyoxTiffinsApp",
+      "package": "com.olyox.OlyoxTiffinsApp",
       "versionCode": 1
     },
     "web": {
@@ -59,9 +59,8 @@
     ],
     "extra": {
       "eas": {
-
+        "projectId": "d6fa32e9-089c-462f-9f3c-8f650772f864"
       }
     }
   }
 }
-

@@ -88,7 +88,11 @@ const RiderSchema = new Schema({
         expireData: Date,
         approveRecharge: Boolean
     },
-
+    lastNotificationSent: {
+        type: Date,
+        default: null,
+      },
+      
     Bh: {
         type: String
     },

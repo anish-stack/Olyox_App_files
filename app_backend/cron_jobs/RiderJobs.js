@@ -1,54 +1,113 @@
 const cron = require('node-cron');
-const Riders = require('../models/Rider.model');
 const moment = require('moment');
+const Riders = require('../models/Rider.model');
+const Restaurant = require('../models/Tiifins/Resturant_register.model');
+const HeavyVehiclePartners = require('../models/Heavy_vehicle/Heavy_vehicle_partners');
 const SendWhatsAppMessage = require('../utils/whatsapp_send');
 
 const startExpiryCheckJob = () => {
-    cron.schedule('*/10 * * * * *', async () => {
-        console.log('🔄 [CRON] Running every 10 seconds -', new Date().toLocaleString());
+  cron.schedule('*/10 * * * * *', async () => {
+    const now = moment();
+    const today = moment().startOf('day');
+    const hour = now.hour();
 
-        try {
-            const today = moment().startOf('day');
-            console.log('📅 [INFO] Today:', today.format('YYYY-MM-DD'));
+    console.log('🔄 [CRON] Running -', now.format('YYYY-MM-DD HH:mm:ss'));
 
-            const paidRiders = await Riders.find({ isPaid: true });
+    try {
+      // ========== Riders ==========
+      const riders = await Riders.find({ isPaid: true });
 
-            console.log(`👀 [INFO] Found ${paidRiders.length} paid riders.`);
+      for (const rider of riders) {
+        const name = rider.name || 'Rider';
+        const expireDate = moment(rider?.RechargeData?.expireData).startOf('day');
+        const lastSent = moment(rider?.lastNotificationSent).startOf('day');
+        const contact = rider?.number || rider?.phone || rider?.contact || 'N/A';
+        const category = rider?.category || 'General';
 
-            for (const rider of paidRiders) {
-                const riderName = rider?.name || 'Unknown';
-                const expireDate = moment(rider?.RechargeData?.expireData).startOf('day');
+        if (expireDate.isSameOrBefore(today)) {
+          if (!lastSent.isSame(today)) {
+            rider.isPaid = false;
+            rider.isAvailable = false;
+            rider.lastNotificationSent = now;
+            await rider.save();
 
-                console.log(`➡️ Checking rider: ${riderName}`);
-                console.log(`📆 Expire Date: ${expireDate.format('YYYY-MM-DD')}`);
-
-                if (expireDate.isSameOrBefore(today)) {
-                    console.log(`⚠️ [MATCH] Rider ${riderName} plan expires today.`);
-
-                    // Update rider status
-                    rider.isPaid = false;
-                    rider.isAvailable = false;
-                    await rider.save();
-
-                    // Send WhatsApp notification
-                    const message = `👋 Hello ${riderName},\n\nYour membership plan has expired today.\nPlease recharge to continue enjoying our services.\n\nThanks,\nTeam`;
-
-                    const contactNumber = rider?.number || rider?.phone || rider?.contact || 'N/A';
-                    console.log(`📱 Sending WhatsApp to: ${contactNumber}`);
-                    await SendWhatsAppMessage(message, contactNumber);
-
-                    console.log(`✅ [DONE] Rider "${riderName}" marked as unpaid and unavailable. Notification sent.`);
-                } else {
-                    console.log(`✅ [SKIP] Rider ${riderName} plan is still valid.`);
-                }
+            if (hour >= 5 && hour < 24) {
+              const message = `👋 Hello ${name},\n\nYour ${category.toUpperCase()} partner plan has expired today.\nPlease recharge to continue using our services.\n\nThanks,\nTeam`;
+              console.log(`📱 WhatsApp to Rider: ${contact}`);
+              await SendWhatsAppMessage(message, contact);
+            } else {
+              console.log(`🌙 Skipped Rider ${name} (quiet hours).`);
             }
-
-        } catch (error) {
-            console.error('❌ [ERROR] Cron job error:', error.message);
+          } else {
+            console.log(`📭 Rider ${name} already notified today.`);
+          }
         }
+      }
 
-        console.log('-----------------------------');
-    });
+      // ========== Restaurants ==========
+      const restaurants = await Restaurant.find({ is_restaurant_in_has_valid_recharge: true });
+
+      for (const rest of restaurants) {
+        const name = rest.name || 'Restaurant';
+        const expireDate = moment(rest?.RechargeData?.expireData).startOf('day');
+        const lastSent = moment(rest?.lastNotificationSent).startOf('day');
+        const contact = rest?.number || rest?.phone || rest?.contact || 'N/A';
+
+        if (expireDate.isSameOrBefore(today)) {
+          if (!lastSent.isSame(today)) {
+            rest.is_restaurant_in_has_valid_recharge = false;
+            rest.lastNotificationSent = now;
+            await rest.save();
+
+            if (hour >= 5 && hour < 24) {
+              const message = `🍽️ Hello ${name},\n\nYour restaurant subscription expired today.\nPlease recharge to keep receiving orders.\n\nThanks,\nTeam`;
+              console.log(`📱 WhatsApp to Restaurant: ${contact}`);
+              await SendWhatsAppMessage(message, contact);
+            } else {
+              console.log(`🌙 Skipped Restaurant ${name} (quiet hours).`);
+            }
+          } else {
+            console.log(`📭 Restaurant ${name} already notified today.`);
+          }
+        }
+      }
+
+      // ========== Heavy Vehicle Partners ==========
+      const hvPartners = await HeavyVehiclePartners.find({ isPaid: true });
+
+      for (const partner of hvPartners) {
+        const name = partner.name || 'Heavy Partner';
+        const expireDate = moment(partner?.RechargeData?.expireData).startOf('day');
+        const lastSent = moment(partner?.lastNotificationSent).startOf('day');
+        const contact = partner?.number || partner?.phone || partner?.contact || 'N/A';
+
+        if (expireDate.isSameOrBefore(today)) {
+          if (!lastSent.isSame(today)) {
+            partner.isPaid = false;
+            partner.RechargeData =null
+            partner.isAvailable = false;
+            partner.lastNotificationSent = now;
+            await partner.save();
+
+            if (hour >= 5 && hour < 24) {
+              const message = `🚛 Hello ${name},\n\nYour Heavy Vehicle membership expired today.\nPlease recharge to continue.\n\nThanks,\nTeam`;
+              console.log(`📱 WhatsApp to HV Partner: ${contact}`);
+              await SendWhatsAppMessage(message, contact);
+            } else {
+              console.log(`🌙 Skipped HV ${name} (quiet hours).`);
+            }
+          } else {
+            console.log(`📭 HV Partner ${name} already notified today.`);
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ [ERROR] Cron failed:', error.message);
+    }
+
+    console.log('-----------------------------');
+  });
 };
 
 module.exports = startExpiryCheckJob;

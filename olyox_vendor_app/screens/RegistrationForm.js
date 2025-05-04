@@ -280,7 +280,17 @@ export default function RegistrationForm() {
                 onChangeText={setBhId}
                 mode="outlined"
                 keyboardType="number-pad"
-                style={styles.input}
+                placeholderTextColor="#000" // gray placeholder
+                style={{
+                    backgroundColor: '#fff',
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    paddingHorizontal: 10,
+                    color: '#6e6e6e', // gray input text
+                }}
+                theme={{ colors: { text: '#6e6e6e', primary: '#6e6e6e' } }} // gray underline & text
+                error={!!errors.bhId}
                 error={!!errors.bhId}
             />
             <HelperText type="error" visible={!!errors.bhId}>
@@ -305,7 +315,17 @@ export default function RegistrationForm() {
                 value={formData.restaurant_owner_name}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, restaurant_owner_name: text }))}
                 mode="outlined"
-                style={styles.input}
+                placeholderTextColor="#000" // gray placeholder
+                style={{
+                    backgroundColor: '#fff',
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    paddingHorizontal: 10,
+                    color: '#6e6e6e', // gray input text
+                }}
+                theme={{ colors: { text: '#6e6e6e', primary: '#6e6e6e' } }} // gray underline & text
+                error={!!errors.bhId}
                 error={!!errors.restaurant_owner_name}
             />
             <HelperText type="error" visible={!!errors.restaurant_owner_name}>
@@ -317,7 +337,17 @@ export default function RegistrationForm() {
                 onChangeText={(text) => setFormData(prev => ({ ...prev, restaurant_name: text }))}
                 mode="outlined"
                 placeholder={`${formData.restaurant_owner_name} Ka Dhabha`}
-                style={styles.input}
+                placeholderTextColor="#000" // gray placeholder
+                style={{
+                    backgroundColor: '#fff',
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    paddingHorizontal: 10,
+                    color: '#6e6e6e', // gray input text
+                }}
+                theme={{ colors: { text: '#6e6e6e', primary: '#6e6e6e' } }} // gray underline & text
+                error={!!errors.bhId}
                 error={!!errors.restaurant_name}
             />
             <HelperText type="error" visible={!!errors.restaurant_name}>
@@ -330,7 +360,17 @@ export default function RegistrationForm() {
                 onChangeText={(text) => setFormData(prev => ({ ...prev, restaurant_phone: text }))}
                 mode="outlined"
                 keyboardType="phone-pad"
-                style={styles.input}
+                placeholderTextColor="#000" // gray placeholder
+                style={{
+                    backgroundColor: '#fff',
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    paddingHorizontal: 10,
+                    color: '#6e6e6e', // gray input text
+                }}
+                theme={{ colors: { text: '#6e6e6e', primary: '#6e6e6e' } }} // gray underline & text
+                error={!!errors.bhId}
                 error={!!errors.restaurant_phone}
             />
             <HelperText type="error" visible={!!errors.restaurant_phone}>
@@ -344,7 +384,17 @@ export default function RegistrationForm() {
                 mode="outlined"
 
                 keyboardType="phone-pad"
-                style={styles.input}
+                placeholderTextColor="#000" // gray placeholder
+                style={{
+                    backgroundColor: '#fff',
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    paddingHorizontal: 10,
+                    color: '#6e6e6e', // gray input text
+                }}
+                theme={{ colors: { text: '#6e6e6e', primary: '#6e6e6e' } }} // gray underline & text
+                error={!!errors.bhId}
                 error={!!errors.restaurant_contact}
             />
             <HelperText type="error" visible={!!errors.restaurant_contact}>
@@ -371,7 +421,17 @@ export default function RegistrationForm() {
                 value={formData.restaurant_fssai}
                 onChangeText={(text) => setFormData(prev => ({ ...prev, restaurant_fssai: text }))}
                 mode="outlined"
-                style={styles.input}
+                placeholderTextColor="#000" // gray placeholder
+                style={{
+                    backgroundColor: '#fff',
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    paddingHorizontal: 10,
+                    color: '#6e6e6e', // gray input text
+                }}
+                theme={{ colors: { text: '#6e6e6e', primary: '#6e6e6e' } }} // gray underline & text
+                error={!!errors.bhId}
                 error={!!errors.restaurant_fssai}
             />
             <HelperText type="error" visible={!!errors.restaurant_fssai}>
@@ -384,7 +444,17 @@ export default function RegistrationForm() {
                 onChangeText={(text) => setFormData(prev => ({ ...prev, opening_hours: text }))}
                 mode="outlined"
                 placeholder="e.g., 9:00 AM - 10:00 PM"
-                style={styles.input}
+                placeholderTextColor="#000" // gray placeholder
+                style={{
+                    backgroundColor: '#fff',
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    paddingHorizontal: 10,
+                    color: '#6e6e6e', // gray input text
+                }}
+                theme={{ colors: { text: '#6e6e6e', primary: '#6e6e6e' } }} // gray underline & text
+                error={!!errors.bhId}
                 error={!!errors.opening_hours}
             />
             <HelperText type="error" visible={!!errors.opening_hours}>
@@ -399,7 +469,17 @@ export default function RegistrationForm() {
                     address: { ...prev.address, street: text }
                 }))}
                 mode="outlined"
-                style={styles.input}
+                placeholderTextColor="#000" // gray placeholder
+                style={{
+                    backgroundColor: '#fff',
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    paddingHorizontal: 10,
+                    color: '#6e6e6e', // gray input text
+                }}
+                theme={{ colors: { text: '#6e6e6e', primary: '#6e6e6e' } }} // gray underline & text
+                error={!!errors.bhId}
                 error={!!errors['address.street']}
             />
             <HelperText type="error" visible={!!errors['address.street']}>
@@ -414,7 +494,17 @@ export default function RegistrationForm() {
                     address: { ...prev.address, city: text }
                 }))}
                 mode="outlined"
-                style={styles.input}
+                placeholderTextColor="#000" // gray placeholder
+                style={{
+                    backgroundColor: '#fff',
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    paddingHorizontal: 10,
+                    color: '#6e6e6e', // gray input text
+                }}
+                theme={{ colors: { text: '#6e6e6e', primary: '#6e6e6e' } }} // gray underline & text
+                error={!!errors.bhId}
                 error={!!errors['address.city']}
             />
             <HelperText type="error" visible={!!errors['address.city']}>
@@ -430,7 +520,17 @@ export default function RegistrationForm() {
                     address: { ...prev.address, state: text }
                 }))}
                 mode="outlined"
-                style={styles.input}
+                placeholderTextColor="#000" // gray placeholder
+                style={{
+                    backgroundColor: '#fff',
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    paddingHorizontal: 10,
+                    color: '#6e6e6e', // gray input text
+                }}
+                theme={{ colors: { text: '#6e6e6e', primary: '#6e6e6e' } }} // gray underline & text
+                error={!!errors.bhId}
                 error={!!errors['address.state']}
             />
             <HelperText type="error" visible={!!errors['address.state']}>
@@ -445,7 +545,17 @@ export default function RegistrationForm() {
                     address: { ...prev.address, zip: text }
                 }))}
                 mode="outlined"
-                style={styles.input}
+                placeholderTextColor="#000" // gray placeholder
+                style={{
+                    backgroundColor: '#fff',
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    paddingHorizontal: 10,
+                    color: '#6e6e6e', // gray input text
+                }}
+                theme={{ colors: { text: '#6e6e6e', primary: '#6e6e6e' } }} // gray underline & text
+                error={!!errors.bhId}
                 error={!!errors['address.zip']}
             />
             <HelperText type="error" visible={!!errors['address.zip']}>
@@ -472,7 +582,17 @@ export default function RegistrationForm() {
                 onChangeText={setOtp}
                 mode="outlined"
                 keyboardType="number-pad"
-                style={styles.input}
+                placeholderTextColor="#000" // gray placeholder
+                style={{
+                    backgroundColor: '#fff',
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    paddingHorizontal: 10,
+                    color: '#6e6e6e', // gray input text
+                }}
+                theme={{ colors: { text: '#6e6e6e', primary: '#6e6e6e' } }} // gray underline & text
+                error={!!errors.bhId}
                 maxLength={6}
             />
 
@@ -580,6 +700,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     input: {
+        color: '#000',
         marginBottom: 8,
         backgroundColor: 'white',
     },
@@ -609,8 +730,11 @@ const styles = StyleSheet.create({
     infoLabel: {
         fontWeight: 'bold',
         width: 80,
+        color:'#000',
+
     },
     infoValue: {
+        color:'#000',
         flex: 1,
     },
     dropdownContainer: {

@@ -22,7 +22,7 @@ const personalCouponSchema = new mongoose.Schema({
     },
     assignedTo: {
         type: mongoose.Schema.Types.ObjectId,
-        refPath: 'onModel',  // Use refPath to handle dynamic references
+        refPath: 'onModel', 
         required: true
     },
     onModel: {

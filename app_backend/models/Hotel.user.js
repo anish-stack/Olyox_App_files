@@ -101,6 +101,11 @@ const HotelUserSchema = new Schema({
     BhJsonData: {
         type: Object
     },
+    lastNotificationSent: {
+        type: Date,
+        default: null,
+      },
+      
     otp: {
         type: Number
     },

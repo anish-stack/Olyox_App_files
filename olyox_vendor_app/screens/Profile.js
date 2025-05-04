@@ -189,7 +189,7 @@ const Profile = () => {
     );
 
     return (
-        <ScrollView style={styles.container}>
+        <ScrollView showsVerticalScrollIndicator={false} style={styles.container}>
             {/* Profile Header */}
             <View style={styles.header}>
                 <View style={styles.profileImageContainer}>
@@ -264,7 +264,7 @@ const Profile = () => {
                 {/* <MenuItem icon="account-multiple" title="Other Vendor IDs" /> */}
 
                 {/* <Text style={styles.menuHeader}>Earnings & History</Text> */}
-                {/* <MenuItem icon="wallet" title="Sales Earnings" value={`₹${restaurant?.wallet?.toFixed(2) || 0}`} /> */}
+                <MenuItem icon="wallet" title="Unlock Deals" onPress={() => navigation.navigate('Unlock-Deals')} />
                 <MenuItem icon="history" title="Recharge History" onPress={() => navigation.navigate('Recharge History')} />
                 <MenuItem icon="cash-multiple" title="Withdraw History" onPress={() => navigation.navigate('Withdraw History')} />
                 <MenuItem icon="account-group" title="Referral History" onPress={() => navigation.navigate('Referral History')} />

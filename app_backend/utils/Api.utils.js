@@ -3,6 +3,7 @@ const RiderModel = require('../models/Rider.model');
 const Settings = require('../models/Admin/Settings');
 const axios = require('axios');
 const Heavy_vehicle_partners = require('../models/Heavy_vehicle/Heavy_vehicle_partners');
+const Restaurant = require('../models/Tiifins/Resturant_register.model');
 
 exports.FindWeather = async (lat, lon) => {
   if (!lat || !lon) {
@@ -78,54 +79,58 @@ exports.CheckTolls = async (origin, destination) => {
 
 exports.updateRechargeDetails = async ({ rechargePlan, expireData, approveRecharge, BH }) => {
   try {
-    // Validate required fields
-    console.log(BH)
     if (!BH) {
       return { success: false, message: "BH is required." };
     }
 
-    // Find the rider by BH
+    let RestaurantRecharge = false
     let foundRider = await RiderModel.findOne({ BH });
-  
 
-    foundRider = await Heavy_vehicle_partners.findOne({ Bh_Id: BH })
-    console.log("foundRider", foundRider)
     if (!foundRider) {
-      return { success: false, message: "Rider not found." };
+      foundRider = await Heavy_vehicle_partners.findOne({ Bh_Id: BH });
     }
-    // If approveRecharge is true, update the recharge details
-    if (approveRecharge) {
-      // Mark first recharge as done
-      foundRider.isFirstRechargeDone = true;
 
-      if(foundRider.isFreeMember){
-        foundRider.isFreeMember = false
-        foundRider.freeTierEndData = null
-      }
-      // Update recharge data
-      foundRider.RechargeData = {
-        rechargePlan,
-        expireData,
-        approveRecharge: true
-      };
-
-      // Mark rider as paid
-      foundRider.isPaid = true;
-
-      // Save changes
-      await foundRider.save();
-
-      return {
-        success: true,
-        message: "Recharge approved and rider marked as paid.",
-        data: foundRider
-      };
-    } else {
-      return {
-        success: false,
-        message: "Recharge approval is required."
-      };
+    if (!foundRider) {
+      foundRider = await Restaurant.findOne({ restaurant_BHID: BH });
+      RestaurantRecharge = true
     }
+
+    if (!foundRider) {
+      return { success: false, message: "No user found with the provided BH ID." };
+    }
+
+    if (!approveRecharge) {
+      return { success: false, message: "Recharge approval is required." };
+    }
+
+    // Mark first recharge done
+    foundRider.isFirstRechargeDone = true;
+
+    if (foundRider.isFreeMember) {
+      foundRider.isFreeMember = false;
+      foundRider.freeTierEndData = null;
+    }
+
+    // Update recharge details
+    foundRider.RechargeData = {
+      rechargePlan,
+      expireData,
+      approveRecharge: true
+    };
+
+    foundRider.isPaid = true;
+    if (RestaurantRecharge) {
+      foundRider.is_restaurant_in_has_valid_recharge = true
+      foundRider.IsProfileComplete = true
+    }
+
+    await foundRider.save();
+
+    return {
+      success: true,
+      message: "Recharge approved and user marked as paid.",
+      data: foundRider
+    };
 
   } catch (error) {
     console.error("Error updating recharge details:", error);

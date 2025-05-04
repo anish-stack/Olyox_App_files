@@ -158,7 +158,7 @@ const restaurantSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    isOtpVerify:{
+    isOtpVerify: {
         type: Boolean,
         default: false
     },
@@ -178,13 +178,27 @@ const restaurantSchema = new mongoose.Schema({
         type: Number,
         default: 200
     },
-    IsProfileComplete:{
-        type:Boolean,
-        default:false
+    IsProfileComplete: {
+        type: Boolean,
+        default: false
     },
     JsonData: {
         type: Object
     },
+    is_restaurant_in_has_valid_recharge :{
+        type: Boolean,
+        default: false
+    },
+    RechargeData: {
+        rechargePlan: String,
+        expireData: Date,
+        approveRecharge: Boolean
+    },
+    lastNotificationSent: {
+        type: Date,
+        default: null,
+      },
+      
 }, {
     timestamps: true
 });

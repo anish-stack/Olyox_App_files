@@ -92,30 +92,25 @@ exports.find_RestaurantbyId = async (req, res) => {
 
 
 
-
 exports.find_Restaurant_foods = async (req, res) => {
     try {
         const { food_category, food_availability, restaurant_id } = req.query;
 
-        let query = {};
+        const query = {
+            ...(food_category && { food_category }),
+            ...(food_availability && { food_availability }),
+            ...(restaurant_id && { restaurant_id }),
+        };
 
-        if (food_category) {
-            query.food_category = food_category;
-        }
-        if (food_availability) {
-            query.food_availability = food_availability;
-        }
-        if (restaurant_id) {
-            query.restaurant_id = restaurant_id;
-        }
-
-        // Fetch data from the database based on the query
         let restaurants_foods = await Restaurant_Listing.find(query).populate('restaurant_id');
 
-        // Shuffle the results randomly
+        restaurants_foods = restaurants_foods.filter((item) =>
+            item?.restaurant_id?.IsProfileComplete &&
+            item?.restaurant_id?.is_restaurant_in_has_valid_recharge
+        );
+
         restaurants_foods = restaurants_foods.sort(() => Math.random() - 0.5);
 
-        // Respond with the shuffled data
         return res.status(200).json({
             success: true,
             count: restaurants_foods.length,
@@ -177,7 +172,7 @@ exports.find_Restaurant_And_Her_foods = async (req, res) => {
 };
 exports.find_RestaurantTop = async (req, res) => {
     try {
-        let { lat, lng ,page,limit} = req.query;
+        let { lat, lng, page, limit } = req.query;
         let query = { restaurant_in_top_list: true };
         if (lat && lng) {
             lat = parseFloat(lat);
@@ -290,7 +285,7 @@ exports.getPackages = async (req, res) => {
 
 exports.deleteResturant = async (req, res) => {
     try {
-        const {id} = req.params;
+        const { id } = req.params;
         const deletedResturant = await Restaurant.findByIdAndDelete(id);
         if (!deletedResturant) {
             return res.status(404).json({
@@ -304,7 +299,7 @@ exports.deleteResturant = async (req, res) => {
             data: deletedResturant,
         });
     } catch (error) {
-     console.log("Internal server error", error)   
+        console.log("Internal server error", error)
         res.status(500).json({
             success: false,
             message: "Internal server error",

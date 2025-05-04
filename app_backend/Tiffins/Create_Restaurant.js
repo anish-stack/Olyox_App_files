@@ -700,7 +700,7 @@ exports.delete_food_listing = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const { restaurant_BHID } = req.body;
+        const { restaurant_BHID, typeOfMessage } = req.body;
 
         if (!restaurant_BHID) {
             return res.status(400).json({
@@ -747,7 +747,12 @@ exports.login = async (req, res) => {
 
         // Send OTP via WhatsApp
         const message = `Your OTP for login is: ${otp}. It is valid for 2 minutes. Please do not share it.`;
-        await SendWhatsAppMessage(message, restaurant.restaurant_phone);
+        if (typeOfMessage === 'text') {
+            await SendWhatsAppMessage(message, restaurant.restaurant_phone, otp, true);
+        } else {
+            await SendWhatsAppMessage(message, restaurant.restaurant_phone);
+
+        }
 
         return res.status(200).json({
             success: true,
