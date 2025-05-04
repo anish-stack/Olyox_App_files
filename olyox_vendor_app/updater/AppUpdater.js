@@ -13,7 +13,8 @@ import {
 import * as FileSystem from 'expo-file-system';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Linking from 'expo-linking';
-
+import * as MediaLibrary from 'expo-media-library';
+import * as Sharing from 'expo-sharing';
 import Constants from 'expo-constants';
 import axios from 'axios';
 
@@ -63,10 +64,9 @@ class AppUpdateModel {
     
     // Simple version comparison (can be enhanced for semantic versioning)
     const current = this.currentVersion.split('.').map(Number);
-    console.log("current",current)
+    console.log("current", current);
     const latest = this.latestVersion.split('.').map(Number);
-    console.log("latest",latest)
-
+    console.log("latest", latest);
     
     for (let i = 0; i < Math.max(current.length, latest.length); i++) {
       const a = current[i] || 0;
@@ -91,7 +91,8 @@ class AppUpdateModel {
     try {
       // Set download path based on platform
       if (Platform.OS === 'android') {
-        this.downloadPath = `${FileSystem.documentDirectory}update.apk`;
+        // Use cache directory to avoid file URI exposure issues
+        this.downloadPath = `${FileSystem.cacheDirectory}update.apk`;
       } else {
         // For iOS, we'll just store the URL for opening in browser
         this.downloadPath = this.updateUrl;
@@ -132,12 +133,51 @@ class AppUpdateModel {
           throw new Error('Download not complete');
         }
         
-        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-          data: this.downloadPath,
-          flags: 1,
-          type: 'application/vnd.android.package-archive',
-        });
-        return true;
+        // Method 1: Using Media Library + Sharing (works on newer Android versions)
+        try {
+          // Get permissions first
+          const { status } = await MediaLibrary.requestPermissionsAsync();
+          if (status !== 'granted') {
+            throw new Error('Media library permission not granted');
+          }
+          
+          // Save the APK to media library temporarily
+          const asset = await MediaLibrary.createAssetAsync(this.downloadPath);
+          
+          // Check if sharing is available
+          const canShare = await Sharing.isAvailableAsync();
+          if (!canShare) {
+            throw new Error('Sharing not available');
+          }
+          
+          // Share the file with appropriate MIME type
+          await Sharing.shareAsync(this.downloadPath, {
+            mimeType: 'application/vnd.android.package-archive',
+            dialogTitle: 'Install Update',
+            UTI: 'application/vnd.android.package-archive'
+          });
+          
+          return true;
+        } catch (shareError) {
+          console.log('Sharing method failed, trying fallback:', shareError.message);
+          
+          // Method 2: Fallback to IntentLauncher with content URI
+          try {
+            // For Android 7+ we need to use content:// URIs
+            const contentUri = await FileSystem.getContentUriAsync(this.downloadPath);
+            
+            await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+              data: contentUri,
+              flags: 1,
+              type: 'application/vnd.android.package-archive',
+            });
+            
+            return true;
+          } catch (intentError) {
+            console.log('Intent method failed:', intentError.message);
+            throw new Error(`Installation failed: ${intentError.message}`);
+          }
+        }
       } else {
         // For iOS, open the App Store or provided URL
         await Linking.openURL(this.updateUrl);
@@ -150,6 +190,30 @@ class AppUpdateModel {
     }
   }
 }
+
+// Progress Bar Component
+const ProgressBar = ({ progress, color = '#4CAF50', height = 8 }) => {
+  return (
+    <View 
+      style={{
+        height: height,
+        width: '100%',
+        backgroundColor: '#e0e0e0',
+        borderRadius: height / 2,
+        overflow: 'hidden'
+      }}
+    >
+      <View 
+        style={{
+          height: '100%',
+          width: `${Math.round(progress * 100)}%`,
+          backgroundColor: color,
+          borderRadius: height / 2
+        }}
+      />
+    </View>
+  );
+};
 
 // Update UI Component
 const AppUpdater = ({ apiUrl, onClose, customStyles }) => {
@@ -315,6 +379,7 @@ const AppUpdater = ({ apiUrl, onClose, customStyles }) => {
 
   const handleInstall = async () => {
     try {
+      setError(null);
       await updateModel.installUpdate();
     } catch (err) {
       setError(`Installation failed: ${err.message}`);
@@ -355,7 +420,7 @@ const AppUpdater = ({ apiUrl, onClose, customStyles }) => {
             <Image 
               source={{ uri: updateModel.updateImage }}
               style={styles.updateImage}
-             
+              defaultSource={require('./assets/update-placeholder.png')}
             />
           )}
           
@@ -367,7 +432,7 @@ const AppUpdater = ({ apiUrl, onClose, customStyles }) => {
           
           {isDownloading && (
             <View style={styles.progressContainer}>
-            
+              <ProgressBar progress={downloadProgress} />
               <Text style={styles.progressText}>
                 Downloading... {Math.round(downloadProgress * 100)}%
               </Text>
@@ -424,16 +489,9 @@ const AppUpdater = ({ apiUrl, onClose, customStyles }) => {
   );
 };
 
-// Usage Example
 
 
-// Expected API response format:
-// {
-//   "latestVersion": "1.2.0",
-//   "apkUrl": "https://yourdomain.com/downloads/app-v1.2.0.apk",
-//   "forceUpdate": false,
-//   "releaseNotes": "• Fixed login issues\n• Improved performance\n• Added new features",
-//   "updateImage": "https://yourdomain.com/images/update-screen.jpg"
-// }
+
+
 
 export default AppUpdater;

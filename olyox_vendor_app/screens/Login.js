@@ -101,8 +101,8 @@ export function Login() {
         <View style={styles.container}>
             <View style={styles.logoContainer}>
                 <Icon name="restaurant-menu" size={80} color={COLORS.error} />
-                <Text style={styles.logoText}>Tiffin Service</Text>
-            </View>
+                <Text style={styles.logoText}>Log in to Your Tiffin Vendor Account</Text>
+                </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 12 }}>
                 <TouchableOpacity
                     style={[

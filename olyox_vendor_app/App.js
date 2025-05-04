@@ -37,6 +37,7 @@ import BhOtpVerification from './screens/BH_Re/BhOtpVerification';
 import RechargeHistoryTiffin from './screens/RechargeHistory';
 import UnlockCoupons from './screens/UnlockCoupons';
 import AppUpdater from './updater/AppUpdater';
+import { AppWithUpdater } from './Update';
 
 Sentry.init({
   dsn: 'https://517d3fb5279b487fb84063c1fb2804c9@o4508835632185344.ingest.us.sentry.io/4508835637493760',
@@ -103,47 +104,38 @@ export default function App() {
 
 
           <SafeAreaProvider>
-            <NavigationContainer>
-              <Stack.Navigator initialRouteName={initialRoute}>
-                <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
-                <Stack.Screen name="Profile" options={{ headerShown: true }} component={Profile} />
-                <Stack.Screen name="New Order" options={{ headerShown: true }} component={NewOrder} />
-                <Stack.Screen name="Add Listing" options={{ headerShown: true }} component={AddListing} />
-                <Stack.Screen name="Customize Tiffine Plan" options={{ headerShown: false }} component={CustomizeTiffinPlan} />
-                <Stack.Screen name="Order Report" options={{ headerShown: true }} component={OrderReport} />
-                <Stack.Screen name="Recharge Plan" options={{ headerShown: false }} component={Recharge} />
-                <Stack.Screen name="Recharge History" options={{ headerShown: true }} component={RechargeHistoryTiffin} />
-                <Stack.Screen name="Withdraw History" options={{ headerShown: false }} component={Withdraw} />
-                <Stack.Screen name="Change Password" options={{ headerShown: true }} component={ChangePassword} />
-                <Stack.Screen name="Referral History" options={{ headerShown: false }} component={ReferralHistory} />
-                <Stack.Screen name="Support" options={{ headerShown: true }} component={Support} />
-                <Stack.Screen name="Profile Update" options={{ headerShown: true, title: 'Profile' }} component={ProfileUpdate} />
-                <Stack.Screen name="Help" options={{ headerShown: true }} component={Help} />
-                <Stack.Screen name="All Order" options={{ headerShown: true }} component={AllOrders} />
-                <Stack.Screen name="Login" options={{ headerShown: true }} component={Login} />
-                <Stack.Screen name="OtpVerify" options={{ headerShown: true }} component={BhOtpVerification} />
-                <Stack.Screen name="complete-register" options={{ headerShown: true, title: "Complete Profile" }} component={RegistrationForm} />
-                <Stack.Screen name="BHRegister" options={{ headerShown: true }} component={BhVerification} />
-                <Stack.Screen name="Register" options={{ headerShown: true }} component={RegisterWithBh} />
-                <Stack.Screen name="AllFood" options={{ headerShown: false }} component={AllFood} />
-                <Stack.Screen name="CustomFood" options={{ headerShown: false }} component={AllCustomTiffins} />
-                <Stack.Screen name="Running Order" options={{ headerShown: true }} component={OnGoingOrder} />
-                <Stack.Screen name="Complete Order" options={{ headerShown: true }} component={CompleteOrder} />
-                <Stack.Screen name="Unlock-Deals" options={{ headerShown: true }} component={UnlockCoupons} />
-              </Stack.Navigator>
-              <AppUpdater
-                apiUrl="https://appapi.olyox.com/api/v1/admin/app-version/by-type/tiffin_vendor"
-                onClose={() => console.log('Update modal closed')}
-                customStyles={{
-        
-                  updateButton: {
-                    backgroundColor: '#007BFF',
-                  }
-                }}
+            <AppWithUpdater>
+              <NavigationContainer>
+                <Stack.Navigator initialRouteName={initialRoute}>
+                  <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
+                  <Stack.Screen name="Profile" options={{ headerShown: true }} component={Profile} />
+                  <Stack.Screen name="New Order" options={{ headerShown: true }} component={NewOrder} />
+                  <Stack.Screen name="Add Listing" options={{ headerShown: true }} component={AddListing} />
+                  <Stack.Screen name="Customize Tiffine Plan" options={{ headerShown: false }} component={CustomizeTiffinPlan} />
+                  <Stack.Screen name="Order Report" options={{ headerShown: true }} component={OrderReport} />
+                  <Stack.Screen name="Recharge Plan" options={{ headerShown: false }} component={Recharge} />
+                  <Stack.Screen name="Recharge History" options={{ headerShown: true }} component={RechargeHistoryTiffin} />
+                  <Stack.Screen name="Withdraw History" options={{ headerShown: false }} component={Withdraw} />
+                  <Stack.Screen name="Change Password" options={{ headerShown: true }} component={ChangePassword} />
+                  <Stack.Screen name="Referral History" options={{ headerShown: false }} component={ReferralHistory} />
+                  <Stack.Screen name="Support" options={{ headerShown: true }} component={Support} />
+                  <Stack.Screen name="Profile Update" options={{ headerShown: true, title: 'Profile' }} component={ProfileUpdate} />
+                  <Stack.Screen name="Help" options={{ headerShown: true }} component={Help} />
+                  <Stack.Screen name="All Order" options={{ headerShown: true }} component={AllOrders} />
+                  <Stack.Screen name="Login" options={{ headerShown: true }} component={Login} />
+                  <Stack.Screen name="OtpVerify" options={{ headerShown: true }} component={BhOtpVerification} />
+                  <Stack.Screen name="complete-register" options={{ headerShown: true, title: "Complete Profile" }} component={RegistrationForm} />
+                  <Stack.Screen name="BHRegister" options={{ headerShown: true }} component={BhVerification} />
+                  <Stack.Screen name="Register" options={{ headerShown: true }} component={RegisterWithBh} />
+                  <Stack.Screen name="AllFood" options={{ headerShown: false }} component={AllFood} />
+                  <Stack.Screen name="CustomFood" options={{ headerShown: false }} component={AllCustomTiffins} />
+                  <Stack.Screen name="Running Order" options={{ headerShown: true }} component={OnGoingOrder} />
+                  <Stack.Screen name="Complete Order" options={{ headerShown: true }} component={CompleteOrder} />
+                  <Stack.Screen name="Unlock-Deals" options={{ headerShown: true }} component={UnlockCoupons} />
+                </Stack.Navigator>
 
-
-              />
-            </NavigationContainer>
+              </NavigationContainer>
+            </AppWithUpdater>
           </SafeAreaProvider>
 
         </GestureHandlerRootView>
