@@ -17,7 +17,7 @@ const { width } = Dimensions.get('screen');
 const BANNER_WIDTH = width - 30;
 const BANNER_HEIGHT = BANNER_WIDTH * 0.6;
 
-const OfferBanner = () => {
+const OfferBanner = ({refreshing}) => {
   // Fallback banners in case API fails
   const fallbackBanners = [
     {
@@ -94,7 +94,7 @@ const OfferBanner = () => {
     };
 
     fetchBanners();
-  }, []);
+  }, [refreshing]);
 
   // Auto-scroll effect
   useEffect(() => {

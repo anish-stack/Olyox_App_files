@@ -34,20 +34,18 @@ const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-
-export const RideContent = React.memo(({
-  rideStart,
-  rideDetails,
-  driverData,
-  currentLocation,
-  driverLocationCurrent,
-  setSupportModalVisible
+export const RideContent = ({
+  rideStart = false,
+  rideDetails = {},
+  driverData = {},
+  currentLocation = null,
+  driverLocationCurrent = null,
+  setSupportModalVisible = () => { }
 }) => {
-  // Refs
-  console.log("rideDetails", rideDetails);
-  const mapRef = useRef(null);
 
-  // State
+  const mapRef = useRef(null);
+  const [rideStartOrNot, setRideStartOrNot] = useState(false)
+
   const [userLocation, setUserLocation] = useState(DEFAULT_USER_LOCATION);
   const [driverLocation, setDriverLocation] = useState(DEFAULT_DRIVER_LOCATION);
   const [dropLocation, setDropLocation] = useState(DEFAULT_DROP_LOCATION);
@@ -60,6 +58,13 @@ export const RideContent = React.memo(({
   const [mapError, setMapError] = useState(null);
   const [useUserPathForDriver, setUseUserPathForDriver] = useState(false);
   const [lastValidDriverLocation, setLastValidDriverLocation] = useState(null);
+
+
+  useEffect(() => {
+    if (rideStart) {
+      setRideStartOrNot(rideStart);
+    }
+  }, [rideStart]);
 
   useEffect(() => {
     try {
@@ -110,7 +115,6 @@ export const RideContent = React.memo(({
     }
   }, [rideDetails, currentLocation]);
 
-  // Update user location from props
   useEffect(() => {
     try {
       if (
@@ -123,7 +127,7 @@ export const RideContent = React.memo(({
           latitude: currentLocation.latitude,
           longitude: currentLocation.longitude
         });
-        
+
         // If we need to use user path for driver, update driver location as well
         if (useUserPathForDriver) {
           setDriverLocation({
@@ -210,22 +214,22 @@ export const RideContent = React.memo(({
       }
 
       if (isValidDriverLocation) {
-        console.log("Setting valid driver location:", newDriverLocation);
+
         setDriverLocation(newDriverLocation);
         setLastValidDriverLocation(newDriverLocation);
         setUseUserPathForDriver(false);
       } else {
         console.warn("Invalid driver location data received:", driverLocationCurrent);
-        
+
         // If we have a lastValidDriverLocation, use it
         if (lastValidDriverLocation) {
           setDriverLocation(lastValidDriverLocation);
-        } 
+        }
         // Otherwise, fallback to using user's path
         else {
           console.log("Using user path for driver movement");
           setUseUserPathForDriver(true);
-          
+
           // If user location is already available, immediately set driver to that location
           if (userLocation && userLocation.latitude && userLocation.longitude) {
             setDriverLocation({
@@ -240,7 +244,7 @@ export const RideContent = React.memo(({
       // Fallback to user path on error
       setUseUserPathForDriver(true);
     }
-  }, [driverLocationCurrent, userLocation, lastValidDriverLocation]);
+  }, []);
 
   // Share current location
   const shareLocation = useCallback(async () => {
@@ -258,33 +262,6 @@ export const RideContent = React.memo(({
     }
   }, [userLocation]);
 
-  // Open in Google Maps
-  const openInGoogleMaps = useCallback(() => {
-    try {
-      const origin = `${userLocation.latitude},${userLocation.longitude}`;
-      const destination = rideStart
-        ? `${dropLocation.latitude},${dropLocation.longitude}`
-        : `${driverLocation.latitude},${driverLocation.longitude}`;
-
-      const url = Platform.select({
-        ios: `comgooglemaps://?saddr=${origin}&daddr=${destination}&directionsmode=driving`,
-        android: `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`
-      });
-
-      // Check if Google Maps is installed
-      Linking.canOpenURL(url).then(supported => {
-        if (supported) {
-          Linking.openURL(url);
-        } else {
-          // Fallback to web if app is not installed
-          Linking.openURL(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`);
-        }
-      });
-    } catch (error) {
-      console.error('Error opening Google Maps:', error);
-      Alert.alert('Error', 'Failed to open Google Maps.');
-    }
-  }, [userLocation, driverLocation, dropLocation, rideStart]);
 
   // Function to zoom to driver location
   const zoomToDriverLocation = useCallback(() => {
@@ -307,7 +284,7 @@ export const RideContent = React.memo(({
           { latitude: driverLocation.latitude, longitude: driverLocation.longitude }
         ];
 
-        if (rideStart && dropLocation) {
+        if (rideStartOrNot && dropLocation) {
           coordinates.push({ latitude: dropLocation.latitude, longitude: dropLocation.longitude });
         }
 
@@ -322,7 +299,7 @@ export const RideContent = React.memo(({
         console.error('Error showing both locations:', error);
       }
     }
-  }, [userLocation, driverLocation, dropLocation, rideStart]);
+  }, [userLocation, driverLocation, dropLocation, rideStartOrNot]);
 
   // Set map to show both locations when component mounts or locations change
   useEffect(() => {
@@ -375,7 +352,7 @@ export const RideContent = React.memo(({
   const hasValidDirections = useCallback(() => {
     if (!userLocation || !driverLocation) return false;
 
-    if (rideStart && !dropLocation) return false;
+    if (rideStartOrNot && !dropLocation) return false;
 
     // Check that all required coordinates are valid numbers
     const validUserLocation =
@@ -386,23 +363,23 @@ export const RideContent = React.memo(({
       typeof driverLocation.latitude === 'number' &&
       typeof driverLocation.longitude === 'number';
 
-    const validDropLocation = !rideStart || (
+    const validDropLocation = !rideStartOrNot || (
       typeof dropLocation.latitude === 'number' &&
       typeof dropLocation.longitude === 'number'
     );
 
     return validUserLocation && validDriverLocation && validDropLocation;
-  }, [userLocation, driverLocation, dropLocation, rideStart]);
+  }, [userLocation, driverLocation, dropLocation, rideStartOrNot]);
 
   // Get origin and destination for directions
   const getDirectionsPoints = useCallback(() => {
     if (!hasValidDirections()) return { origin: null, destination: null };
 
     return {
-      origin: rideStart ? userLocation : driverLocation,
-      destination: rideStart ? dropLocation : userLocation
+      origin: rideStartOrNot ? userLocation : driverLocation,
+      destination: rideStartOrNot ? dropLocation : userLocation
     };
-  }, [userLocation, driverLocation, dropLocation, rideStart, hasValidDirections]);
+  }, [userLocation, driverLocation, dropLocation, rideStartOrNot, hasValidDirections]);
 
   // Render loading state
   if (isLoading) {
@@ -437,6 +414,16 @@ export const RideContent = React.memo(({
 
   // Get directions points
   const { origin, destination } = getDirectionsPoints();
+
+
+
+
+
+
+
+
+
+
 
   return (
     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -481,7 +468,7 @@ export const RideContent = React.memo(({
           </Marker>
 
           {/* Marker for drop location if ride has started */}
-          {rideStart && (
+          {rideStartOrNot && (
             <Marker
               coordinate={dropLocation}
               title="Drop-off Location"
@@ -525,50 +512,58 @@ export const RideContent = React.memo(({
           )}
         </MapView>
 
-        {/* Map Controls */}
-        <View style={styles.mapControls}>
-          <TouchableOpacity
-            style={styles.mapButton}
-            onPress={zoomToDriverLocation}
-          >
-            <MaterialCommunityIcons name="car-connected" size={20} color="#fff" />
-            <Text style={styles.mapButtonText}>Find Driver</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.mapButton}
-            onPress={showBothLocations}
-          >
-            <MaterialCommunityIcons name="map-marker-radius" size={20} color="#fff" />
-            <Text style={styles.mapButtonText}>Show Both</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Driver status indicator */}
-        {useUserPathForDriver && (
-          <View style={styles.driverStatusBanner}>
-            <MaterialCommunityIcons name="information" size={16} color="#fff" />
-            <Text style={styles.driverStatusText}>Driver is following your path</Text>
-          </View>
-        )}
       </View>
 
-      {/* Conditional Rendering for OTP Card */}
-      {!rideStart && rideDetails?.otp && <OtpCard otp={rideDetails.otp} />}
+      <View style={styles.mapControls}>
+        <TouchableOpacity
+          style={styles.mapButton}
+          onPress={zoomToDriverLocation}
+        >
+          <MaterialCommunityIcons name="car-connected" size={20} color="#fff" />
+          <Text style={styles.mapButtonText}>Find Driver</Text>
+        </TouchableOpacity>
 
-      {/* Driver Card */}
-      {driverData && <DriverCard driverData={driverData} isRideStart={rideStart} rideDetails={rideDetails} />}
-
-      {/* Location Card */}
+        <TouchableOpacity
+          style={styles.mapButton}
+          onPress={showBothLocations}
+        >
+          <MaterialCommunityIcons name="map-marker-radius" size={20} color="#fff" />
+          <Text style={styles.mapButtonText}>Show Both</Text>
+        </TouchableOpacity>
+      </View>
+      {rideStartOrNot && (
+        <View style={styles.rideStatusBanner}>
+          <MaterialCommunityIcons
+            name={rideStartOrNot ? "car-arrow-right" : "car-clock"}
+            size={16}
+            color="#fff"
+          />
+          <Text style={styles.rideStatusText}>
+            {rideStartOrNot ? "Ride in progress" : "Waiting for ride to start"}
+          </Text>
+        </View>
+      )}
+      {useUserPathForDriver && (
+        <View style={styles.driverStatusBanner}>
+          <MaterialCommunityIcons name="information" size={16} color="#fff" />
+          <Text style={styles.driverStatusText}>Driver is following your path</Text>
+        </View>
+      )}
+      {!rideStartOrNot && rideDetails?.otp && <OtpCard otp={rideDetails.otp} />}
+      {driverData && <DriverCard driverData={driverData} isRideStart={rideStartOrNot} rideDetails={rideDetails} />}
       {rideDetails?.pickup && rideDetails?.dropoff && (
         <LocationCard pickup={rideDetails.pickup} dropoff={rideDetails.dropoff} />
       )}
 
       {/* Price Card */}
       {rideDetails?.price && <PriceCard price={rideDetails.price} />}
+
+
     </ScrollView>
+
   );
-});
+};
+
 
 const styles = StyleSheet.create({
   content: {
@@ -664,6 +659,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 4,
   },
+  rideStatusBanner: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: '#C82333',
+    borderRadius: 20,
+    padding: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rideStatusText: {
+    color: '#fff',
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '500',
+  },
   driverStatusBanner: {
     position: 'absolute',
     bottom: 10,
@@ -702,6 +714,23 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#fff',
+  },
+  debugContainer: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  debugHeader: {
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#333',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   googleMapsButton: {
     backgroundColor: '#34A853',
@@ -784,4 +813,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default RideContent; 
+
+

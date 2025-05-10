@@ -6,7 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 const { width } = Dimensions.get('screen');
 const ITEM_WIDTH = (width - 60) / 5;
 
-export default function Categories() {
+export default function Categories({refreshing}) {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const navigation = useNavigation();
@@ -54,12 +54,12 @@ export default function Categories() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [refreshing]);
 
 
     useEffect(() => {
         fetchCategories();
-    }, [fetchCategories]);
+    }, [refreshing]);
 
     // Memoized redirect function
     const redirect = useCallback((screen) => {

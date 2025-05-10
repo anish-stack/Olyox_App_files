@@ -63,6 +63,7 @@ const { createBonus, getAllBonuses, getBonusById, updateBonus, deleteBonus, upda
 const { createAppHomeBanner, getAllAppHomeBanners, getSingleAppHomeBanner, updateAppHomeBanner, deleteAppHomeBanner, updateAppHomeBannerStatus } = require('../../Admin Controllers/AppHomeBanner');
 const { getActiveCoupons, createPCoupon, getActivePCoupons, getCouponPById, updatePCoupon, deletePCoupon, getCouponpAById } = require('../../Admin Controllers/PersonalCoupons');
 const { createAppVersion, deleteAppVersion, getLatestAppVersionByType, getAllAppVersions } = require('../../Admin Controllers/AppVersion');
+const { webhookExotelApi } = require('../../controllers/ExotelApi');
 
 const admin = express.Router();
 
@@ -193,5 +194,6 @@ admin.delete('/app-version/delete/:id', deleteAppVersion);
 admin.get('/app-version/by-type/:app_type', getLatestAppVersionByType);
 admin.get('/app-version/all', getAllAppVersions);
 
+admin.get('/webhook-exotel-api',webhookExotelApi)
 
 module.exports = admin;

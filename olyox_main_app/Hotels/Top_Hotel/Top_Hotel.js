@@ -55,7 +55,7 @@ export default function Top_Hotel({ show = false ,onRefresh,refreshing }) {
         };
 
         fetchData();
-    }, []);
+    }, [refreshing]);
 
     const displayedHotels = showAll ? hotelData : hotelData.slice(0, 4);
 

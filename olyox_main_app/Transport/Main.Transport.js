@@ -55,12 +55,15 @@ export default function MainTransport() {
           _id: "all",
           title: "All Vehicles",
           category: "all",
+          active:true,
           backgroundColour: "#E74C3C",
           image: {
             url: "https://i.ibb.co/8nFg7SGc/240-F-315664059-3-U5r-Ifjw-AR5b2r-Il-Jdchwl5-Jsb-E8uljn.jpg",
           },
         }
-        setVehicles([allCategory, ...data.data])
+        const dataCopy = [allCategory, ...data.data]
+        const filterData = dataCopy.filter((item)=> item.active === true)
+        setVehicles(filterData)
       } else {
         setVehicles([])
         Alert.alert("No Data", "No vehicle categories found")
@@ -83,7 +86,6 @@ export default function MainTransport() {
       )
 
       if (data.partners) {
-        console.log("Partners:", data.partners)
         setPartners(data.partners)
       } else {
         setPartners([])
@@ -102,7 +104,7 @@ export default function MainTransport() {
     setLoading(true)
     handleFetch()
     fetchPartners()
-  }, [location])
+  }, [])
 
   // Toggle expanded service areas
   const toggleServiceAreas = (partnerId) => {

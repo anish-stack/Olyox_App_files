@@ -1,5 +1,5 @@
 import { useRoute, useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
     StyleSheet,
     View,
@@ -27,18 +27,17 @@ import { useRide } from '../../context/RideContext';
 
 const { width, height } = Dimensions.get('window');
 const API_BASE_URL = 'https://www.appapi.olyox.com/api/v1';
-
 export function RideConfirmed() {
+
     const route = useRoute();
     const navigation = useNavigation();
     const { socket, isConnected } = useSocket();
 
+
     // Extract params
     const { driver, ride } = route.params || {};
+    const { clearCurrentRide, updateRideStatus } = useRide();
 
-    // State variables
-      const { clearCurrentRide, updateRideStatus } = useRide();
-    
     const [rideStart, setRideStart] = useState(false);
     const [driverData, setDriverData] = useState(driver);
     const [isLoading, setIsLoading] = useState(false);
@@ -54,7 +53,7 @@ export function RideConfirmed() {
     const [locationPermission, setLocationPermission] = useState(true);
     const [error, setError] = useState(null);
 
-    // Initialize ride details with default values
+
     const [rideDetails, setRideDetails] = useState({
         otp: driver?.otp || '1234',
         eta: driver?.eta || '5 mins',
@@ -68,7 +67,6 @@ export function RideConfirmed() {
         pickupLocation: driver?.pickupLocation || 'pickupLocation'
     });
 
-    // Helper function to reset navigation
     const resetToHome = useCallback(() => {
         navigation.reset({
             index: 0,
@@ -76,7 +74,6 @@ export function RideConfirmed() {
         });
     }, [navigation]);
 
-    // Fetch cancellation reasons
     const fetchReason = useCallback(async () => {
         try {
             setIsLoading(true);
@@ -91,7 +88,7 @@ export function RideConfirmed() {
         }
     }, []);
 
-    // Fetch ride details from database
+
     const fetchRideDetailsFromDb = useCallback(async () => {
         try {
             setIsLoading(true);
@@ -103,24 +100,24 @@ export function RideConfirmed() {
             }
 
             const { data } = await axios.get(`${API_BASE_URL}/rides/find-ride_details?id=${rideId}`);
-            
-            if (data.data) {
-                setRideData(data.data);
+
+            if (data?.data) {
+                setRideData(data?.data);
                 setRideDetails(prev => ({
                     ...prev,
-                    otp: data.data.RideOtp || prev.otp,
-                    eta: data.data.EtaOfRide || prev.eta,
-                    price: data.data.kmOfRide || prev.price,
-                    rating: data.data.rating || prev.rating,
-                    is_done: data.data.is_ride_paid || prev.is_done,
-                    pickup: data.data.pickup_desc || prev.pickup,
-                    trips: data.data.RatingOfRide || prev.trips,
-                    dropoff: data.data.drop_desc || prev.dropoff,
-                    drop_cord: data.data.dropLocation || prev.drop_cord,
-                    pickupLocation: data.data.pickupLocation || prev.pickupLocation
+                    otp: data?.data?.RideOtp || prev.otp,
+                    eta: data?.data?.EtaOfRide || prev.eta,
+                    price: data?.data?.kmOfRide || prev.price,
+                    rating: data?.data?.rating || prev.rating,
+                    is_done: data?.data?.is_ride_paid || prev.is_done,
+                    pickup: data?.data?.pickup_desc || prev.pickup,
+                    trips: data?.data?.RatingOfRide || prev.trips,
+                    dropoff: data?.data?.drop_desc || prev.dropoff,
+                    drop_cord: data?.data?.dropLocation || prev.drop_cord,
+                    pickupLocation: data?.data?.pickupLocation || prev.pickupLocation
                 }));
-                setDriverData(data.data.rider);
-                setRideStart(data.data.ride_is_started);
+                setDriverData(data?.data?.rider);
+                setRideStart(data?.data?.ride_is_started || false);
             }
         } catch (error) {
             console.error('Error fetching ride details:', error);
@@ -130,7 +127,8 @@ export function RideConfirmed() {
         }
     }, [ride]);
 
-    // Handle ending the ride
+
+
     const handleEndRide = useCallback(async () => {
         try {
             setRideEndLoading(true);
@@ -147,10 +145,8 @@ export function RideConfirmed() {
     }, [socket, rideDetails, rideData]);
 
 
-
     const handlePaymentEndRide = useCallback(async () => {
         try {
-          
             const socketInstance = socket();
             if (socketInstance) {
                 socketInstance.emit('endRide', { rideDetails, ride: rideData });
@@ -165,7 +161,6 @@ export function RideConfirmed() {
         }
     }, [socket, rideDetails, rideData]);
 
-    // Handle cancelling the ride
     const handleCancelRide = useCallback(async () => {
         try {
             if (!selectedReason) {
@@ -192,14 +187,12 @@ export function RideConfirmed() {
                 "Your pickup has been canceled. Thank you for choosing Olyox!",
                 [{ text: "OK", onPress: () => resetToHome() }]
             );
-            clearCurrentRide()
-
-
+            clearCurrentRide();
         } catch (error) {
             console.error("⚠️ Error in handleCancelRide:", error);
             Alert.alert("Error", "Something went wrong while canceling the ride.");
         }
-    }, [selectedReason, rideData, socket, resetToHome]);
+    }, [selectedReason, rideData, socket, resetToHome, clearCurrentRide]);
 
     // Save ride ID in AsyncStorage
     useEffect(() => {
@@ -218,7 +211,7 @@ export function RideConfirmed() {
     // Setup location tracking
     useEffect(() => {
         let locationWatcher = null;
-        
+
         (async () => {
             try {
                 let { status } = await Location.requestForegroundPermissionsAsync();
@@ -244,7 +237,7 @@ export function RideConfirmed() {
                 setError("Failed to setup location tracking");
             }
         })();
-        
+
         // Cleanup location watcher
         return () => {
             if (locationWatcher) {
@@ -253,7 +246,7 @@ export function RideConfirmed() {
         };
     }, []);
 
-    // Setup socket listeners for ride events
+
     useEffect(() => {
         const socketInstance = socket();
 
@@ -266,8 +259,7 @@ export function RideConfirmed() {
                     data.message || "Your ride has been cancelled by the driver.",
                     [{ text: "OK", onPress: () => resetToHome() }]
                 );
-                clearCurrentRide()
-
+                clearCurrentRide();
             };
 
             // Handle incorrect ride completion
@@ -301,9 +293,8 @@ export function RideConfirmed() {
                 socketInstance.off('ride_incorrect_mark_done_user_done', handleIncorrectRideCompletion);
             };
         }
-    }, [socket, resetToHome]);
+    }, [socket, resetToHome, clearCurrentRide]);
 
-    // Setup socket listeners when rideData is available
     useEffect(() => {
         if (!rideData || Object.keys(rideData).length === 0) return;
 
@@ -347,8 +338,7 @@ export function RideConfirmed() {
         // Navigate to rating screen
         const handleRateRide = (data) => {
             console.log('isPay data come');
-            clearCurrentRide()
-
+            clearCurrentRide();
             navigation.navigate('Rate_Your_ride', { data });
         };
 
@@ -365,7 +355,7 @@ export function RideConfirmed() {
             currentSocket.off('your_ride_is_mark_complete', handleRideComplete);
             currentSocket.off('give-rate', handleRateRide);
         };
-    }, [rideData, currentLocation, socket, navigation]);
+    }, [rideData, currentLocation, socket, navigation, clearCurrentRide]);
 
     // Initial data fetch
     useEffect(() => {
@@ -377,10 +367,9 @@ export function RideConfirmed() {
     useEffect(() => {
         if (rideDetails.is_done === true) {
             navigation.navigate('Home');
-            clearCurrentRide()
-
+            clearCurrentRide();
         }
-    }, [rideDetails.is_done, navigation]);
+    }, [rideDetails.is_done, navigation, clearCurrentRide]);
 
     // Error handling - if there's a critical error, show alert and go back to home
     useEffect(() => {
@@ -398,13 +387,15 @@ export function RideConfirmed() {
         return <LoadingOverlay message="Loading ride details..." />;
     }
 
+
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
 
-            <RideHeader rideStart={rideStart} />
+         <RideHeader rideStart={rideStart} />
 
-            <RideContent
+         
+         <RideContent
                 rideStart={rideStart}
                 rideDetails={rideDetails}
                 driverData={driverData}
@@ -412,7 +403,7 @@ export function RideConfirmed() {
                 driverLocationCurrent={driverLocationCurrent}
                 setSupportModalVisible={setSupportModalVisible}
             />
-
+            {/*  */}
             <RideFooter
                 rideStart={rideStart}
                 handleEndRide={handleEndRide}
@@ -451,7 +442,8 @@ export function RideConfirmed() {
 
             {isLoading && <LoadingOverlay />}
         </SafeAreaView>
-    );
+
+    )
 }
 
 const styles = StyleSheet.create({

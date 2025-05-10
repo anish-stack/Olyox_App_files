@@ -1,0 +1,410 @@
+
+import { useState, useEffect } from "react"
+import { View, StatusBar } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
+import * as Location from "expo-location"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { useNavigation } from "@react-navigation/native"
+import { useGuest } from "../../context/GuestLoginContext"
+
+import LocationHeader from "./LocationHeader"
+import LocationInputs from "./LocationInputs"
+import LocationSuggestions from "./LocationSuggestions"
+import MapSelector from "./MapSelector"
+import MapPreview from "./MapPreview"
+import FindRidersButton from "./FindRidersButton"
+import {
+  fetchCurrentLocationAddress,
+  fetchLocationCoordinates,
+  fetchPastRidesData,
+  fetchDirectionsPolyline,
+} from "./api"
+import { CACHE_EXPIRY, INDIA_REGION } from "./constants"
+import styles from "./styles"
+
+const RideLocationSelector = () => {
+  const navigation = useNavigation()
+  const { isGuest } = useGuest()
+  const [coordinates, setCoordinates] = useState([])
+  const [distance, setDistance] = useState(null)
+  const [duration, setDuration] = useState(null)
+  const [pastRides, setPastRides] = useState([])
+  const [pastRideSuggestions, setPastRideSuggestions] = useState({
+    pickup: [],
+    dropoff: [],
+  })
+
+  const [state, setState] = useState({
+    pickup: "",
+    dropoff: "",
+    suggestions: [],
+    loading: false,
+    error: "",
+    activeInput: null,
+    showMap: false,
+    mapType: null,
+    isFetchingLocation: false,
+    locationPermissionGranted: false,
+  })
+
+  const [rideData, setRideData] = useState({
+    pickup: { latitude: 0, longitude: 0, description: "" },
+    dropoff: { latitude: 0, longitude: 0, description: "" },
+  })
+
+  const [region, setRegion] = useState({
+    latitude: INDIA_REGION.center.latitude,
+    longitude: INDIA_REGION.center.longitude,
+    latitudeDelta: 20,
+    longitudeDelta: 20,
+  })
+
+  useEffect(() => {
+    checkLocationPermission()
+    fetchPastRides()
+  }, [])
+
+  // Process past rides to extract unique locations
+  useEffect(() => {
+    if (pastRides.length > 0) {
+      try {
+        // Extract unique pickup locations
+        const uniquePickups = [
+          ...new Map(
+            pastRides.map((ride) => [
+              ride.pickup_desc,
+              {
+                description: ride.pickup_desc,
+                coordinates: ride.pickupLocation?.coordinates || [],
+              },
+            ]),
+          ).values(),
+        ].filter((item) => item.description && item.coordinates.length === 2)
+
+        // Extract unique dropoff locations
+        const uniqueDropoffs = [
+          ...new Map(
+            pastRides.map((ride) => [
+              ride.drop_desc,
+              {
+                description: ride.drop_desc,
+                coordinates: ride.dropLocation?.coordinates || [],
+              },
+            ]),
+          ).values(),
+        ].filter((item) => item.description && item.coordinates.length === 2)
+
+        // Limit to 3 suggestions each
+        setPastRideSuggestions({
+          pickup: uniquePickups.slice(0, 3),
+          dropoff: uniqueDropoffs.slice(0, 3),
+        })
+      } catch (error) {
+        console.error("Error processing past rides:", error)
+      }
+    }
+  }, [pastRides])
+
+  // Fetch directions when both pickup and dropoff are set
+  useEffect(() => {
+    const getDirections = async () => {
+      try {
+        if (
+          rideData?.pickup?.latitude &&
+          rideData?.pickup?.longitude &&
+          rideData?.dropoff?.latitude &&
+          rideData?.dropoff?.longitude
+        ) {
+          const { polylineCoordinates, distanceValue, durationValue } = await fetchDirectionsPolyline(
+            rideData.pickup,
+            rideData.dropoff,
+          )
+
+          setCoordinates(polylineCoordinates)
+          setDistance(distanceValue)
+          setDuration(durationValue)
+        }
+      } catch (error) {
+        console.error("Error fetching directions:", error)
+      }
+    }
+
+    getDirections()
+  }, [rideData.pickup, rideData.dropoff])
+
+  const checkLocationPermission = async () => {
+    try {
+      setState((prev) => ({ ...prev, isFetchingLocation: true }))
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      setState((prev) => ({
+        ...prev,
+        locationPermissionGranted: status === "granted",
+        isFetchingLocation: status !== "granted",
+      }))
+
+      if (status === "granted") {
+        await getCachedOrCurrentLocation()
+      } else {
+        setState((prev) => ({
+          ...prev,
+          error: "Location permission denied. Some features may be limited.",
+          isFetchingLocation: false,
+        }))
+      }
+    } catch (error) {
+      console.error("Permission error:", error)
+      setState((prev) => ({
+        ...prev,
+        error: "Failed to request location permission",
+        isFetchingLocation: false,
+      }))
+    }
+  }
+
+  const getCachedOrCurrentLocation = async () => {
+    try {
+      const cachedLocation = await AsyncStorage.getItem("lastKnownLocation")
+      if (cachedLocation) {
+        const { location, timestamp } = JSON.parse(cachedLocation)
+        if (Date.now() - timestamp < CACHE_EXPIRY) {
+          updateLocationData(location)
+          return
+        }
+      }
+      await fetchCurrentLocation()
+    } catch (error) {
+      console.error("Location cache error:", error)
+      await fetchCurrentLocation()
+    }
+  }
+
+  const fetchCurrentLocation = async () => {
+    setState((prev) => ({ ...prev, isFetchingLocation: true, error: "" }))
+    try {
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Highest,
+        timeInterval: 5000,
+        distanceInterval: 10,
+      })
+
+      await AsyncStorage.setItem(
+        "lastKnownLocation",
+        JSON.stringify({
+          location,
+          timestamp: Date.now(),
+        }),
+      )
+
+      await updateLocationData(location)
+    } catch (error) {
+      console.error("Location error:", error)
+      setState((prev) => ({
+        ...prev,
+        error: "Location unavailable. Please enter manually.",
+        isFetchingLocation: false,
+      }))
+    }
+  }
+
+  const updateLocationData = async (location) => {
+    try {
+      const address = await fetchCurrentLocationAddress(location.coords.latitude, location.coords.longitude)
+
+      // Ensure coordinates are within India
+      const latitude = Math.min(Math.max(location.coords.latitude, INDIA_REGION.minLat), INDIA_REGION.maxLat)
+      const longitude = Math.min(Math.max(location.coords.longitude, INDIA_REGION.minLng), INDIA_REGION.maxLng)
+
+      setRegion({
+        latitude,
+        longitude,
+        latitudeDelta: 0.01, // More zoomed in by default
+        longitudeDelta: 0.01,
+      })
+
+      setState((prev) => ({
+        ...prev,
+        pickup: address,
+        isFetchingLocation: false,
+      }))
+
+      setRideData((prev) => ({
+        ...prev,
+        pickup: {
+          latitude,
+          longitude,
+          description: address,
+        },
+      }))
+    } catch (error) {
+      console.error("Address fetch error:", error)
+      setState((prev) => ({
+        ...prev,
+        isFetchingLocation: false,
+        error: "Failed to get address. Please enter manually.",
+      }))
+    }
+  }
+
+  const handleMapRegionChange = async (newRegion) => {
+    try {
+      // Constrain to India's boundaries
+      const constrainedRegion = {
+        ...newRegion,
+        latitude: Math.min(Math.max(newRegion.latitude, INDIA_REGION.minLat), INDIA_REGION.maxLat),
+        longitude: Math.min(Math.max(newRegion.longitude, INDIA_REGION.minLng), INDIA_REGION.maxLng),
+      }
+
+      setRegion(constrainedRegion)
+      const { latitude, longitude } = constrainedRegion
+
+      setState((prev) => ({ ...prev, loading: true }))
+      const address = await fetchCurrentLocationAddress(latitude, longitude)
+
+      if (state.mapType === "pickup") {
+        setState((prev) => ({ ...prev, pickup: address, loading: false }))
+        setRideData((prev) => ({
+          ...prev,
+          pickup: { latitude, longitude, description: address },
+        }))
+      } else {
+        setState((prev) => ({ ...prev, dropoff: address, loading: false }))
+        setRideData((prev) => ({
+          ...prev,
+          dropoff: { latitude, longitude, description: address },
+        }))
+      }
+    } catch (error) {
+      console.error("Region change error:", error)
+      setState((prev) => ({ ...prev, loading: false }))
+    }
+  }
+
+  const fetchPastRides = async () => {
+    try {
+      setState((prev) => ({ ...prev, loading: true }))
+      const ridesData = await fetchPastRidesData()
+      if (ridesData) {
+        setPastRides(ridesData)
+      }
+    } catch (error) {
+      console.error("Error fetching past rides:", error)
+    } finally {
+      setState((prev) => ({ ...prev, loading: false }))
+    }
+  }
+
+  const handleLocationSelect = async (location, coordinates = null) => {
+    try {
+      setState((prev) => ({ ...prev, loading: true }))
+
+      let latitude, longitude
+
+      // If coordinates are provided (from past rides), use them directly
+      if (coordinates && coordinates.length === 2) {
+        ;[longitude, latitude] = coordinates
+      } else {
+        // Otherwise, geocode the address
+        const coords = await fetchLocationCoordinates(location)
+        latitude = coords.latitude
+        longitude = coords.longitude
+      }
+
+      if (state.activeInput === "pickup") {
+        setState((prev) => ({ ...prev, pickup: location, suggestions: [], loading: false }))
+        setRideData((prev) => ({
+          ...prev,
+          pickup: {
+            latitude,
+            longitude,
+            description: location,
+          },
+        }))
+      } else {
+        setState((prev) => ({ ...prev, dropoff: location, suggestions: [], loading: false }))
+        setRideData((prev) => ({
+          ...prev,
+          dropoff: {
+            latitude,
+            longitude,
+            description: location,
+          },
+        }))
+      }
+
+      setState((prev) => ({ ...prev, activeInput: null }))
+    } catch (error) {
+      console.error("Location select error:", error)
+      setState((prev) => ({ ...prev, loading: false, error: "Failed to get location coordinates" }))
+    }
+  }
+
+  const handleSubmit = () => {
+    if (isGuest) {
+      alert("To book a ride, please create an account.")
+      navigation.navigate("Onboarding")
+      return
+    }
+
+    if (!rideData.pickup.latitude || !rideData.dropoff.latitude) {
+      alert("Please select both pickup and drop-off locations")
+      return
+    }
+
+    navigation.navigate("second_step_of_booking", { data: rideData })
+  }
+
+  if (state.showMap) {
+    return (
+      <MapSelector
+        region={region}
+        mapType={state.mapType}
+        address={state.mapType === "pickup" ? state.pickup : state.dropoff}
+        loading={state.loading}
+        onRegionChangeComplete={handleMapRegionChange}
+        onBack={() => setState((prev) => ({ ...prev, showMap: false }))}
+      />
+    )
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      <LocationHeader onBack={() => navigation.goBack()} />
+
+      <LocationInputs
+        state={state}
+        setState={setState}
+        rideData={rideData}
+        isFetchingLocation={state.isFetchingLocation}
+        onMapSelect={(type) => setState((prev) => ({ ...prev, showMap: true, mapType: type }))}
+      />
+
+      {state.error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{state.error}</Text>
+        </View>
+      ) : null}
+
+
+      {state.suggestions.length >0 && (
+        <LocationSuggestions
+          state={state}
+          pastRideSuggestions={pastRideSuggestions}
+          onSelectLocation={handleLocationSelect}
+        />
+      )}
+
+
+      {rideData?.pickup?.latitude && !state.suggestions.length && !state.activeInput && (
+        <MapPreview rideData={rideData} coordinates={coordinates} region={region} setRegion={setRegion} />
+      )}
+
+      {rideData.pickup.latitude && rideData.dropoff.latitude && !state.suggestions.length && (
+        <FindRidersButton onPress={handleSubmit} />
+      )}
+    </SafeAreaView>
+  )
+}
+
+export default RideLocationSelector

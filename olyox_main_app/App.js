@@ -57,6 +57,7 @@ import Choose_Vehicle from './Parcel_Booking/Choose_Vehicle';
 import PaymentScreen from './Parcel_Booking/PaymentScreen';
 import FindRider from './Parcel_Booking/FindRider/FindRider';
 import { RideProvider } from './context/RideContext';
+import RideLocationSelector from './Ride/First_Step_screen';
 
 const Stack = createNativeStackNavigator();
 
@@ -286,7 +287,7 @@ const App = () => {
     <>
       <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
       {/* Booking Ride Screens */}
-      <Stack.Screen name="Start_Booking_Ride" options={{ headerShown: false }} component={Collect_Data} />
+      <Stack.Screen name="Start_Booking_Ride" options={{ headerShown: false }} component={RideLocationSelector} />
       <Stack.Screen name="second_step_of_booking" options={{ headerShown: false }} component={Show_Cabs} />
       <Stack.Screen name="confirm_screen" options={{ headerShown: false }} component={BookingConfirmation} />
       <Stack.Screen name="driver_match" options={{ headerShown: false }} component={DriverMatching} />

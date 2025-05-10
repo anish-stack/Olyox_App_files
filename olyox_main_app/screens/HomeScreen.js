@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
-import { COLORS } from '../constants/colors';
+import { StyleSheet, ScrollView, RefreshControl, View, Text, ActivityIndicator } from 'react-native';
 import Layout from '../components/Layout/_layout';
 import OfferBanner from '../components/OfferBanner/OfferBanner';
 import Categories from '../components/Categories/Categories';
@@ -9,21 +8,61 @@ import TopFood from '../Foods/Top_Foods/TopFood';
 import BookARide from '../components/Book_A_Ride/BookARide';
 import Food_Cats from '../Foods/Food_Cats/Food_Cats';
 import SkeletonLoader from './SkeletonLoader';
-import * as Updates from 'expo-updates';
+
 const HomeScreen = () => {
-    const isMounted = useRef(false); 
+    // Refs
+    const isMounted = useRef(false);
+    
+    // State management
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [componentLoading, setComponentLoading] = useState({
+        offers: true,
+        categories: true,
+        bookRide: true,
+        topHotels: true,
+        foodCategories: true,
+        topFoods: true
+    });
 
+    // Load individual component data
+    const loadComponentData = async (component) => {
+        try {
+            // Simulate API call for the specific component
+            await new Promise((resolve) => setTimeout(resolve, Math.random() * 1000 + 500));
+            setComponentLoading(prev => ({ ...prev, [component]: false }));
+        } catch (error) {
+            console.error(`Error loading ${component}:`, error);
+        }
+    };
 
+    // Initial data fetch
     const fetchData = async () => {
         try {
-            if (isMounted.current) return;
-            isMounted.current = true;
-
             setLoading(true);
-      
-            await new Promise((resolve) => setTimeout(resolve, 3200));
+            
+            // Reset component loading states during a refresh
+            setComponentLoading({
+                offers: true,
+                categories: true,
+                bookRide: true,
+                topHotels: true,
+                foodCategories: true,
+                topFoods: true
+            });
+            
+            // Simulate main data loading
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            
+            // Start loading individual components
+            loadComponentData('offers');
+            loadComponentData('categories');
+            loadComponentData('bookRide');
+            loadComponentData('topHotels');
+            loadComponentData('foodCategories');
+            loadComponentData('topFoods');
+            
+            isMounted.current = true;
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
@@ -33,14 +72,16 @@ const HomeScreen = () => {
 
     // Fetch data on component mount
     useEffect(() => {
-        fetchData();
+        if (!isMounted.current) {
+            fetchData();
+        }
     }, []);
 
     // Refresh function
     const onRefresh = useCallback(async () => {
         try {
             setRefreshing(true);
-            await Updates.reloadAsync();
+            // Reset loading states
             await fetchData();
         } catch (error) {
             console.error('Refresh error:', error);
@@ -49,7 +90,7 @@ const HomeScreen = () => {
         }
     }, []);
 
-    // Show skeleton loader while loading
+    // Show skeleton loader while initial loading
     if (loading) {
         return (
             <Layout>
@@ -67,23 +108,79 @@ const HomeScreen = () => {
                 scrollEventThrottle={16}
                 contentContainerStyle={styles.scrollViewContent}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    <RefreshControl 
+                        refreshing={refreshing} 
+                        onRefresh={onRefresh}
+                        colors={['#FF6B00']} // Customize refresh indicator color
+                        tintColor={'#FF6B00'}
+                    />
                 }
             >
-                <OfferBanner />
-                <Categories />
-                <BookARide />
-                <Top_Hotel onRefresh={onRefresh} refreshing={refreshing} />
-                <Food_Cats />
-                <TopFood onRefresh={onRefresh} refreshing={refreshing} />
+                {componentLoading.offers ? (
+                    <ComponentLoader text="Loading offers..." />
+                ) : (
+                    <OfferBanner onRefresh={onRefresh} refreshing={refreshing} />
+                )}
+                
+                {componentLoading.categories ? (
+                    <ComponentLoader text="Loading categories..." />
+                ) : (
+                    <Categories onRefresh={onRefresh} refreshing={refreshing} />
+                )}
+                
+                {componentLoading.bookRide ? (
+                    <ComponentLoader text="Loading ride options..." />
+                ) : (
+                    <BookARide onRefresh={onRefresh} refreshing={refreshing} />
+                )}
+                
+                {componentLoading.topHotels ? (
+                    <ComponentLoader text="Loading top hotels..." />
+                ) : (
+                    <Top_Hotel onRefresh={onRefresh} refreshing={refreshing} />
+                )}
+                
+                {componentLoading.foodCategories ? (
+                    <ComponentLoader text="Loading food categories..." />
+                ) : (
+                    <Food_Cats onRefresh={onRefresh} refreshing={refreshing} />
+                )}
+                
+                {componentLoading.topFoods ? (
+                    <ComponentLoader text="Loading top foods..." />
+                ) : (
+                    <TopFood onRefresh={onRefresh} refreshing={refreshing} />
+                )}
             </ScrollView>
         </Layout>
     );
 };
 
+// Component loader placeholder
+const ComponentLoader = ({ text }) => (
+    <View style={styles.componentLoader}>
+        <ActivityIndicator size="small" color="#FF6B00" />
+        <Text style={styles.loaderText}>{text}</Text>
+    </View>
+);
+
 const styles = StyleSheet.create({
     scrollViewContent: {
-        paddingBottom: 16, // Optional, for scroll padding at the bottom
+        paddingBottom: 16,
+    },
+    componentLoader: {
+        padding: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#f9f9f9',
+        marginVertical: 8,
+        borderRadius: 8,
+        minHeight: 100,
+    },
+    loaderText: {
+        marginTop: 8,
+        color: '#666',
+        fontSize: 14,
     },
 });
 

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-export const DriverCard = React.memo(({ driverData, rideDetails }) => {
+export const DriverCard = React.memo(({ driverData, rideDetails ,isRideStart }) => {
     return (
         <View style={styles.driverCard}>
             <View style={styles.driverProfile}>
@@ -32,7 +32,7 @@ export const DriverCard = React.memo(({ driverData, rideDetails }) => {
                 </View>
                 <TouchableOpacity
                     style={styles.callButton}
-                    onPress={() => Linking.openURL(`tel:${driverData?.phone || '9876543210'}`)}
+                    onPress={() => Linking.openURL(`tel:${'01141236767'}`)}
                 >
                     <MaterialCommunityIcons name="phone" size={24} color="#fff" />
                 </TouchableOpacity>
@@ -45,7 +45,7 @@ export const DriverCard = React.memo(({ driverData, rideDetails }) => {
                         {driverData?.rideVehicleInfo?.vehicleName || 'Vehicle'} • {driverData?.rideVehicleInfo?.VehicleNumber || 'XX-XX-XXXX'}
                     </Text>
                 </View>
-                {!rideStart && (
+                {!isRideStart && (
                     <View style={styles.etaContainer}>
                         <MaterialCommunityIcons name="clock-outline" size={20} color="#10B981" />
                         <Text style={styles.etaText}>Arriving in {rideDetails.eta}</Text>

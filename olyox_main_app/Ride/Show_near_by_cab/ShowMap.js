@@ -83,7 +83,10 @@ export default function ShowMap() {
       setInitialLoading(true)
       const { data } = await axios.get(`${API_BASE_URL}/admin/getAllSuggestions`)
       if (data?.data?.length) {
-        setRides(data.data)
+
+        const sort = data?.data.filter((item) => item?.status === true)
+
+        setRides(sort)
       } else {
         setRides([])
         setError("No ride options available at the moment")
@@ -213,7 +216,7 @@ export default function ShowMap() {
       <TouchableOpacity style={styles.mapControlButton} onPress={toggleMapSize}>
         <MaterialIcons name={mapExpanded ? "fullscreen-exit" : "fullscreen"} size={22} color="#000" />
       </TouchableOpacity>
-     
+
     </View>
   )
 
@@ -357,8 +360,8 @@ export default function ShowMap() {
               <Text style={styles.rideName}>{ride.name}</Text>
               <Text style={styles.rideDescription}>{ride.description || `Comfortable ${ride.name} for your journey`}</Text>
               <View style={styles.rideDetailRow}>
-                <MaterialIcons name="access-time" size={12} color="#666" />
-                <Text style={styles.rideTime}>{ride.estimatedTime || "10-15 min"}</Text>
+                {/* <MaterialIcons name="access-time" size={12} color="#666" /> */}
+                {/* <Text style={styles.rideTime}>{ride.estimatedTime || "10-15 min"}</Text> */}
 
                 {fareInfo?.totalPrice && (
                   <>
@@ -504,26 +507,26 @@ export default function ShowMap() {
 
         {/* Sticky bottom bar with high z-index */}
         <View style={styles.bookButtonContainer}>
-        
-        <TouchableOpacity
-          onPress={handleBookNow}
-          style={[styles.bookButton, !selectedRide && styles.disabledButton]}
-          activeOpacity={0.8}
-          disabled={!selectedRide}
-        >
-          <Text style={styles.bookButtonText}>
-            {selectedRide
-              ? `Book ${selectedRide.name} ${selectedRide.fareInfo
-                ? formatPrice(promoApplied ? selectedRide.fareInfo.totalPrice * 0.9 : selectedRide.fareInfo.totalPrice)
-                : ""
-              }`
-              : "Select a Ride"}
-          </Text>
-          <AntDesign name="arrowright" size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
+
+          <TouchableOpacity
+            onPress={handleBookNow}
+            style={[styles.bookButton, !selectedRide && styles.disabledButton]}
+            activeOpacity={0.8}
+            disabled={!selectedRide}
+          >
+            <Text style={styles.bookButtonText}>
+              {selectedRide
+                ? `Book ${selectedRide.name} ${selectedRide.fareInfo
+                  ? formatPrice(promoApplied ? selectedRide.fareInfo.totalPrice * 0.9 : selectedRide.fareInfo.totalPrice)
+                  : ""
+                }`
+                : "Select a Ride"}
+            </Text>
+            <AntDesign name="arrowright" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
-    
+
     </>
 
   )
@@ -819,6 +822,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   rideDescription: {
+    textTransform: 'capitalize',
     color: "#666",
     fontSize: 14,
     marginTop: 2,

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Olyox",
     "slug": "olyox",
-   "version": "1.0.1",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/appicon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,6 @@
     },
     "ios": {
       "supportsTablet": true,
-      
       "bundleIdentifier": "com.olyoxuser.olyox",
       "development": {
         "distribution": "internal",
@@ -81,7 +80,7 @@
           ]
         }
       ],
-      "package": "com.olyoxuser.olyox"
+      "package": "com.happy_coding.olyox"
     },
     "web": {
       "favicon": "./assets/appicon.png",
@@ -93,8 +92,7 @@
       "clerkFrontendApi": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk",
       "clerkApiKey": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk",
       "eas": {
-       
-       "projectId": "e73c718b-d6aa-45ea-a12a-c496424892ba"
+        "projectId": "520953ad-4ed2-413d-87bb-b050b56dd3d0"
       }
     }
   }

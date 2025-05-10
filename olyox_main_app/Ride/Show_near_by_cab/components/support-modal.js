@@ -21,7 +21,7 @@ const { height } = Dimensions.get('window');
 export const SupportModal = React.memo(({
     visible,
     handleEndRide,
-    rideStart,
+    rideStart=false,
     rideLoadingEnd,
     setVisible,
     driverData,
