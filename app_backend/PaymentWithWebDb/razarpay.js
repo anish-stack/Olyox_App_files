@@ -41,8 +41,8 @@ exports.make_recharge = async (req, res) => {
         const MembershipPlan = getMembershipPlanModel();
         const RechargeModel = getRechargeModel();
 
-        console.log(package_id, user_id)
-        console.log(coupon, type)
+        // console.log(package_id, user_id)
+        // console.log(coupon, type)
 
         if (!user_id) {
             return res.status(400).json({ message: 'Please login to recharge.' });
@@ -62,7 +62,7 @@ exports.make_recharge = async (req, res) => {
         if (!package_price || package_price <= 0) {
             return res.status(400).json({ message: 'Invalid package price. Please contact support.' });
         }
-        console.log(user_id)
+        // console.log(user_id)
         // Check if user exists
         const userCheck = await check_user_presence(user_id);
         if (!userCheck) {
@@ -111,8 +111,6 @@ exports.make_recharge = async (req, res) => {
                     });
                 }
             }
-            console.log(couponData)
-
 
 
             if (couponData.isUsed) {
@@ -133,16 +131,22 @@ exports.make_recharge = async (req, res) => {
 
         }
 
+        const gstRate = 0.18;
+        const gstAmount = finalAmount * gstRate;
+        finalAmount += gstAmount;
+
         // Create Razorpay order
         const orderOptions = {
-            amount: finalAmount * 100,
+            amount: Math.round(finalAmount * 100), 
             currency: 'INR',
             receipt: `receipt_${Date.now()}`,
             notes: {
                 user_id,
                 package_name,
                 package_description,
-                package_price: finalAmount
+                base_price: (finalAmount / 1.18).toFixed(2), // Base price before GST
+                gst_amount: gstAmount.toFixed(2),             // GST amount
+                total_amount: finalAmount.toFixed(2)          // Final amount including GST
             }
         };
 
@@ -411,9 +415,6 @@ exports.verify_recharge = async (req, res) => {
             const rawPlan = plan?._doc ? plan._doc : plan;
             const normalizedPlan = camelCaseKeys(rawPlan);
 
-            console.log("Plan Title:", normalizedPlan.title);
-            console.log("Plan Expiry Date:", endDate);
-            console.log("Plan Earning Potential:", normalizedPlan.howManyMoneyEarnThisPlan);
 
             updateResult = await updateRechargeDetails({
                 rechargePlan: normalizedPlan.title,

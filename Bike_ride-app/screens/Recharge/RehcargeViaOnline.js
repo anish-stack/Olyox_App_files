@@ -322,21 +322,32 @@ export default function RechargeViaOnline() {
 
   // Calculate discounted price
   const calculateDiscountedPrice = useCallback(() => {
-    if (!selectedPlan) return 0
+    if (!selectedPlan) return { basePrice: 0, gstAmount: 0, totalPrice: 0 };
 
     try {
+      let basePrice = selectedPlan.price;
+
       if (appliedCoupon) {
-        const discountAmount = (selectedPlan.price * appliedCoupon.discount) / 100
-        const discountedPrice = selectedPlan.price - discountAmount
-        return Number.parseFloat(discountedPrice.toFixed(1)) // returns number like 9.9
+        const discountAmount = (selectedPlan.price * appliedCoupon.discount) / 100;
+        basePrice = selectedPlan.price - discountAmount;
       }
 
-      return Number.parseFloat(selectedPlan.price.toFixed(1))
+      const gstAmount = basePrice * 0.18;
+      const totalPrice = basePrice + gstAmount;
+
+      return {
+        basePrice: Number.parseFloat(basePrice.toFixed(2)),
+        gstAmount: Number.parseFloat(gstAmount.toFixed(2)),
+        totalPrice: Number.parseFloat(totalPrice.toFixed(2))
+      };
     } catch (error) {
-      console.error("Error calculating price:", error)
-      return selectedPlan.price || 0
+      console.error("Error calculating price:", error);
+      return { basePrice: 0, gstAmount: 0, totalPrice: 0 };
     }
-  }, [selectedPlan, appliedCoupon])
+  }, [selectedPlan, appliedCoupon]);
+
+  const { basePrice, gstAmount, totalPrice } = calculateDiscountedPrice();
+
 
   const initiatePayment = async () => {
     if (!selectedMemberId) {
@@ -491,9 +502,11 @@ export default function RechargeViaOnline() {
             <View style={styles.priceBreakdown}>
               <Text style={styles.totalPriceLabel}>Total Price:</Text>
               <View style={styles.priceDisplay}>
-                {appliedCoupon && <Text style={styles.originalPrice}>₹{selectedPlan.price}</Text>}
+                {appliedCoupon && (
+                  <Text style={styles.originalPrice}>₹{selectedPlan.price.toFixed(2)}</Text>
+                )}
                 <Text style={styles.finalPrice}>
-                  ₹{appliedCoupon ? calculateDiscountedPrice() : selectedPlan.price}
+                  ₹{basePrice} + 18% GST = ₹{totalPrice}
                 </Text>
               </View>
             </View>
@@ -603,7 +616,7 @@ const styles = StyleSheet.create({
     paddingBottom: 120, // Extra padding for bottom section
   },
   planCard: {
-    
+
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 20,
@@ -771,7 +784,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   finalPrice: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#111827",
   },
