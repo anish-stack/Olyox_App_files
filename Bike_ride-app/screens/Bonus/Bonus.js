@@ -1,4 +1,3 @@
-"use client"
 
 import { useEffect, useState, useCallback } from "react"
 import {
@@ -78,7 +77,7 @@ export default function Bonus() {
     )
   }
 
-  const getBonusStatusColor = (status: string) => {
+  const getBonusStatusColor = (status) => {
     return status === "active" ? "#4caf50" : "#f44336"
   }
 
@@ -142,7 +141,7 @@ export default function Bonus() {
     )
   }
 
-  const renderEmptyState = (message: string) => (
+  const renderEmptyState = (message) => (
     <View style={styles.emptyContainer}>
       <MaterialIcons name="hourglass-empty" size={50} color="#ccc" />
       <Text style={styles.emptyText}>{message}</Text>
@@ -176,12 +175,15 @@ export default function Bonus() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0066cc"]} />}
       >
-        <View style={styles.headerContainer}>
+        {bonusData?.eligibleBonus?.length > 0 ? (
+           <View style={styles.headerContainer}>
           <Text style={styles.heading}>Eligible Bonuses</Text>
           {!loading && bonusData?.eligibleBonus?.length === 0 && (
             <Text style={styles.subHeading}>Complete more hours to unlock bonuses</Text>
           )}
         </View>
+        ) :null}
+       
 
         {bonusData?.eligibleBonus?.length ? (
           <ScrollView
@@ -192,9 +194,7 @@ export default function Bonus() {
           >
             {bonusData.eligibleBonus.map((bonus, index) => renderBonusCard(bonus, index, true))}
           </ScrollView>
-        ) : (
-          renderEmptyState("No eligible bonuses available at the moment")
-        )}
+        ) : null}
 
         <View style={styles.headerContainer}>
           <Text style={styles.heading}>Upcoming Bonuses</Text>

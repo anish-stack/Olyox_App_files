@@ -27,7 +27,7 @@ const { width } = Dimensions.get("window")
 const CARD_WIDTH = width * 0.95
 const API_URL_WEB = "https://www.webapi.olyox.com"
 
-export function Recharge () {
+export function Recharge() {
     const navigation = useNavigation()
     const { restaurant, refetch } = useFetchProfile()
 
@@ -71,11 +71,14 @@ export function Recharge () {
             const enhancedPlans = filter.map((plan) => ({
                 ...plan,
                 features: [
-                    `Valid for ${plan.validityDays} ${plan.whatIsThis || 'days'}`,
-                    "Unlimited bookings",
-                    "Priority customer support",
+                    `Valid for ${plan.validityDays} ${plan.whatIsThis || 'days'} from the date of activation.`,
+                    `Earn up to ₹${plan.HowManyMoneyEarnThisPlan} through food order bookings.`,
+                    "Enjoy unlimited booking requests — no daily limits!",
+                    "Get priority access to our dedicated customer support team.",
+                    "⚠️ Note: Once you reach your maximum earning limit, the plan will automatically expire."
                 ],
-            }))
+            }));
+
 
             setMemberships(enhancedPlans)
         } catch (error) {
@@ -120,7 +123,7 @@ export function Recharge () {
     // Handle plan selection
     const handlePlanSelect = useCallback((plan) => {
         if (!plan) return
-        
+
         setSelectedPlan(plan)
         // Reset coupon when plan changes
         setCouponCode("")
@@ -228,7 +231,7 @@ export function Recharge () {
 
         try {
             // Construct URL with or without coupon
-            const baseUrl = `https://www.appapi.olyox.com/api/v1/rider/recharge-wallet/${selectedPlan._id}/${restaurant?.restaurant_BHID}`
+            const baseUrl = `http://192.168.1.15:3100/api/v1/rider/recharge-wallet/${selectedPlan._id}/${restaurant?.restaurant_BHID}`
             const urlWithParams = appliedCoupon ? `${baseUrl}?coupon=${appliedCoupon.code}&type=tiffin` : baseUrl
 
             const response = await axios.get(urlWithParams)
@@ -241,7 +244,7 @@ export function Recharge () {
                 description: `${selectedPlan.title} Membership`,
                 image: "https://www.olyox.com/assets/logo-CWkwXYQ_.png",
                 currency: response.data.order.currency,
-                key: "rzp_live_zD1yAIqb2utRwp",
+                key: "rzp_test_WIhO08xjZ4nRVW",
                 // key: "rzp_test_7atYe4nCssW6Po",
                 amount: response.data.order.amount,
                 name: "Olyox",
@@ -259,7 +262,7 @@ export function Recharge () {
                 throw new Error("Payment failed or was cancelled")
             }
 
-            const verifyResponse = await axios.post(`https://www.appapi.olyox.com/api/v1/rider/recharge-verify/${restaurant?.restaurant_BHID}`, {
+            const verifyResponse = await axios.post(`http://192.168.1.15:3100/api/v1/rider/recharge-verify/${restaurant?.restaurant_BHID}`, {
                 razorpay_order_id: paymentResponse.razorpay_order_id,
                 razorpay_payment_id: paymentResponse.razorpay_payment_id,
                 razorpay_signature: paymentResponse.razorpay_signature,
@@ -275,7 +278,7 @@ export function Recharge () {
             }
         } catch (error) {
             console.error("Payment error:", error)
-            
+
             // Handle different error scenarios
             if (error?.description === "Payment Cancelled" || error?.code === "PAYMENT_CANCELLED") {
                 displayPaymentModal("cancelled", "You cancelled the payment. Please try again when you're ready.")
@@ -308,7 +311,7 @@ export function Recharge () {
     const renderPlanCard = useCallback(
         (plan, index) => {
             if (!plan || !plan._id) return null
-            
+
             const isSelected = selectedPlan?._id === plan._id
 
             return (
@@ -330,11 +333,12 @@ export function Recharge () {
                         {/* Plan features */}
                         <View style={styles.planContent}>
                             <Text style={styles.validityText}>
-                                {plan.validityDays || 0} {plan.whatIsThis || "days"} membership
+                                {plan.validityDays || 0} {plan.whatIsThis || "days"} done membership
                             </Text>
                             <Text style={[styles.validityText, { fontSize: 12 }]}>
                                 {plan?.description || ""}
                             </Text>
+
 
                             {plan.features?.map((feature, idx) => (
                                 <View key={idx} style={styles.featureRow}>
@@ -485,7 +489,7 @@ export function Recharge () {
                     <Icon name="arrow-left" size={24} color="#0F172A" />
                 </TouchableOpacity>
                 <View>
-                    <Text style={styles.headerTitle}>Membership Plans</Text>
+                    <Text style={styles.headerTitle}>Membership Plans </Text>
                     <Text style={styles.headerSubtitle}>Choose a plan that suits your needs</Text>
                 </View>
             </View>
@@ -566,11 +570,15 @@ export function Recharge () {
                                 <>
                                     <Icon name="credit-card-outline" size={20} color="#FFFFFF" />
                                     <Text style={styles.paymentButtonText}>
-                                        Pay ₹{calculateDiscountedPrice()} with Razorpay
+                                        Pay ₹{calculateDiscountedPrice()} + 18% = ₹{(calculateDiscountedPrice() * 1.18).toFixed(2)} with Razorpay
                                         {appliedCoupon && (
-                                            <Text style={styles.discountText}> (₹{selectedPlan.price} - {appliedCoupon.discount}%)</Text>
+                                            <Text style={styles.discountText}>
+                                                {' '} (₹{selectedPlan.price} - {appliedCoupon.discount}% + 18% GST)
+                                            </Text>
                                         )}
                                     </Text>
+
+
                                 </>
                             )}
                         </LinearGradient>
@@ -765,7 +773,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
     },
     paymentButtonText: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: "600",
         color: "#FFFFFF",
         marginLeft: 8,

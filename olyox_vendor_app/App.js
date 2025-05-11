@@ -36,8 +36,8 @@ import RegisterWithBh from './screens/BH_Re/Bh_registeration';
 import BhOtpVerification from './screens/BH_Re/BhOtpVerification';
 import RechargeHistoryTiffin from './screens/RechargeHistory';
 import UnlockCoupons from './screens/UnlockCoupons';
-import AppUpdater from './updater/AppUpdater';
-import { AppWithUpdater } from './Update';
+// import AppUpdater from './updater/AppUpdater';
+// import { AppWithUpdater } from './Update';
 
 Sentry.init({
   dsn: 'https://517d3fb5279b487fb84063c1fb2804c9@o4508835632185344.ingest.us.sentry.io/4508835637493760',
@@ -104,7 +104,7 @@ export default function App() {
 
 
           <SafeAreaProvider>
-            <AppWithUpdater>
+            {/* <AppWithUpdater> */}
               <NavigationContainer>
                 <Stack.Navigator initialRouteName={initialRoute}>
                   <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
@@ -135,7 +135,7 @@ export default function App() {
                 </Stack.Navigator>
 
               </NavigationContainer>
-            </AppWithUpdater>
+            {/* </AppWithUpdater> */}
           </SafeAreaProvider>
 
         </GestureHandlerRootView>

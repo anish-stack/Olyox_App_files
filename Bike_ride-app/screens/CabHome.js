@@ -633,6 +633,7 @@ const CabHome = () => {
       </LinearGradient>
 
       <ScrollView
+      showsVerticalScrollIndicator={false}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -771,9 +772,9 @@ const CabHome = () => {
           )}
           
           {mapVisible && DriverMap}
-          
+                    <Report isRefresh={refreshing} />
+
           <Bonus />
-          <Report isRefresh={refreshing} />
         </View>
       </ScrollView>
 

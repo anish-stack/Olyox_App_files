@@ -4,6 +4,7 @@ const Restaurant = require("../models/Tiifins/Resturant_register.model");
 const SendWhatsAppMessage = require("../utils/whatsapp_send");
 const User = require("../models/normal_user/User.model");
 const Coupon = require('../models/Tiifins/couponsOfFood');
+const SendWhatsAppMessageNormal = require("../utils/normalWhatsapp");
 
 exports.create_order_of_food = async (req, res) => {
     try {
@@ -496,66 +497,84 @@ exports.change_order_status = async (req, res) => {
     try {
         const { orderId } = req.params;
         const { status, deliveryBoyName, deliveryBoyPhone, deliveryBoyBikeNumber } = req.body;
-        // console.log("object", req.body,orderId)
+
+        console.log("📦 Changing Order Status:", orderId, "→", status);
+
         const order = await RestuarntOrderModel.findById(orderId);
         if (!order) {
-            return res.status(404).json({
-                success: false,
-                message: "Order not found"
-            });
+            return res.status(404).json({ success: false, message: "Order not found" });
         }
-        const userId = order?.user;
-        const user = await User.findById(userId);
-        const userNumber = user?.number;
-        order.status = status;
 
+        const user = await User.findById(order.user);
+        const userNumber = user?.number;
+
+        order.status = status;
         await order.save();
 
         if (status === "Confirmed") {
-            const message = `🍽️ Order Confirmation 🍽️
-
-Your food order has been confirmed! 🎉
-
-Order ID: ${order?.Order_Id}
-Status: Confirmed ✅
-
-Our team is preparing your delicious meal, and it will be on its way soon! 🚀
-
-Thank you for choosing our service. Enjoy your meal! 😋`
-            SendWhatsAppMessage(message, userNumber)
+            const message = `✅ Your order (ID: ${order.Order_Id}) has been confirmed! We're preparing your food and it will be on the way shortly. Thank you for ordering with us – Team Olyox.`;
+            await SendWhatsAppMessage(message, userNumber);
         }
 
         if (status === "Out for Delivery") {
-            const resturant_id = order?.restaurant;
-            const resturant = await Restaurant.findById(resturant_id);
-            resturant.wallet = resturant.wallet + order.totalPrice
-            await resturant.save();
+            const restaurant = await Restaurant.findById(order.restaurant);
+            const restNumber = restaurant?.restaurant_phone;
+
+            // Update wallet
+            restaurant.wallet += order.totalPrice;
+
+            const rechargeDate = new Date(restaurant?.RechargeData?.whichDateRecharge);
+            const earningLimit = Number(restaurant?.RechargeData?.onHowManyEarning || 0);
+            const planName = restaurant?.RechargeData?.rechargePlan || "N/A";
+
+            const pastOrders = await RestuarntOrderModel.find({
+                resturant: restaurant._id,
+                status: "Out for Delivery",
+                createdAt: { $gte: rechargeDate }
+            });
+
+            const pastEarnings = pastOrders.reduce((sum, o) => sum + Number(o.totalPrice || 0), 0);
+            const totalEarnings = pastEarnings + Number(order.totalPrice || 0);
+            const remaining = earningLimit - totalEarnings;
+
+            console.log(`💰 Wallet Updated: ₹${restaurant.wallet}`);
+            console.log(`📊 Plan: ${planName}, Total Earned: ₹${totalEarnings}, Limit: ₹${earningLimit}`);
+
+            // Limit crossed
+            if (totalEarnings >= earningLimit) {
+                const message = `🚫 Your plan "${planName}" allowed earnings of ₹${earningLimit}. You've earned ₹${totalEarnings}. Please recharge to continue receiving orders – Team Olyox.`;
+                await SendWhatsAppMessageNormal(message, restNumber);
+
+                restaurant.isAvailable = false;
+                restaurant.is_restaurant_in_has_valid_recharge = false;
+                restaurant.isWorking = false;
+                restaurant.RechargeData = {
+                    expireData: new Date(Date.now() - 5 * 60 * 1000),
+                    rechargePlan: '',
+                    onHowManyEarning: '',
+                    approveRecharge: false
+                };
+
+                console.log("⛔ Restaurant deactivated due to earnings limit reached.");
+            } else if (remaining < 300) {
+                const reminderMessage = `🔔 Reminder: Your plan "${planName}" has ₹${remaining} earning potential left (Earned: ₹${totalEarnings} / ₹${earningLimit}). Recharge soon to avoid interruptions – Team Olyox.`;
+                await SendWhatsAppMessageNormal(reminderMessage, restNumber);
+            }
+
+            // Add delivery boy details
             order.deliveryBoyName = deliveryBoyName;
             order.deliveryBoyPhone = deliveryBoyPhone;
             order.deliveryBoyBikeNumber = deliveryBoyBikeNumber;
-            order.save();
+            await order.save();
+            await restaurant.save();
 
-            const message = `🚚 Order Out for Delivery 🚚
-
-Your food order is out for delivery! 🚀
-
-Order ID: ${order?.Order_Id}
-Status: Out for Delivery
-
-Thank you for choosing our service. Enjoy your meal! 😋`
-            SendWhatsAppMessage(message, userNumber)
+            const message = `🚚 Your order (ID: ${order.Order_Id}) is out for delivery! Sit tight, it's on its way. Thank you for ordering – Team Olyox.`;
+            await SendWhatsAppMessage(message, userNumber);
         }
 
         if (status === "Cancelled") {
-            const message = `🚫 Order Cancelled 🚫
-
-Your food order has been cancelled. 😔
-
-Order ID: ${order?.Order_Id}
-Status: Cancelled
-
-Thank you for choosing our service. Please place another order. 😊`
-            SendWhatsAppMessage(message, userNumber)
+            const message = `❌ Your order (ID: ${order.Order_Id}) has been cancelled. Sorry for the inconvenience. Feel free to place a new order anytime – Team Olyox.`;
+            await SendWhatsAppMessage(message, userNumber);
         }
 
         return res.status(200).json({
@@ -564,14 +583,15 @@ Thank you for choosing our service. Please place another order. 😊`
         });
 
     } catch (error) {
-        console.log("Internal sever error", error);
-        res.status(500).json({
+        console.error("❌ Internal Server Error:", error);
+        return res.status(500).json({
             success: false,
             message: "Internal server error",
             error: error.message
-        })
+        });
     }
-}
+};
+
 
 exports.admin_cancel_order = async (req, res) => {
     try {

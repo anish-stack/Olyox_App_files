@@ -27,7 +27,7 @@ console.log(restaurant?._id)
 
       setCoupons(allData);
     } catch (error) {
-      console.error("Error fetching call and message data:", error);
+      // console.error("Error fetching call and message data:", error.response.data);
     } finally {
       setLoading(false);
     }

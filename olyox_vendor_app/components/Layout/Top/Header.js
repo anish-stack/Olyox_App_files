@@ -62,8 +62,7 @@ const Header = () => {
         { title: 'Home', icon: 'home' },
         { title: 'Profile', icon: 'account' },
         { title: 'All Order', icon: 'shopping' },
-        // { title: 'Addresses', icon: 'map-marker' },
-        // { title: 'Settings', icon: 'cog' },
+  
         { title: 'AllFood', icon: 'cog' },
         { title: 'Help', icon: 'help-circle' },
     ];
@@ -73,10 +72,10 @@ const Header = () => {
             <View style={styles.header}>
                 {/* Location Section */}
                 <View style={styles.locationContainer}>
-                    <Icon name="map-marker" size={24} color="#ffffff" />
+                   
                     <View style={styles.locationTextContainer}>
-                        <Text style={styles.locationLabel}>Location</Text>
-                        <Text style={styles.locationDetails}>Delhi Rohini Sector 7</Text>
+                        <Text style={styles.locationLabel}>Tiffin</Text>
+                        <Text style={styles.locationDetails}>Service App</Text>
                     </View>
                 </View>
 

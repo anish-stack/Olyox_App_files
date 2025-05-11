@@ -104,10 +104,17 @@ exports.find_Restaurant_foods = async (req, res) => {
 
         let restaurants_foods = await Restaurant_Listing.find(query).populate('restaurant_id');
 
-        restaurants_foods = restaurants_foods.filter((item) =>
-            item?.restaurant_id?.IsProfileComplete &&
-            item?.restaurant_id?.is_restaurant_in_has_valid_recharge
-        );
+        restaurants_foods = restaurants_foods.filter((item) => {
+            const restaurant = item?.restaurant_id;
+            const rechargeData = restaurant?.RechargeData;
+
+            return (
+                restaurant?.IsProfileComplete &&
+                restaurant?.is_restaurant_in_has_valid_recharge &&
+                rechargeData?.approveRecharge === true &&
+                new Date(rechargeData?.expireData).setHours(0, 0, 0, 0) >= new Date().setHours(0, 0, 0, 0)
+            );
+        });
 
         restaurants_foods = restaurants_foods.sort(() => Math.random() - 0.5);
 

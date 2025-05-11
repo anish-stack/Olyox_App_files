@@ -44,7 +44,7 @@ export const LocationProvider = ({ children }) => {
     const locationSubscription = await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.High, // Set the accuracy level for location updates
-        timeInterval: 10000, // 10 seconds interval for updates
+        timeInterval: 60000, // 1 Minute interval for updates
         distanceInterval: 0, // Only update when the location changes
       },
       (location) => {

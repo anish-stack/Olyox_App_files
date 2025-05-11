@@ -14,6 +14,7 @@ import {
   Dimensions,
   Animated,
   TextInput,
+  StatusBar,
 } from "react-native"
 import RazorpayCheckout from "react-native-razorpay"
 import axios from "axios"
@@ -425,6 +426,7 @@ export default function RechargeViaOnline() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar backgroundColor="#059669" barStyle="light-content" />
       {/* Header with gradient background */}
       <LinearGradient colors={["#10B981", "#059669"]} style={styles.headerGradient}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
