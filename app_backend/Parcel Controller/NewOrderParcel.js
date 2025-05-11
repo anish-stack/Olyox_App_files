@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const axios = require("axios");
 const { notifyDriverService } = require("./ParcelSockets/Notify_Parcel");
 const RiderModel = require("../models/Rider.model");
+const SendWhatsAppMessageNormal = require("../utils/normalWhatsapp");
 
 exports.NewBooking = async (req, res) => {
     try {
