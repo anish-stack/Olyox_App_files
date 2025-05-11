@@ -345,7 +345,7 @@ export default function RechargeViaOnline() {
     }
 
     setLoading(true)
-    const baseUrl = `http://192.168.1.15:3100/api/v1/rider/recharge-wallet/${selectedMemberId}/${userData?.BH}`
+    const baseUrl = `https://www.appapi.olyox.com/api/v1/rider/recharge-wallet/${selectedMemberId}/${userData?.BH}`
     const urlWithParams = appliedCoupon ? `${baseUrl}?coupon=${appliedCoupon.code}&type=cab` : baseUrl
 
     try {
@@ -373,7 +373,7 @@ export default function RechargeViaOnline() {
 
       // After payment, call your backend verification API
       const verifyResponse = await axios.post(
-        `http://192.168.1.15:3100/api/v1/rider/recharge-verify/${userData?.BH}`,
+        `https://www.appapi.olyox.com/api/v1/rider/recharge-verify/${userData?.BH}`,
         {
           razorpay_order_id: paymentResponse?.razorpay_order_id,
           razorpay_payment_id: paymentResponse?.razorpay_payment_id,
