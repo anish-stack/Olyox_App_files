@@ -7,6 +7,8 @@ const Settings = require('../models/Admin/Settings');
 const RidesSuggestionModel = require('../models/Admin/RidesSuggestion.model');
 const tempRideDetailsSchema = require('../models/tempRideDetailsSchema');
 const RideRequestNotification = require('../models/RideRequestNotification');
+const rideRequestModel = require('../models/ride.request.model');
+const SendWhatsAppMessageNormal = require('../utils/normalWhatsapp');
 exports.createRequest = async (req, res) => {
     try {
         const user = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
@@ -1246,44 +1248,66 @@ exports.rideEnd = async (data) => {
 
 exports.collectCash = async ({ data, paymentMethod }) => {
     try {
-        const ride_id = await RideRequest.findById(data?._id)
+        const ride_id = await RideRequest.findById(data?._id);
         if (!ride_id) {
-            return {
-                success: false,
-                message: 'Ride not found'
-            }
+            return { success: false, message: 'Ride not found' };
         }
 
-        ride_id.is_ride_paid = true
-        ride_id.paymentMethod = paymentMethod
-        await ride_id.save()
+        ride_id.is_ride_paid = true;
+        ride_id.paymentMethod = paymentMethod;
+        await ride_id.save();
 
-        const findRider = await Riders.findById(ride_id?.rider)
+        const findRider = await Riders.findById(ride_id?.rider);
         if (!findRider) {
-            return {
-                success: false,
-                message: 'Rider not found'
-            }
+            return { success: false, message: 'Rider not found' };
         }
 
-        
+        const findRideDetails = await rideRequestModel.find({ rider: findRider._id, rideStatus: "completed" });
 
-        findRider.isAvailable = true
-        findRider.on_ride_id = null
+        const totalRides = findRideDetails.length;
+        const totalEarnings = findRideDetails.reduce((acc, cur) => acc + Number(cur.kmOfRide), 0);
 
-        await findRider.save()
+        const earningLimit = Number(findRider?.RechargeData?.onHowManyEarning || 0);
+        const remaining = earningLimit - totalEarnings;
+        const number = findRider?.phone;
+
+        // Limit reached or exceeded
+        if (totalEarnings >= earningLimit) {
+            const message = `🎉 You’ve crossed your earning limit according to your current plan. Thank you for using Olyox! Please recharge now to continue earning more.`;
+            await SendWhatsAppMessageNormal(message, number);
+
+            findRider.isAvailable = false;
+            findRider.RechargeData = {
+                expireData: new Date(Date.now() - 5 * 60 * 1000),
+                rechargePlan: '',
+                onHowManyEarning: '',
+                approveRecharge: false,
+                
+            };
+            rider.isPaid = false
+        }
+        // Less than ₹300 remaining
+        else if (remaining < 300) {
+            const reminderMessage = `🛎️ Reminder: You have ₹${remaining} earning potential left on your plan. Recharge soon to avoid interruptions in your earnings. – Team Olyox`;
+            await SendWhatsAppMessageNormal(reminderMessage, number);
+        }
+
+        findRider.isAvailable = true;
+        findRider.on_ride_id = null;
+
+        await findRider.save();
 
         return {
             success: true,
-            message: 'Ride End and Payment Success successfully'
-        }
+            message: 'Ride ended and payment recorded successfully'
+        };
 
     } catch (error) {
-        // Log and handle the error
-        console.error('Error in rideStart:', error.message);
-        return error.message
+        console.error('Error in collectCash:', error.message);
+        return error.message;
     }
-}
+};
+
 
 exports.AddRating = async (data, rate) => {
     try {

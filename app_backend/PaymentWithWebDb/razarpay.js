@@ -393,28 +393,41 @@ exports.verify_recharge = async (req, res) => {
         // Step 11: Update external recharge details
         console.log("Step 11: Updating external recharge details");
         let updateResult;
+        const camelCaseKeys = (obj) => {
+            if (Array.isArray(obj)) {
+                return obj.map(camelCaseKeys);
+            } else if (obj !== null && typeof obj === 'object') {
+                return Object.entries(obj).reduce((acc, [key, value]) => {
+                    const camelKey = key.charAt(0).toLowerCase() + key.slice(1);
+                    acc[camelKey] = camelCaseKeys(value);
+                    return acc;
+                }, {});
+            }
+            return obj;
+        };
+
         try {
-            // Log full plan object
-            console.log("Selected Plan Details:", plan);
+            // Safely extract ._doc if it's a Mongoose document
+            const rawPlan = plan?._doc ? plan._doc : plan;
+            const normalizedPlan = camelCaseKeys(rawPlan);
 
-            // Log individual fields if you want more granularity
-            console.log("Plan Title:", plan?.title);
+            console.log("Plan Title:", normalizedPlan.title);
             console.log("Plan Expiry Date:", endDate);
-            console.log("Plan Earning Potential:", plan?.HowManyMoneyEarnThisPlan);
+            console.log("Plan Earning Potential:", normalizedPlan.howManyMoneyEarnThisPlan);
 
-            // Proceed to update
             updateResult = await updateRechargeDetails({
-                rechargePlan: plan?.title,
+                rechargePlan: normalizedPlan.title,
                 expireData: endDate,
                 approveRecharge: true,
                 BH: user?.myReferral,
-                onHowManyEarning: plan?.HowManyMoneyEarnThisPlan
+                onHowManyEarning: normalizedPlan.howManyMoneyEarnThisPlan,
             });
 
             console.log("External recharge details update result:", updateResult);
         } catch (externalUpdateError) {
             console.error("Error updating external recharge details:", externalUpdateError);
         }
+
 
 
         if (updateResult && !updateResult?.success) {

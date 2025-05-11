@@ -754,10 +754,10 @@ const ParcelHome = () => {
                   </View>
                 )}
 
-                <Text style={styles.subText}>
-                  Recharge expires:{" "}
-                  {formatToIST(userData?.RechargeData?.expireData)}
-                </Text>
+              <Text style={styles.subText}>
+  Recharge expires on {formatToIST(userData?.RechargeData?.expireData)}. Additionally, if your earnings reach ₹{userData?.RechargeData?.onHowManyEarning}, your recharge will also be considered expired.
+</Text>
+
               </View>
             </View>
 

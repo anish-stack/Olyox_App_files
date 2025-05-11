@@ -598,11 +598,11 @@ exports.getMyAllDetails = async (req, res) => {
     }
 
     const findRideDetails = await rideRequestModel.find({ rider: user_id, rideStatus: "completed" });
-    console.log(findRideDetails[0])
+
 
     const totalRides = findRideDetails.length;
     const totalEarnings = findRideDetails.reduce((acc, cur) => acc + Number(cur.kmOfRide), 0);
-    console.log("totalEarnings", totalEarnings)
+ 
     const totalRatings = findRideDetails.reduce((acc, cur) => acc + (cur.RatingOfRide || 0), 0);
     const averageRating = totalRides > 0 ? totalRatings / totalRides : 0;
 

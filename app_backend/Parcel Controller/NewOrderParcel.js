@@ -284,29 +284,23 @@ exports.updateParcelStatus = async (req, res) => {
     try {
         const { parcelId, status } = req.body;
 
-        // Input validation
         if (!parcelId || !status) {
             return res.status(400).json({ message: "Parcel ID and status are required" });
         }
 
-        // Fetch parcel from database
         const parcel = await Parcel_Request.findById(parcelId).populate("rider_id");
         if (!parcel) {
             return res.status(404).json({ message: "Parcel not found" });
         }
 
-        // Set up socket connection and maps
+        // Get socket maps
         const io = req.app.get("socketio");
-        const driverSocketMap = req.app.get("driverSocketMap") || new Map();
         const userSocketMap = req.app.get("userSocketMap") || new Map();
-
-        // Prepare customerSocketId outside switch
         const customerId = parcel.customerId?.toString();
-        let customerSocketId = customerId
+        const customerSocketId = customerId
             ? userSocketMap.get(customerId) || [...userSocketMap.entries()].find(([key]) => key.includes(customerId))?.[1]
             : null;
 
-        // Logic based on status
         switch (status) {
             case "Reached at Pickup Location":
                 parcel.is_driver_reached = true;
@@ -316,7 +310,7 @@ exports.updateParcelStatus = async (req, res) => {
             case "in_transit":
                 parcel.is_pickup_complete = true;
                 parcel.is_parcel_picked = true;
-                parcel.otp = Math.floor(1000 + Math.random() * 9000); // Generate OTP for the parcel
+                parcel.otp = Math.floor(1000 + Math.random() * 9000);
                 break;
 
             case "Reached at drop Location":
@@ -329,8 +323,6 @@ exports.updateParcelStatus = async (req, res) => {
                         message: "Parcel reached at drop location",
                         parcel: parcel._id,
                     });
-                } else {
-                    console.error("Unable to emit to customer: socket not found");
                 }
                 break;
 
@@ -341,10 +333,42 @@ exports.updateParcelStatus = async (req, res) => {
                 parcel.is_booking_completed = true;
                 parcel.money_collected = parcel.fares?.payableAmount || 0;
 
-                if (parcel.rider_id) {
-                    parcel.rider_id.isAvailable = true;
-                    await parcel.rider_id.save();
+                const rider = parcel.rider_id;
+                const deliveredParcels = await Parcel_Request.find({
+                    rider_id: rider._id,
+                    is_parcel_delivered: true,
+                });
+
+                const totalRides = deliveredParcels.length;
+                const totalEarnings = deliveredParcels.reduce(
+                    (acc, cur) => acc + Number(cur.fares?.payableAmount || 0),
+                    0
+                );
+
+                const earningLimit = Number(rider?.RechargeData?.onHowManyEarning || 0);
+                const remainingEarnings = earningLimit - totalEarnings;
+                const number = rider?.phone;
+
+                if (totalEarnings >= earningLimit) {
+                    const message = `🎉 You’ve crossed your earning limit according to your current plan. Thank you for using Olyox! Please recharge now to continue earning more.`;
+                    await SendWhatsAppMessageNormal(message, number);
+
+                    rider.isAvailable = false;
+                    rider.RechargeData = {
+                        expireData: new Date(Date.now() - 5 * 60 * 1000),
+                        rechargePlan: '',
+                        onHowManyEarning: '',
+                        approveRecharge: false,
+
+                    };
+                    rider.isPaid = false
+                } else if (remainingEarnings < 300) {
+                    const reminderMessage = `🛎️ Reminder: You have ₹${remainingEarnings} earning potential left on your plan. Recharge soon to avoid interruptions in your earnings. – Team Olyox`;
+                    await SendWhatsAppMessageNormal(reminderMessage, number);
                 }
+
+                rider.isAvailable = true;
+                await rider.save();
                 break;
 
             case "cancelled":
@@ -357,8 +381,6 @@ exports.updateParcelStatus = async (req, res) => {
                         message: "Parcel has been cancelled",
                         parcel: parcel._id,
                     });
-                } else {
-                    console.error("Unable to emit parcel cancellation: socket not found");
                 }
 
                 if (parcel.rider_id) {
@@ -371,22 +393,19 @@ exports.updateParcelStatus = async (req, res) => {
                 return res.status(400).json({ message: "Invalid status value" });
         }
 
-        // Always update the status
         parcel.status = status;
-
-        // Save the updated parcel document
         await parcel.save();
 
         return res.status(200).json({
             message: "Parcel status updated successfully",
             updatedStatus: status,
         });
-
     } catch (error) {
         console.error("Error updating parcel status:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
+
 
 
 
