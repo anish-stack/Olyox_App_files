@@ -109,7 +109,9 @@ const Heavy_vehicle_partners = new mongoose.Schema({
         rechargePlan: String,
         expireData: Date,
         approveRecharge: Boolean,
-         onHowManyEarning: String,
+        onHowManyEarning: String,
+        whichDateRecharge: Date,
+
     },
 
     otp: {
@@ -128,8 +130,8 @@ const Heavy_vehicle_partners = new mongoose.Schema({
     lastNotificationSent: {
         type: Date,
         default: null,
-      },
-      
+    },
+
 }, { timestamps: true });
 
 // Create index for location-based queries

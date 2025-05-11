@@ -90,6 +90,7 @@ const RiderSchema = new Schema({
             type:String,
             default:'Ops'
         },
+        whichDateRecharge:Date,
         approveRecharge: Boolean
     },
     lastNotificationSent: {
