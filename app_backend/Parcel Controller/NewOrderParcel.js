@@ -369,11 +369,12 @@ exports.updateParcelStatus = async (req, res) => {
                     };
                     rider.isPaid = false;
                 } else if (remainingEarnings < 300) {
+                    rider.isAvailable = true;
                     const reminderMessage = `🛎️ Reminder: You have ₹${remainingEarnings} earning potential left on your plan. Recharge soon to avoid interruptions in your earnings. – Team Olyox`;
                     await SendWhatsAppMessageNormal(reminderMessage, number);
                 }
 
-                rider.isAvailable = true;
+
                 await rider.save();
                 break;
 
@@ -406,7 +407,6 @@ exports.updateParcelStatus = async (req, res) => {
             message: "Parcel status updated successfully",
             updatedStatus: status,
             currentEarning: Number(parcel.fares?.payableAmount || 0),
-            totalEarnings: status === "delivered" ? Number(parcel.fares?.payableAmount || 0) + deliveredParcels.reduce((acc, cur) => acc + Number(cur.fares?.payableAmount || 0), 0) : undefined
         });
     } catch (error) {
         console.error("Error updating parcel status:", error);
