@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  ActivityIndicator, 
-  Alert, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Modal, 
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
   TextInput,
   ScrollView,
   Linking,
@@ -78,7 +78,7 @@ export default function DeliveryTracking() {
       const initialLocation = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High
       });
-      
+
       setCurrentLocation({
         latitude: initialLocation.coords.latitude,
         longitude: initialLocation.coords.longitude,
@@ -94,7 +94,7 @@ export default function DeliveryTracking() {
         (location) => {
           const { latitude, longitude } = location.coords;
           setCurrentLocation({ latitude, longitude });
-  
+
         }
       );
 
@@ -110,10 +110,10 @@ export default function DeliveryTracking() {
   // Start pickup timer
   const startPickupTimer = useCallback(() => {
     if (timerActive) return;
-    
+
     setPickupTimer(PICKUP_TIMER_MINUTES * 60); // Convert minutes to seconds
     setTimerActive(true);
-    
+
     const interval = setInterval(() => {
       setPickupTimer(prev => {
         if (prev <= 1) {
@@ -125,16 +125,16 @@ export default function DeliveryTracking() {
         return prev - 1;
       });
     }, 1000);
-    
+
     setTimerInterval(interval);
-    
+
     // Animate timer
     Animated.timing(timerAnimation, {
       toValue: 100,
       duration: PICKUP_TIMER_MINUTES * 60 * 1000,
       useNativeDriver: false
     }).start();
-    
+
   }, [timerActive, timerAnimation]);
 
   // Stop pickup timer
@@ -161,7 +161,7 @@ export default function DeliveryTracking() {
       const { data } = await axios.get(`https://www.appapi.olyox.com/api/v1/parcel/get-parcel/${parcelId}`);
       // console.log("Fetched parcel details:", data?.parcelDetails);
       setParcelDetails(data?.parcelDetails);
-      
+
       // Check if we need to start or stop the timer based on status
       if (data?.parcelDetails?.status === 'Reached at Pickup Location' && !timerActive) {
         startPickupTimer();
@@ -173,7 +173,7 @@ export default function DeliveryTracking() {
       logError("Failed to fetch parcel details", err);
       setError(errMsg);
 
-     
+
     } finally {
       setLoading(false);
     }
@@ -187,8 +187,7 @@ export default function DeliveryTracking() {
         parcelId,
         status,
       });
-      console.log(`Status changed to ${status}`);
-      
+
       // Handle status-specific actions
       if (status === 'Reached at Pickup Location') {
         startPickupTimer();
@@ -200,7 +199,7 @@ export default function DeliveryTracking() {
       } else if (status === 'in_transit') {
         stopPickupTimer();
       }
-      
+
       await handleFetchDetails();
     } catch (err) {
       logError("Failed to update status", err);
@@ -216,19 +215,19 @@ export default function DeliveryTracking() {
       setOtpError('Please enter OTP');
       return;
     }
-    
+
     if (enteredOtp === parcelDetails?.otp?.toString()) {
       setOtpError('');
       setOtpModalVisible(false);
       setEnteredOtp('');
-      
+
       // Determine next status based on current status
-      const nextStatus = parcelDetails?.status === 'Reached at Pickup Location' 
-        ? 'in_transit' 
+      const nextStatus = parcelDetails?.status === 'Reached at Pickup Location'
+        ? 'in_transit'
         : 'delivered';
-      
+
       handleChangeStatus(nextStatus);
-      
+
       // Vibrate on success
       Vibration.vibrate([100, 200, 100]);
     } else {
@@ -244,8 +243,8 @@ export default function DeliveryTracking() {
       'Are you sure you want to cancel this ride?',
       [
         { text: 'No', style: 'cancel' },
-        { 
-          text: 'Yes', 
+        {
+          text: 'Yes',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -276,20 +275,20 @@ export default function DeliveryTracking() {
       Alert.alert('Error', 'Customer phone number not available');
       return;
     }
-    
-    Linking.openURL(`tel:${phoneNumber}`);
+
+    Linking.openURL(`tel:01141236767`);
   }, [parcelDetails]);
 
   // Call support
   const callSupport = useCallback(() => {
-    Linking.openURL('tel:+918888888888'); // Replace with actual support number
+    Linking.openURL('tel:01141236789'); // Replace with actual support number
   }, []);
 
   // Initialize component
   useEffect(() => {
     handleFetchDetails();
     startLocationTracking();
-    
+
     // Listen for real-time updates from socket
     if (socket) {
       socket.on('parcel_status_update', (data) => {
@@ -298,7 +297,7 @@ export default function DeliveryTracking() {
         }
       });
     }
-    
+
     return () => {
       // Cleanup
       if (socket) {
@@ -334,7 +333,7 @@ export default function DeliveryTracking() {
   const currentDestination = useMemo(() => {
     const status = parcelDetails?.status;
     if (!status || !pickupLocation || !dropoffLocation) return null;
-    
+
     if (status === 'accepted' || status === 'Reached at Pickup Location') {
       return pickupLocation;
     } else {
@@ -347,7 +346,7 @@ export default function DeliveryTracking() {
     if (mapRef.current && pickupLocation && dropoffLocation) {
       const points = [pickupLocation, dropoffLocation];
       if (currentLocation) points.push(currentLocation);
-      
+
       mapRef.current.fitToCoordinates(
         points,
         {
@@ -361,7 +360,7 @@ export default function DeliveryTracking() {
   // Open location in Google Maps
   const openGoogleMaps = useCallback((location, label) => {
     if (!location) return;
-    
+
     const url = `https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}&destination_place_id=${label}`;
     Linking.openURL(url).catch(err => {
       Alert.alert('Error', 'Could not open Google Maps');
@@ -370,7 +369,7 @@ export default function DeliveryTracking() {
 
   // Get color based on status
   const getStatusColor = useCallback((status) => {
-    switch(status) {
+    switch (status) {
       case 'accepted': return '#FF3B30'; // Bright red
       case 'Reached at Pickup Location': return '#FFCC00'; // Bright yellow
       case 'in_transit': return '#34C759'; // Bright green
@@ -384,12 +383,12 @@ export default function DeliveryTracking() {
   // Render status-specific buttons
   const renderStatusButtons = useCallback(() => {
     const status = parcelDetails?.status;
-    
-    switch(status) {
+
+    switch (status) {
       case 'accepted':
         return (
-          <TouchableOpacity 
-            style={[styles.button, { backgroundColor: '#FF3B30' }]} 
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: '#FF3B30' }]}
             onPress={() => handleChangeStatus('Reached at Pickup Location')}
             disabled={loadingAction}
           >
@@ -403,11 +402,11 @@ export default function DeliveryTracking() {
             )}
           </TouchableOpacity>
         );
-      
+
       case 'Reached at Pickup Location':
         return (
-          <TouchableOpacity 
-            style={[styles.button, { backgroundColor: '#FFCC00' }]} 
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: '#FFCC00' }]}
             onPress={() => setOtpModalVisible(true)}
             disabled={loadingAction}
           >
@@ -421,11 +420,11 @@ export default function DeliveryTracking() {
             )}
           </TouchableOpacity>
         );
-      
+
       case 'in_transit':
         return (
-          <TouchableOpacity 
-            style={[styles.button, { backgroundColor: '#34C759' }]} 
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: '#34C759' }]}
             onPress={() => handleChangeStatus('Reached at drop Location')}
             disabled={loadingAction}
           >
@@ -439,11 +438,11 @@ export default function DeliveryTracking() {
             )}
           </TouchableOpacity>
         );
-      
+
       case 'Reached at drop Location':
         return (
-          <TouchableOpacity 
-            style={[styles.button, { backgroundColor: '#FF9500' }]} 
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: '#FF9500' }]}
             onPress={() => setOtpModalVisible(true)}
             disabled={loadingAction}
           >
@@ -457,7 +456,7 @@ export default function DeliveryTracking() {
             )}
           </TouchableOpacity>
         );
-      
+
       case 'delivered':
         return (
           <View style={styles.deliveredContainer}>
@@ -465,7 +464,7 @@ export default function DeliveryTracking() {
             <Text style={styles.deliveredText}>Delivery Completed</Text>
           </View>
         );
-      
+
       case 'cancelled':
         return (
           <View style={styles.cancelledContainer}>
@@ -473,7 +472,7 @@ export default function DeliveryTracking() {
             <Text style={styles.cancelledText}>Delivery Cancelled</Text>
           </View>
         );
-      
+
       default:
         return null;
     }
@@ -487,11 +486,11 @@ export default function DeliveryTracking() {
           <ActivityIndicator size="large" color="#FF3B30" />
           <Text style={styles.loadingText}>Loading delivery details...</Text>
           <View style={styles.loadingBar}>
-            <Animated.View 
+            <Animated.View
               style={[
-                styles.loadingBarFill, 
+                styles.loadingBarFill,
                 { width: `${Math.min(retryCount * 30, 90)}%` }
-              ]} 
+              ]}
             />
           </View>
         </View>
@@ -535,8 +534,8 @@ export default function DeliveryTracking() {
       >
         {/* Pickup Marker */}
         {pickupLocation && (
-          <Marker 
-            coordinate={pickupLocation} 
+          <Marker
+            coordinate={pickupLocation}
             title="Pickup Location"
             pinColor="#FF3B30"
           >
@@ -548,11 +547,11 @@ export default function DeliveryTracking() {
             </View>
           </Marker>
         )}
-        
+
         {/* Dropoff Marker */}
         {dropoffLocation && (
-          <Marker 
-            coordinate={dropoffLocation} 
+          <Marker
+            coordinate={dropoffLocation}
             title="Dropoff Location"
             pinColor="#34C759"
           >
@@ -567,8 +566,8 @@ export default function DeliveryTracking() {
 
         {/* Driver Location Marker */}
         {currentLocation && (
-          <Marker 
-            coordinate={currentLocation} 
+          <Marker
+            coordinate={currentLocation}
             title="Your Location"
           >
             <View style={styles.driverMarker}>
@@ -596,13 +595,13 @@ export default function DeliveryTracking() {
 
       {/* Header with Menu */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
+        <TouchableOpacity
+          style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        
+
         <View style={styles.headerTitle}>
           <Text style={styles.headerText}>
             {parcelDetails?.ride_id || 'Delivery'}
@@ -611,9 +610,9 @@ export default function DeliveryTracking() {
             <Text style={styles.statusText}>{parcelDetails?.status || 'Unknown'}</Text>
           </View>
         </View>
-        
-        <TouchableOpacity 
-          style={styles.menuButton} 
+
+        <TouchableOpacity
+          style={styles.menuButton}
           onPress={() => setMenuVisible(!menuVisible)}
         >
           <Entypo name="dots-three-vertical" size={24} color="#fff" />
@@ -623,24 +622,24 @@ export default function DeliveryTracking() {
       {/* Menu Dropdown */}
       {menuVisible && (
         <View style={styles.menuDropdown}>
-          <TouchableOpacity 
-            style={styles.menuItem} 
+          <TouchableOpacity
+            style={styles.menuItem}
             onPress={callCustomer}
           >
             <Ionicons name="call" size={20} color="#FF3B30" />
             <Text style={styles.menuItemText}>Call Customer</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.menuItem} 
+
+          <TouchableOpacity
+            style={styles.menuItem}
             onPress={callSupport}
           >
             <MaterialIcons name="support-agent" size={20} color="#007AFF" />
             <Text style={styles.menuItemText}>Call Support</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.menuItem} 
+
+          <TouchableOpacity
+            style={styles.menuItem}
             onPress={handleCancelRide}
           >
             <MaterialIcons name="cancel" size={20} color="#FF3B30" />
@@ -651,24 +650,24 @@ export default function DeliveryTracking() {
 
       {/* Map Controls */}
       <View style={styles.mapControls}>
-        <TouchableOpacity 
-          style={styles.mapButton} 
+        <TouchableOpacity
+          style={styles.mapButton}
           onPress={fitToMarkers}
         >
           <MaterialIcons name="fullscreen" size={24} color="#333" />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.mapButton} 
-          onPress={() => openGoogleMaps(currentDestination, 
+
+        <TouchableOpacity
+          style={styles.mapButton}
+          onPress={() => openGoogleMaps(currentDestination,
             parcelDetails?.status === 'in_transit' ? "Dropoff" : "Pickup"
           )}
         >
           <MaterialIcons name="directions" size={24} color="#333" />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.mapButton} 
+
+        <TouchableOpacity
+          style={styles.mapButton}
           onPress={callCustomer}
         >
           <Ionicons name="call" size={24} color="#FF3B30" />
@@ -702,7 +701,7 @@ export default function DeliveryTracking() {
             <ActivityIndicator size="small" color="#FF3B30" />
           </View>
         )}
-        
+
         <ScrollView style={styles.detailsScroll}>
           {/* Customer Details */}
           <View style={styles.detailsSection}>
@@ -710,7 +709,7 @@ export default function DeliveryTracking() {
               <MaterialIcons name="person" size={20} color="#FF3B30" />
               <Text style={styles.sectionTitle}>Customer Details</Text>
             </View>
-            
+
             <View style={styles.detailCard}>
               <View style={styles.detailRow}>
                 <Text style={styles.label}>Name:</Text>
@@ -719,8 +718,8 @@ export default function DeliveryTracking() {
               <View style={styles.detailRow}>
                 <Text style={styles.label}>Phone:</Text>
                 <Text style={styles.value}>{parcelDetails?.customerId?.number || parcelDetails?.phone || 'N/A'}</Text>
-                <TouchableOpacity 
-                  style={styles.callButton} 
+                <TouchableOpacity
+                  style={styles.callButton}
                   onPress={callCustomer}
                 >
                   <Ionicons name="call" size={16} color="#fff" />
@@ -735,7 +734,7 @@ export default function DeliveryTracking() {
               <MaterialIcons name="inventory-2" size={20} color="#FF3B30" />
               <Text style={styles.sectionTitle}>Parcel Details</Text>
             </View>
-            
+
             <View style={styles.detailCard}>
               <View style={styles.detailRow}>
                 <Text style={styles.label}>Ride ID:</Text>
@@ -753,7 +752,7 @@ export default function DeliveryTracking() {
                 <Text style={styles.label}>Payment:</Text>
                 <Text style={styles.value}>{parcelDetails?.money_collected_mode || 'Cash'}</Text>
               </View>
-             
+
             </View>
           </View>
 
@@ -763,13 +762,13 @@ export default function DeliveryTracking() {
               <MaterialIcons name="location-on" size={20} color="#FF3B30" />
               <Text style={styles.sectionTitle}>Location Details</Text>
             </View>
-            
+
             <View style={styles.locationCard}>
               <View style={styles.locationHeader}>
                 <View style={[styles.locationDot, { backgroundColor: '#FF3B30' }]} />
                 <Text style={styles.locationTitle}>Pickup Location</Text>
-                <TouchableOpacity 
-                  style={styles.directionButton} 
+                <TouchableOpacity
+                  style={styles.directionButton}
                   onPress={() => openGoogleMaps(pickupLocation, "Pickup")}
                 >
                   <MaterialIcons name="directions" size={16} color="#fff" />
@@ -777,13 +776,13 @@ export default function DeliveryTracking() {
               </View>
               <Text style={styles.locationAddress}>{parcelDetails?.locations?.pickup?.address || 'N/A'}</Text>
             </View>
-            
+
             <View style={styles.locationCard}>
               <View style={styles.locationHeader}>
                 <View style={[styles.locationDot, { backgroundColor: '#34C759' }]} />
                 <Text style={styles.locationTitle}>Drop Location</Text>
-                <TouchableOpacity 
-                  style={styles.directionButton} 
+                <TouchableOpacity
+                  style={styles.directionButton}
                   onPress={() => openGoogleMaps(dropoffLocation, "Dropoff")}
                 >
                   <MaterialIcons name="directions" size={16} color="#fff" />
@@ -811,12 +810,12 @@ export default function DeliveryTracking() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {parcelDetails?.status === 'Reached at Pickup Location' 
-                  ? 'Pickup Verification' 
+                {parcelDetails?.status === 'Reached at Pickup Location'
+                  ? 'Pickup Verification'
                   : 'Delivery Verification'}
               </Text>
-              <TouchableOpacity 
-                style={styles.modalClose} 
+              <TouchableOpacity
+                style={styles.modalClose}
                 onPress={() => {
                   setOtpModalVisible(false);
                   setEnteredOtp('');
@@ -826,13 +825,13 @@ export default function DeliveryTracking() {
                 <Ionicons name="close" size={24} color="#FF3B30" />
               </TouchableOpacity>
             </View>
-            
+
             <Text style={styles.modalSubtitle}>
-              {parcelDetails?.status === 'Reached at Pickup Location' 
-                ? 'Ask customer for the OTP to pickup the parcel' 
+              {parcelDetails?.status === 'Reached at Pickup Location'
+                ? 'Ask customer for the OTP to pickup the parcel'
                 : 'Ask customer for the OTP to complete delivery'}
             </Text>
-            
+
             <View style={styles.otpContainer}>
               <TextInput
                 style={styles.otpInput}
@@ -842,12 +841,12 @@ export default function DeliveryTracking() {
                 value={enteredOtp}
                 onChangeText={setEnteredOtp}
               />
-              
+
               {loadingAction ? (
                 <ActivityIndicator size="small" color="#FF3B30" style={styles.otpLoader} />
               ) : (
-                <TouchableOpacity 
-                  style={styles.otpButton} 
+                <TouchableOpacity
+                  style={styles.otpButton}
                   onPress={verifyOtp}
                   disabled={enteredOtp.length !== 4}
                 >
@@ -855,9 +854,9 @@ export default function DeliveryTracking() {
                 </TouchableOpacity>
               )}
             </View>
-            
+
             {otpError ? <Text style={styles.otpError}>{otpError}</Text> : null}
-            
+
             <View style={styles.otpHint}>
               <MaterialIcons name="info-outline" size={16} color="#666" />
               <Text style={styles.otpHintText}>
