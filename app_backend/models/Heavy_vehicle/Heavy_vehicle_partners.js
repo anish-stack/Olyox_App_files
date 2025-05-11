@@ -108,7 +108,8 @@ const Heavy_vehicle_partners = new mongoose.Schema({
     RechargeData: {
         rechargePlan: String,
         expireData: Date,
-        approveRecharge: Boolean
+        approveRecharge: Boolean,
+         onHowManyEarning: String,
     },
 
     otp: {

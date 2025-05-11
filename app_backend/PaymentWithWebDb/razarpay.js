@@ -13,6 +13,8 @@ const settings = require('../models/Admin/Settings');
 const { createRechargeLogs } = require('../Admin Controllers/Bugs/rechargeLogs');
 const PersonalCoupons = require('../models/Admin/PersonalCoupons');
 
+// console.log("process.env.RAZORPAY_KEY_ID",process.env.RAZORPAY_KEY_ID)
+// console.log("process.env.RAZORPAY_KEY_SECRET",process.env.RAZORPAY_KEY_SECRET)
 
 const FIRST_RECHARGE_COMMISONS = 10
 const SECOND_RECHARGE_COMMISONS = 2
@@ -38,6 +40,9 @@ exports.make_recharge = async (req, res) => {
 
         const MembershipPlan = getMembershipPlanModel();
         const RechargeModel = getRechargeModel();
+
+        console.log(package_id, user_id)
+        console.log(coupon, type)
 
         if (!user_id) {
             return res.status(400).json({ message: 'Please login to recharge.' });
@@ -81,24 +86,24 @@ exports.make_recharge = async (req, res) => {
                     c.assignedTo.Bh_Id === user_id
                 );
 
-             
-            }else if(type === 'tiffin'){
+
+            } else if (type === 'tiffin') {
                 couponData = matchedCoupons.find(c =>
                     c.assignedTo &&
                     c.assignedTo.restaurant_BHID &&
                     c.assignedTo.restaurant_BHID === user_id
                 );
 
-              
-            }else if(type === 'cab'){
+
+            } else if (type === 'cab') {
                 couponData = matchedCoupons.find(c =>
                     c.assignedTo &&
                     c.assignedTo.BH &&
                     c.assignedTo.BH === user_id
                 );
 
-              
-            }else{
+
+            } else {
                 if (!couponData) {
                     return res.status(403).json({
                         success: false,
@@ -170,7 +175,7 @@ exports.make_recharge = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Recharge Error:', error.message);
+        console.error('Recharge Error:', error);
         return res.status(500).json({ message: error.message, error: error.message });
     }
 };
@@ -252,6 +257,7 @@ exports.verify_recharge = async (req, res) => {
         try {
             plan = await MembershipPlan.findById(rechargeData?.member_id);
             console.log("Membership plan found:", plan ? "Yes" : "No", plan?._id);
+            console.log("Membership plan:", plan);
         } catch (planError) {
             console.error("Error fetching membership plan:", planError);
         }
@@ -388,17 +394,28 @@ exports.verify_recharge = async (req, res) => {
         console.log("Step 11: Updating external recharge details");
         let updateResult;
         try {
+            // Log full plan object
+            console.log("Selected Plan Details:", plan);
+
+            // Log individual fields if you want more granularity
+            console.log("Plan Title:", plan?.title);
+            console.log("Plan Expiry Date:", endDate);
+            console.log("Plan Earning Potential:", plan?.HowManyMoneyEarnThisPlan);
+
+            // Proceed to update
             updateResult = await updateRechargeDetails({
                 rechargePlan: plan?.title,
                 expireData: endDate,
                 approveRecharge: true,
-                BH: user?.myReferral
-             
+                BH: user?.myReferral,
+                onHowManyEarning: plan?.HowManyMoneyEarnThisPlan
             });
+
             console.log("External recharge details update result:", updateResult);
         } catch (externalUpdateError) {
             console.error("Error updating external recharge details:", externalUpdateError);
         }
+
 
         if (updateResult && !updateResult?.success) {
             console.warn("Failed to update external recharge details");

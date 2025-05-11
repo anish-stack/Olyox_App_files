@@ -77,7 +77,9 @@ exports.CheckTolls = async (origin, destination) => {
 };
 
 
-exports.updateRechargeDetails = async ({ rechargePlan, expireData, approveRecharge, BH }) => {
+exports.updateRechargeDetails = async ({ rechargePlan, expireData, approveRecharge, BH ,onHowManyEarning }) => {
+
+  console.log("onHowManyEarning",onHowManyEarning)
   try {
     if (!BH) {
       return { success: false, message: "BH is required." };
@@ -115,6 +117,7 @@ exports.updateRechargeDetails = async ({ rechargePlan, expireData, approveRechar
     foundRider.RechargeData = {
       rechargePlan,
       expireData,
+      onHowManyEarning,
       approveRecharge: true
     };
 

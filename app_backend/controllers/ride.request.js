@@ -1265,6 +1265,9 @@ exports.collectCash = async ({ data, paymentMethod }) => {
                 message: 'Rider not found'
             }
         }
+
+        
+
         findRider.isAvailable = true
         findRider.on_ride_id = null
 

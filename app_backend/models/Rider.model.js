@@ -29,7 +29,7 @@ const RiderSchema = new Schema({
         VehicleImage: [String]
 
     },
-    isFirstRechargeDone:{
+    isFirstRechargeDone: {
         type: Boolean,
         default: false
     },
@@ -86,13 +86,17 @@ const RiderSchema = new Schema({
     RechargeData: {
         rechargePlan: String,
         expireData: Date,
+        onHowManyEarning: {
+            type:String,
+            default:'Ops'
+        },
         approveRecharge: Boolean
     },
     lastNotificationSent: {
         type: Date,
         default: null,
-      },
-      
+    },
+
     Bh: {
         type: String
     },

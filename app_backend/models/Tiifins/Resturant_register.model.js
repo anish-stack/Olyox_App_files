@@ -192,7 +192,8 @@ const restaurantSchema = new mongoose.Schema({
     RechargeData: {
         rechargePlan: String,
         expireData: Date,
-        approveRecharge: Boolean
+        approveRecharge: Boolean,
+         onHowManyEarning: String,
     },
     lastNotificationSent: {
         type: Date,
