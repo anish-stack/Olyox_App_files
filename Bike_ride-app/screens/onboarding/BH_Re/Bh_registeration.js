@@ -33,7 +33,7 @@ export default function RegisterWithBh() {
     reEmail: '',
     number: '',
     password: '',
-    category: '',
+    category: '676ef9685c75082fcbc59c4f',
     address: {
       area: '',
       street_address: '',
@@ -212,7 +212,7 @@ export default function RegisterWithBh() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.formContainer}>
-        <Text style={styles.title}>Vendor Registration</Text>
+        <Text style={styles.title}>Vendor Cab Registration</Text>
 
         <FormInput
           label="Name (as per Aadhaar Card)"
@@ -277,7 +277,7 @@ export default function RegisterWithBh() {
           secureTextEntry
         />
 
-        <View style={styles.pickerContainer}>
+        {/* <View style={styles.pickerContainer}>
           <Text style={styles.label}>Category</Text>
           <Picker
             selectedValue={formData.category}
@@ -294,7 +294,7 @@ export default function RegisterWithBh() {
             ))}
           </Picker>
           {errors.category && <Text style={styles.errorText}>{errors.category}</Text>}
-        </View>
+        </View> */}
 
         <AddressForm
           address={formData.address}

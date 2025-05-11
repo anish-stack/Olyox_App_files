@@ -496,11 +496,11 @@ exports.uploadDocuments = async (req, res) => {
 
     for (const file of req.files) {
       const fileSizeInKB = file.size / 1024;
-      if (fileSizeInKB > 500) {
+      if (fileSizeInKB > 1000) {
         fs.unlinkSync(file.path);
         return res.status(400).json({
           success: false,
-          message: `File ${file.originalname} is too large. Max size allowed is 500KB.`
+          message: `File ${file.originalname} is too large. Max size allowed is 1MB.`
         });
       }
       const uploadResponse = await cloudinary.uploader.upload(file.path, { folder: "rider_documents", quality: "auto:low", format: "jpg" });
@@ -514,7 +514,6 @@ exports.uploadDocuments = async (req, res) => {
       if (file.originalname.includes('profile')) uploadedDocs.profile = uploadResponse.secure_url;
       fs.unlinkSync(file.path);
     }
-    console.log(uploadedDocs)
 
     findRider.documents = uploadedDocs;
     findRider.isDocumentUpload = true;
