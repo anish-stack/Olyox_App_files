@@ -353,6 +353,14 @@ export default function Profile() {
                     <Text style={styles.menuText}>Profile Details</Text>
                     <MaterialCommunityIcons name="chevron-right" size={24} color="#757575" />
                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => navigation.navigate('UnlockCoupons')}
+                >
+                    <MaterialCommunityIcons name="account-edit" size={24} color="#FFB300" />
+                    <Text style={styles.menuText}>Unlock Deals For You</Text>
+                    <MaterialCommunityIcons name="chevron-right" size={24} color="#757575" />
+                </TouchableOpacity>
 
                 <TouchableOpacity
                     style={styles.menuItem}

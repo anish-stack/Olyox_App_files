@@ -50,6 +50,7 @@ import NewParcelLive from './screens/Parcel_Screens/NewParcelLive/NewParcelLive'
 import DeliveryTracking from './screens/Parcel_Screens/DeliveryTracking/DeliveryTracking';
 import AvailableOrder from './screens/Parcel_Screens/Available_Orders/AvailableOrder';
 import ProgressOrder from './screens/Parcel_Screens/ProgressOrder/ProgressOrder';
+import UnlockCoupons from './screens/Unlock/UnlockCoupons';
 
 LogBox.ignoreLogs(['Setting a timer']);
 
@@ -207,6 +208,7 @@ const App = () => {
                       <Stack.Screen name="collect_money" component={MoneyPage} />
                       <Stack.Screen name="AllRides" component={AllRides} />
                       <Stack.Screen name="NewRideScreen" component={RideRequestScreen} />
+                      <Stack.Screen name="UnlockCoupons" component={UnlockCoupons} />
                       <Stack.Screen name="Profile" component={Profile} />
                       <Stack.Screen name="upload-qr" component={UploadQr} />
                       <Stack.Screen name="enter_bh" component={BhVerification} />

@@ -90,6 +90,14 @@ exports.make_recharge = async (req, res) => {
                 );
 
               
+            }else if(type === 'cab'){
+                couponData = matchedCoupons.find(c =>
+                    c.assignedTo &&
+                    c.assignedTo.BH &&
+                    c.assignedTo.BH === user_id
+                );
+
+              
             }else{
                 if (!couponData) {
                     return res.status(403).json({

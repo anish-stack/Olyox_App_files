@@ -186,7 +186,7 @@ export default function Documents() {
   const handleLogout = async () => {
     try {
       await SecureStore.deleteItemAsync('auth_token_cab');
-      router.replace('/onboarding');
+      router.navigate('Onboarding');
       console.log("Logout successful");
     } catch (error) {
       console.log("Logout Error:", error);
@@ -249,7 +249,7 @@ export default function Documents() {
         );
         
         // Navigate to waiting screen or next step
-        router.push('/wait_screen');
+        router.navigate('/wait_screen');
       } else {
         throw new Error(response.data.message || 'Upload failed');
       }
