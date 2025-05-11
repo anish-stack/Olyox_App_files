@@ -45,7 +45,7 @@ const userSchema = new mongoose.Schema({
             type: String
         }
     }
-});
+},{timestamps:true});
 
 // Create the model
 const User = mongoose.model('User', userSchema);

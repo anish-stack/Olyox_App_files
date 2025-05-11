@@ -204,56 +204,57 @@ exports.getByCategoryId = async (req, res) => {
 
 // Update
 exports.updateRideSubSuggestion = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { oldValue, newValue } = req.body;
+    try {
+        const { id } = req.params;
+        const { oldValue, newValue } = req.body;
 
-    // Fetch the document
-    const doc = await RideSubSuggestionModel.findById(id);
-    if (!doc) {
-      return res.status(404).json({ success: false, message: "Sub Suggestion not found" });
+        // Fetch the document
+        const doc = await RideSubSuggestionModel.findOne({categoryId:id});
+        if (!doc) {
+            return res.status(404).json({ success: false, message: "Sub Suggestion not found" });
+        }
+
+        // Find index of the old value
+        const index = doc.subCategory.indexOf(oldValue);
+        if (index === -1) {
+            return res.status(400).json({ success: false, message: "Old sub-category not found in the array" });
+        }
+
+        // Update the specific sub-category
+        doc.subCategory[index] = newValue;
+
+        // Save the updated document
+        await doc.save();
+
+        res.status(200).json({ success: true, message: "Sub-category updated successfully", data: doc });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
-
-    // Find index of the old value
-    const index = doc.subCategory.indexOf(oldValue);
-    if (index === -1) {
-      return res.status(400).json({ success: false, message: "Old sub-category not found in the array" });
-    }
-
-    // Update the specific sub-category
-    doc.subCategory[index] = newValue;
-
-    // Save the updated document
-    await doc.save();
-
-    res.status(200).json({ success: true, message: "Sub-category updated successfully", data: doc });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error", error: error.message });
-  }
 };
 
-// Delete
+// 
 exports.deleteRideSubSuggestion = async (req, res) => {
     try {
-        const { id } = req.params; // This is the document ID
-        const { subCategoryToDelete } = req.body; // This is the sub-category you want to remove
+        const { id } = req.params; // categoryId (not _id)
+        const { subCategoryToDelete } = req.body;
 
         if (!subCategoryToDelete) {
             return res.status(400).json({ success: false, message: "Sub-category to delete is required" });
         }
 
-        const updated = await RideSubSuggestionModel.findByIdAndUpdate(
-            id,
-            { $pull: { subCategory: subCategoryToDelete } },
+        const updated = await RideSubSuggestionModel.findOneAndUpdate(
+            { categoryId: id }, // match by categoryId
+            { $pull: { subCategory: subCategoryToDelete } }, // pull from array
             { new: true }
         );
 
         if (!updated) {
-            return res.status(404).json({ success: false, message: "Sub Suggestion not found" });
+            return res.status(404).json({ success: false, message: "Ride Sub Suggestion not found for this category" });
         }
 
         res.status(200).json({ success: true, message: "Sub-category deleted successfully", data: updated });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
 };
