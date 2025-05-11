@@ -149,16 +149,32 @@ exports.addRideSubSuggestion = async (req, res) => {
             return res.status(400).json({ success: false, message: "Sub Category cannot be empty" });
         }
 
-        const newEntry = await RideSubSuggestionModel.create({
-            categoryId: foundSuggestion._id,
-            subCategory
-        });
+        const existing = await RideSubSuggestionModel.findOne({ categoryId: foundSuggestion._id });
 
-        res.status(201).json({ success: true, data: newEntry });
+        if (existing) {
+            // Update existing document with new subCategory
+            const updated = await RideSubSuggestionModel.findByIdAndUpdate(
+                existing._id,
+                { $addToSet: { subCategory: { $each: Array.isArray(subCategory) ? subCategory : [subCategory] } } },
+                { new: true }
+            );
+
+            return res.status(200).json({ success: true, data: updated });
+        } else {
+            // Create new document if none exists
+            const newEntry = await RideSubSuggestionModel.create({
+                categoryId: foundSuggestion._id,
+                subCategory: Array.isArray(subCategory) ? subCategory : [subCategory]
+            });
+
+            return res.status(201).json({ success: true, data: newEntry });
+        }
+
     } catch (error) {
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
 };
+
 
 // Read All
 exports.getAllRideSubSuggestions = async (req, res) => {
@@ -219,14 +235,24 @@ exports.updateRideSubSuggestion = async (req, res) => {
 // Delete
 exports.deleteRideSubSuggestion = async (req, res) => {
     try {
-        const { id } = req.params;
+        const { id } = req.params; // This is the document ID
+        const { subCategoryToDelete } = req.body; // This is the sub-category you want to remove
 
-        const deleted = await RideSubSuggestionModel.findByIdAndDelete(id);
-        if (!deleted) {
+        if (!subCategoryToDelete) {
+            return res.status(400).json({ success: false, message: "Sub-category to delete is required" });
+        }
+
+        const updated = await RideSubSuggestionModel.findByIdAndUpdate(
+            id,
+            { $pull: { subCategory: subCategoryToDelete } },
+            { new: true }
+        );
+
+        if (!updated) {
             return res.status(404).json({ success: false, message: "Sub Suggestion not found" });
         }
 
-        res.status(200).json({ success: true, message: "Sub Suggestion deleted successfully" });
+        res.status(200).json({ success: true, message: "Sub-category deleted successfully", data: updated });
     } catch (error) {
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
