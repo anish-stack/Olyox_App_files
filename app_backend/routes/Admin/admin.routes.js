@@ -61,7 +61,7 @@ const { createPolicy, updatePolicy, getPolicyById, findPolicyByTitle, deletePoli
 const { createReport, getAllReports, getSingleReport, updateReport, deleteReport } = require('../../Admin Controllers/Bugs/LoginBugsReportsController');
 const { createBonus, getAllBonuses, getBonusById, updateBonus, deleteBonus, updateBonusStatus } = require('../../Admin Controllers/createBonus/BonusController');
 const { createAppHomeBanner, getAllAppHomeBanners, getSingleAppHomeBanner, updateAppHomeBanner, deleteAppHomeBanner, updateAppHomeBannerStatus } = require('../../Admin Controllers/AppHomeBanner');
-const { getActiveCoupons, createPCoupon, getActivePCoupons, getCouponPById, updatePCoupon, deletePCoupon, getCouponpAById } = require('../../Admin Controllers/PersonalCoupons');
+const { getActiveCoupons, createPCoupon, getActivePCoupons, getCouponPById, updatePCoupon, deletePCoupon, getCouponpAById, getAllPartnersNameAndBHAndId, getAllPCoupons } = require('../../Admin Controllers/PersonalCoupons');
 const { createAppVersion, deleteAppVersion, getLatestAppVersionByType, getAllAppVersions } = require('../../Admin Controllers/AppVersion');
 const { webhookExotelApi } = require('../../controllers/ExotelApi');
 
@@ -182,7 +182,9 @@ admin.patch('/toggle_home_banner/:id', updateAppHomeBannerStatus);
 
 // Routes for personal coupons
 admin.post('/personal-coupons/create', createPCoupon);
+admin.get('/all-partners', getAllPartnersNameAndBHAndId);
 admin.get('/personal-coupons/active', getActivePCoupons);
+admin.get('/personal-coupons', getAllPCoupons);
 admin.get('/personal-coupons/:id', getCouponPById);
 admin.get('/personal-coupon/:id', getCouponpAById);
 admin.put('/personal-coupons/:id', updatePCoupon);

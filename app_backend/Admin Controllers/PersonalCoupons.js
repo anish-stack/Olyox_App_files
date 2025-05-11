@@ -1,4 +1,68 @@
 const PersonalCoupon = require("../models/Admin/PersonalCoupons");
+const Heavy_vehicle_partners = require("../models/Heavy_vehicle/Heavy_vehicle_partners");
+const HotelUser = require("../models/Hotel.user");
+const RiderModel = require("../models/Rider.model");
+const Restaurant = require("../models/Tiifins/Resturant_register.model");
+
+
+
+exports.getAllPartnersNameAndBHAndId = async(req, res) => {
+    try {
+        console.log('Starting to fetch all partners data');
+        
+        // Corrected query to select only needed fields instead of using populate incorrectly
+        const cabAndParcel = await RiderModel.find({}, 'name BH _id');
+        console.log(`Found ${cabAndParcel.length} cab and parcel partners`);
+        
+        const restaurantUsers = await Restaurant.find({}, 'restaurant_name restaurant_BHID _id');
+        console.log(`Found ${restaurantUsers.length} restaurant partners`);
+        
+        const hotelUsers = await HotelUser.find({}, 'hotel_name bh _id');
+        console.log(`Found ${hotelUsers.length} hotel partners`);
+        
+        const heavyVehicles = await Heavy_vehicle_partners.find({}, 'name Bh_Id _id');
+        console.log(`Found ${heavyVehicles.length} heavy vehicle partners`);
+        
+        // Format the response in a consistent way
+        const response = {
+            success: true,
+            data: {
+                cabAndParcel: cabAndParcel.map(item => ({
+                    _id: item._id,
+                    name: item.name,
+                    BH: item.BH
+                })),
+                restaurants: restaurantUsers.map(item => ({
+                    _id: item._id,
+                    name: item.restaurant_name,
+                    BH: item.restaurant_BHID
+                })),
+                hotels: hotelUsers.map(item => ({
+                    _id: item._id,
+                    name: item.hotel_name,
+                    BH: item.bh
+                })),
+                heavyVehicles: heavyVehicles.map(item => ({
+                    _id: item._id,
+                    name: item.name,
+                    BH: item.Bh_Id
+                }))
+            }
+        };
+        
+        console.log('Successfully formatted all partners data');
+        return res.status(200).json(response);
+        
+    } catch (error) {
+        console.error('Error fetching partners data:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch partners data',
+            error: error.message
+        });
+    }
+};
+
 
 exports.createPCoupon = async (req, res) => {
     try {
@@ -33,6 +97,16 @@ exports.createPCoupon = async (req, res) => {
 exports.getActivePCoupons = async (req, res) => {
     try {
         const activeCoupons = await PersonalCoupon.find({ isActive: true }).populate('assignedTo');
+        return res.status(200).json(activeCoupons);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.getAllPCoupons = async (req, res) => {
+    try {
+        const activeCoupons = await PersonalCoupon.find().populate('assignedTo');
         return res.status(200).json(activeCoupons);
     } catch (error) {
         console.error(error);
