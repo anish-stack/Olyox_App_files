@@ -153,7 +153,7 @@ const MembershipCard = ({ plan, selected, onSelect }) => (
 export default function RechargeViaOnline() {
   const navigation = useNavigation();
   const route = useRoute()
-  const { showOnlyBikePlan, role ,firstRecharge} = route.params || {}
+  const { showOnlyBikePlan, role, firstRecharge } = route.params || {}
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState(null);
   const [memberships, setMemberships] = useState([]);
@@ -183,28 +183,28 @@ export default function RechargeViaOnline() {
       showPaymentModal('failed', 'Failed to fetch user details. Please try again.');
     }
   };
-  console.log("role",role)
+  console.log("role", role)
 
   const fetchMembershipPlans = async () => {
     try {
       const { data } = await axios.get('https://www.api.olyox.com/api/v1/membership-plans');
-  
+
       let plans = data.data.filter((item) =>
         item.category === (showOnlyBikePlan ? 'bike' : role)
       );
-  
+
+ 
       // 👉 Filter based on firstRecharge condition
       if (firstRecharge) {
-        plans = plans.filter((plan) => plan.price > 1);
+        plans = plans.filter((plan) => plan.price >= 1);
       }
-  
-      console.log(plans);
+
       setMemberships(plans);
     } catch (error) {
       showPaymentModal('failed', 'Failed to fetch membership plans. Please try again.');
     }
   };
-  
+
 
 
   const showPaymentModal = (status, message) => {

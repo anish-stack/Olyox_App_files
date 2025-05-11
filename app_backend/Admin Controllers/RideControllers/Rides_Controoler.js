@@ -188,24 +188,32 @@ exports.getByCategoryId = async (req, res) => {
 
 // Update
 exports.updateRideSubSuggestion = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { subCategory } = req.body;
+  try {
+    const { id } = req.params;
+    const { oldValue, newValue } = req.body;
 
-        const updated = await RideSubSuggestionModel.findByIdAndUpdate(
-            id,
-            { subCategory },
-            { new: true }
-        );
-
-        if (!updated) {
-            return res.status(404).json({ success: false, message: "Sub Suggestion not found" });
-        }
-
-        res.status(200).json({ success: true, data: updated });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    // Fetch the document
+    const doc = await RideSubSuggestionModel.findById(id);
+    if (!doc) {
+      return res.status(404).json({ success: false, message: "Sub Suggestion not found" });
     }
+
+    // Find index of the old value
+    const index = doc.subCategory.indexOf(oldValue);
+    if (index === -1) {
+      return res.status(400).json({ success: false, message: "Old sub-category not found in the array" });
+    }
+
+    // Update the specific sub-category
+    doc.subCategory[index] = newValue;
+
+    // Save the updated document
+    await doc.save();
+
+    res.status(200).json({ success: true, message: "Sub-category updated successfully", data: doc });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+  }
 };
 
 // Delete
