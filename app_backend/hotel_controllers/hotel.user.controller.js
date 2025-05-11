@@ -9,6 +9,7 @@ require("dotenv").config();
 const axios = require('axios')
 const moment = require("moment");
 const mongoose = require("mongoose");
+const { sendDltMessage } = require("../utils/DltMessageSend");
 
 cloudinary.config({
     cloud_name: "dsd8nepa5",
@@ -291,7 +292,7 @@ exports.find_Hotel_Login = async (req, res) => {
 
 exports.LoginHotel = async (req, res) => {
     try {
-        const { BH } = req.body;
+        const { BH ,type} = req.body;
         if (!BH) {
             return res.status(400).json({
                 success: false,
@@ -341,7 +342,12 @@ exports.LoginHotel = async (req, res) => {
 
         // Construct and send WhatsApp message
         const message = `Please verify your hotel login. Your OTP is ${otpCode}, sent to your WhatsApp number ${foundHotel.hotel_phone}.`;
-        await SendWhatsAppMessage(message, foundHotel.hotel_phone);
+
+        if(type === 'text'){
+            await sendDltMessage(otpCode,foundHotel.hotel_phone)
+        }else{
+            await SendWhatsAppMessage(message, foundHotel.hotel_phone);
+        }
 
         return res.status(200).json({
             success: true,
