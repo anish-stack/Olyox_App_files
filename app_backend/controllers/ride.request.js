@@ -1248,30 +1248,41 @@ exports.rideEnd = async (data) => {
 
 exports.collectCash = async ({ data, paymentMethod }) => {
     try {
-        const ride_id = await RideRequest.findById(data?._id);
-        if (!ride_id) {
+        const ride = await RideRequest.findById(data?._id);
+        if (!ride) {
             return { success: false, message: 'Ride not found' };
         }
 
-        ride_id.is_ride_paid = true;
-        ride_id.paymentMethod = paymentMethod;
-        await ride_id.save();
+        // Mark the ride as paid
+        ride.is_ride_paid = true;
+        ride.paymentMethod = paymentMethod;
+        await ride.save();
 
-        const findRider = await Riders.findById(ride_id?.rider);
+        const findRider = await Riders.findById(ride?.rider);
         if (!findRider) {
             return { success: false, message: 'Rider not found' };
         }
 
-        const findRideDetails = await rideRequestModel.find({ rider: findRider._id, rideStatus: "completed" });
+        // Find past completed rides
+        const pastRides = await rideRequestModel.find({
+            rider: findRider._id,
+            rideStatus: "completed"
+        });
 
-        const totalRides = findRideDetails.length;
-        const totalEarnings = findRideDetails.reduce((acc, cur) => acc + Number(cur.kmOfRide), 0);
+        // Calculate earnings from past rides
+        const pastEarnings = pastRides.reduce((acc, cur) => acc + Number(cur.kmOfRide || 0), 0);
+
+        // Current ride earning
+        const currentEarning = Number(ride.kmOfRide || 0);
+
+        // Total earnings = past + current
+        const totalEarnings = pastEarnings + currentEarning;
 
         const earningLimit = Number(findRider?.RechargeData?.onHowManyEarning || 0);
         const remaining = earningLimit - totalEarnings;
         const number = findRider?.phone;
 
-        // Limit reached or exceeded
+        // Handle earning limit
         if (totalEarnings >= earningLimit) {
             const message = `🎉 You’ve crossed your earning limit according to your current plan. Thank you for using Olyox! Please recharge now to continue earning more.`;
             await SendWhatsAppMessageNormal(message, number);
@@ -1282,16 +1293,14 @@ exports.collectCash = async ({ data, paymentMethod }) => {
                 rechargePlan: '',
                 onHowManyEarning: '',
                 approveRecharge: false,
-                
             };
-            rider.isPaid = false
-        }
-        // Less than ₹300 remaining
-        else if (remaining < 300) {
+            findRider.isPaid = false;
+        } else if (remaining < 300) {
             const reminderMessage = `🛎️ Reminder: You have ₹${remaining} earning potential left on your plan. Recharge soon to avoid interruptions in your earnings. – Team Olyox`;
             await SendWhatsAppMessageNormal(reminderMessage, number);
         }
 
+        // Reset rider state
         findRider.isAvailable = true;
         findRider.on_ride_id = null;
 
@@ -1299,14 +1308,17 @@ exports.collectCash = async ({ data, paymentMethod }) => {
 
         return {
             success: true,
-            message: 'Ride ended and payment recorded successfully'
+            message: 'Ride ended and payment recorded successfully',
+            currentEarning,
+            totalEarnings
         };
 
     } catch (error) {
         console.error('Error in collectCash:', error.message);
-        return error.message;
+        return { success: false, message: error.message };
     }
 };
+
 
 
 exports.AddRating = async (data, rate) => {

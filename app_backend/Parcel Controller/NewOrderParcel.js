@@ -294,7 +294,6 @@ exports.updateParcelStatus = async (req, res) => {
             return res.status(404).json({ message: "Parcel not found" });
         }
 
-        // Get socket maps
         const io = req.app.get("socketio");
         const userSocketMap = req.app.get("userSocketMap") || new Map();
         const customerId = parcel.customerId?.toString();
@@ -335,21 +334,28 @@ exports.updateParcelStatus = async (req, res) => {
                 parcel.money_collected = parcel.fares?.payableAmount || 0;
 
                 const rider = parcel.rider_id;
+
+                // Fetch past delivered parcels
                 const deliveredParcels = await Parcel_Request.find({
                     rider_id: rider._id,
                     is_parcel_delivered: true,
                 });
 
-                const totalRides = deliveredParcels.length;
-                const totalEarnings = deliveredParcels.reduce(
+                // Calculate past earnings
+                const pastEarnings = deliveredParcels.reduce(
                     (acc, cur) => acc + Number(cur.fares?.payableAmount || 0),
                     0
                 );
+
+                // Add current order's earning
+                const currentEarning = Number(parcel.fares?.payableAmount || 0);
+                const totalEarnings = pastEarnings + currentEarning;
 
                 const earningLimit = Number(rider?.RechargeData?.onHowManyEarning || 0);
                 const remainingEarnings = earningLimit - totalEarnings;
                 const number = rider?.phone;
 
+                // Check earning threshold
                 if (totalEarnings >= earningLimit) {
                     const message = `🎉 You’ve crossed your earning limit according to your current plan. Thank you for using Olyox! Please recharge now to continue earning more.`;
                     await SendWhatsAppMessageNormal(message, number);
@@ -360,9 +366,8 @@ exports.updateParcelStatus = async (req, res) => {
                         rechargePlan: '',
                         onHowManyEarning: '',
                         approveRecharge: false,
-
                     };
-                    rider.isPaid = false
+                    rider.isPaid = false;
                 } else if (remainingEarnings < 300) {
                     const reminderMessage = `🛎️ Reminder: You have ₹${remainingEarnings} earning potential left on your plan. Recharge soon to avoid interruptions in your earnings. – Team Olyox`;
                     await SendWhatsAppMessageNormal(reminderMessage, number);
@@ -400,12 +405,15 @@ exports.updateParcelStatus = async (req, res) => {
         return res.status(200).json({
             message: "Parcel status updated successfully",
             updatedStatus: status,
+            currentEarning: Number(parcel.fares?.payableAmount || 0),
+            totalEarnings: status === "delivered" ? Number(parcel.fares?.payableAmount || 0) + deliveredParcels.reduce((acc, cur) => acc + Number(cur.fares?.payableAmount || 0), 0) : undefined
         });
     } catch (error) {
         console.error("Error updating parcel status:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
+
 
 
 
