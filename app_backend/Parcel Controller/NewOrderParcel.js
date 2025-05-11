@@ -326,78 +326,74 @@ exports.updateParcelStatus = async (req, res) => {
                 }
                 break;
 
-            case "delivered":
-                parcel.is_parcel_delivered = true;
-                parcel.is_dropoff_complete = true;
-                parcel.is_parcel_delivered_time = new Date();
-                parcel.is_booking_completed = true;
-                parcel.money_collected = parcel.fares?.payableAmount || 0;
+          case "delivered":
+    parcel.is_parcel_delivered = true;
+    parcel.is_dropoff_complete = true;
+    parcel.is_parcel_delivered_time = new Date();
+    parcel.is_booking_completed = true;
+    parcel.money_collected = parcel.fares?.payableAmount || 0;
 
-                const rider = parcel.rider_id;
+    const rider = parcel.rider_id;
 
-                // Find past completed rides
-                const rechargeDate = new Date(findRider?.RechargeData?.whichDateRecharge);
-                // Fetch past delivered parcels
-                const deliveredParcels = await Parcel_Request.find({
-                    rider_id: rider._id,
-                    is_parcel_delivered: true,
-                    createdAt: { $gte: rechargeDate }
-                });
+    // Log current order earning
+    const currentEarning = Number(parcel.fares?.payableAmount || 0);
+    console.log("🛍️ Current Order Earning:", currentEarning);
 
-                // Calculate past earnings
-                const pastEarnings = deliveredParcels.reduce(
-                    (acc, cur) => acc + Number(cur.fares?.payableAmount || 0),
-                    0
-                );
+    // Get recharge date from rider
+    const rechargeDate = new Date(rider?.RechargeData?.whichDateRecharge);
+    console.log("📅 Recharge Date:", rechargeDate);
 
-                // Add current order's earning
-                const currentEarning = Number(parcel.fares?.payableAmount || 0);
-                const totalEarnings = pastEarnings + currentEarning;
+    // Fetch all previously delivered parcels after recharge date
+    const deliveredParcels = await Parcel_Request.find({
+        rider_id: rider._id,
+        is_parcel_delivered: true,
+        createdAt: { $gte: rechargeDate }
+    });
 
-                const earningLimit = Number(rider?.RechargeData?.onHowManyEarning || 0);
-                const remainingEarnings = earningLimit - totalEarnings;
-                const number = rider?.phone;
+    // Calculate past earnings after recharge
+    const pastEarnings = deliveredParcels.reduce(
+        (acc, cur) => acc + Number(cur.fares?.payableAmount || 0),
+        0
+    );
+    console.log("💰 Past Earnings After Recharge:", pastEarnings);
 
-                // Check earning threshold
-                if (totalEarnings >= earningLimit) {
-                    const message = `🎉 You’ve crossed your earning limit according to your current plan. Thank you for using Olyox! Please recharge now to continue earning more.`;
-                    await SendWhatsAppMessageNormal(message, number);
+    // Calculate total earnings (past + current)
+    const totalEarnings = pastEarnings + currentEarning;
+    console.log("🧾 Total Earnings (Current + Past):", totalEarnings);
 
-                    rider.isAvailable = false;
-                    rider.RechargeData = {
-                        expireData: new Date(Date.now() - 5 * 60 * 1000),
-                        rechargePlan: '',
-                        onHowManyEarning: '',
-                        approveRecharge: false,
-                    };
-                    rider.isPaid = false;
-                } else if (remainingEarnings < 300) {
-                    rider.isAvailable = true;
-                    const reminderMessage = `🛎️ Reminder: You have ₹${remainingEarnings} earning potential left on your plan. Recharge soon to avoid interruptions in your earnings. – Team Olyox`;
-                    await SendWhatsAppMessageNormal(reminderMessage, number);
-                }
+    // Earnings limit from current plan
+    const earningLimit = Number(rider?.RechargeData?.onHowManyEarning || 0);
+    const remainingEarnings = earningLimit - totalEarnings;
 
+    console.log("🎯 Earning Limit:", earningLimit);
+    console.log("📉 Remaining Earnings Until Limit:", remainingEarnings);
 
-                await rider.save();
-                break;
+    const number = rider?.phone;
 
-            case "cancelled":
-                parcel.is_booking_cancelled = true;
-                parcel.is_booking_cancelled_time = new Date();
+    if (totalEarnings >= earningLimit) {
+        const message = `🎉 You’ve crossed your earning limit according to your current plan. Thank you for using Olyox! Please recharge now to continue earning more.`;
+        console.log("⚠️ Earning limit reached. Sending recharge message.");
+        await SendWhatsAppMessageNormal(message, number);
 
-                if (customerSocketId) {
-                    io.to(customerSocketId).emit("parcel_rider_cancel", {
-                        success: true,
-                        message: "Parcel has been cancelled",
-                        parcel: parcel._id,
-                    });
-                }
+        rider.isAvailable = false;
+        rider.RechargeData = {
+            expireData: new Date(Date.now() - 5 * 60 * 1000), // expired 5 min ago
+            rechargePlan: '',
+            onHowManyEarning: '',
+            approveRecharge: false,
+        };
+        rider.isPaid = false;
+    } else if (remainingEarnings < 300) {
+        console.log("🔔 Low earnings reminder. Sending warning.");
+        const reminderMessage = `🛎️ Reminder: You have ₹${remainingEarnings} earning potential left on your plan. Recharge soon to avoid interruptions in your earnings. – Team Olyox`;
+        await SendWhatsAppMessageNormal(reminderMessage, number);
 
-                if (parcel.rider_id) {
-                    parcel.rider_id.isAvailable = true;
-                    await parcel.rider_id.save();
-                }
-                break;
+        rider.isAvailable = true;
+    }
+
+    await rider.save();
+    break;
+
 
             default:
                 return res.status(400).json({ message: "Invalid status value" });
