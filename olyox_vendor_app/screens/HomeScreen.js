@@ -21,7 +21,7 @@ const HomeScreen = () => {
         }
         contentContainerStyle={styles.scrollViewContent}
       >
-        <Status />
+        <Status isRefresh={isRefreshDone} />
         <OrderCount isRefresh={isRefreshDone} />
         {/* <Graph /> */}
         <HomeFood isRefresh={isRefreshDone} />

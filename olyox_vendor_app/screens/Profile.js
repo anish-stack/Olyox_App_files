@@ -16,6 +16,8 @@ const Profile = () => {
     const [loading, setLoading] = useState(false);
     const { error, data, fetchDetails } = useBhDetails()
 
+    console.log("data of Profile", data)
+
 
     const handleLogout = () => {
         AsyncStorage.removeItem('userToken')
@@ -170,7 +172,7 @@ const Profile = () => {
     };
 
     // Example usage
-    const daysLeft = calculateDaysLeft(data?.data?.payment_id?.end_date);
+    const daysLeft = calculateDaysLeft(restaurant?.RechargeData?.expireData);
     // console.log(daysLeft);
 
 

@@ -1,28 +1,49 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Linking } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import useSettings from '../hooks/Settings';
 
 export function Support () {
+
+    const {settings} = useSettings()
+
     const supportOptions = [
         {
             title: 'Chat with Us',
             description: 'Get instant help from our support team',
             icon: 'message-text',
+            whatsappNumber:settings?.whatsappNumber,
             color: '#10b981'
         },
         {
             title: 'Call Support',
             description: 'Speak directly with a support agent',
             icon: 'phone',
+            callNumber:settings?.support_number,
             color: '#6366f1'
         },
         {
             title: 'Email Support',
             description: 'Send us your queries via email',
             icon: 'email',
+            emailId:settings?.adminEmail,
             color: '#f59e0b'
         }
     ];
+
+
+    const handleSupportPress = (option) => {
+    if (option.whatsappNumber) {
+        const whatsappURL = `https://wa.me/${option.whatsappNumber}`;
+        Linking.openURL(whatsappURL);
+    } else if (option.callNumber) {
+        const phoneURL = `tel:${option.callNumber}`;
+        Linking.openURL(phoneURL);
+    } else if (option.emailId) {
+        const emailURL = `mailto:${option.emailId}`;
+        Linking.openURL(emailURL);
+    }
+};
 
     const faqItems = [
         {
@@ -52,6 +73,7 @@ export function Support () {
                     <TouchableOpacity 
                         key={index}
                         style={styles.supportCard}
+                         onPress={() => handleSupportPress(option)}
                         activeOpacity={0.7}
                     >
                         <View style={[styles.iconContainer, { backgroundColor: option.color + '15' }]}>
@@ -84,7 +106,7 @@ export function Support () {
                         Need urgent help? Call our 24/7 emergency support line
                     </Text>
                 </View>
-                <TouchableOpacity style={styles.emergencyButton}>
+                <TouchableOpacity onPress={()=>Linking.openURL(`tel:${settings.support_number}`)} style={styles.emergencyButton}>
                     <Icon name="phone" size={20} color="#fff" />
                 </TouchableOpacity>
             </View>

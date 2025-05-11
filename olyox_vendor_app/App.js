@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, StatusBar, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider } from 'react-redux';
@@ -106,6 +106,7 @@ export default function App() {
           <SafeAreaProvider>
             {/* <AppWithUpdater> */}
               <NavigationContainer>
+                  <StatusBar barStyle={'dark-content'} />
                 <Stack.Navigator initialRouteName={initialRoute}>
                   <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
                   <Stack.Screen name="Profile" options={{ headerShown: true }} component={Profile} />

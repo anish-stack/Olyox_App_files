@@ -4,7 +4,7 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 
-export default function Status() {
+export default function Status({isRefresh}) {
     const navigation = useNavigation();
     const [isActive, setIsActive] = useState(null);
     const [restaurantId, setRestaurantId] = useState(null);
@@ -40,7 +40,7 @@ export default function Status() {
         };
 
         fetchProfile();
-    }, []);
+    }, [isRefresh]);
 
     const toggleStatus = async () => {
         if (!restaurantId) {

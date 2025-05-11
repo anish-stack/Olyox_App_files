@@ -255,7 +255,7 @@ export function ProfileUpdate() {
     };
 
 
-    const renderInput = (label, icon, value, key, options, keyboardType = 'default') => (
+    const renderInput = (label, icon, value, key, options, keyboardType = 'default',editable=true) => (
         <View style={styles.inputContainer}>
             <View style={styles.labelContainer}>
                 <Icon name={icon} size={20} color="#6366f1" />
@@ -288,6 +288,7 @@ export function ProfileUpdate() {
                     placeholder={`Enter your ${label.toLowerCase()}`}
                     placeholderTextColor="#9ca3af"
                     keyboardType={keyboardType}
+                    editable={editable}
                 />
             </View>
             {key === 'restaurant_address.street' && addressSuggestions.length > 0 && (
@@ -316,10 +317,10 @@ export function ProfileUpdate() {
         </View>
     );
 
-    const renderImageUpload = (label, type) => (
+    const renderImageUpload = (label, type ) => (
         <View style={styles.imageUploadContainer}>
             <Text style={styles.imageLabel}>{label}</Text>
-            <TouchableOpacity
+            {/* <TouchableOpacity
                 style={styles.imageUploadButton}
                 onPress={() => handleImageUpload(type)}
             >
@@ -327,7 +328,7 @@ export function ProfileUpdate() {
                 <Text style={styles.imageUploadText}>
                     {images[type] ? 'Change Image' : 'Upload Image'}
                 </Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             {images[type] && (
                 <View style={styles.imagePreviewContainer}>
                     <Image
@@ -413,13 +414,13 @@ export function ProfileUpdate() {
             </View>
 
             <View style={styles.formContainer}>
-                {renderInput('Restaurant Name', 'account', formData.restaurant_name, 'restaurant_name')}
-                {renderInput('Phone', 'phone', formData.restaurant_phone, 'restaurant_phone')}
-                {/* {renderInput('Contact Person', 'account', formData.restaurant_contact, 'restaurant_contact')} */}
+                {renderInput('Restaurant Name', 'account', formData.restaurant_name, 'restaurant_name','','',false)}
+                {renderInput('Phone', 'phone', formData.restaurant_phone, 'restaurant_phone','','',false)}
+                {/* {renderInput('Contact Person', 'account', formData.restaurant_contact, 'restaurant_contact',true)} */}
                 {renderInput('Opening Hours', 'clock-outline', formData.openingHours, 'openingHours')}
-                {/* {renderInput('Category', 'food', formData.restaurant_category, 'restaurant_category')} */}
+                {/* {renderInput('Category', 'food', formData.restaurant_category, 'restaurant_category',false)} */}
                 {renderCategoryDropdown()}
-                {renderInput('FSSAI Number', 'certificate', formData.restaurant_fssai, 'restaurant_fssai')}
+                {renderInput('FSSAI Number', 'certificate', formData.restaurant_fssai, 'restaurant_fssai','','',false)}
                 {renderInput('Price For Two Person', 'certificate', formData.priceForTwoPerson, 'priceForTwoPerson')}
                 {renderInput('Min Delivery Time', 'certificate', formData.minDeliveryTime, 'minDeliveryTime')}
                 {renderInput('Min Price', 'certificate', formData.minPrice, 'minPrice')}
