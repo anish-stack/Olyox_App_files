@@ -65,7 +65,7 @@ exports.webhookExotelApi = async (req, res) => {
             // If no active ride, check for parcel
             console.log('No active ride found. Looking for parcel delivery associated with this user...');
             const userParcelDetails = await Parcel_Request
-                .findOne({ customerId: checkThisWithOurUser._id, is_parcel_delivered: false })
+                .findOne({ customerId: checkThisWithOurUser._id,  })
                 .populate('rider_id', 'phone')
                 .sort({ createdAt: -1 });
             
@@ -103,9 +103,9 @@ exports.webhookExotelApi = async (req, res) => {
             }
             
             // If no active ride, check for parcel
-            console.log('No active ride found. Looking for parcel delivery associated with this rider...');
+            console.log('No active ride found. Looking for parcel delivery associated with this rider...',checkThisWithOurUser?._id);
             const parcelDetails = await Parcel_Request
-                .findOne({ rider_id: checkThisWithOurUser._id, is_parcel_delivered: false })
+                .findOne({ rider_id: checkThisWithOurUser._id })
                 .populate('customerId', 'number')
                 .sort({ createdAt: -1 });
             
