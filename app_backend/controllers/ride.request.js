@@ -1264,10 +1264,15 @@ exports.collectCash = async ({ data, paymentMethod }) => {
         }
 
         // Find past completed rides
+        const rechargeDate = new Date(findRider?.RechargeData?.whichDateRecharge);
+
+        // Fetch only rides completed after (or on) the recharge date
         const pastRides = await rideRequestModel.find({
             rider: findRider._id,
-            rideStatus: "completed"
+            rideStatus: "completed",
+            createdAt: { $gte: rechargeDate }  // Only rides after or on recharge date
         });
+
 
         // Calculate earnings from past rides
         const pastEarnings = pastRides.reduce((acc, cur) => acc + Number(cur.kmOfRide || 0), 0);

@@ -335,10 +335,13 @@ exports.updateParcelStatus = async (req, res) => {
 
                 const rider = parcel.rider_id;
 
+                // Find past completed rides
+                const rechargeDate = new Date(findRider?.RechargeData?.whichDateRecharge);
                 // Fetch past delivered parcels
                 const deliveredParcels = await Parcel_Request.find({
                     rider_id: rider._id,
                     is_parcel_delivered: true,
+                    createdAt: { $gte: rechargeDate }
                 });
 
                 // Calculate past earnings
