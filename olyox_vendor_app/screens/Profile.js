@@ -45,7 +45,7 @@ const Profile = () => {
                 // console.log("storedToken",storedToken)
 
                 const { data } = await axios.get(
-                    'https://www.appapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
+                    'https://appapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -120,7 +120,7 @@ const Profile = () => {
             }
 
 
-            const res = await axios.put(`https://www.appapi.olyox.com/api/v1/tiffin/update_logo/${restaurant._id}`, formData, {
+            const res = await axios.put(`https://appapi.olyox.com/api/v1/tiffin/update_logo/${restaurant._id}`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 }

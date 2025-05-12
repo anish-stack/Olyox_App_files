@@ -35,7 +35,7 @@ TaskManager.defineTask("background-location-task", async () => {
 
     if (token) {
       await axios.post(
-        "https://www.appapi.olyox.com/webhook/cab-receive-location",
+        "https://appapi.olyox.com/webhook/cab-receive-location",
         {
           latitude: coords.latitude,
           longitude: coords.longitude,

@@ -1,6 +1,6 @@
 import { View, Text, Pressable, ActivityIndicator, ScrollView } from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import styles from "./styles"
+import styles from "./Styles"
 
 const LocationSuggestions = ({ state, pastRideSuggestions, onSelectLocation }) => {
   const renderPastRideSuggestions = () => {

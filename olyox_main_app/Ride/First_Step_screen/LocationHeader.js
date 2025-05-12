@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity } from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import styles from "./styles"
+import styles from "./Styles"
 
 const LocationHeader = ({ onBack }) => {
   return (

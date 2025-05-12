@@ -22,7 +22,7 @@ export function Login() {
 
         setLoading(true);
         try {
-            const response = await fetch('https://www.appapi.olyox.com/api/v1/tiffin/tiffin_login', {
+            const response = await fetch('https://appapi.olyox.com/api/v1/tiffin/tiffin_login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID ,typeOfMessage }),
@@ -69,7 +69,7 @@ export function Login() {
 
         setLoading(true);
         try {
-            const response = await fetch('https://www.appapi.olyox.com/api/v1/tiffin/verify_otp', {
+            const response = await fetch('https://appapi.olyox.com/api/v1/tiffin/verify_otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ restaurant_BHID, otp }),

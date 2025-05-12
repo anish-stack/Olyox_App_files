@@ -2,11 +2,13 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Provider } from 'react-redux';
+import './context/firebaseConfig';
+
 import * as Location from 'expo-location';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
-import { View, Text, StyleSheet, Linking, Image, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, Linking, TouchableOpacity, Platform } from 'react-native';
 import { store } from './redux/store';
 import { SocketProvider } from './context/SocketContext';
 import * as Sentry from '@sentry/react-native';
@@ -14,7 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { AppRegistry } from 'react-native';
 import { name as appName } from './app.json';
-import LottieView from 'lottie-react-native'; // Import Lottie
+import LottieView from 'lottie-react-native';
 import * as Application from 'expo-application';
 
 // Import screens
@@ -58,6 +60,9 @@ import PaymentScreen from './Parcel_Booking/PaymentScreen';
 import FindRider from './Parcel_Booking/FindRider/FindRider';
 import { RideProvider } from './context/RideContext';
 import RideLocationSelector from './Ride/First_Step_screen';
+import useNotificationPermission from './hooks/notification';
+import { find_me } from './utils/helpers';
+import axios from 'axios';
 
 const Stack = createNativeStackNavigator();
 
@@ -69,8 +74,11 @@ Sentry.init({
   tracesSampleRate: 1.0,
 });
 
-// Maximum loading screen time before proceeding anyway
+// Constants
 const MAX_LOADING_TIME = 5000; // 5 seconds max loading time
+const MIN_UPDATE_INTERVAL = 10000; // Minimum time between location state updates
+const MAX_RETRY_ATTEMPTS = 3; // Maximum location retry attempts
+const API_URL = "https://appapi.olyox.com/api/v1";
 
 // Define location error types
 const ERROR_TYPES = {
@@ -90,27 +98,39 @@ const isSignificantLocationChange = (prevLocation, newLocation) => {
   const latDiff = Math.abs(prevCoords.latitude - newCoords.latitude);
   const lngDiff = Math.abs(prevCoords.longitude - newCoords.longitude);
 
+  // Consider it significant if coordinates differ by more than ~10m
   return (latDiff > 0.0001 || lngDiff > 0.0001);
 };
 
 const App = () => {
+  // State
   const [isLogin, setIsLogin] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [locationError, setLocationError] = useState(null);
   const [locationFetchRetries, setLocationFetchRetries] = useState(0);
+  const [fcmTokenSent, setFcmTokenSent] = useState(false);
+  
+  // Refs
   const locationRef = useRef(null);
   const watchSubscriptionRef = useRef(null);
   const lastLocationUpdateTimeRef = useRef(0);
-  const locationLoadingRef = useRef(true);
-  const MIN_UPDATE_INTERVAL = 10000;
+  const userDataRef = useRef(null);
+  
+  // Hooks
+  const { isGranted, requestPermission, deviceId, fcmToken } = useNotificationPermission();
 
   // Check login status
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-
         const db_token = await tokenCache.getToken('auth_token_db');
         setIsLogin(db_token !== null);
+        
+        if (db_token !== null) {
+          // If logged in, also fetch and store user data for later use
+          const userData = await find_me();
+          userDataRef.current = userData;
+        }
       } catch (error) {
         console.error('Error fetching tokens:', error);
         Sentry.captureException(error);
@@ -126,6 +146,38 @@ const App = () => {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // FCM Token handling
+  useEffect(() => {
+    const sendFcmTokenToServer = async () => {
+      // Skip if token was already sent or no token exists
+      if (fcmTokenSent || !fcmToken) return;
+      
+      // Wait for user data to be available
+      const userData = userDataRef.current;
+      if (!userData || !userData?.user?._id) return;
+      
+      try {
+        console.log("📤 Sending FCM token to server:", { fcmToken, userId: userData.user._id });
+        
+        await axios.post(`${API_URL}/rider/fcm/add`, {
+          fcm: fcmToken,
+          id: userData.user._id,
+        });
+        
+        console.log("✅ FCM token sent successfully");
+        setFcmTokenSent(true);
+      } catch (error) {
+        console.error("❌ FCM registration error:", error?.response?.data || error.message);
+        Sentry.captureException(error);
+      }
+    };
+    
+    // Attempt to send token whenever userDataRef or fcmToken changes
+    if (fcmToken && userDataRef.current?.user?._id && !fcmTokenSent) {
+      sendFcmTokenToServer();
+    }
+  }, [fcmToken, fcmTokenSent]);
 
   // Open device settings
   const openSettings = useCallback(async () => {
@@ -151,18 +203,15 @@ const App = () => {
     locationRef.current = newLocation;
 
     if (now - lastLocationUpdateTimeRef.current >= MIN_UPDATE_INTERVAL ||
-      isSignificantLocationChange(locationRef.current, newLocation)) {
-
+        isSignificantLocationChange(locationRef.current, newLocation)) {
       console.log("📍 Updating location state:", newLocation);
       lastLocationUpdateTimeRef.current = now;
-    } else {
-      console.log("📡 Location update (not updating state):", newLocation);
     }
 
-    locationLoadingRef.current = false;
     setInitialLoading(false);
   }, []);
 
+  // Location service manager
   const getLocationInBackground = useCallback(async () => {
     try {
       // Cleanup any existing subscription
@@ -176,7 +225,6 @@ const App = () => {
       console.log("🔍 Location services enabled:", isLocationEnabled);
       if (!isLocationEnabled) {
         setLocationError(ERROR_TYPES.LOCATION_UNAVAILABLE);
-        locationLoadingRef.current = false;
         return;
       }
 
@@ -186,7 +234,6 @@ const App = () => {
 
       if (status !== 'granted') {
         setLocationError(ERROR_TYPES.PERMISSION_DENIED);
-        locationLoadingRef.current = false;
         return;
       }
 
@@ -231,7 +278,6 @@ const App = () => {
             setLocationError(ERROR_TYPES.UNKNOWN);
           }
           setLocationFetchRetries(prev => prev + 1);
-          locationLoadingRef.current = false;
         }
       }
 
@@ -251,7 +297,6 @@ const App = () => {
       console.error('❗ Error in location service:', error);
       Sentry?.captureException?.(error);
       setLocationError(ERROR_TYPES.UNKNOWN);
-      locationLoadingRef.current = false;
     }
   }, [updateLocationState]);
 
@@ -269,10 +314,10 @@ const App = () => {
     };
   }, [getLocationInBackground]);
 
-
+  // Handle location retry logic
   useEffect(() => {
     if ((locationError === ERROR_TYPES.TIMEOUT || locationError === ERROR_TYPES.UNKNOWN) &&
-      locationFetchRetries <= 3) {
+        locationFetchRetries <= MAX_RETRY_ATTEMPTS) {
       const retryDelay = locationFetchRetries * 5000; // 5s, 10s, 15s
       const retryTimer = setTimeout(() => {
         getLocationInBackground();
@@ -282,7 +327,39 @@ const App = () => {
     }
   }, [locationError, locationFetchRetries, getLocationInBackground]);
 
+  // Handle notification permission request
+  const handleRequestNotificationPermission = useCallback(async () => {
+    if (isGranted) return; // Skip if already granted
+    
+    console.log("🔔 Requesting notification permission...");
+    try {
+      const granted = await requestPermission();
+      console.log("✅ Notification permission granted:", granted);
+    } catch (error) {
+      console.error("❌ Notification permission error:", error.message || error);
+      Sentry.captureException(error);
+    }
+  }, [requestPermission, isGranted]);
 
+  // App initialization effect
+  useEffect(() => {
+    const initApp = async () => {
+      console.log("🔄 App initialization started...");
+      try {
+        await handleRequestNotificationPermission();
+        // Minimum display time for splash screen
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log("✅ App initialized");
+      } catch (error) {
+        console.error("❌ App initialization error:", error.message || error);
+        Sentry.captureException(error);
+      }
+    };
+
+    initApp();
+  }, [handleRequestNotificationPermission]);
+
+  // Routes definition - memoized to prevent unnecessary re-renders
   const routes = React.useMemo(() => (
     <>
       <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
@@ -318,12 +395,11 @@ const App = () => {
       {/* Parcel_Booking Screens */}
       <Stack.Screen name="Parcel_Booking" options={{ headerShown: false }} component={Get_Pickup_Drop} />
       <Stack.Screen name="Choose_Vehicle" options={{ headerShown: false }} component={Choose_Vehicle} />
-      <Stack.Screen name="PaymentScreen" options={{ headerShown: true ,title:"Review Booking"}} component={PaymentScreen} />
-      <Stack.Screen name="Booking_Complete_Find_Rider" options={{ headerShown: true ,title:"Parcel Info"}} component={FindRider} />
+      <Stack.Screen name="PaymentScreen" options={{ headerShown: true, title: "Review Booking" }} component={PaymentScreen} />
+      <Stack.Screen name="Booking_Complete_Find_Rider" options={{ headerShown: true, title: "Parcel Info" }} component={FindRider} />
 
       {/* App Policy */}
-      <Stack.Screen name="spalsh" options={{ headerShown: false, title: "Olyox App Polices" }} component={SplashScreen} />
-
+      <Stack.Screen name="spalsh" options={{ headerShown: false }} component={SplashScreen} />
       <Stack.Screen name="policy" options={{ headerShown: true, title: "Olyox App Polices" }} component={Policy} />
       <Stack.Screen name="policyauth" options={{ headerShown: true, title: "Olyox App Polices" }} component={Policy} />
       <Stack.Screen name="Help_me" options={{ headerShown: true, title: "Olyox Center" }} component={Help_On} />
@@ -341,9 +417,8 @@ const App = () => {
           />
         )}
       />
-
     </>
-  ), []);
+  ), [locationError, openSettings, getLocationInBackground]);
 
   // Loading screen with Lottie animation
   if (initialLoading) {
@@ -351,7 +426,7 @@ const App = () => {
       <View style={styles.loaderContainer}>
         <StatusBar style="auto" />
         <LottieView
-          source={require('./location.json')} // Update path to your actual Lottie file
+          source={require('./location.json')}
           autoPlay
           loop
           style={styles.lottieAnimation}
@@ -360,9 +435,6 @@ const App = () => {
       </View>
     );
   }
-
-  // Define Location Error Screen as a separate component to avoid remounting issues
-
 
   // Main app when everything is ready - use the location ref directly
   return (
@@ -373,44 +445,42 @@ const App = () => {
             <LocationProvider initialLocation={locationRef.current}>
               <GuestProvider>
                 <RideProvider>
+                  <BookingParcelProvider>
+                    <SafeAreaProvider>
+                      <StatusBar style="auto" />
+                      <ErrorBoundaryWrapper>
+                        <NavigationContainer>
+                          <Stack.Navigator initialRouteName={'spalsh'}>
+                            {routes}
+                          </Stack.Navigator>
 
-            
-                <BookingParcelProvider>
-                <SafeAreaProvider>
-                  <StatusBar style="auto" />
-                  <ErrorBoundaryWrapper>
-                    <NavigationContainer>
-                      <Stack.Navigator initialRouteName={'spalsh'}>
-                        {routes}
-                      </Stack.Navigator>
-
-                      {/* Overlay error banner if there's a location error but we're proceeding anyway */}
-                      {locationError && (
-                        <TouchableOpacity
-                          style={styles.errorBanner}
-                          onPress={async () => {
-                            if (Platform.OS === 'ios') {
-                              Linking.openURL('app-settings:');
-                            } else {
-                              // Open Android settings for the current app
-                              IntentLauncher.startActivityAsync(
-                                IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
-                                {
-                                  data: 'package:' + Application.applicationId,
+                          {/* Overlay error banner if there's a location error but we're proceeding anyway */}
+                          {locationError && (
+                            <TouchableOpacity
+                              style={styles.errorBanner}
+                              onPress={async () => {
+                                if (Platform.OS === 'ios') {
+                                  Linking.openURL('app-settings:');
+                                } else {
+                                  // Open Android settings for the current app
+                                  IntentLauncher.startActivityAsync(
+                                    IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
+                                    {
+                                      data: 'package:' + Application.applicationId,
+                                    }
+                                  );
                                 }
-                              );
-                            }
-                          }}
-                        >
-                          <Text style={styles.errorBannerText}>
-                            Location service issue. Tap to fix.
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </NavigationContainer>
-                  </ErrorBoundaryWrapper>
-                </SafeAreaProvider>
-                </BookingParcelProvider>
+                              }}
+                            >
+                              <Text style={styles.errorBannerText}>
+                                Location service issue. Tap to fix.
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </NavigationContainer>
+                      </ErrorBoundaryWrapper>
+                    </SafeAreaProvider>
+                  </BookingParcelProvider>
                 </RideProvider>
               </GuestProvider>
             </LocationProvider>

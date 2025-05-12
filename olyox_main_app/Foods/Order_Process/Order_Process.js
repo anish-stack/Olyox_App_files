@@ -140,7 +140,7 @@ const OrderTracking = () => {
         setError(null);
         try {
             const response = await axios.get(
-                `https://www.appapi.olyox.com/api/v1/tiffin/get_order_by_id/${orderId}`
+                `https://appapi.olyox.com/api/v1/tiffin/get_order_by_id/${orderId}`
             );
             if (response.data.success) {
                 setOrder(response.data.order);

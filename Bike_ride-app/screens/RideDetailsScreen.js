@@ -34,7 +34,7 @@ const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.0922;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-const API_BASE_URL = "https://www.appapi.olyox.com";
+const API_BASE_URL = "https://appapi.olyox.com";
 
 export default function RideDetailsScreen() {
   // ===== REFS =====

@@ -22,7 +22,7 @@ export default function All_Orders() {
             if (!token) return;
 
             const response = await axios.get(
-                'https://www.appapi.olyox.com/api/v1/parcel/my_parcel_driver-details',
+                'https://appapi.olyox.com/api/v1/parcel/my_parcel_driver-details',
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 }

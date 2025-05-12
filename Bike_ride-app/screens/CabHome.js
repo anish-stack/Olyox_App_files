@@ -49,7 +49,7 @@ const CabHome = () => {
   const [showReconnectAnimation, setShowReconnectAnimation] = useState(false)
   const { onRide, updateRideStatus } = useRideStatus()
   const navigation = useNavigation()
-  
+
   // Animation values
   const fadeAnim = useRef(new Animated.Value(1)).current
   const scaleAnim = useRef(new Animated.Value(1)).current
@@ -59,7 +59,7 @@ const CabHome = () => {
 
   // Get current location
   useEffect(() => {
-    ;(async () => {
+    ; (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync()
       if (status !== "granted") {
         setErrorMsg("Permission to access location was denied")
@@ -86,7 +86,7 @@ const CabHome = () => {
   // Soft refresh function - maintains socket connection
   const onSoftRefresh = useCallback(async () => {
     setRefreshing(true)
-    
+
     // Start refresh animation
     Animated.loop(
       Animated.timing(refreshSpinValue, {
@@ -95,11 +95,11 @@ const CabHome = () => {
         useNativeDriver: true,
       })
     ).start()
-    
+
     try {
       // Fetch user details without reloading the app
       await fetchUserDetails()
-      
+
       // Pulse animation for status card
       Animated.sequence([
         Animated.timing(scaleAnim, {
@@ -113,7 +113,7 @@ const CabHome = () => {
           useNativeDriver: true,
         }),
       ]).start()
-      
+
       // Show success message
       Alert.alert("Refresh Complete", "Dashboard updated successfully")
     } catch (error) {
@@ -154,7 +154,7 @@ const CabHome = () => {
       temp_ride_id = user_data.on_ride_id
 
       try {
-        const response = await axios.get(`https://www.appapi.olyox.com/rider/${temp_ride_id}`)
+        const response = await axios.get(`https://appapi.olyox.com/rider/${temp_ride_id}`)
         if (response.data) {
           updateRideStatus(true)
         }
@@ -175,7 +175,6 @@ const CabHome = () => {
     try {
       // First, delete secure storage items regardless of connection state
       await SecureStore.deleteItemAsync("auth_token_cab")
-      await SecureStore.deleteItemAsync("isOnline")
 
       if (!user_data?._id) {
         console.log("No user ID available", user_data)
@@ -188,7 +187,7 @@ const CabHome = () => {
       }
 
       // Attempt the logout API call
-      const response = await axios.get(`https://www.appapi.olyox.com/api/v1/rider/rider-logout/${user_data._id}`)
+      const response = await axios.get(`https://appapi.olyox.com/api/v1/rider/rider-logout/${user_data._id}`)
       console.log("Logout successful:", response.data)
 
       // On success, reset navigation and exit
@@ -243,9 +242,9 @@ const CabHome = () => {
       if (!id) {
         return Alert.alert("Connection Error", "Please try to re-login to reconnect")
       }
-      
+
       setShowReconnectAnimation(true)
-      
+
       const isReconnectingHard = await initializeSocket({
         userId: id,
       })
@@ -253,7 +252,7 @@ const CabHome = () => {
       // Simulate a delay to show the animation
       setTimeout(() => {
         setShowReconnectAnimation(false)
-        
+
         if (isReconnectingHard) {
           Alert.alert("Connection Successful", "You are now connected to the server")
         }
@@ -274,7 +273,7 @@ const CabHome = () => {
     }).start(() => {
       rotateAnim.setValue(0)
     })
-    
+
     await LocalRideStorage.clearRide()
     navigation.dispatch(
       CommonActions.reset({
@@ -289,7 +288,7 @@ const CabHome = () => {
     try {
       const token = await SecureStore.getItemAsync("auth_token_cab")
       if (token) {
-        const response = await axios.get("https://www.appapi.olyox.com/api/v1/rider/user-details", {
+        const response = await axios.get("https://appapi.olyox.com/api/v1/rider/user-details", {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (response.data.partner) {
@@ -336,22 +335,22 @@ const CabHome = () => {
 
       // Always allow the API call if going OFFLINE regardless of recharge status
       const response = await axios.post(
-        "https://www.appapi.olyox.com/api/v1/rider/toggleWorkStatusOfRider",
+        "https://appapi.olyox.com/api/v1/rider/toggleWorkStatusOfRider",
         { status: goingOnline },
         { headers: { Authorization: `Bearer ${token}` } }
       )
 
-      const response_two = await axios.get("https://www.appapi.olyox.com/api/v1/rider/user-details", {
+      const response_two = await axios.get("https://appapi.olyox.com/api/v1/rider/user-details", {
         headers: { Authorization: `Bearer ${token}` },
       })
 
       const partnerData = response_two.data.partner
       setUserData(partnerData)
-      
+
       if (response.data.success) {
         setIsOnline(response.data.cabRider?.status === "online" ? true : false)
-        await SecureStore.setItemAsync("isOnline", goingOnline.toString())
-        
+        // await SecureStore.setItemAsync("isOnline", JSON.stringify(goingOnline));
+
         // Pulse animation for status change
         Animated.sequence([
           Animated.timing(fadeAnim, {
@@ -405,7 +404,7 @@ const CabHome = () => {
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg']
   })
-  
+
   // Rotate interpolation for hard refresh
   const rotate = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -415,10 +414,10 @@ const CabHome = () => {
   // Memoized components for better performance
   const ConnectionStatus = useMemo(() => {
     return (
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.connectionStatus, 
-          { 
+          styles.connectionStatus,
+          {
             backgroundColor: socket?.connected ? "#E0F7FA" : "#FFEBEE",
             transform: [{ scale: scaleAnim }],
             opacity: fadeAnim
@@ -433,9 +432,9 @@ const CabHome = () => {
         <Text style={[styles.connectionText, { color: socket?.connected ? "#00BCD4" : "#F44336" }]}>
           {socket?.connected ? "Connected to Server" : "Server Disconnected"}
         </Text>
-        
+
         {!socket?.connected && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.reconnectIconButton}
             onPress={() => handleHardReconnect(user_data?._id)}
           >
@@ -457,14 +456,14 @@ const CabHome = () => {
         <Pressable style={styles.modalOverlay} onPress={() => setMenuVisible(false)}>
           <View style={styles.menuContainer}>
             <View style={styles.menuHandle} />
-            
+
             <View style={styles.menuHeader}>
               <Text style={styles.menuHeaderText}>Menu</Text>
               <TouchableOpacity onPress={() => setMenuVisible(false)}>
                 <Ionicons name="close" size={24} color="#757575" />
               </TouchableOpacity>
             </View>
-            
+
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
@@ -485,7 +484,7 @@ const CabHome = () => {
                 navigation.navigate("Recharge", {
                   showOnlyBikePlan:
                     user_data?.rideVehicleInfo?.vehicleName === "2 Wheeler" ||
-                    user_data?.rideVehicleInfo?.vehicleName === "Bike"
+                      user_data?.rideVehicleInfo?.vehicleName === "Bike"
                       ? true
                       : false,
                   role: user_data?.category,
@@ -524,7 +523,7 @@ const CabHome = () => {
 
   const StatusCard = useMemo(() => {
     return (
-      <Animated.View 
+      <Animated.View
         style={[
           styles.statusCard,
           { transform: [{ scale: scaleAnim }] }
@@ -540,8 +539,8 @@ const CabHome = () => {
               {user_data?.isAvailable
                 ? "Online"
                 : user_data?.on_ride_id
-                ? "On Ride"
-                : "Offline"}
+                  ? "On Ride"
+                  : "Offline"}
             </Text>
           </View>
 
@@ -598,7 +597,7 @@ const CabHome = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#00BCD4" barStyle="light-content" />
-      
+
       {/* Gradient Header */}
       <LinearGradient
         colors={["#00BCD4", "#0097A7"]}
@@ -612,19 +611,19 @@ const CabHome = () => {
             <TouchableOpacity>
               {onRide && <ActiveRideButton rideDetails={activeRideData} />}
             </TouchableOpacity>
-            
+
             <TouchableOpacity onPress={onSoftRefresh} style={styles.headerButton} disabled={refreshing}>
               <Animated.View style={{ transform: [{ rotate: spin }] }}>
                 <MaterialCommunityIcons name="refresh" size={24} color="#FFFFFF" />
               </Animated.View>
             </TouchableOpacity>
-            
+
             <TouchableOpacity onPress={() => hardClear()} style={styles.headerButton}>
               <Animated.View style={{ transform: [{ rotate: rotate }] }}>
                 <MaterialCommunityIcons name="reload" size={24} color="#FFFFFF" />
               </Animated.View>
             </TouchableOpacity>
-            
+
             <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.headerButton}>
               <MaterialCommunityIcons name="menu" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -633,14 +632,14 @@ const CabHome = () => {
       </LinearGradient>
 
       <ScrollView
-      showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onSoftRefresh} 
-            colors={["#00BCD4"]} 
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onSoftRefresh}
+            colors={["#00BCD4"]}
             tintColor="#00BCD4"
             progressBackgroundColor="#FFFFFF"
           />
@@ -648,7 +647,7 @@ const CabHome = () => {
       >
         {ConnectionStatus}
         <RideCome isRefresh={refreshing} />
-        
+
         <View style={styles.content}>
           <View style={styles.welcomeCard}>
             <View style={styles.profileSection}>
@@ -682,10 +681,10 @@ const CabHome = () => {
                   backgroundColor: loading
                     ? "#F5F5F5"
                     : isOnline
-                    ? "#E8F5E9"
-                    : user_data?.on_ride_id
-                    ? "#FFF3E0" // light orange for "Ride In Progress"
-                    : "#FFEBEE",
+                      ? "#E8F5E9"
+                      : user_data?.on_ride_id
+                        ? "#FFF3E0" // light orange for "Ride In Progress"
+                        : "#FFEBEE",
                 },
               ]}
               onPress={toggleOnlineStatus}
@@ -696,20 +695,20 @@ const CabHome = () => {
                   loading
                     ? "progress-clock"
                     : isOnline
-                    ? "car"
-                    : user_data?.on_ride_id
-                    ? "steering" // or "car-wrench" or "clock"
-                    : "car-off"
+                      ? "car"
+                      : user_data?.on_ride_id
+                        ? "steering" // or "car-wrench" or "clock"
+                        : "car-off"
                 }
                 size={24}
                 color={
                   loading
                     ? "#757575"
                     : isOnline
-                    ? "#4CAF50"
-                    : user_data?.on_ride_id
-                    ? "#FB8C00" // orange
-                    : "#F44336"
+                      ? "#4CAF50"
+                      : user_data?.on_ride_id
+                        ? "#FB8C00" // orange
+                        : "#F44336"
                 }
               />
               <Text
@@ -719,20 +718,20 @@ const CabHome = () => {
                     color: loading
                       ? "#757575"
                       : isOnline
-                      ? "#4CAF50"
-                      : user_data?.on_ride_id
-                      ? "#FB8C00"
-                      : "#F44336",
+                        ? "#4CAF50"
+                        : user_data?.on_ride_id
+                          ? "#FB8C00"
+                          : "#F44336",
                   },
                 ]}
               >
                 {loading
                   ? "Updating..."
                   : isOnline
-                  ? "Go Offline"
-                  : user_data?.on_ride_id
-                  ? "Ride In Progress"
-                  : "Go Online"}
+                    ? "Go Offline"
+                    : user_data?.on_ride_id
+                      ? "Ride In Progress"
+                      : "Go Online"}
               </Text>
             </TouchableOpacity>
 
@@ -762,17 +761,17 @@ const CabHome = () => {
           </View>
 
           {!mapVisible && (
-            <TouchableOpacity 
-              style={styles.showMapButton} 
+            <TouchableOpacity
+              style={styles.showMapButton}
               onPress={toggleMapVisibility}
             >
               <MaterialCommunityIcons name="map-marker" size={20} color="#00BCD4" />
               <Text style={styles.showMapText}>Show My Location</Text>
             </TouchableOpacity>
           )}
-          
+
           {mapVisible && DriverMap}
-                    <Report isRefresh={refreshing} />
+          <Report isRefresh={refreshing} />
 
           <Bonus />
         </View>

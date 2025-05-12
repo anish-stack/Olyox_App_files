@@ -20,7 +20,7 @@ import {
   fetchDirectionsPolyline,
 } from "./api"
 import { CACHE_EXPIRY, INDIA_REGION } from "./constants"
-import styles from "./styles"
+import styles from "./Styles"
 
 const RideLocationSelector = () => {
   const navigation = useNavigation()

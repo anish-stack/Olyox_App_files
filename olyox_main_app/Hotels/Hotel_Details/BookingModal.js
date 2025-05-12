@@ -232,7 +232,7 @@ useEffect(()=>{
 
       // Make API call
       const { data } = await axios.post(
-        `https://www.appapi.olyox.com/api/v1/hotels/book-room-user`,
+        `https://appapi.olyox.com/api/v1/hotels/book-room-user`,
         dataToBeSend,
         {
           headers: {

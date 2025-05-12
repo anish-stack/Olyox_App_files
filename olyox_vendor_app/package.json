@@ -2,7 +2,7 @@
   "name": "olyox_user_app",
   "version": "1.0.0",
   "main": "index.js",
-  "proxy": "https://www.appapi.olyox.com",
+  "proxy": "https://appapi.olyox.com",
   "scripts": {
     "start": "expo start --dev-client",
     "android": "expo run:android",
@@ -29,7 +29,9 @@
     "expo-linear-gradient": "~14.0.2",
     "expo-linking": "~7.0.5",
     "expo-location": "~18.0.6",
+    "expo-media-library": "~17.0.6",
     "expo-secure-store": "^14.0.1",
+    "expo-sharing": "~13.0.1",
     "expo-status-bar": "~2.0.0",
     "lottie-react-native": "^7.2.2",
     "lucide-react-native": "^0.469.0",
@@ -49,9 +51,7 @@
     "react-native-svg": "15.8.0",
     "react-native-vector-icons": "^10.2.0",
     "react-redux": "^8.1.1",
-    "socket.io-client": "^4.8.1",
-    "expo-media-library": "~17.0.6",
-    "expo-sharing": "~13.0.1"
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

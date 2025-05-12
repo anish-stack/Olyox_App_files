@@ -9,7 +9,7 @@ const useSettings = () => {
         const getSettings = async () => {
             setLoading(true)
             try {
-                const response = await axios.get(`https://www.appapi.olyox.com/api/v1/admin/get_Setting`)
+                const response = await axios.get(`https://appapi.olyox.com/api/v1/admin/get_Setting`)
                 setSettings(response.data);
             } catch (err) {
                 setError(err);

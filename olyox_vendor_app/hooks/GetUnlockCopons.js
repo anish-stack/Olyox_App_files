@@ -3,7 +3,7 @@ import axios from "axios";
 import useFetchProfile from "./useFetchProfile";
 
 
-const API_URL_APP = `https://www.appapi.olyox.com`
+const API_URL_APP = `https://appapi.olyox.com`
 
 const useGetCoupons = () => {
   const [coupons, setCoupons] = useState([]);

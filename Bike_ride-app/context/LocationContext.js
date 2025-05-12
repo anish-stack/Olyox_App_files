@@ -5,7 +5,8 @@ const LocationContext = createContext();
 
 export const LocationProvider = ({ children }) => {
   const [driverLocation, setDriverLocation] = useState(null);
-  const [hasPermission, setHasPermission] = useState(null);  // To track permission status
+  const [hasPermission, setHasPermission] = useState(null); // To track permission status
+  const [locationSubscription, setLocationSubscription] = useState(null);
 
   // Function to request location permissions
   const requestLocationPermissions = async () => {
@@ -40,8 +41,8 @@ export const LocationProvider = ({ children }) => {
       return;
     }
 
-    // Watch the location continuously every 10 seconds
-    const locationSubscription = await Location.watchPositionAsync(
+    // Watch the location continuously
+    const subscription = await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.High, // Set the accuracy level for location updates
         timeInterval: 60000, // 1 Minute interval for updates
@@ -56,10 +57,8 @@ export const LocationProvider = ({ children }) => {
       }
     );
 
-    // Clean up when the component is unmounted
-    return () => {
-      locationSubscription.remove();
-    };
+    // Save the subscription so we can remove it later
+    setLocationSubscription(subscription);
   };
 
   // Request permissions and start location updates
@@ -69,11 +68,15 @@ export const LocationProvider = ({ children }) => {
 
   useEffect(() => {
     if (hasPermission) {
-      const stopLocationUpdates = startLocationUpdates();
-      return () => {
-        stopLocationUpdates && stopLocationUpdates(); // Clean up the subscription on unmount
-      };
+      startLocationUpdates();
     }
+
+    // Clean up function
+    return () => {
+      if (locationSubscription) {
+        locationSubscription.remove();
+      }
+    };
   }, [hasPermission]);
 
   return (

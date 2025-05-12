@@ -44,6 +44,9 @@ const userSchema = new mongoose.Schema({
         publicId: {
             type: String
         }
+    },
+    fcmToken:{
+         type: String
     }
 },{timestamps:true});
 

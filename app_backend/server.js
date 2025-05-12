@@ -49,6 +49,8 @@ const { connectwebDb } = require('./PaymentWithWebDb/db');
 const startExpiryCheckJob = require('./cron_jobs/RiderJobs');
 const tempRideDetailsSchema = require('./models/tempRideDetailsSchema');
 const { default: mongoose } = require('mongoose');
+const sendNotification = require('./utils/sendNotification');
+const rideRequestModel = require('./models/ride.request.model');
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -98,6 +100,7 @@ io.on('connection', (socket) => {
     console.log(`[${new Date().toISOString()}] New client connected: ${socket.id}`);
 
     /**
+     * 
      * Handle user connections
      * Maps a user's ID to their socket ID for targeted communications
      */
@@ -235,6 +238,8 @@ io.on('connection', (socket) => {
 
             console.log("updatedRide", updatedRide?.temp_ride_id)
             console.log("updatedRide temp_ride_id", updatedRide)
+
+            const populatedRide = await rideRequestModel.findById(data?.data?.ride_request_id).populate('rider');
             if (updatedRide.rideStatus === 'accepted') {
                 // === Notify User ===
                 const userId = String(updatedRide.user);
@@ -247,8 +252,35 @@ io.on('connection', (socket) => {
                         message: 'Your ride request has been accepted!',
                         rideDetails: updatedRide,
                     });
+                    if (populatedRide.userFcm) {
+                        const userToken = populatedRide?.userFcm
+                        const title = '🎉 Ride Accepted!';
+                        const body = `🎉 Great news! ${populatedRide?.rider?.name} is on the way to pick you up. Get ready for a smooth ride ahead! 🚗✨`;
+
+                        await sendNotification(userToken, title, body, {
+                            event: 'RIDE_ACCEPTED',
+                            eta: 5, // in minutes
+                            message: 'Your ride request has been accepted!',
+                            rideDetails: updatedRide,
+                            screen: 'TrackRider',
+                            riderId: populatedRide?.rider?.name, // optional, if needed for navigation or context
+                        });
+
+                    }
                     console.log(`[${new Date().toISOString()}] Acceptance notification sent to user: ${userId}`);
                 } else {
+                    const userToken = populatedRide?.userFcm
+                    const title = '🎉 Ride Accepted!';
+                    const body = `🎉 Great news! ${populatedRide?.rider?.name} is on the way to pick you up. Get ready for a smooth ride ahead! 🚗✨`;
+
+                    await sendNotification(userToken, title, body, {
+                        event: 'RIDE_ACCEPTED',
+                        eta: 5, // in minutes
+                        message: 'Your ride request has been accepted!',
+                        rideDetails: updatedRide,
+                        screen: 'TrackRider',
+                        riderId: populatedRide?.rider?.name,
+                    });
                     console.log(`[${new Date().toISOString()}] No active socket found for user: ${userId}`);
                 }
 
@@ -501,14 +533,13 @@ io.on('connection', (socket) => {
                 return;
             }
 
+
             // Find rider information for the ride
             // The findRider function already emits to drivers, so we don't need to do it again
             const riderData = await findRider(data.data._id, io, app);
 
             if (riderData && riderData.success) {
-                // Don't call emitRideToDrivers here as findRider already emits to drivers
 
-                // Confirm receipt to the requesting user
                 socket.emit('message_response', {
                     success: true,
                     message: "Ride request sent to drivers",
@@ -520,12 +551,25 @@ io.on('connection', (socket) => {
                 console.error(`[${new Date().toISOString()}] Rider not found for user ID: ${data.data.user}, request ID: ${data.data._id}`);
 
                 if (userSocketId) {
+                    const userToken = data?.data?.userFcm
+                    const title = 'You can retry in a few moments.'
+                    const body = 'Sorry, no riders are currently available nearby. Please try again shortly.'
+                    await sendNotification(userToken, title, body, {
+                        event: "NO_RIDERS_AVAILABLE",
+                        retryAfter: 120,
+                        screen: "RetryBooking"
+                    })
                     io.to(userSocketId).emit('sorry_no_rider_available', {
                         success: false,
                         message: "Sorry, no riders are currently available nearby. Please try again shortly.",
                         retrySuggestion: "You can retry in a few moments."
                     });
                 } else {
+                    // push a fcm notification
+                    const userToken = data?.data?.userFcm
+                    const title = 'You can retry in a few moments.'
+                    const body = 'Sorry, no riders are currently available nearby. Please try again shortly.'
+                    await sendNotification(userToken, title, body)
                     console.warn(`Socket ID not found for user: ${data.data.user}`);
                 }
             }

@@ -1,7 +1,9 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
 # dependencies
 node_modules/
+
+# Firebase/Google Service Keys
+./app_backend/utils/olyox-6215a-firebase-adminsdk-fbsvc-35a59196a8.json
+./olyox_main_app/google-services.json
 
 # Expo
 .expo/
@@ -20,19 +22,29 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 
-# debug
+# Debug/Log files
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
 
-# macOS
+# macOS / OS
 .DS_Store
+Thumbs.db
 *.pem
 
-# local env files
-.env*.local
+# Local env files
+.env*
 
-# typescript
+# TypeScript
 *.tsbuildinfo
 
+# IDEs
+.vscode/
+.idea/
+
+# CodeGPT plugin or others
 .codegpt
+
+# EAS (optional)
+.eas/

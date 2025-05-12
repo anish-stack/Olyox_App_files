@@ -1121,21 +1121,21 @@ exports.deleteRider = async (req, res) => {
 exports.getMyEligibleBonus = async (req, res) => {
   try {
     const userId = req.user?.userId || req.query.userId || req.params.userId;
-    console.log("UserId:", userId);
+    // console.log("UserId:", userId);
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required in query." });
     }
 
     const sessionsData = await CabRiderTimes.find({ riderId: userId }).sort({ date: -1 });
-    console.log("Fetched sessionsData:", sessionsData.length);
+    // console.log("Fetched sessionsData:", sessionsData.length);
 
     if (!sessionsData.length) {
       return res.status(404).json({ message: "No session data found for this user." });
     }
 
     const BonusAvailableInDb = await Bonus_Model.find();
-    console.log("Fetched BonusAvailableInDb:", BonusAvailableInDb.length);
+    // console.log("Fetched BonusAvailableInDb:", BonusAvailableInDb.length);
 
     if (!BonusAvailableInDb.length) {
       return res.status(404).json({ message: "No bonuses available." });
@@ -1149,13 +1149,13 @@ exports.getMyEligibleBonus = async (req, res) => {
     // Calculate total working hours
     for (let sessionData of sessionsData) {
       for (let session of sessionData.sessions) {
-        console.log("Processing session:", session);
+        // console.log("Processing session:", session);
 
         const onlineTime = momentTz(session.onlineTime).tz("Asia/Kolkata");
         const offlineTime = momentTz(session.offlineTime).tz("Asia/Kolkata");
 
-        console.log("OnlineTime:", onlineTime.isValid() ? onlineTime.format() : "Invalid");
-        console.log("OfflineTime:", offlineTime.isValid() ? offlineTime.format() : "Invalid");
+        // console.log("OnlineTime:", onlineTime.isValid() ? onlineTime.format() : "Invalid");
+        // console.log("OfflineTime:", offlineTime.isValid() ? offlineTime.format() : "Invalid");
 
         if (!onlineTime.isValid() || !offlineTime.isValid()) {
           console.log("Skipping invalid session times.");
@@ -1165,7 +1165,7 @@ exports.getMyEligibleBonus = async (req, res) => {
         const durationMinutes = offlineTime.diff(onlineTime, 'minutes');
         const durationHours = durationMinutes / 60;
 
-        console.log("Session durationMinutes:", durationMinutes, "durationHours:", durationHours);
+        // console.log("Session durationMinutes:", durationMinutes, "durationHours:", durationHours);
 
         if (!isNaN(durationHours)) {
           totalDurationHours += durationHours;
@@ -1175,11 +1175,11 @@ exports.getMyEligibleBonus = async (req, res) => {
       }
     }
 
-    console.log("Total Duration Hours:", totalDurationHours);
+    // console.log("Total Duration Hours:", totalDurationHours);
 
     // Now check for bonuses
     BonusAvailableInDb.forEach((bonus) => {
-      console.log("Checking bonus:", bonus);
+      // console.log("Checking bonus:", bonus);
 
       const anyRequiredField = [
         `Complete login hours: ${bonus.requiredHours} hours worked.`,
@@ -1200,7 +1200,7 @@ exports.getMyEligibleBonus = async (req, res) => {
           remainingHours: parseFloat((totalDurationHours - bonus.requiredHours).toFixed(2))
         });
       } else {
-        console.log(`Not Eligible: totalDurationHours(${totalDurationHours}) < requiredHours(${bonus.requiredHours})`);
+        // console.log(`Not Eligible: totalDurationHours(${totalDurationHours}) < requiredHours(${bonus.requiredHours})`);
 
         notEligibleBonus.push({
           requiredHours: bonus.requiredHours,
@@ -1214,8 +1214,8 @@ exports.getMyEligibleBonus = async (req, res) => {
       }
     });
 
-    console.log("Eligible Bonuses:", eligibleBonus);
-    console.log("Not Eligible Bonuses:", notEligibleBonus);
+    // console.log("Eligible Bonuses:", eligibleBonus);
+    // console.log("Not Eligible Bonuses:", notEligibleBonus);
 
     return res.status(200).json({
       message: "Rider's eligible and not eligible bonuses fetched successfully.",

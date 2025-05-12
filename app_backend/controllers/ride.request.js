@@ -12,7 +12,7 @@ const SendWhatsAppMessageNormal = require('../utils/normalWhatsapp');
 exports.createRequest = async (req, res) => {
     try {
         const user = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
-        const { vehicleType, pickupLocation, dropLocation, currentLocation, pick_desc, drop_desc } = req.body;
+        const { vehicleType, pickupLocation, dropLocation, currentLocation, pick_desc, drop_desc, fcmToken } = req.body;
 
         if (!pickupLocation || !dropLocation || !pick_desc || !drop_desc) {
 
@@ -49,6 +49,7 @@ exports.createRequest = async (req, res) => {
             rideStatus: 'pending',
             pickup_desc: pick_desc,
             drop_desc: drop_desc,
+            userFcm:fcmToken
         });
 
 

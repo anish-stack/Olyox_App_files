@@ -6,7 +6,7 @@ const router = express.Router();
 
 const multer = require('multer');
 const Protect = require('../middleware/Auth');
-const { findAllOrders, logout } = require('../user_controller/user.register.controller');
+const { findAllOrders, logout, addFcm } = require('../user_controller/user.register.controller');
 const { make_recharge, verify_recharge } = require('../PaymentWithWebDb/razarpay');
 
 const storage = multer.diskStorage({
@@ -52,6 +52,7 @@ router.put('/update_rider_detail/:id', upload.any(), updateRiderDetails)
 router.get('/logout', logout)
 
 router.get('/recharge-wallet/:package_id/:user_id', make_recharge)
+router.post('/fcm/add', addFcm)
 router.post('/recharge-verify/:BHID', verify_recharge)
 
 router.put('/update_rider_document_verify/:id', updateRiderDocumentVerify);

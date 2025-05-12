@@ -5,7 +5,7 @@ import { View, Text, TouchableOpacity, Platform } from "react-native"
 import MapView, { Marker, PROVIDER_DEFAULT, PROVIDER_GOOGLE, Polyline } from "react-native-maps"
 import MapViewDirections from "react-native-maps-directions"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import styles from "./styles"
+import styles from "./Styles"
 import { mapStyle, GOOGLE_MAPS_APIKEY } from "./constants"
 
 const MapPreview = ({ rideData, coordinates, region, setRegion }) => {

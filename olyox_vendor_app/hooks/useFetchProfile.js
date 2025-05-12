@@ -21,7 +21,7 @@ const useFetchProfile = () => {
             }
 
             const { data } = await axios.get(
-                'https://www.appapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
+                'https://appapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
                 {
                     headers: { 'Authorization': `Bearer ${storedToken}` }
                 }

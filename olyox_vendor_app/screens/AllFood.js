@@ -42,7 +42,7 @@ const AllFood = () => {
         return;
       }
       const { data } = await axios.get(
-        'https://www.appapi.olyox.com/api/v1/tiffin/get_food_by_resutrant_id',
+        'https://appapi.olyox.com/api/v1/tiffin/get_food_by_resutrant_id',
         {
           headers: {
             'Authorization': `Bearer ${storedToken}`
@@ -86,7 +86,7 @@ const AllFood = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await axios.delete(`https://www.appapi.olyox.com/api/v1/tiffin/delete_tiffin_listing/${id}`);
+              await axios.delete(`https://appapi.olyox.com/api/v1/tiffin/delete_tiffin_listing/${id}`);
               handleFetchFood();
               Alert.alert('Success', 'Food item deleted successfully');
             } catch (error) {
@@ -102,7 +102,7 @@ const AllFood = () => {
     try {
       const updatedStatus = !food_availability;
       const res = await axios.put(
-        `https://www.appapi.olyox.com/api/v1/tiffin/update_available_food_status/${id}`,
+        `https://appapi.olyox.com/api/v1/tiffin/update_available_food_status/${id}`,
         { food_availability: updatedStatus }
       );
       if (res.data.success) {

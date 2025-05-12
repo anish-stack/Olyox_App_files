@@ -23,7 +23,7 @@ export function AddListing() {
         }
 
         const { data } = await axios.get(
-          'https://www.appapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
+          'https://appapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
           {
             headers: {
               'Authorization': `Bearer ${storedToken}`
@@ -165,7 +165,7 @@ export function AddListing() {
     }
 
     const response = await axios.post(
-      "https://www.appapi.olyox.com/api/v1/tiffin/register_listing",
+      "https://appapi.olyox.com/api/v1/tiffin/register_listing",
       formD,
       {
         headers: {

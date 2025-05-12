@@ -150,6 +150,9 @@ const RideRequestSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'Rider',
     },
+    userFcm:{
+        type:String,
+    },
     updatedAt: {
         type: Date,
         default: Date.now

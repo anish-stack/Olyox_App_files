@@ -189,6 +189,28 @@ exports.verify_user = async (req, res) => {
 };
 
 
+exports.addFcm = async (req, res) => {
+  try {
+    console.log(req.body)
+    const { fcm, id } = req.body;
+
+    const user = await User.findById(id); 
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.fcmToken = fcm;
+    await user.save();
+
+    return res.status(200).json({ message: "FCM token added successfully", user });
+  } catch (error) {
+    console.error("Error adding FCM token:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
 exports.resendOtp = async (req, res) => {
     try {
         const { number } = req.body;

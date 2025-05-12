@@ -1,54 +1,56 @@
-import { useEffect, useState, useRef } from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    ScrollView,
-    Animated,
-    ActivityIndicator,
-    Alert,
-    StyleSheet
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import * as Location from 'expo-location';
-import axios from 'axios';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import LottieView from 'lottie-react-native';
 
-import Map from '../Map/Map';
-import { tokenCache } from '../../Auth/cache';
-import { useSocket } from '../../context/SocketContext';
-import { useLocation } from '../../context/LocationContext';
-import { useRide } from '../../context/RideContext';
+import { useEffect, useState, useRef } from "react"
+import { View, Text, TouchableOpacity, ScrollView, Animated, ActivityIndicator, Alert } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { useNavigation, useRoute } from "@react-navigation/native"
+import * as Location from "expo-location"
+import axios from "axios"
+import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import LottieView from "lottie-react-native"
+
+import Map from "../Map/Map"
+import { tokenCache } from "../../Auth/cache"
+import { useSocket } from "../../context/SocketContext"
+import { useLocation } from "../../context/LocationContext"
+import { useRide } from "../../context/RideContext"
+import useNotificationPermission from "../../hooks/notification"
+import styles from "./BookingConfirmationStyles"
 
 export default function BookingConfirmation() {
-    const route = useRoute();
-    const navigation = useNavigation();
-    const { location } = useLocation();
-    const { isConnected, socket, userId } = useSocket();
+    const route = useRoute()
+    const navigation = useNavigation()
+    const { location } = useLocation()
+    const { isConnected, socket, userId } = useSocket()
     const { saveRide, updateRideStatus } = useRide()
-    // State variables
-    const [fareDetails, setFareDetails] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [initialLoading, setInitialLoading] = useState(false);
-    const [bookingStep, setBookingStep] = useState(0);
-    const [error, setError] = useState(null);
-    const [currentLocation, setCurrentLocation] = useState(null);
-    const [timeoutActive, setTimeoutActive] = useState(false);
-    const [timeRemaining, setTimeRemaining] = useState(120); // 2 minutes in seconds
-    const [socketConnected, setSocketConnected] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState('Cash');
+    const { fcmToken, lastNotification } = useNotificationPermission()
 
+    // State variables
+    const [fareDetails, setFareDetails] = useState(null)
+    const [loading, setLoading] = useState(false)
+    const [initialLoading, setInitialLoading] = useState(false)
+    const [bookingStep, setBookingStep] = useState(0)
+    const [error, setError] = useState(null)
+    const [success, setSuccess] = useState(null)
+    const [currentLocation, setCurrentLocation] = useState(null)
+    const [timeoutActive, setTimeoutActive] = useState(false)
+    const [timeRemaining, setTimeRemaining] = useState(120) // 2 minutes in seconds
+    const [socketConnected, setSocketConnected] = useState(false)
+    const [paymentMethod, setPaymentMethod] = useState("Cash")
+    const [connectionStatus, setConnectionStatus] = useState("disconnected") // 'connected', 'disconnected', 'reconnecting'
+    const [usingFcmFallback, setUsingFcmFallback] = useState(false)
+
+    //   console.log("lastNotification",)
     // Extract route params
-    const { origin, destination, selectedRide, dropoff, pickup } = route.params || {};
+    const { origin, destination, selectedRide, dropoff, pickup } = route.params || {}
 
     // Animation refs
-    const pulseAnim = useRef(new Animated.Value(1)).current;
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const timerRef = useRef(null);
-    const socketTimeoutRef = useRef(null);
-    const lottieRef = useRef(null);
+    const pulseAnim = useRef(new Animated.Value(1)).current
+    const fadeAnim = useRef(new Animated.Value(0)).current
+    const timerRef = useRef(null)
+    const socketTimeoutRef = useRef(null)
+    const lottieRef = useRef(null)
+    const reconnectTimeoutRef = useRef(null)
+    const reconnectAttempts = useRef(0)
 
     // Booking steps for the loading animation with enhanced messaging
     const bookingSteps = [
@@ -56,164 +58,242 @@ export default function BookingConfirmation() {
             icon: "car-clock",
             title: "Getting Ready! 🚀",
             message: "Hang tight! We're preparing your perfect ride experience...",
-            lottie: "https://assets5.lottiefiles.com/packages/lf20_jjmptxzk.json"
+            lottie: "https://assets5.lottiefiles.com/packages/lf20_jjmptxzk.json",
         },
         {
             icon: "map-search",
             title: "Finding Your Driver 🔍",
             message: "Connecting you with our top-rated drivers nearby...",
-            lottie: "https://assets9.lottiefiles.com/packages/lf20_vxvx0hzv.json"
+            lottie: "https://assets9.lottiefiles.com/packages/lf20_vxvx0hzv.json",
         },
         {
             icon: "timer-sand",
             title: "Almost There! ⌛",
             message: "Our drivers are quite busy, but we're doing our best to find you the perfect match...",
-            lottie: "https://assets10.lottiefiles.com/packages/lf20_bkmfgzpj.json"
+            lottie: "https://assets10.lottiefiles.com/packages/lf20_bkmfgzpj.json",
         },
         {
             icon: "check-circle",
             title: "Great News! 🎉",
             message: "We've found you an amazing driver! Getting everything ready for your journey...",
-            lottie: "https://assets3.lottiefiles.com/packages/lf20_touohxv0.json"
-        }
-    ];
+            lottie: "https://assets3.lottiefiles.com/packages/lf20_touohxv0.json",
+        },
+    ]
 
-    // Check socket connection
+    // Check socket connection and handle reconnection
     useEffect(() => {
-        if (!socket) {
-            console.error("Socket function is not available");
-            setSocketConnected(false);
-            setError("Socket connection not available");
-            return;
-        }
-
-        let socketInstance;
-        try {
-            socketInstance = socket();
-        } catch (err) {
-            console.error("Error getting socket instance:", err);
-            setSocketConnected(false);
-            setError("Failed to establish socket connection");
-            return;
-        }
-
-        if (!socketInstance) {
-            console.error("No socket instance returned from socket()");
-            setSocketConnected(false);
-            setError("Socket connection unavailable");
-            return;
-        }
-
-        setSocketConnected(socketInstance.connected);
-
-        const handleConnect = () => {
-            setSocketConnected(true);
-            setError(null);
-        };
-
-        const handleDisconnect = () => {
-            setSocketConnected(false);
-            if (loading) {
-                setError('Connection lost. Please try again.');
+        const checkSocketConnection = () => {
+            if (!socket) {
+                console.error("Socket function is not available")
+                setSocketConnected(false)
+                setConnectionStatus("disconnected")
+                return false
             }
-        };
 
-        const handleConnectError = (err) => {
-            setSocketConnected(false);
-            setError('Unable to connect to server. Please check your internet connection.');
-            console.error('Socket connection error:', err);
-        };
-
-        socketInstance.on('connect', handleConnect);
-        socketInstance.on('disconnect', handleDisconnect);
-        socketInstance.on('connect_error', handleConnectError);
-
-        return () => {
+            let socketInstance
             try {
+                socketInstance = socket()
+            } catch (err) {
+                console.error("Error getting socket instance:", err)
+                setSocketConnected(false)
+                setConnectionStatus("disconnected")
+                return false
+            }
+
+            if (!socketInstance) {
+                console.error("No socket instance returned from socket()")
+                setSocketConnected(false)
+                setConnectionStatus("disconnected")
+                return false
+            }
+
+            setSocketConnected(socketInstance.connected)
+            setConnectionStatus(socketInstance.connected ? "connected" : "disconnected")
+            return socketInstance.connected
+        }
+
+        const attemptReconnection = () => {
+            if (reconnectAttempts.current >= 5) {
+                console.log("Max reconnection attempts reached, using FCM fallback")
+                if (fcmToken) {
+                    setUsingFcmFallback(true)
+                    setConnectionStatus("using_fcm")
+                    setSuccess("Using push notifications for ride updates")
+                    setTimeout(() => setSuccess(null), 3000)
+                } else {
+                    setError("Unable to connect. Please restart the app.")
+                }
+                return
+            }
+
+            setConnectionStatus("reconnecting")
+            reconnectAttempts.current += 1
+
+            // Clear any existing timeout
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current)
+            }
+
+            // Try to reconnect after a delay (with exponential backoff)
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 10000)
+            reconnectTimeoutRef.current = setTimeout(() => {
+                if (checkSocketConnection()) {
+                    // Successfully reconnected
+                    reconnectAttempts.current = 0
+                    setSuccess("Connection restored!")
+                    setTimeout(() => setSuccess(null), 3000)
+                } else {
+                    // Try again
+                    attemptReconnection()
+                }
+            }, delay)
+        }
+
+        const isConnected = checkSocketConnection()
+
+        if (!isConnected && !usingFcmFallback) {
+            attemptReconnection()
+        }
+
+        // Socket event handlers
+        if (socket) {
+            let socketInstance
+            try {
+                socketInstance = socket()
+
                 if (socketInstance) {
-                    socketInstance.off('connect', handleConnect);
-                    socketInstance.off('disconnect', handleDisconnect);
-                    socketInstance.off('connect_error', handleConnectError);
+                    const handleConnect = () => {
+                        setSocketConnected(true)
+                        setConnectionStatus("connected")
+                        setError(null)
+                        reconnectAttempts.current = 0
+                        setUsingFcmFallback(false)
+                        setSuccess("Connection established!")
+                        setTimeout(() => setSuccess(null), 3000)
+                    }
+
+                    const handleDisconnect = () => {
+                        setSocketConnected(false)
+                        setConnectionStatus("disconnected")
+                        if (loading && !usingFcmFallback) {
+                            attemptReconnection()
+                        }
+                    }
+
+                    const handleConnectError = (err) => {
+                        setSocketConnected(false)
+                        setConnectionStatus("disconnected")
+                        console.error("Socket connection error:", err)
+                        if (!usingFcmFallback) {
+                            attemptReconnection()
+                        }
+                    }
+
+                    socketInstance.on("connect", handleConnect)
+                    socketInstance.on("disconnect", handleDisconnect)
+                    socketInstance.on("connect_error", handleConnectError)
+
+                    return () => {
+                        try {
+                            if (socketInstance) {
+                                socketInstance.off("connect", handleConnect)
+                                socketInstance.off("disconnect", handleDisconnect)
+                                socketInstance.off("connect_error", handleConnectError)
+                            }
+                        } catch (err) {
+                            console.error("Error during socket cleanup:", err)
+                        }
+
+                        if (reconnectTimeoutRef.current) {
+                            clearTimeout(reconnectTimeoutRef.current)
+                        }
+                    }
                 }
             } catch (err) {
-                console.error("Error during socket cleanup:", err);
+                console.error("Error setting up socket listeners:", err)
             }
-        };
-    }, [socket, loading]);
+        }
+
+        return () => {
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current)
+            }
+        }
+    }, [socket, loading, fcmToken, usingFcmFallback])
 
     // Get current location
     useEffect(() => {
         const fetchLocation = async () => {
             try {
-                setInitialLoading(true);
+                setInitialLoading(true)
 
                 if (location) {
-                    setCurrentLocation(location.coords);
+                    setCurrentLocation(location.coords)
                 } else {
-                    const { status } = await Location.requestForegroundPermissionsAsync();
+                    const { status } = await Location.requestForegroundPermissionsAsync()
 
-                    if (status !== 'granted') {
-                        setError('Location permission is required to book a ride');
-                        return;
+                    if (status !== "granted") {
+                        setError("Location permission is required to book a ride")
+                        return
                     }
 
                     const currentPosition = await Location.getCurrentPositionAsync({
-                        accuracy: Location.Accuracy.High
-                    });
+                        accuracy: Location.Accuracy.High,
+                    })
 
-                    setCurrentLocation(currentPosition.coords);
+                    setCurrentLocation(currentPosition.coords)
                 }
             } catch (err) {
-                console.error('Error getting location:', err);
-                setError('Unable to get your current location. Please try again.');
+                console.error("Error getting location:", err)
+                setError("Unable to get your current location. Please try again.")
             } finally {
-                setInitialLoading(false);
+                setInitialLoading(false)
             }
-        };
+        }
 
-        fetchLocation();
-    }, [location]);
+        fetchLocation()
+    }, [location])
 
     // Get fare information
     useEffect(() => {
         const getFareInfo = async () => {
             try {
-                setInitialLoading(true);
+                setInitialLoading(true)
 
                 if (!origin || !destination || !selectedRide) {
-                    setError('Missing ride information. Please try again.');
-                    return;
+                    setError("Missing ride information. Please try again.")
+                    return
                 }
 
                 const response = await axios.post(
-                    'https://www.appapi.olyox.com/api/v1/rider/get-fare-info',
+                    "https://appapi.olyox.com/api/v1/rider/get-fare-info",
                     {
                         origin,
                         destination,
                         waitingTimeInMinutes: 0,
-                        ratePerKm: selectedRide?.priceRange
+                        ratePerKm: selectedRide?.priceRange,
                     },
-                    { timeout: 10000 }
-                );
+                    { timeout: 10000 },
+                )
 
                 if (response.data) {
-                    setFareDetails(response.data);
-                    setError(null);
+                    setFareDetails(response.data)
+                    setError(null)
                 } else {
-                    setError('Unable to calculate fare. Please try again.');
+                    setError("Unable to calculate fare. Please try again.")
                 }
             } catch (err) {
-                console.error('Error getting fare info:', err.response?.data?.message || err.message);
-                setError('Unable to calculate fare. Please check your internet connection and try again.');
+                console.error("Error getting fare info:", err.response?.data?.message || err.message)
+                setError("Unable to calculate fare. Please check your internet connection and try again.")
             } finally {
-                setInitialLoading(false);
+                setInitialLoading(false)
             }
-        };
+        }
 
         if (origin && destination && selectedRide) {
-            getFareInfo();
+            getFareInfo()
         }
-    }, [origin, destination, selectedRide]);
+    }, [origin, destination, selectedRide])
 
     // Pulse animation for loading state
     useEffect(() => {
@@ -231,362 +311,49 @@ export default function BookingConfirmation() {
                         duration: 1000,
                         useNativeDriver: true,
                     }),
-                ])
-            ).start();
+                ]),
+            ).start()
 
             // Start fade animation
             Animated.timing(fadeAnim, {
                 toValue: 1,
                 duration: 800,
                 useNativeDriver: true,
-            }).start();
+            }).start()
 
             // Play Lottie animation
             if (lottieRef.current) {
-                lottieRef.current.play();
+                lottieRef.current.play()
             }
         } else {
-            pulseAnim.setValue(1);
-            fadeAnim.setValue(0);
+            pulseAnim.setValue(1)
+            fadeAnim.setValue(0)
         }
 
         return () => {
-            pulseAnim.stopAnimation();
-            fadeAnim.stopAnimation();
-        };
-    }, [loading, pulseAnim, fadeAnim, bookingStep]);
-
-
-
+            pulseAnim.stopAnimation()
+            fadeAnim.stopAnimation()
+        }
+    }, [loading, pulseAnim, fadeAnim, bookingStep])
 
     useEffect(() => {
-        if (!socket) {
-            console.error("Socket function is not available");
-            setLoading(false);
-            setError("Socket connection not available");
-            return;
-        }
+        const setupSocketListeners = () => {
+            if (!socket) return null;
 
-        let socketInstance;
-        try {
-            socketInstance = socket();
-        } catch (err) {
-            console.error("Error getting socket instance:", err);
-            setLoading(false);
-            setError("Failed to establish socket connection");
-            return;
-        }
-
-        if (!socketInstance) {
-            console.error("No socket instance returned from socket()");
-            setLoading(false);
-            setError("Socket connection unavailable");
-            return;
-        }
-
-        const handleRideConfirm = (data) => {
-            try {
-                console.log('Ride confirmation received:', data);
-
-                if (socketTimeoutRef.current) {
-                    clearTimeout(socketTimeoutRef.current);
-                    socketTimeoutRef.current = null;
-                }
-
-                if (timerRef.current) {
-                    clearInterval(timerRef.current);
-                    timerRef.current = null;
-                }
-
-                setTimeoutActive(false);
-                setBookingStep(3);
-
-                if (data && data.rideDetails) {
-                    setTimeout(() => {
-                        setLoading(false);
-                        saveRide(data.rideDetails);
-                        updateRideStatus('confirmed');
-                        navigation.navigate('driver_match', {
-                            ride: data.rideDetails,
-                            origin,
-                            destination
-                        });
-                    }, 1500); // Slightly longer to show success animation
-                } else {
-                    console.error('Invalid ride data received:', data);
-                    setLoading(false);
-                    setError('Invalid ride data received. Please try again.');
-                }
-            } catch (err) {
-                console.error('Error processing ride confirmation:', err);
-                setLoading(false);
-                setError('Error processing driver match. Please try again.');
-            }
-        };
-
-        const handleRideRejected = (data) => {
-            console.log('Ride rejected:', data);
-            setLoading(false);
-            setError('No drivers available at the moment. Please try again later.');
-
-            if (socketTimeoutRef.current) {
-                clearTimeout(socketTimeoutRef.current);
-                socketTimeoutRef.current = null;
-            }
-
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-                timerRef.current = null;
-            }
-
-            setTimeoutActive(false);
-        };
-
-        const handleNoDrivers = (data) => {
-            console.log('No drivers available:', data);
-            setLoading(false);
-            setError('No drivers found in your area. Please try again later.');
-
-            if (socketTimeoutRef.current) {
-                clearTimeout(socketTimeoutRef.current);
-                socketTimeoutRef.current = null;
-            }
-
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-                timerRef.current = null;
-            }
-
-            setTimeoutActive(false);
-        };
-
-        const handleSocketError = (err) => {
-            console.error('Socket error:', err);
-            setLoading(false);
-            setError('Connection error. Please try again.');
-
-            if (socketTimeoutRef.current) {
-                clearTimeout(socketTimeoutRef.current);
-                socketTimeoutRef.current = null;
-            }
-
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-                timerRef.current = null;
-            }
-
-            setTimeoutActive(false);
-        };
-
-        try {
-            socketInstance.on('ride_accepted_message', handleRideConfirm);
-            socketInstance.on('ride_rejected_message', handleRideRejected);
-            socketInstance.on('sorry_no_rider_available', handleNoDrivers);
-            socketInstance.on('error', handleSocketError);
-        } catch (err) {
-            console.error("Error attaching socket event listeners:", err);
-            setLoading(false);
-            setError("Failed to establish event handlers");
-            return;
-        }
-
-        return () => {
-            try {
-                if (socketInstance) {
-                    socketInstance.off('ride_accepted_message', handleRideConfirm);
-                    socketInstance.off('ride_rejected_message', handleRideRejected);
-                    socketInstance.off('no_drivers_available', handleNoDrivers);
-                    socketInstance.off('error', handleSocketError);
-                }
-            } catch (err) {
-                console.error("Error during event listener cleanup:", err);
-            }
-
-            if (socketTimeoutRef.current) {
-                clearTimeout(socketTimeoutRef.current);
-                socketTimeoutRef.current = null;
-            }
-
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-                timerRef.current = null;
-            }
-        };
-    }, [socket, navigation, origin, destination]);
-
-    // Handle booking submission
-    const handleSubmit = async () => {
-        try {
-            // Reset states
-            setError(null);
-            setLoading(true);
-            setBookingStep(0);
-            setTimeoutActive(true);
-            setTimeRemaining(120);
-
-            // Check if socket function exists
-            if (!socket) {
-                setError('Socket connection not available. Please restart the app.');
-                setLoading(false);
-                setTimeoutActive(false);
-                return;
-            }
-
-            // Safely get socket instance
             let socketInstance;
             try {
                 socketInstance = socket();
             } catch (err) {
                 console.error("Error getting socket instance:", err);
-                setError('Failed to establish socket connection. Please try again.');
-                setLoading(false);
-                setTimeoutActive(false);
-                return;
+                return null;
             }
 
-            // Check if socketInstance exists and is connected
-            if (!socketInstance || !socketInstance.connected) {
-                setError('Not connected to server. Please check your internet connection and try again.');
-                setLoading(false);
-                setTimeoutActive(false);
-                return;
-            }
+            if (!socketInstance) return null;
 
-            // Check if we have all required data
-            if (!currentLocation || !origin || !destination || !selectedRide) {
-                setError('Missing ride information. Please try again.');
-                setLoading(false);
-                setTimeoutActive(false);
-                return;
-            }
-
-            // Get auth token
-            let token;
-            try {
-                token = await tokenCache.getToken('auth_token_db');
-            } catch (err) {
-                console.error("Error retrieving auth token:", err);
-                setError('Authentication error. Please log in again.');
-                setLoading(false);
-                setTimeoutActive(false);
-                return;
-            }
-
-            if (!token) {
-                setError('Authentication error. Please log in again.');
-                setLoading(false);
-                setTimeoutActive(false);
-                return;
-            }
-
-            // Create ride request
-            const response = await axios.post(
-                'https://www.appapi.olyox.com/api/v1/rides/create-ride',
-                {
-                    currentLocation,
-                    pickupLocation: origin,
-                    dropLocation: destination,
-                    pick_desc: pickup?.description,
-                    drop_desc: dropoff?.description,
-                    vehicleType: selectedRide?.name,
-                    paymentMethod: paymentMethod
-                },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    },
-                    timeout: 15000
-                }
-            );
-
-            const request = response?.data?.rideRequest;
-
-            // Validate request data and socket again before proceeding
-            if (!request) {
-                throw new Error('Invalid response from server');
-            }
-
-            // Double-check socket is still available
-            try {
-                socketInstance = socket();
-                if (!socketInstance || !socketInstance.connected) {
-                    throw new Error('Socket disconnected during request');
-                }
-            } catch (err) {
-                console.error("Socket error after API call:", err);
-                setError('Connection lost. Please try again.');
-                setLoading(false);
-                setTimeoutActive(false);
-                return;
-            }
-
-            // We have valid request and socket connection
-            setBookingStep(1);
-
-            // Start the 2-minute countdown timer
-            timerRef.current = setInterval(() => {
-                setTimeRemaining(prev => {
-                    if (prev <= 1) {
-                        clearInterval(timerRef.current);
-                        timerRef.current = null;
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-
-            // Set a timeout for 2 minutes
-            socketTimeoutRef.current = setTimeout(() => {
-                console.log("Request timeout reached");
-                setError('No drivers found nearby. Please try again later.');
-                if (loading) {
-                    setLoading(false);
-
-                    setTimeoutActive(false);
-
-                    if (timerRef.current) {
-                        clearInterval(timerRef.current);
-                        timerRef.current = null;
-                    }
-                }
-            }, 120000);
-
-            // Simulate step progression for better UX
-            setTimeout(() => {
-                if (loading) setBookingStep(1);
-            }, 3000);
-
-            setTimeout(() => {
-                console.log("Preparing to emit socket event");
-
+            const handleRideConfirm = (data) => {
                 try {
-                    const currentSocket = socket();
+                    console.log("Ride confirmation received:", data);
 
-                    if (!currentSocket) {
-                        throw new Error('Socket not available');
-                    }
-
-                    if (!currentSocket.connected) {
-                        throw new Error('Socket disconnected');
-                    }
-
-                    currentSocket.emit('send_message', {
-                        message: 'ride-save-find-riders',
-                        data: request,
-                    });
-
-                    // Move to next step after emitting event
-                    setTimeout(() => {
-                        if (loading) setBookingStep(2);
-                    }, 3000);
-
-                } catch (err) {
-                    console.error("Error emitting socket event:", err);
-                    setLoading(false);
-                    setError('Connection error. Please try again.');
-                    setTimeoutActive(false);
-
-                    // Clear timers
                     if (socketTimeoutRef.current) {
                         clearTimeout(socketTimeoutRef.current);
                         socketTimeoutRef.current = null;
@@ -596,31 +363,141 @@ export default function BookingConfirmation() {
                         clearInterval(timerRef.current);
                         timerRef.current = null;
                     }
+
+                    setTimeoutActive(false);
+                    setBookingStep(3);
+                    setSuccess("🎉 Driver found! Preparing your ride...");
+
+                    if (data && data.rideDetails) {
+                        setTimeout(() => {
+                            setLoading(false);
+                            saveRide(data.rideDetails);
+                            updateRideStatus("confirmed");
+                            navigation.navigate("driver_match", {
+                                ride: data.rideDetails,
+                                origin,
+                                destination,
+                            });
+                        }, 1500);
+                    } else {
+                        console.error("Invalid ride data received:", data);
+                        setLoading(false);
+                        setError("Invalid ride data received. Please try again.");
+                    }
+                } catch (err) {
+                    console.error("Error processing ride confirmation:", err);
+                    setLoading(false);
+                    setError("Error processing driver match. Please try again.");
                 }
-            }, 2000);
+            };
 
-        } catch (err) {
-            console.error('Error creating ride:', err);
+            const handleRideRejected = (data) => {
+                console.log("Ride rejected:", data);
+                setLoading(false);
+                setError("No drivers available at the moment. Please try again later.");
 
-            let errorMessage = 'Failed to create ride request. Please try again.';
+                if (socketTimeoutRef.current) clearTimeout(socketTimeoutRef.current);
+                if (timerRef.current) clearInterval(timerRef.current);
 
-            if (err.response) {
-                // Server responded with an error
-                if (err.response.status === 401) {
-                    errorMessage = 'Your session has expired. Please log in again.';
-                } else if (err.response.data && err.response.data.message) {
-                    errorMessage = err.response.data.message;
-                }
-            } else if (err.request) {
-                // Request was made but no response
-                errorMessage = 'Server not responding. Please check your internet connection.';
+                socketTimeoutRef.current = null;
+                timerRef.current = null;
+                setTimeoutActive(false);
+            };
+
+            const handleNoDrivers = (data) => {
+                console.log("No drivers available:", data);
+                setLoading(false);
+                setError("No drivers found in your area. Please try again later.");
+
+                if (socketTimeoutRef.current) clearTimeout(socketTimeoutRef.current);
+                if (timerRef.current) clearInterval(timerRef.current);
+
+                socketTimeoutRef.current = null;
+                timerRef.current = null;
+                setTimeoutActive(false);
+            };
+
+            const handleSocketError = (err) => {
+                console.error("Socket error:", err);
+                setLoading(false);
+                setError("Connection error. Please try again.");
+
+                if (socketTimeoutRef.current) clearTimeout(socketTimeoutRef.current);
+                if (timerRef.current) clearInterval(timerRef.current);
+
+                socketTimeoutRef.current = null;
+                timerRef.current = null;
+                setTimeoutActive(false);
+            };
+
+            socketInstance.on("ride_accepted_message", handleRideConfirm);
+            socketInstance.on("ride_rejected_message", handleRideRejected);
+            socketInstance.on("sorry_no_rider_available", handleNoDrivers);
+            socketInstance.on("error", handleSocketError);
+
+            return {
+                cleanup: () => {
+                    try {
+                        socketInstance.off("ride_accepted_message", handleRideConfirm);
+                        socketInstance.off("ride_rejected_message", handleRideRejected);
+                        socketInstance.off("sorry_no_rider_available", handleNoDrivers);
+                        socketInstance.off("error", handleSocketError);
+                    } catch (err) {
+                        console.error("Error during event listener cleanup:", err);
+                    }
+                },
+            };
+        };
+
+        const setupFcmListeners = () => {
+            if (!fcmToken) return null;
+
+            console.log("FCM fallback active, listening for push notifications");
+
+            return {
+                cleanup: () => {
+                    console.log("Cleaning up FCM listeners");
+                },
+            };
+        };
+
+        // 1. Setup based on socket or FCM
+        let listeners = null;
+        if (socketConnected && !usingFcmFallback) {
+            listeners = setupSocketListeners();
+        } else if (fcmToken && (usingFcmFallback || connectionStatus === "reconnecting")) {
+            listeners = setupFcmListeners();
+        }
+
+        // 2. If no socket or FCM connection, use lastNotification as fallback
+        if (
+            !socketConnected &&
+            (!listeners || !listeners.cleanup) &&
+            lastNotification?.request?.content?.data?.rideDetails
+        ) {
+            const fallbackRideDetails = lastNotification.request.content.data.rideDetails;
+
+            console.log("📩 Using rideDetails from last notification:", fallbackRideDetails);
+
+            setTimeout(() => {
+                setLoading(false);
+                setBookingStep(3);
+                setSuccess("🎉 Driver found! Preparing your ride...");
+                saveRide(fallbackRideDetails);
+                updateRideStatus("confirmed");
+                navigation.navigate("driver_match", {
+                    ride: fallbackRideDetails,
+                    origin,
+                    destination,
+                });
+            }, 1500);
+        }
+
+        return () => {
+            if (listeners && listeners.cleanup) {
+                listeners.cleanup();
             }
 
-            setError(errorMessage);
-            setLoading(false);
-            setTimeoutActive(false);
-
-            // Clear timers
             if (socketTimeoutRef.current) {
                 clearTimeout(socketTimeoutRef.current);
                 socketTimeoutRef.current = null;
@@ -630,37 +507,271 @@ export default function BookingConfirmation() {
                 clearInterval(timerRef.current);
                 timerRef.current = null;
             }
+        };
+    }, [
+        socket,
+        navigation,
+        origin,
+        destination,
+        socketConnected,
+        fcmToken,
+        usingFcmFallback,
+        connectionStatus,
+        lastNotification, // make sure this is in your state/props/deps
+    ]);
+
+    // Handle booking submission
+    const handleSubmit = async () => {
+        try {
+            // Reset states
+            setError(null)
+            setSuccess(null)
+            setLoading(true)
+            setBookingStep(0)
+            setTimeoutActive(true)
+            setTimeRemaining(120)
+
+            // Check if we have a valid connection method
+            if (!socketConnected && !fcmToken) {
+                setError("No connection available. Please check your internet and try again.")
+                setLoading(false)
+                setTimeoutActive(false)
+                return
+            }
+
+            // Check if we have all required data
+            if (!currentLocation || !origin || !destination || !selectedRide) {
+                setError("Missing ride information. Please try again.")
+                setLoading(false)
+                setTimeoutActive(false)
+                return
+            }
+
+            // Get auth token
+            let token
+            try {
+                token = await tokenCache.getToken("auth_token_db")
+            } catch (err) {
+                console.error("Error retrieving auth token:", err)
+                setError("Authentication error. Please log in again.")
+                setLoading(false)
+                setTimeoutActive(false)
+                return
+            }
+
+            if (!token) {
+                setError("Authentication error. Please log in again.")
+                setLoading(false)
+                setTimeoutActive(false)
+                return
+            }
+
+            // Create ride request
+            const response = await axios.post(
+                "https://appapi.olyox.com/api/v1/rides/create-ride",
+                {
+                    currentLocation,
+                    pickupLocation: origin,
+                    dropLocation: destination,
+                    pick_desc: pickup?.description,
+                    drop_desc: dropoff?.description,
+                    vehicleType: selectedRide?.name,
+                    paymentMethod: paymentMethod,
+                    fcmToken: fcmToken, // Include FCM token for fallback notifications
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    timeout: 15000,
+                },
+            )
+
+            const request = response?.data?.rideRequest
+
+            // Validate request data
+            if (!request) {
+                throw new Error("Invalid response from server")
+            }
+
+            setSuccess("Ride request created successfully!")
+            setBookingStep(1)
+
+            // Start the 2-minute countdown timer
+            timerRef.current = setInterval(() => {
+                setTimeRemaining((prev) => {
+                    if (prev <= 1) {
+                        clearInterval(timerRef.current)
+                        timerRef.current = null
+                        return 0
+                    }
+                    return prev - 1
+                })
+            }, 1000)
+
+            // Set a timeout for 2 minutes
+            socketTimeoutRef.current = setTimeout(() => {
+                console.log("Request timeout reached")
+                setError("No drivers found nearby. Please try again later.")
+                if (loading) {
+                    setLoading(false)
+                    setTimeoutActive(false)
+
+                    if (timerRef.current) {
+                        clearInterval(timerRef.current)
+                        timerRef.current = null
+                    }
+                }
+            }, 120000)
+
+            // Simulate step progression for better UX
+            setTimeout(() => {
+                if (loading) setBookingStep(1)
+            }, 3000)
+
+            // Send ride request via socket or FCM
+            setTimeout(() => {
+                if (socketConnected && !usingFcmFallback) {
+                    // Use socket for real-time communication
+                    try {
+                        const currentSocket = socket()
+
+                        if (!currentSocket || !currentSocket.connected) {
+                            throw new Error("Socket disconnected")
+                        }
+
+                        currentSocket.emit("send_message", {
+                            message: "ride-save-find-riders",
+                            data: request,
+                        })
+
+                        setSuccess("Finding drivers near you...")
+
+                        // Move to next step after emitting event
+                        setTimeout(() => {
+                            if (loading) setBookingStep(2)
+                        }, 3000)
+                    } catch (err) {
+                        console.error("Error emitting socket event:", err)
+
+                        // Fall back to FCM if available
+                        if (fcmToken) {
+                            setUsingFcmFallback(true)
+                            setConnectionStatus("using_fcm")
+                            setSuccess("Using push notifications for ride updates")
+
+                            // In a real app, you would make an API call here to trigger the FCM-based ride matching
+                            console.log("Falling back to FCM for ride matching")
+
+                            // Move to next step
+                            setTimeout(() => {
+                                if (loading) setBookingStep(2)
+                            }, 3000)
+                        } else {
+                            setLoading(false)
+                            setError("Connection error. Please try again.")
+                            setTimeoutActive(false)
+
+                            // Clear timers
+                            if (socketTimeoutRef.current) {
+                                clearTimeout(socketTimeoutRef.current)
+                                socketTimeoutRef.current = null
+                            }
+
+                            if (timerRef.current) {
+                                clearInterval(timerRef.current)
+                                timerRef.current = null
+                            }
+                        }
+                    }
+                } else if (fcmToken) {
+                    // Use FCM as fallback
+                    setUsingFcmFallback(true)
+                    setConnectionStatus("using_fcm")
+                    setSuccess("Using push notifications for ride updates")
+
+                    // In a real app, you would make an API call here to trigger the FCM-based ride matching
+                    console.log("Using FCM for ride matching")
+
+                    // Move to next step
+                    setTimeout(() => {
+                        if (loading) setBookingStep(2)
+                    }, 3000)
+                } else {
+                    setLoading(false)
+                    setError("No connection method available. Please try again later.")
+                    setTimeoutActive(false)
+
+                    // Clear timers
+                    if (socketTimeoutRef.current) {
+                        clearTimeout(socketTimeoutRef.current)
+                        socketTimeoutRef.current = null
+                    }
+
+                    if (timerRef.current) {
+                        clearInterval(timerRef.current)
+                        timerRef.current = null
+                    }
+                }
+            }, 2000)
+        } catch (err) {
+            console.error("Error creating ride:", err)
+
+            let errorMessage = "Failed to create ride request. Please try again."
+
+            if (err.response) {
+                // Server responded with an error
+                if (err.response.status === 401) {
+                    errorMessage = "Your session has expired. Please log in again."
+                } else if (err.response.data && err.response.data.message) {
+                    errorMessage = err.response.data.message
+                }
+            } else if (err.request) {
+                // Request was made but no response
+                errorMessage = "Server not responding. Please check your internet connection."
+            }
+
+            setError(errorMessage)
+            setLoading(false)
+            setTimeoutActive(false)
+
+            // Clear timers
+            if (socketTimeoutRef.current) {
+                clearTimeout(socketTimeoutRef.current)
+                socketTimeoutRef.current = null
+            }
+
+            if (timerRef.current) {
+                clearInterval(timerRef.current)
+                timerRef.current = null
+            }
         }
-    };
+    }
 
     // Change payment method
     const handleChangePayment = () => {
-        Alert.alert(
-            "Select Payment Method",
-            "Choose your preferred payment method",
-            [
-                {
-                    text: "Cash",
-                    onPress: () => setPaymentMethod("Cash")
-                },
-                {
-                    text: "Card",
-                    onPress: () => setPaymentMethod("Card")
-                },
-                {
-                    text: "Cancel",
-                    style: "cancel"
-                }
-            ]
-        );
-    };
+        Alert.alert("Select Payment Method", "Choose your preferred payment method", [
+            {
+                text: "Cash",
+                onPress: () => setPaymentMethod("Cash"),
+            },
+            {
+                text: "Card",
+                onPress: () => setPaymentMethod("Card"),
+            },
+            {
+                text: "Cancel",
+                style: "cancel",
+            },
+        ])
+    }
 
     // Format time remaining
     const formatTimeRemaining = () => {
-        const minutes = Math.floor(timeRemaining / 60);
-        const seconds = timeRemaining % 60;
-        return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-    };
+        const minutes = Math.floor(timeRemaining / 60)
+        const seconds = timeRemaining % 60
+        return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`
+    }
 
     // Component for the header
     const Header = () => (
@@ -670,39 +781,35 @@ export default function BookingConfirmation() {
                 onPress={() => {
                     // Show confirmation if booking is in progress
                     if (loading) {
-                        Alert.alert(
-                            "Cancel Booking?",
-                            "Are you sure you want to cancel your booking request?",
-                            [
-                                {
-                                    text: "No",
-                                    style: "cancel"
-                                },
-                                {
-                                    text: "Yes, Cancel",
-                                    style: "destructive",
-                                    onPress: () => {
-                                        setLoading(false);
-                                        setTimeoutActive(false);
+                        Alert.alert("Cancel Booking?", "Are you sure you want to cancel your booking request?", [
+                            {
+                                text: "No",
+                                style: "cancel",
+                            },
+                            {
+                                text: "Yes, Cancel",
+                                style: "destructive",
+                                onPress: () => {
+                                    setLoading(false)
+                                    setTimeoutActive(false)
 
-                                        // Clear timers
-                                        if (socketTimeoutRef.current) {
-                                            clearTimeout(socketTimeoutRef.current);
-                                            socketTimeoutRef.current = null;
-                                        }
-
-                                        if (timerRef.current) {
-                                            clearInterval(timerRef.current);
-                                            timerRef.current = null;
-                                        }
-
-                                        navigation.goBack();
+                                    // Clear timers
+                                    if (socketTimeoutRef.current) {
+                                        clearTimeout(socketTimeoutRef.current)
+                                        socketTimeoutRef.current = null
                                     }
-                                }
-                            ]
-                        );
+
+                                    if (timerRef.current) {
+                                        clearInterval(timerRef.current)
+                                        timerRef.current = null
+                                    }
+
+                                    navigation.goBack()
+                                },
+                            },
+                        ])
                     } else {
-                        navigation.goBack();
+                        navigation.goBack()
                     }
                 }}
             >
@@ -711,20 +818,48 @@ export default function BookingConfirmation() {
             <Text style={styles.headerTitle}>Confirm Your Ride</Text>
             <View style={styles.placeholder} />
         </View>
-    );
+    )
+
+    // Component for connection status
+    const ConnectionStatusBar = () => {
+        if (connectionStatus === "connected") return null
+
+        let statusMessage = ""
+        let statusIcon = ""
+        let statusStyle = {}
+
+        switch (connectionStatus) {
+            case "disconnected":
+                statusMessage = "You're offline. Please check your connection."
+                statusIcon = "wifi-off"
+                statusStyle = styles.disconnectedStatus
+                break
+            case "reconnecting":
+                statusMessage = "Reconnecting to server..."
+                statusIcon = "reload"
+                statusStyle = styles.reconnectingStatus
+                break
+            case "using_fcm":
+                statusMessage = "Using push notifications for updates"
+                statusIcon = "bell-ring"
+                statusStyle = styles.fcmStatus
+                break
+            default:
+                return null
+        }
+
+        return (
+            <View style={[styles.connectionStatus, statusStyle]}>
+                <Icon name={statusIcon} size={16} color={statusStyle.iconColor} />
+                <Text style={[styles.connectionStatusText, { color: statusStyle.textColor }]}>{statusMessage}</Text>
+            </View>
+        )
+    }
 
     // Component for the loading animation
     const LoaderComponent = () => (
-        <Animated.View
-            style={[
-                styles.loaderContainer,
-                { opacity: fadeAnim }
-            ]}
-        >
-            <Animated.View style={[
-                styles.iconContainer,
-                { transform: [{ scale: pulseAnim }] }
-            ]}>
+        <Animated.View style={[styles.loaderContainer, { opacity: fadeAnim }]}>
+            <Animated.View style={[styles.iconContainer, { transform: [{ scale: pulseAnim }] }]}>
                 {/* Use Lottie animation if available, fallback to icon */}
                 {bookingSteps[bookingStep].lottie ? (
                     <LottieView
@@ -735,81 +870,68 @@ export default function BookingConfirmation() {
                         loop
                     />
                 ) : (
-                    <Icon
-                        name={bookingSteps[bookingStep].icon}
-                        size={50}
-                        color="#1976D2"
-                    />
+                    <Icon name={bookingSteps[bookingStep].icon} size={50} color="#1976D2" />
                 )}
             </Animated.View>
 
-            <Text style={styles.loaderTitle}>
-                {bookingSteps[bookingStep].title}
-            </Text>
+            <Text style={styles.loaderTitle}>{bookingSteps[bookingStep].title}</Text>
 
-            <Text style={styles.loaderMessage}>
-                {bookingSteps[bookingStep].message}
-            </Text>
+            <Text style={styles.loaderMessage}>{bookingSteps[bookingStep].message}</Text>
 
             {timeoutActive && (
                 <View style={styles.timerContainer}>
                     <Icon name="timer-outline" size={20} color="#666" />
-                    <Text style={styles.timerText}>
-                        Finding driver: {formatTimeRemaining()}
-                    </Text>
+                    <Text style={styles.timerText}>Finding driver: {formatTimeRemaining()}</Text>
+                </View>
+            )}
+
+            {usingFcmFallback && (
+                <View style={styles.fcmNotice}>
+                    <Icon name="bell-ring" size={20} color="#059669" />
+                    <Text style={styles.fcmNoticeText}>Using push notifications for updates</Text>
                 </View>
             )}
 
             <View style={styles.stepIndicatorContainer}>
                 {bookingSteps.map((_, index) => (
-                    <View
-                        key={index}
-                        style={[
-                            styles.stepDot,
-                            index === bookingStep && styles.stepDotActive
-                        ]}
-                    />
+                    <View key={index} style={[styles.stepDot, index === bookingStep && styles.stepDotActive]} />
                 ))}
             </View>
 
             <TouchableOpacity
                 style={styles.cancelButton}
                 onPress={() => {
-                    Alert.alert(
-                        "Cancel Booking?",
-                        "Are you sure you want to cancel your booking request?",
-                        [
-                            {
-                                text: "No",
-                                style: "cancel"
-                            },
-                            {
-                                text: "Yes, Cancel",
-                                style: "destructive",
-                                onPress: () => {
-                                    setLoading(false);
-                                    setTimeoutActive(false);
+                    Alert.alert("Cancel Booking?", "Are you sure you want to cancel your booking request?", [
+                        {
+                            text: "No",
+                            style: "cancel",
+                        },
+                        {
+                            text: "Yes, Cancel",
+                            style: "destructive",
+                            onPress: () => {
+                                setLoading(false)
+                                setTimeoutActive(false)
 
-                                    // Clear timers
-                                    if (socketTimeoutRef.current) {
-                                        clearTimeout(socketTimeoutRef.current);
-                                        socketTimeoutRef.current = null;
-                                    }
-
-                                    if (timerRef.current) {
-                                        clearInterval(timerRef.current);
-                                        timerRef.current = null;
-                                    }
+                                // Clear timers
+                                if (socketTimeoutRef.current) {
+                                    clearTimeout(socketTimeoutRef.current)
+                                    socketTimeoutRef.current = null
                                 }
-                            }
-                        ]
-                    );
+
+                                if (timerRef.current) {
+                                    clearInterval(timerRef.current)
+                                    timerRef.current = null
+                                }
+                            },
+                        },
+                    ])
                 }}
             >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
         </Animated.View>
-    );
+    )
 
     // Component for ride details
     const RideDetails = () => (
@@ -819,9 +941,7 @@ export default function BookingConfirmation() {
                 {fareDetails && (
                     <View style={styles.estimatedTime}>
                         <Icon name="clock-outline" size={16} color="#059669" />
-                        <Text style={styles.estimatedTimeText}>
-                            {fareDetails?.durationInMinutes?.toFixed(0) || '0'} min
-                        </Text>
+                        <Text style={styles.estimatedTimeText}>{fareDetails?.durationInMinutes?.toFixed(0) || "0"} min</Text>
                     </View>
                 )}
             </View>
@@ -871,19 +991,15 @@ export default function BookingConfirmation() {
                     {/* Price for Distance */}
                     <View style={styles.fareItem}>
                         <Text style={styles.fareItemText}>
-                            Price for Distance ({fareDetails?.distanceInKm?.toFixed(2) || '0'} km)
+                            Price for Distance ({fareDetails?.distanceInKm?.toFixed(2) || "0"} km)
                         </Text>
-                        <Text style={styles.fareItemValue}>
-                            ₹{fareDetails?.totalPrice?.toFixed(0) || '0'}
-                        </Text>
+                        <Text style={styles.fareItemValue}>₹{fareDetails?.totalPrice?.toFixed(0) || "0"}</Text>
                     </View>
 
                     {/* Total Price */}
                     <View style={[styles.fareItem, styles.fareTotal]}>
                         <Text style={styles.totalText}>Total</Text>
-                        <Text style={styles.totalAmount}>
-                            ₹{fareDetails?.totalPrice?.toFixed(0) || '0'}
-                        </Text>
+                        <Text style={styles.totalAmount}>₹{fareDetails?.totalPrice?.toFixed(0) || "0"}</Text>
                     </View>
 
                     {/* Fare Note */}
@@ -902,7 +1018,7 @@ export default function BookingConfirmation() {
                 </View>
             )}
         </View>
-    );
+    )
 
     // Initial loading state
     if (initialLoading) {
@@ -911,7 +1027,7 @@ export default function BookingConfirmation() {
                 <Header />
                 <View style={styles.initialLoadingContainer}>
                     <LottieView
-                        source={{ uri: 'https://assets9.lottiefiles.com/packages/lf20_p8bfn5to.json' }}
+                        source={{ uri: "https://assets9.lottiefiles.com/packages/lf20_p8bfn5to.json" }}
                         style={styles.initialLoadingAnimation}
                         autoPlay
                         loop
@@ -919,62 +1035,45 @@ export default function BookingConfirmation() {
                     <Text style={styles.initialLoadingText}>Loading ride details...</Text>
                 </View>
             </SafeAreaView>
-        );
+        )
     }
 
     return (
         <SafeAreaView style={styles.container}>
             <Header />
+            <ConnectionStatusBar />
 
-            {!socketConnected && (
-                <View style={styles.connectionStatus}>
-                    <Icon name="wifi-off" size={16} color="#721C24" />
-                    <Text style={styles.connectionStatusText}>
-                        You're offline. Please check your connection.
-                    </Text>
-                </View>
-            )}
-
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.content} contentContainerStyle={styles.contentContainer}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.content}
+                contentContainerStyle={styles.contentContainer}
+            >
                 <View style={styles.mapContainer}>
                     <Map origin={origin} destination={destination} />
                 </View>
 
-                {loading ? (
-                    <LoaderComponent />
-                ) : (
-                    <RideDetails />
-                )}
+                {loading ? <LoaderComponent /> : <RideDetails />}
             </ScrollView>
 
             {!loading && (
                 <View style={styles.bottomContainer}>
                     <View style={styles.paymentMethod}>
-                        <Icon
-                            name={paymentMethod === 'Cash' ? "cash" : "credit-card"}
-                            size={24}
-                            color="#059669"
-                        />
+                        <Icon name={paymentMethod === "Cash" ? "cash" : "credit-card"} size={24} color="#059669" />
                         <Text style={styles.paymentText}>{paymentMethod} Payment</Text>
-                        {/* <TouchableOpacity onPress={handleChangePayment}>
+                        <TouchableOpacity onPress={handleChangePayment}>
                             <Text style={styles.changeText}>Change</Text>
-                        </TouchableOpacity> */}
+                        </TouchableOpacity>
                     </View>
 
                     <TouchableOpacity
-                        style={[
-                            styles.confirmButton,
-                            (!fareDetails || error) && styles.confirmButtonDisabled
-                        ]}
+                        style={[styles.confirmButton, (!fareDetails || error) && styles.confirmButtonDisabled]}
                         onPress={handleSubmit}
                         disabled={!fareDetails || !!error}
                         activeOpacity={0.8}
                     >
                         <Text style={styles.confirmButtonText}>Confirm Ride</Text>
                         {fareDetails && (
-                            <Text style={styles.confirmButtonPrice}>
-                                ₹{fareDetails?.totalPrice?.toFixed(0) || '0'}
-                            </Text>
+                            <Text style={styles.confirmButtonPrice}>₹{fareDetails?.totalPrice?.toFixed(0) || "0"}</Text>
                         )}
                     </TouchableOpacity>
                 </View>
@@ -984,420 +1083,28 @@ export default function BookingConfirmation() {
                 <View style={styles.errorContainer}>
                     <Icon name="alert-circle" size={24} color="#DC2626" />
                     <Text style={styles.errorText}>{error}</Text>
-                    <TouchableOpacity
-                        style={styles.dismissButton}
-                        onPress={() => setError(null)}
-                    >
+                    <TouchableOpacity style={styles.dismissButton} onPress={() => setError(null)}>
                         <Icon name="close" size={20} color="#666" />
                     </TouchableOpacity>
                 </View>
             )}
 
-            {!socketConnected && !initialLoading && (
-                <View style={styles.connectionWarning}>
-                    <Icon name="wifi-off" size={20} color="#fff" />
-                    <Text style={styles.connectionWarningText}>
-                        Not connected to server. Reconnecting...
-                    </Text>
+            {success && (
+                <View style={styles.successContainer}>
+                    <Icon name="check-circle" size={24} color="#059669" />
+                    <Text style={styles.successText}>{success}</Text>
+                    <TouchableOpacity style={styles.dismissButton} onPress={() => setSuccess(null)}>
+                        <Icon name="close" size={20} color="#666" />
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {connectionStatus === "reconnecting" && (
+                <View style={styles.reconnectingOverlay}>
+                    <ActivityIndicator size="large" color="#fff" />
+                    <Text style={styles.reconnectingText}>Reconnecting to server...</Text>
                 </View>
             )}
         </SafeAreaView>
-    );
+    )
 }
-
-// Enhanced styles with better visual hierarchy and animations
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f8f9fa'
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
-        backgroundColor: '#fff'
-    },
-    backButton: {
-        padding: 8,
-        borderRadius: 8,
-        backgroundColor: '#f3f4f6'
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#111827'
-    },
-    placeholder: {
-        width: 40
-    },
-    connectionStatus: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#f8d7da',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        marginHorizontal: 16,
-        marginTop: 8,
-        borderRadius: 8
-    },
-    connectionStatusText: {
-        fontSize: 12,
-        color: '#721c24',
-        marginLeft: 8,
-        fontWeight: '500'
-    },
-    content: {
-        flex: 1
-    },
-    contentContainer: {
-        paddingBottom: 24
-    },
-    mapContainer: {
-        height: 300,
-        margin: 16,
-        borderRadius: 12,
-        overflow: 'hidden',
-
-    },
-    initialLoadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 24
-    },
-    initialLoadingAnimation: {
-        width: 150,
-        height: 150
-    },
-    initialLoadingText: {
-        marginTop: 16,
-        fontSize: 16,
-        color: '#4b5563',
-        textAlign: 'center'
-    },
-    loaderContainer: {
-        margin: 16,
-        padding: 24,
-        borderRadius: 12,
-        backgroundColor: '#fff',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4
-    },
-    iconContainer: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: '#e0f2fe',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 16
-    },
-    lottieAnimation: {
-        width: 120,
-        height: 120
-    },
-    loaderTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#1e40af',
-        marginBottom: 8,
-        textAlign: 'center'
-    },
-    loaderMessage: {
-        fontSize: 14,
-        color: '#4b5563',
-        textAlign: 'center',
-        marginBottom: 16,
-        paddingHorizontal: 16
-    },
-    timerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#f3f4f6',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 20,
-        marginBottom: 16
-    },
-    timerText: {
-        marginLeft: 8,
-        fontSize: 14,
-        color: '#4b5563',
-        fontWeight: '500'
-    },
-    stepIndicatorContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginBottom: 24
-    },
-    stepDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#d1d5db',
-        marginHorizontal: 4
-    },
-    stepDotActive: {
-        backgroundColor: '#E3838D',
-        width: 24
-    },
-    cancelButton: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 8,
-        backgroundColor: '#fee2e2'
-    },
-    cancelButtonText: {
-        color: '#dc2626',
-        fontWeight: '600',
-        fontSize: 14
-    },
-    rideDetailsCard: {
-        margin: 16,
-        padding: 16,
-        borderRadius: 12,
-        backgroundColor: '#fff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16
-    },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#111827'
-    },
-    estimatedTime: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#ecfdf5',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 16
-    },
-    estimatedTimeText: {
-        marginLeft: 4,
-        fontSize: 12,
-        color: '#059669',
-        fontWeight: '600'
-    },
-    rideInfo: {
-        marginBottom: 16
-    },
-    rideInfoItem: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: 8
-    },
-    rideInfoText: {
-        marginLeft: 12,
-        flex: 1
-    },
-    rideInfoLabel: {
-        fontSize: 12,
-        color: '#6b7280',
-        marginBottom: 2
-    },
-    rideInfoValue: {
-        fontSize: 14,
-        color: '#111827',
-        fontWeight: '500'
-    },
-    locationConnector: {
-        marginLeft: 12,
-        paddingLeft: 12,
-        height: 30,
-        justifyContent: 'center',
-        alignItems: 'center'
-    },
-    locationDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#9ca3af'
-    },
-    locationLine: {
-        width: 2,
-        height: 20,
-        backgroundColor: '#9ca3af'
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#e5e7eb',
-        marginBottom: 16
-    },
-    fareDetails: {
-        paddingTop: 8
-    },
-    fareTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#111827',
-        marginBottom: 12
-    },
-    fareItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 8
-    },
-    fareItemText: {
-        fontSize: 14,
-        color: '#4b5563'
-    },
-    fareItemValue: {
-        fontSize: 14,
-        color: '#111827',
-        fontWeight: '500'
-    },
-    fareTotal: {
-        marginTop: 8,
-        paddingTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#e5e7eb'
-    },
-    totalText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#111827'
-    },
-    totalAmount: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#de4051'
-    },
-    fareNote: {
-        marginTop: 12,
-        padding: 12,
-        backgroundColor: '#f3f4f6',
-        borderRadius: 8
-    },
-    fareNoteText: {
-        fontSize: 12,
-        color: '#4b5563',
-        lineHeight: 18
-    },
-    noteHighlight: {
-        fontWeight: '600',
-        color: '#111827'
-    },
-    loadingFare: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16
-    },
-    loadingFareText: {
-        marginLeft: 8,
-        fontSize: 14,
-        color: '#4b5563'
-    },
-    bottomContainer: {
-        padding: 16,
-        backgroundColor: '#fff',
-        borderTopWidth: 1,
-        borderTopColor: '#e5e7eb'
-    },
-    paymentMethod: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16
-    },
-    paymentText: {
-        marginLeft: 8,
-        fontSize: 14,
-        color: '#111827',
-        fontWeight: '500',
-        flex: 1
-    },
-    changeText: {
-        fontSize: 14,
-        color: '#E3838D',
-        fontWeight: '600'
-    },
-    confirmButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#000',
-        paddingVertical: 16,
-        paddingHorizontal: 24,
-        borderRadius: 12
-    },
-    confirmButtonDisabled: {
-        backgroundColor: '#93c5fd',
-        opacity: 0.8
-    },
-    confirmButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#fff'
-    },
-    confirmButtonPrice: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#fff'
-    },
-    errorContainer: {
-        position: 'absolute',
-        bottom: 90,
-        left: 16,
-        right: 16,
-        backgroundColor: '#fee2e2',
-        borderRadius: 8,
-        padding: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3
-    },
-    errorText: {
-        flex: 1,
-        marginLeft: 8,
-        fontSize: 14,
-        color: '#b91c1c'
-    },
-    dismissButton: {
-        padding: 4
-    },
-    connectionWarning: {
-        position: 'absolute',
-        top: 60,
-        left: 16,
-        right: 16,
-        backgroundColor: '#ef4444',
-        borderRadius: 8,
-        padding: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3
-    },
-    connectionWarningText: {
-        marginLeft: 8,
-        fontSize: 14,
-        color: '#fff',
-        fontWeight: '500'
-    }
-});

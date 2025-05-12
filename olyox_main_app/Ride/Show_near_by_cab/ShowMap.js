@@ -22,7 +22,7 @@ import useShowRiders from "../../hooks/Show_Riders"
 import useSettings from "../../hooks/Settings"
 
 const { width, height } = Dimensions.get("window")
-const API_BASE_URL = "https://www.appapi.olyox.com/api/v1"
+const API_BASE_URL = "https://appapi.olyox.com/api/v1"
 
 export default function ShowMap() {
   // Navigation and route
