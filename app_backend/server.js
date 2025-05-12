@@ -20,6 +20,7 @@ const admin = require('./routes/Admin/admin.routes');
 
 // Models
 const RiderModel = require('./models/Rider.model');
+const userModel = require('./models/normal_user/User.model');
 const Parcel_boy_Location = require('./models/Parcel_Models/Parcel_Boys_Location');
 const Settings = require('./models/Admin/Settings');
 
@@ -163,64 +164,6 @@ io.on('connection', (socket) => {
         console.log(`[${new Date().toISOString()}] Emitted ride data to ${emittedCount} drivers`);
     };
 
-
-    /**
-     * Handle Showing Available Rider Near User Location 
-     * Updates the Riders on map and notifies relevant parties
-     */
-
-    // socket.on('show_me_available_riders', async (data) => {
-    //     console.log("show_me_available_riders",data)
-    //     if (!data) {
-    //         throw new Error('No data available');
-    //     }
-
-    //     try {
-    //         const { user_location } = data || {};
-
-    //         if (!user_location ) {
-    //             throw new Error('Incomplete data');
-    //         }
-
-    //         // Construct the location point with correct coordinates
-    //         let location = {
-    //             type: 'Point',
-    //             coordinates: [
-    //                 user_location.longitude ,
-    //                 user_location.latitude
-    //             ]
-    //         };
-
-    //         // Find available riders within 3 km (3000 meters), selecting only location and rideVehicleInfo
-    //         const findAvailableRiders = await RiderModel.find(
-    //             {
-    //                 isAvailable: true,
-    //                 location: {
-    //                     $near: {
-    //                         $geometry: location,
-    //                         $maxDistance: 3000 // 3 km
-    //                     }
-    //                 }
-    //             },
-    //             { location: 1, rideVehicleInfo: 1, _id: 0 }
-    //         ).limit(10);
-    //         console.log("findAvailableRiders",findAvailableRiders)
-    //         // Emit only location and rideVehicleInfo to the client
-    //         socket.emit('available_riders', findAvailableRiders);
-
-    //     } catch (error) {
-    //         console.error('Error fetching available riders:', error.message);
-    //         socket.emit('error', { message: 'Error fetching available riders' });
-    //     }
-    // });
-
-
-
-
-    /**
-     * Handle ride acceptance by driver
-     * Processes a driver accepting a ride and notifies the user
-     */
 
 
     socket.on('ride_accepted', async (data) => {
@@ -497,15 +440,28 @@ io.on('connection', (socket) => {
                     console.log("📢 Notifying user about cancellation...");
                     const userSocketId = userSocketMap.get(String(ride.user?._id));
 
+                    const foundUser = await userModel.findOne({
+                        _id: ride.user?._id
+                    })
                     if (userSocketId) {
                         console.log("📡 Sending cancel notification to user:", userSocketId);
                         io.to(userSocketId).emit('ride_cancelled_message', {
                             message: "🚕 Ride cancelled by driver",
                             rideDetails: rideData,
                         });
+                        const userToken = foundUser?.fcmToken;
+                        const title = 'Ride Cancelled by Driver';
+                        const body = 'Unfortunately, your driver has cancelled the ride. We apologize for the inconvenience. Please try booking another ride.';
+
+                        await sendNotification(userToken, title, body);
 
                         console.log("mesage sen to user")
                     } else {
+                        const userToken = foundUser?.fcmToken;
+                        const title = 'Ride Cancelled by Driver';
+                        const body = 'Unfortunately, your driver has cancelled the ride. We apologize for the inconvenience. Please try booking another ride.';
+
+                        await sendNotification(userToken, title, body)
                         console.warn("⚠️ User socket ID not found. User might be offline.");
                     }
                 }
@@ -599,6 +555,9 @@ io.on('connection', (socket) => {
             const userId = String(data.ride.rideDetails.user);
             const userSocketId = userSocketMap.get(userId);
             const rideStartResult = await rideStart(data.ride);
+            const foundUser = await userModel.findOne({
+                _id: userId
+            })
 
             if (rideStartResult.success) {
                 console.log(`[${new Date().toISOString()}] Ride started successfully for user ${userId}`);
@@ -608,8 +567,20 @@ io.on('connection', (socket) => {
                         message: 'Your ride has started!',
                         rideDetails: data,
                     });
+                    if (foundUser?.fcmToken) {
+                        const userToken = foundUser?.fcmToken
+                        const title = 'Your Ride Has Started! Stay Safe!';
+                        const body = 'Your ride has officially started. Your driver is on the way. Please stay safe and be careful during your journey. We wish you a smooth ride!';
+
+                        await sendNotification(userToken, title, body);
+                    }
                     console.log(`[${new Date().toISOString()}] Start notification sent to user: ${userId}`);
                 } else {
+                    const userToken = foundUser?.fcmToken
+                    const title = 'Your Ride Has Started! Stay Safe!';
+                    const body = 'Your ride has officially started. Your driver is on the way. Please stay safe and be careful during your journey. We wish you a smooth ride!';
+
+                    await sendNotification(userToken, title, body);
                     console.log(`[${new Date().toISOString()}] No active socket found for user: ${userId}`);
                 }
             } else {
@@ -641,14 +612,30 @@ io.on('connection', (socket) => {
             }
 
             const userSocketId = userSocketMap.get(String(user));
-
+            const foundUser = await userModel.findOne({
+                _id: user
+            })
             if (userSocketId) {
                 io.to(userSocketId).emit('your_ride_is_mark_complete', {
                     message: 'Rider marked your ride as complete. Please confirm if it’s correct.',
                     rideId: ride_id,
                 });
+
+
+                const userToken = foundUser?.fcmToken;
+                const title = 'Ride Completed! Please Make Your Payment';
+                const body = 'Your ride has ended successfully. Kindly proceed to make the payment. Thank you for riding with us!';
+
+                await sendNotification(userToken, title, body);
+
                 console.log(`[${new Date().toISOString()}] Ride end confirmation sent to user: ${user}`);
             } else {
+                const userToken = foundUser?.fcmToken;
+                const title = 'Ride Completed! Please Make Your Payment';
+                const body = 'Your ride has ended successfully. Kindly proceed to make the payment. Thank you for riding with us!';
+
+                await sendNotification(userToken, title, body);
+
                 console.log(`[${new Date().toISOString()}] No active socket found for user: ${user}`);
             }
         } catch (error) {
@@ -831,14 +818,24 @@ io.on('connection', (socket) => {
                 console.log(`[${new Date().toISOString()}] Payment recorded successfully for user: ${data.ride.user}`);
 
                 const userSocketId = userSocketMap.get(String(data.ride.user));
-
+                const foundUser = await userModel.findOne({
+                    _id: data.ride.user
+                })
                 if (userSocketId) {
                     io.to(userSocketId).emit('give-rate', {
                         message: 'Your payment has been received. Please rate your ride.',
                         rideDetails: data,
                     });
+                    const title = 'Payment Received – Thank You!';
+                    const body = 'We’ve received your payment successfully. Please take a moment to rate your ride experience. Your feedback helps us improve!';
+
+                    await sendNotification(foundUser?.fcmToken, title, body);
                     console.log(`[${new Date().toISOString()}] Rating request sent to user: ${data.ride.user}`);
                 } else {
+                    const title = 'Payment Received – Thank You!';
+                    const body = 'We’ve received your payment successfully. Please take a moment to rate your ride experience. Your feedback helps us improve!';
+
+                    await sendNotification(foundUser?.fcmToken, title, body);
                     console.log(`[${new Date().toISOString()}] No active socket found for user: ${data.ride.user}`);
                 }
             } else {

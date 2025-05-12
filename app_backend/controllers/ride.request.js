@@ -1249,6 +1249,9 @@ exports.rideEnd = async (data) => {
 
 exports.collectCash = async ({ data, paymentMethod }) => {
     try {
+        console.log('Incoming data:', data);
+        console.log('Payment method:', paymentMethod);
+
         const ride = await RideRequest.findById(data?._id);
         if (!ride) {
             return { success: false, message: 'Ride not found' };
@@ -1258,72 +1261,82 @@ exports.collectCash = async ({ data, paymentMethod }) => {
         ride.is_ride_paid = true;
         ride.paymentMethod = paymentMethod;
         await ride.save();
+        console.log('Ride marked as paid and saved.');
 
         const findRider = await Riders.findById(ride?.rider);
         if (!findRider) {
             return { success: false, message: 'Rider not found' };
         }
 
-        // Find past completed rides
-        const rechargeDate = new Date(findRider?.RechargeData?.whichDateRecharge);
+        // Recharge Date Check
+        const rechargeDateRaw = findRider?.RechargeData?.whichDateRecharge;
+        const rechargeDate = rechargeDateRaw ? new Date(rechargeDateRaw) : null;
+        console.log('Recharge date:', rechargeDate);
 
-        // Fetch only rides completed after (or on) the recharge date
-        const pastRides = await rideRequestModel.find({
-            rider: findRider._id,
-            rideStatus: "completed",
-            createdAt: { $gte: rechargeDate }  // Only rides after or on recharge date
-        });
+        let currentEarning = 0;
+        let totalEarnings = 0;
 
+        if (rechargeDate && !isNaN(rechargeDate.getTime())) {
+            // Calculate earnings only if recharge date is valid
+            const pastRides = await rideRequestModel.find({
+                rider: findRider._id,
+                rideStatus: "completed",
+                createdAt: { $gte: rechargeDate }
+            });
 
-        // Calculate earnings from past rides
-        const pastEarnings = pastRides.reduce((acc, cur) => acc + Number(cur.kmOfRide || 0), 0);
+            const pastEarnings = pastRides.reduce((acc, cur) => acc + Number(cur.kmOfRide || 0), 0);
+            currentEarning = Number(ride.kmOfRide || 0);
+            totalEarnings = pastEarnings + currentEarning;
 
-        // Current ride earning
-        const currentEarning = Number(ride.kmOfRide || 0);
+            const earningLimit = Number(findRider?.RechargeData?.onHowManyEarning || 0);
+            const remaining = earningLimit - totalEarnings;
+            const number = findRider?.phone;
 
-        // Total earnings = past + current
-        const totalEarnings = pastEarnings + currentEarning;
+            console.log('Earning limit:', earningLimit);
+            console.log('Total earnings:', totalEarnings);
 
-        const earningLimit = Number(findRider?.RechargeData?.onHowManyEarning || 0);
-        const remaining = earningLimit - totalEarnings;
-        const number = findRider?.phone;
+            // Earning limit logic
+            if (totalEarnings >= earningLimit) {
+                const message = `🎉 You’ve crossed your earning limit according to your current plan. Thank you for using Olyox! Please recharge now to continue earning more.`;
+                await SendWhatsAppMessageNormal(message, number);
 
-        // Handle earning limit
-        if (totalEarnings >= earningLimit) {
-            const message = `🎉 You’ve crossed your earning limit according to your current plan. Thank you for using Olyox! Please recharge now to continue earning more.`;
-            await SendWhatsAppMessageNormal(message, number);
-
-            findRider.isAvailable = false;
-            findRider.RechargeData = {
-                expireData: new Date(Date.now() - 5 * 60 * 1000),
-                rechargePlan: '',
-                onHowManyEarning: '',
-                approveRecharge: false,
-            };
-            findRider.isPaid = false;
-        } else if (remaining < 300) {
-            const reminderMessage = `🛎️ Reminder: You have ₹${remaining} earning potential left on your plan. Recharge soon to avoid interruptions in your earnings. – Team Olyox`;
-            await SendWhatsAppMessageNormal(reminderMessage, number);
+                findRider.isAvailable = false;
+                findRider.RechargeData = {
+                    expireData: new Date(Date.now() - 5 * 60 * 1000),
+                    rechargePlan: '',
+                    onHowManyEarning: '',
+                    approveRecharge: false,
+                    whichDateRecharge: null
+                };
+                findRider.isPaid = false;
+            } else if (remaining < 300) {
+                const reminderMessage = `🛎️ Reminder: You have ₹${remaining} earning potential left on your plan. Recharge soon to avoid interruptions in your earnings. – Team Olyox`;
+                await SendWhatsAppMessageNormal(reminderMessage, number);
+            }
+        } else {
+            console.log('Skipping earnings calculation due to invalid recharge date');
         }
 
-        // Reset rider state
+        // Finalize rider status update
         findRider.isAvailable = true;
         findRider.on_ride_id = null;
-
         await findRider.save();
 
         return {
             success: true,
-            message: 'Ride ended and payment recorded successfully',
+            message: rechargeDate && !isNaN(rechargeDate.getTime())
+                ? 'Ride ended and payment recorded with earnings tracked.'
+                : 'Ride ended and payment recorded. Earnings not tracked due to invalid recharge date.',
             currentEarning,
             totalEarnings
         };
 
     } catch (error) {
         console.error('Error in collectCash:', error.message);
-        return { success: false, message: error.message };
+        return { success: false, message: error.message || 'Internal server error' };
     }
 };
+
 
 
 

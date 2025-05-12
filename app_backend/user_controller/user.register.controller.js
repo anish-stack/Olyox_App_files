@@ -188,27 +188,42 @@ exports.verify_user = async (req, res) => {
     }
 };
 
-
 exports.addFcm = async (req, res) => {
   try {
-    console.log(req.body)
+    console.log("Request Body:", req.body); // Log the incoming request body for debugging
+    
     const { fcm, id } = req.body;
-
-    const user = await User.findById(id); 
-
+    
+    // Find the user by ID
+    const user = await User.findById(id);
+    
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Check if FCM token is already present and needs to be updated
+    if (user.fcmToken) {
+      console.log(`FCM token already exists. Old Token: ${user.fcmToken}`);
+      if (user.fcmToken !== fcm) {
+        console.log(`Updating FCM token. New Token: ${fcm}`);
+      } else {
+        console.log("FCM token is already up to date.");
+      }
+    } else {
+      console.log("FCM token does not exist, adding new one.");
+    }
+
+    // Update or add the new FCM token
     user.fcmToken = fcm;
     await user.save();
 
-    return res.status(200).json({ message: "FCM token added successfully", user });
+    return res.status(200).json({ message: "FCM token added/updated successfully", user });
   } catch (error) {
     console.error("Error adding FCM token:", error);
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 
 exports.resendOtp = async (req, res) => {
