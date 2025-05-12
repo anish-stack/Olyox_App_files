@@ -198,7 +198,7 @@ exports.login = async (req, res) => {
     }
 
 
-    if (!partner.isBlockByAdmin) {
+    if (partner.isBlockByAdmin) {
       return res.status(401).json({
         success: false,
         message: 'Your Account Has been Blocked By Admin Contact Support !!'
