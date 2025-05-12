@@ -1800,23 +1800,76 @@ exports.changeRidersRideStatusByAdmin = async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
-        console.log('status', status)
-        const order = await RideRequest.findById(id);
+
+        const order = await RideRequest.findById(id)
+            .populate('rider', 'name phone')
+            .populate('user', 'name number');
+
         if (!order) {
             return res.status(400).json({
                 success: false,
-                message: "Order not found"
-            })
+                message: "Ride request not found"
+            });
         }
+
         order.rideStatus = status;
         await order.save();
-        return res.status(200).json({ success: true, message: "Order status updated successfully" });
+
+        // Safe fallback values
+        const riderName = order?.rider?.name || "Rider";
+        const riderPhone = order?.rider?.phone || null;
+        const userName = order?.user?.name || "User";
+        const userPhone = order?.user?.number || null;
+
+        let riderMessage = "";
+        let userMessage = "";
+
+        switch (status) {
+            case 'pending':
+                riderMessage = `🚕 Hello ${riderName},\n\nA new ride request (ID: ${order._id}) is now *PENDING*. Please review and take action.`;
+                userMessage = `🕒 Hi ${userName},\n\nYour ride request (ID: ${order._id}) is currently *PENDING*. We will notify you once a rider accepts it.`;
+                break;
+
+            case 'accepted':
+                riderMessage = `✅ Hello ${riderName},\n\nYou have *ACCEPTED* the ride (ID: ${order._id}). Please proceed to pick up the user.`;
+                userMessage = `👏 Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *ACCEPTED* by ${riderName}. They will be on their way soon.`;
+                break;
+
+            case 'in_progress':
+                riderMessage = `🚗 Ride (ID: ${order._id}) is now *IN PROGRESS*. Stay safe on the road, ${riderName}.`;
+                userMessage = `🚕 Your ride (ID: ${order._id}) is now *IN PROGRESS*. Enjoy your journey!`;
+                break;
+
+            case 'completed':
+                riderMessage = `✅ Great job, ${riderName}!\n\nYou have *COMPLETED* the ride (ID: ${order._id}).`;
+                userMessage = `🎉 Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *COMPLETED*. Thank you for riding with us!`;
+                break;
+
+            case 'cancelled':
+                riderMessage = `❌ The ride (ID: ${order._id}) has been *CANCELLED*. No further action is required.`;
+                userMessage = `⚠️ Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *CANCELLED*. We apologize for the inconvenience.`;
+                break;
+
+            default:
+                riderMessage = `ℹ️ Ride (ID: ${order._id}) status has been changed to *${status}*.`;
+                userMessage = `ℹ️ Ride (ID: ${order._id}) status is now *${status}*.`;
+        }
+
+        // Send messages only if numbers are available
+        if (riderPhone) SendWhatsAppMessageNormal(riderMessage, riderPhone);
+        if (userPhone) SendWhatsAppMessageNormal(userMessage, userPhone);
+
+        return res.status(200).json({
+            success: true,
+            message: `Ride status updated to "${status}" and notifications sent`
+        });
+
     } catch (error) {
-        console.log("Internal server error", error)
+        console.error("Internal server error", error);
         res.status(500).json({
             success: false,
-            message: "Internal servere error",
+            message: "Internal server error",
             error: error.message
-        })
+        });
     }
-}
+};

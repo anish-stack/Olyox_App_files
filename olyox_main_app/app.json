@@ -28,7 +28,11 @@
         "NSLocationAlwaysUsageDescription": "Olyox uses your location to help with background location tracking for delivery updates, even when you're not using the app.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Olyox requires location access at all times to provide accurate real-time updates for orders and to find nearby service providers.",
         "NSPhotoLibraryUsageDescription": "Olyox uses your photo library to let you upload saved images such as profile photos, mismatched items, or food pictures for order tracking, returns, and support.",
-        "LSApplicationQueriesSchemes": ["tel", "mailto", "whatsapp"],
+        "LSApplicationQueriesSchemes": [
+          "tel",
+          "mailto",
+          "whatsapp"
+        ],
         "ITSAppUsesNonExemptEncryption": false,
         "GMSApiKey": "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8"
       }
@@ -58,7 +62,10 @@
               "host": "auth/callback"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
@@ -67,7 +74,10 @@
               "host": "auth/callback"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "package": "com.happy_coding.olyox",
@@ -83,9 +93,12 @@
       "clerkFrontendApi": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk",
       "clerkApiKey": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk",
       "eas": {
-        "projectId": "520953ad-4ed2-413d-87bb-b050b56dd3d0"
+        "projectId": "e73c718b-d6aa-45ea-a12a-c496424892ba"
       }
     },
-    "plugins": ["expo-secure-store", "@react-native-firebase/app"]
+    "plugins": [
+      "expo-secure-store",
+      "@react-native-firebase/app"
+    ]
   }
 }

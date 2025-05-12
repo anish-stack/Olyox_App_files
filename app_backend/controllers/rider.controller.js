@@ -198,6 +198,12 @@ exports.login = async (req, res) => {
     }
 
 
+    if (!partner.isBlockByAdmin) {
+      return res.status(401).json({
+        success: false,
+        message: 'Your Account Has been Blocked By Admin Contact Support !!'
+      })
+    }
 
     // Check if the user is blocked for OTP
     if (partner.isOtpBlock) {
@@ -602,7 +608,7 @@ exports.getMyAllDetails = async (req, res) => {
 
     const totalRides = findRideDetails.length;
     const totalEarnings = findRideDetails.reduce((acc, cur) => acc + Number(cur.kmOfRide), 0);
- 
+
     const totalRatings = findRideDetails.reduce((acc, cur) => acc + (cur.RatingOfRide || 0), 0);
     const averageRating = totalRides > 0 ? totalRatings / totalRides : 0;
 

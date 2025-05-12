@@ -41,6 +41,7 @@ export const initializeSocket = async ({ userType = "driver", userId }) => {
             reconnection: true,
             reconnectionAttempts: Infinity,
             reconnectionDelay: 2000,
+             randomizationFactor: 0.5,
             timeout: 20000,
         });
 
