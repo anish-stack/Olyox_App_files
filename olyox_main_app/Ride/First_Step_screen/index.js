@@ -1,6 +1,5 @@
-
-import { useState, useEffect } from "react"
-import { View, StatusBar } from "react-native"
+import { useState, useEffect, useRef } from "react"
+import { View, StatusBar, Text } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import * as Location from "expo-location"
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -33,6 +32,10 @@ const RideLocationSelector = () => {
     pickup: [],
     dropoff: [],
   })
+
+  // Debounce timer reference
+  const directionsTimerRef = useRef(null)
+  const isMapSelectionModeRef = useRef(false)
 
   const [state, setState] = useState({
     pickup: "",
@@ -105,16 +108,30 @@ const RideLocationSelector = () => {
     }
   }, [pastRides])
 
-  // Fetch directions when both pickup and dropoff are set
+  // Update isMapSelectionModeRef when showMap changes
   useEffect(() => {
+    isMapSelectionModeRef.current = state.showMap
+  }, [state.showMap])
+
+  // Fetch directions when both pickup and dropoff are set
+  // But only when not in map selection mode
+  useEffect(() => {
+    // Clear any existing timer
+    if (directionsTimerRef.current) {
+      clearTimeout(directionsTimerRef.current)
+    }
+
     const getDirections = async () => {
       try {
+        // Only fetch directions if both locations are set AND we're not in map selection mode
         if (
+          !isMapSelectionModeRef.current &&
           rideData?.pickup?.latitude &&
           rideData?.pickup?.longitude &&
           rideData?.dropoff?.latitude &&
           rideData?.dropoff?.longitude
         ) {
+          console.log("Fetching directions")
           const { polylineCoordinates, distanceValue, durationValue } = await fetchDirectionsPolyline(
             rideData.pickup,
             rideData.dropoff,
@@ -129,7 +146,15 @@ const RideLocationSelector = () => {
       }
     }
 
-    getDirections()
+    // Set a debounce timer to prevent rapid consecutive API calls
+    directionsTimerRef.current = setTimeout(getDirections, 500)
+
+    // Cleanup on unmount
+    return () => {
+      if (directionsTimerRef.current) {
+        clearTimeout(directionsTimerRef.current)
+      }
+    }
   }, [rideData.pickup, rideData.dropoff])
 
   const checkLocationPermission = async () => {
@@ -353,6 +378,26 @@ const RideLocationSelector = () => {
     navigation.navigate("second_step_of_booking", { data: rideData })
   }
 
+  const handleShowMap = (type) => {
+    // Save current state before showing map
+    setState((prev) => ({ 
+      ...prev, 
+      showMap: true, 
+      mapType: type 
+    }))
+  }
+
+  const handleBackFromMap = () => {
+    // Set a small delay before re-enabling directions fetching
+    // This prevents an immediate API call when returning from map
+    setState((prev) => ({ ...prev, showMap: false }))
+    
+    // After exiting map selection mode, calculate directions if both points are set
+    if (rideData?.pickup?.latitude && rideData?.dropoff?.latitude) {
+      // The useEffect for directions will handle this once showMap is updated
+    }
+  }
+
   if (state.showMap) {
     return (
       <MapSelector
@@ -361,7 +406,7 @@ const RideLocationSelector = () => {
         address={state.mapType === "pickup" ? state.pickup : state.dropoff}
         loading={state.loading}
         onRegionChangeComplete={handleMapRegionChange}
-        onBack={() => setState((prev) => ({ ...prev, showMap: false }))}
+        onBack={handleBackFromMap}
       />
     )
   }
@@ -377,7 +422,7 @@ const RideLocationSelector = () => {
         setState={setState}
         rideData={rideData}
         isFetchingLocation={state.isFetchingLocation}
-        onMapSelect={(type) => setState((prev) => ({ ...prev, showMap: true, mapType: type }))}
+        onMapSelect={handleShowMap}
       />
 
       {state.error ? (
@@ -387,7 +432,7 @@ const RideLocationSelector = () => {
       ) : null}
 
 
-      {state.suggestions.length >0 && (
+      {state.suggestions.length > 0 && (
         <LocationSuggestions
           state={state}
           pastRideSuggestions={pastRideSuggestions}

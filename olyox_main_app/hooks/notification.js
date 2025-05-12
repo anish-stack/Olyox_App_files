@@ -56,6 +56,9 @@ const showExpoNotification = async (title, body, data = {}) => {
       title,
       body,
       data,
+      vibrate:true,
+      sticky:true,
+      sound:'default'
     },
     trigger: null, // Show immediately
   });

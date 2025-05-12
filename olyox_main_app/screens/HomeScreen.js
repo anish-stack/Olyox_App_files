@@ -8,11 +8,12 @@ import TopFood from '../Foods/Top_Foods/TopFood';
 import BookARide from '../components/Book_A_Ride/BookARide';
 import Food_Cats from '../Foods/Food_Cats/Food_Cats';
 import SkeletonLoader from './SkeletonLoader';
+import { useSocket } from '../context/SocketContext';
 
 const HomeScreen = () => {
     // Refs
     const isMounted = useRef(false);
-    
+
     // State management
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -24,6 +25,7 @@ const HomeScreen = () => {
         foodCategories: true,
         topFoods: true
     });
+    const { userId } = useSocket()
 
     // Load individual component data
     const loadComponentData = async (component) => {
@@ -40,7 +42,7 @@ const HomeScreen = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            
+
             // Reset component loading states during a refresh
             setComponentLoading({
                 offers: true,
@@ -50,10 +52,10 @@ const HomeScreen = () => {
                 foodCategories: true,
                 topFoods: true
             });
-            
+
             // Simulate main data loading
             await new Promise((resolve) => setTimeout(resolve, 1500));
-            
+
             // Start loading individual components
             loadComponentData('offers');
             loadComponentData('categories');
@@ -61,7 +63,7 @@ const HomeScreen = () => {
             loadComponentData('topHotels');
             loadComponentData('foodCategories');
             loadComponentData('topFoods');
-            
+
             isMounted.current = true;
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -82,6 +84,9 @@ const HomeScreen = () => {
         try {
             setRefreshing(true);
             // Reset loading states
+            if(userId){
+              initializeSocket({ userId: userId });
+            }
             await fetchData();
         } catch (error) {
             console.error('Refresh error:', error);
@@ -108,8 +113,8 @@ const HomeScreen = () => {
                 scrollEventThrottle={16}
                 contentContainerStyle={styles.scrollViewContent}
                 refreshControl={
-                    <RefreshControl 
-                        refreshing={refreshing} 
+                    <RefreshControl
+                        refreshing={refreshing}
                         onRefresh={onRefresh}
                         colors={['#FF6B00']} // Customize refresh indicator color
                         tintColor={'#FF6B00'}
@@ -121,31 +126,31 @@ const HomeScreen = () => {
                 ) : (
                     <OfferBanner onRefresh={onRefresh} refreshing={refreshing} />
                 )}
-                
+
                 {componentLoading.categories ? (
                     <ComponentLoader text="Loading categories..." />
                 ) : (
                     <Categories onRefresh={onRefresh} refreshing={refreshing} />
                 )}
-                
+
                 {componentLoading.bookRide ? (
                     <ComponentLoader text="Loading ride options..." />
                 ) : (
                     <BookARide onRefresh={onRefresh} refreshing={refreshing} />
                 )}
-                
+
                 {componentLoading.topHotels ? (
                     <ComponentLoader text="Loading top hotels..." />
                 ) : (
                     <Top_Hotel onRefresh={onRefresh} refreshing={refreshing} />
                 )}
-                
+
                 {componentLoading.foodCategories ? (
                     <ComponentLoader text="Loading food categories..." />
                 ) : (
                     <Food_Cats onRefresh={onRefresh} refreshing={refreshing} />
                 )}
-                
+
                 {componentLoading.topFoods ? (
                     <ComponentLoader text="Loading top foods..." />
                 ) : (
