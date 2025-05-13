@@ -9,37 +9,33 @@ const tempRideDetailsSchema = require('../models/tempRideDetailsSchema');
 const RideRequestNotification = require('../models/RideRequestNotification');
 const rideRequestModel = require('../models/ride.request.model');
 const SendWhatsAppMessageNormal = require('../utils/normalWhatsapp');
+const User = require('../models/normal_user/User.model');
 exports.createRequest = async (req, res) => {
     try {
         const user = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
         const { vehicleType, pickupLocation, dropLocation, currentLocation, pick_desc, drop_desc, fcmToken } = req.body;
 
-        if (!pickupLocation || !dropLocation || !pick_desc || !drop_desc) {
-
+        // Validate required fields
+        if (!pickupLocation || !dropLocation || !pick_desc || !drop_desc || !currentLocation) {
+            console.warn("Missing required fields in ride request.");
             return res.status(400).json({ error: 'All fields are required' });
         }
 
-
-
-        const pickup_coords = [pickupLocation.longitude, pickupLocation.latitude];
-        const drop_coords = [dropLocation.longitude, dropLocation.latitude];
-        const current_coords = [currentLocation.longitude, currentLocation.latitude];
-
-
+        // Construct geo points
         const pickupLocationGeo = {
             type: 'Point',
-            coordinates: pickup_coords
+            coordinates: [pickupLocation.longitude, pickupLocation.latitude]
         };
         const dropLocationGeo = {
             type: 'Point',
-            coordinates: drop_coords
+            coordinates: [dropLocation.longitude, dropLocation.latitude]
         };
         const currentLocationGeo = {
             type: 'Point',
-            coordinates: current_coords
+            coordinates: [currentLocation.longitude, currentLocation.latitude]
         };
 
-
+        // Create a new ride request
         const newRideRequest = new RideRequest({
             vehicleType,
             user: user,
@@ -49,11 +45,36 @@ exports.createRequest = async (req, res) => {
             rideStatus: 'pending',
             pickup_desc: pick_desc,
             drop_desc: drop_desc,
-            userFcm:fcmToken
+            userFcm: fcmToken
         });
 
+        // Find and update user FCM token
+        const findUser = await User.findById(user);
 
+        if (!findUser) {
+            console.error("User not found for ID:", user);
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        if (findUser.fcmToken) {
+            console.log(`FCM token exists: ${findUser.fcmToken}`);
+            if (findUser.fcmToken !== fcmToken) {
+                console.log(`Updating FCM token to: ${fcmToken}`);
+                findUser.fcmToken = fcmToken;
+                await findUser.save();
+            } else {
+                console.log("FCM token is already up to date.");
+            }
+        } else {
+            console.log("No FCM token found. Saving new token.");
+            findUser.fcmToken = fcmToken;
+            await findUser.save();
+        }
+
+        // Save ride request
         await newRideRequest.save();
+
+        console.log("✅ Ride request created successfully:", newRideRequest._id);
 
         res.status(201).json({
             message: 'Ride request created successfully',
@@ -61,8 +82,7 @@ exports.createRequest = async (req, res) => {
         });
 
     } catch (error) {
-        // Handle errors and send an appropriate response
-        console.error(error);
+        console.error("❌ Error creating ride request:", error.message);
         res.status(500).json({ error: 'Server error, please try again' });
     }
 };
