@@ -39,33 +39,39 @@ const initializeFirebase = () => {
 
   try {
     // Resolve service account path
-    const serviceAccountPath = path.resolve(
-      __dirname, 
-      "olyox-6215a-firebase-adminsdk-fbsvc-471080c570.json"
-    );
+    // const serviceAccountPath = path.resolve(
+    //   __dirname,
+    //   "olyox-6215a-firebase-adminsdk-fbsvc-471080c570.json"
+    // );
 
+    const credentialsBase64 = process.env.FIREBASE_CREDENTIALS_BASE64;
+    const credentials = JSON.parse(
+      Buffer.from(credentialsBase64, 'base64').toString('utf-8')
+    )
+
+    console.log("credentials",credentials)
     // Validate service account file exists
-    try {
-      require.resolve(serviceAccountPath);
-    } catch (fileError) {
-      throw new FirebaseInitializationError(
-        `Service account file not found: ${serviceAccountPath}`
-      );
-    }
+    // try {
+    //   require.resolve(serviceAccountPath);
+    // } catch (fileError) {
+    //   throw new FirebaseInitializationError(
+    //     `Service account file not found: ${serviceAccountPath}`
+    //   );
+    // }
 
     // Load service account
-    const serviceAccount = require(serviceAccountPath);
+    // const serviceAccount = require(serviceAccountPath);
 
     // Validate service account structure
-    if (!serviceAccount.project_id || !serviceAccount.private_key) {
-      throw new FirebaseInitializationError(
-        'Invalid service account configuration'
-      );
-    }
+    // if (!serviceAccount.project_id || !serviceAccount.private_key) {
+    //   throw new FirebaseInitializationError(
+    //     'Invalid service account configuration'
+    //   );
+    // }
 
     // Initialize Firebase Admin SDK
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert(credentials),
       // Optional: Add other configuration if needed
       // projectId: serviceAccount.project_id,
     });
@@ -95,7 +101,7 @@ const sendNotification = async (token, title, body, eventData = {}) => {
     // Validate input
     if (!token) {
       throw new NotificationError(
-        'No FCM token provided', 
+        'No FCM token provided',
         'INVALID_TOKEN'
       );
     }
@@ -105,7 +111,7 @@ const sendNotification = async (token, title, body, eventData = {}) => {
       initializeFirebase();
     } catch (initError) {
       throw new NotificationError(
-        'Failed to initialize Firebase', 
+        'Failed to initialize Firebase',
         'INIT_FAILED'
       );
     }
@@ -132,7 +138,7 @@ const sendNotification = async (token, title, body, eventData = {}) => {
 
     // Send notification
     const response = await admin.messaging().send(message);
-    
+
     logger.info(`Notification sent successfully: ${response}`);
     return response;
 
