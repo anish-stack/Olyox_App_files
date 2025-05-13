@@ -14,9 +14,9 @@ const Bonus_Model = require('../models/Bonus_Model/Bonus_Model');
 const Parcel_Request = require('../models/Parcel_Models/Parcel_Request');
 const { sendDltMessage } = require('../utils/DltMessageSend');
 cloudinary.config({
-  cloud_name: 'dsd8nepa5',
-  api_key: '634914486911329',
-  api_secret: 'dOXqEsWHQMjHNJH_FU6_iHlUHBE'
+  cloud_name: 'daxbcusb5',
+  api_key: '984861767987573',
+  api_secret: 'tCBu9JNxC_iaUENm1kDwLrdXL0k'
 })
 // Register a new rider
 exports.registerRider = async (req, res) => {
