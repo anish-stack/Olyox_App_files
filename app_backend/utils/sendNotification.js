@@ -1,6 +1,5 @@
-
 const admin = require("firebase-admin");
-const path = require("path");
+const { FIREBASE_CREDENTIALS_BASE64 } = require("./Key");
 
 // Custom error classes for more specific error handling
 class FirebaseInitializationError extends Error {
@@ -26,63 +25,40 @@ const logger = {
   debug: (message) => console.debug(`🐛 ${message}`)
 };
 
-/**
- * Initialize Firebase Admin SDK with enhanced error handling
- * @returns {boolean} Initialization status
- */
 const initializeFirebase = () => {
   // Check if already initialized
-  if (admin.apps.length > 0) {
+  if (admin.apps && admin.apps.length > 0) {
     logger.info('Firebase already initialized');
     return true;
   }
 
   try {
-    // Resolve service account path
-    // const serviceAccountPath = path.resolve(
-    //   __dirname,
-    //   "olyox-6215a-firebase-adminsdk-fbsvc-471080c570.json"
-    // );
-
-    const credentialsBase64 = process.env.FIREBASE_CREDENTIALS_BASE64;
-    const credentials = JSON.parse(
-      Buffer.from(credentialsBase64, 'base64').toString('utf-8')
-    )
-
-    console.log("credentials",credentials)
-    // Validate service account file exists
-    // try {
-    //   require.resolve(serviceAccountPath);
-    // } catch (fileError) {
-    //   throw new FirebaseInitializationError(
-    //     `Service account file not found: ${serviceAccountPath}`
-    //   );
-    // }
-
-    // Load service account
-    // const serviceAccount = require(serviceAccountPath);
-
-    // Validate service account structure
-    // if (!serviceAccount.project_id || !serviceAccount.private_key) {
-    //   throw new FirebaseInitializationError(
-    //     'Invalid service account configuration'
-    //   );
-    // }
+    const config = {
+      credential: admin.credential.cert({
+        type: process.env.FIREBASE_TYPE,
+        project_id: process.env.FIREBASE_PROJECT_ID,
+        private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+        private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        client_id: process.env.FIREBASE_CLIENT_ID,
+        auth_uri: process.env.FIREBASE_AUTH_URI,
+        token_uri: process.env.FIREBASE_TOKEN_URI,
+        auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
+        client_x509_cert_url: process.env.FIREBASE_CERT_URL,
+        universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN
+      }),
+    };
 
     // Initialize Firebase Admin SDK
     admin.initializeApp({
-      credential: admin.credential.cert(credentials),
-      // Optional: Add other configuration if needed
-      // projectId: serviceAccount.project_id,
+      credential: admin.credential.cert(config.credential)
     });
 
     logger.info('Firebase Admin SDK initialized successfully');
     return true;
   } catch (error) {
     // Detailed error logging
-    if (error instanceof FirebaseInitializationError) {
-      logger.error(`Firebase Initialization Failed: ${error.message}`);
-    } else if (error.code === 'ENOENT') {
+    if (error.code === 'ENOENT') {
       logger.error('Service account file could not be read');
     } else if (error.code === 'app/invalid-credential') {
       logger.error('Invalid Firebase credentials. Check service account.');
@@ -90,12 +66,15 @@ const initializeFirebase = () => {
       logger.error(`Unexpected Firebase Init Error: ${error.message}`);
     }
 
+    logger.error('Firebase initialization failed');
+
     // Rethrow to allow caller to handle
     throw error;
   }
 };
 
 
+// Rest of the code remains the same...
 const sendNotification = async (token, title, body, eventData = {}) => {
   try {
     // Validate input
