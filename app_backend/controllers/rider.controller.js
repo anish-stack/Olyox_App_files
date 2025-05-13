@@ -582,7 +582,7 @@ exports.uploadDocuments = async (req, res) => {
 
         if (fileSizeKB > 1024) {
           console.log("⚠️ File too large:", file.originalname);
-          await fs.unlink(file.path).catch(() => {});
+          await fs.unlink(file.path).catch(() => { });
           return res.status(400).json({
             success: false,
             message: `${file.originalname} is larger than 1MB`
@@ -608,10 +608,10 @@ exports.uploadDocuments = async (req, res) => {
 
         // Delete the temp file
         try {
-          await fs.unlink(file.path);
-          console.log(`🗑️ Deleted: ${file.originalname}`);
-        } catch (delErr) {
-          console.warn("⚠️ Could not delete temp file:", file.originalname, delErr.message);
+          await fs.promises.unlink(file.path); // ✅ Promise-based
+          console.log(`✅ Temp file deleted: ${file.originalname}`);
+        } catch (err) {
+          console.warn(`⚠️ Could not delete temp file: ${file.originalname}`, err.message);
         }
       } catch (fileErr) {
         console.error("❌ Error processing file:", file.originalname, fileErr);
