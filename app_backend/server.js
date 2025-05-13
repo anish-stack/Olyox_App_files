@@ -79,7 +79,12 @@ console.log('Attempting database connection...');
 app.set("socketio", io);
 
 // Middleware Setup
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    callback(null, origin); // allow any origin
+  },
+  credentials: true, // allow cookies, authorization headers, etc.
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookies_parser());

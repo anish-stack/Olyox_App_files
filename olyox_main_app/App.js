@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Provider } from 'react-redux';
+
 import './context/firebaseConfig';
 
 import * as Location from 'expo-location';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Provider as PaperProvider } from 'react-native-paper';
+
 import { View, Text, StyleSheet, Linking, TouchableOpacity, Platform } from 'react-native';
-import { store } from './redux/store';
+
 import { SocketProvider } from './context/SocketContext';
 import * as Sentry from '@sentry/react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -109,13 +109,13 @@ const App = () => {
   const [locationError, setLocationError] = useState(null);
   const [locationFetchRetries, setLocationFetchRetries] = useState(0);
   const [fcmTokenSent, setFcmTokenSent] = useState(false);
-  
+
   // Refs
   const locationRef = useRef(null);
   const watchSubscriptionRef = useRef(null);
   const lastLocationUpdateTimeRef = useRef(0);
   const userDataRef = useRef(null);
-  
+
   // Hooks
   const { isGranted, requestPermission, deviceId, fcmToken } = useNotificationPermission();
 
@@ -125,7 +125,7 @@ const App = () => {
       try {
         const db_token = await tokenCache.getToken('auth_token_db');
         setIsLogin(db_token !== null);
-        
+
         if (db_token !== null) {
           // If logged in, also fetch and store user data for later use
           const userData = await find_me();
@@ -152,19 +152,19 @@ const App = () => {
     const sendFcmTokenToServer = async () => {
       // Skip if token was already sent or no token exists
       if (fcmTokenSent || !fcmToken) return;
-      
+
       // Wait for user data to be available
       const userData = userDataRef.current;
       if (!userData || !userData?.user?._id) return;
-      
+
       try {
         console.log("📤 Sending FCM token to server:", { fcmToken, userId: userData.user._id });
-        
+
         await axios.post(`${API_URL}/rider/fcm/add`, {
           fcm: fcmToken,
           id: userData.user._id,
         });
-        
+
         console.log("✅ FCM token sent successfully");
         setFcmTokenSent(true);
       } catch (error) {
@@ -172,7 +172,7 @@ const App = () => {
         Sentry.captureException(error);
       }
     };
-    
+
     // Attempt to send token whenever userDataRef or fcmToken changes
     if (fcmToken && userDataRef.current?.user?._id && !fcmTokenSent) {
       sendFcmTokenToServer();
@@ -203,7 +203,7 @@ const App = () => {
     locationRef.current = newLocation;
 
     if (now - lastLocationUpdateTimeRef.current >= MIN_UPDATE_INTERVAL ||
-        isSignificantLocationChange(locationRef.current, newLocation)) {
+      isSignificantLocationChange(locationRef.current, newLocation)) {
       console.log("📍 Updating location state:", newLocation);
       lastLocationUpdateTimeRef.current = now;
     }
@@ -317,7 +317,7 @@ const App = () => {
   // Handle location retry logic
   useEffect(() => {
     if ((locationError === ERROR_TYPES.TIMEOUT || locationError === ERROR_TYPES.UNKNOWN) &&
-        locationFetchRetries <= MAX_RETRY_ATTEMPTS) {
+      locationFetchRetries <= MAX_RETRY_ATTEMPTS) {
       const retryDelay = locationFetchRetries * 5000; // 5s, 10s, 15s
       const retryTimer = setTimeout(() => {
         getLocationInBackground();
@@ -330,7 +330,7 @@ const App = () => {
   // Handle notification permission request
   const handleRequestNotificationPermission = useCallback(async () => {
     if (isGranted) return; // Skip if already granted
-    
+
     console.log("🔔 Requesting notification permission...");
     try {
       const granted = await requestPermission();
@@ -436,58 +436,56 @@ const App = () => {
     );
   }
 
-  // Main app when everything is ready - use the location ref directly
+  
   return (
-    <Provider store={store}>
-      <PaperProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <SocketProvider>
-            <LocationProvider initialLocation={locationRef.current}>
-              <GuestProvider>
-                <RideProvider>
-                  <BookingParcelProvider>
-                    <SafeAreaProvider>
-                      <StatusBar style="auto" />
-                      <ErrorBoundaryWrapper>
-                        <NavigationContainer>
-                          <Stack.Navigator initialRouteName={'spalsh'}>
-                            {routes}
-                          </Stack.Navigator>
 
-                          {/* Overlay error banner if there's a location error but we're proceeding anyway */}
-                          {locationError && (
-                            <TouchableOpacity
-                              style={styles.errorBanner}
-                              onPress={async () => {
-                                if (Platform.OS === 'ios') {
-                                  Linking.openURL('app-settings:');
-                                } else {
-                                  // Open Android settings for the current app
-                                  IntentLauncher.startActivityAsync(
-                                    IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
-                                    {
-                                      data: 'package:' + Application.applicationId,
-                                    }
-                                  );
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SocketProvider>
+        <LocationProvider initialLocation={locationRef.current}>
+          <GuestProvider>
+            <RideProvider>
+              <BookingParcelProvider>
+                <SafeAreaProvider>
+                  <StatusBar style="auto" />
+                  <ErrorBoundaryWrapper>
+                    <NavigationContainer>
+                      <Stack.Navigator initialRouteName={'spalsh'}>
+                        {routes}
+                      </Stack.Navigator>
+
+                      {/* Overlay error banner if there's a location error but we're proceeding anyway */}
+                      {locationError && (
+                        <TouchableOpacity
+                          style={styles.errorBanner}
+                          onPress={async () => {
+                            if (Platform.OS === 'ios') {
+                              Linking.openURL('app-settings:');
+                            } else {
+                              // Open Android settings for the current app
+                              IntentLauncher.startActivityAsync(
+                                IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
+                                {
+                                  data: 'package:' + Application.applicationId,
                                 }
-                              }}
-                            >
-                              <Text style={styles.errorBannerText}>
-                                Location service issue. Tap to fix.
-                              </Text>
-                            </TouchableOpacity>
-                          )}
-                        </NavigationContainer>
-                      </ErrorBoundaryWrapper>
-                    </SafeAreaProvider>
-                  </BookingParcelProvider>
-                </RideProvider>
-              </GuestProvider>
-            </LocationProvider>
-          </SocketProvider>
-        </GestureHandlerRootView>
-      </PaperProvider>
-    </Provider>
+                              );
+                            }
+                          }}
+                        >
+                          <Text style={styles.errorBannerText}>
+                            Location service issue. Tap to fix.
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </NavigationContainer>
+                  </ErrorBoundaryWrapper>
+                </SafeAreaProvider>
+              </BookingParcelProvider>
+            </RideProvider>
+          </GuestProvider>
+        </LocationProvider>
+      </SocketProvider>
+    </GestureHandlerRootView>
+
   );
 };
 
