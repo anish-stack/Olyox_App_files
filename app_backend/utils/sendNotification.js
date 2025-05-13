@@ -1,5 +1,6 @@
 const admin = require("firebase-admin");
 require('dotenv').config();
+
 // Custom error classes
 class FirebaseInitializationError extends Error {
   constructor(message) {
@@ -7,7 +8,16 @@ class FirebaseInitializationError extends Error {
     this.name = "FirebaseInitializationError";
   }
 }
-//update
+
+// Add the missing NotificationError class
+class NotificationError extends Error {
+  constructor(message, code = 'UNKNOWN_ERROR') {
+    super(message);
+    this.name = "NotificationError";
+    this.code = code;
+  }
+}
+
 // Logger utility
 const logger = {
   info: (msg) => console.log(`ℹ️ ${msg}`),
@@ -29,8 +39,17 @@ const initializeFirebase = () => {
     if (!process.env.FIREBASE_CREDENTIAL) {
       throw new FirebaseInitializationError("FIREBASE_CREDENTIAL is missing in environment variables.");
     }
-
-    const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIAL);
+    console.log("process.env.FIREBASE_CREDENTIAL", process.env.FIREBASE_CREDENTIAL)
+    // Improved JSON parsing with error handling
+    let serviceAccount;
+    try {
+      serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIAL);
+    } catch (jsonError) {
+      throw new FirebaseInitializationError(
+        `Failed to parse FIREBASE_CREDENTIAL as JSON: ${jsonError.message}. ` +
+        "Ensure credentials are properly escaped."
+      );
+    }
 
     if (!serviceAccount.project_id || !serviceAccount.private_key) {
       throw new FirebaseInitializationError("Invalid service account JSON structure.");
@@ -54,13 +73,20 @@ const initializeFirebase = () => {
   }
 };
 
-
+/**
+ * Send a notification to a device via Firebase Cloud Messaging
+ * @param {string} token - FCM device token
+ * @param {string} title - Notification title
+ * @param {string} body - Notification body text
+ * @param {Object} eventData - Additional data to send with notification
+ * @returns {Promise<string>} - Notification ID or null if failed
+ */
 const sendNotification = async (token, title, body, eventData = {}) => {
   try {
     // Validate input
     if (!token) {
       throw new NotificationError(
-        'No FCM token provided', 
+        'No FCM token provided',
         'INVALID_TOKEN'
       );
     }
@@ -70,7 +96,7 @@ const sendNotification = async (token, title, body, eventData = {}) => {
       initializeFirebase();
     } catch (initError) {
       throw new NotificationError(
-        'Failed to initialize Firebase', 
+        'Failed to initialize Firebase',
         'INIT_FAILED'
       );
     }
@@ -97,7 +123,7 @@ const sendNotification = async (token, title, body, eventData = {}) => {
 
     // Send notification
     const response = await admin.messaging().send(message);
-    
+
     logger.info(`Notification sent successfully: ${response}`);
     return response;
 
@@ -108,7 +134,7 @@ const sendNotification = async (token, title, body, eventData = {}) => {
         logger.warn(`Invalid FCM message argument: ${error.message}`);
         break;
       case 'messaging/invalid-recipient':
-        logger.warn(`Invalid FCM token (${token.substring(0, 10)}...)`);
+        logger.warn(`Invalid FCM token (${token?.substring(0, 10)}...)`);
         break;
       case 'app/invalid-credential':
         logger.error('Firebase credential error. Check service account.');
