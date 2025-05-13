@@ -1,105 +1,101 @@
-const admin = require("firebase-admin");
-require('dotenv').config();
 
-// Custom error classes
+const admin = require("firebase-admin");
+const path = require("path");
+
+// Custom error classes for more specific error handling
 class FirebaseInitializationError extends Error {
   constructor(message) {
     super(message);
-    this.name = "FirebaseInitializationError";
+    this.name = 'FirebaseInitializationError';
   }
 }
 
 class NotificationError extends Error {
-  constructor(message, code = 'UNKNOWN_ERROR') {
+  constructor(message, code) {
     super(message);
-    this.name = "NotificationError";
+    this.name = 'NotificationError';
     this.code = code;
   }
 }
 
-// Logger utility
+// Logging utility
 const logger = {
-  info: (msg) => console.log(`ℹ️ ${msg}`),
-  warn: (msg) => console.warn(`⚠️ ${msg}`),
-  error: (msg) => console.error(`❌ ${msg}`),
-  debug: (msg) => console.debug(`🐛 ${msg}`),
+  info: (message) => console.log(`ℹ️ ${message}`),
+  warn: (message) => console.warn(`⚠️ ${message}`),
+  error: (message) => console.error(`❌ ${message}`),
+  debug: (message) => console.debug(`🐛 ${message}`)
 };
 
 /**
- * Initialize Firebase Admin SDK with credentials from environment variables
+ * Initialize Firebase Admin SDK with enhanced error handling
+ * @returns {boolean} Initialization status
  */
 const initializeFirebase = () => {
+  // Check if already initialized
   if (admin.apps.length > 0) {
-    logger.info("Firebase already initialized");
+    logger.info('Firebase already initialized');
     return true;
   }
 
   try {
-    // Check for required environment variables
-    const requiredVars = [
-      'FIREBASE_TYPE',
-      'FIREBASE_PROJECT_ID',
-      'FIREBASE_PRIVATE_KEY_ID',
-      'FIREBASE_PRIVATE_KEY',
-      'FIREBASE_CLIENT_EMAIL',
-      'FIREBASE_CLIENT_ID',
-      'FIREBASE_AUTH_URI',
-      'FIREBASE_TOKEN_URI',
-      'FIREBASE_AUTH_PROVIDER_CERT_URL',
-      'FIREBASE_CLIENT_CERT_URL',
-      'FIREBASE_UNIVERSE_DOMAIN'
-    ];
+    // Resolve service account path
+    const serviceAccountPath = path.resolve(
+      __dirname, 
+      "olyox-6215a-firebase-adminsdk-fbsvc-13a6512551.json"
+    );
 
-    const missingVars = requiredVars.filter(varName => !process.env[varName]);
-    if (missingVars.length > 0) {
-      throw new FirebaseInitializationError(`Missing required environment variables: ${missingVars.join(', ')}`);
+    // Validate service account file exists
+    try {
+      require.resolve(serviceAccountPath);
+    } catch (fileError) {
+      throw new FirebaseInitializationError(
+        `Service account file not found: ${serviceAccountPath}`
+      );
     }
 
-    // Create service account object from environment variables
-    const serviceAccount = {
-      type: process.env.FIREBASE_TYPE,
-      project_id: process.env.FIREBASE_PROJECT_ID,
-      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'), // Replace escaped newlines
-      client_email: process.env.FIREBASE_CLIENT_EMAIL,
-      client_id: process.env.FIREBASE_CLIENT_ID,
-      auth_uri: process.env.FIREBASE_AUTH_URI,
-      token_uri: process.env.FIREBASE_TOKEN_URI,
-      auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
-      client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
-      universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN
-    };
+    // Load service account
+    const serviceAccount = require(serviceAccountPath);
 
+    // Validate service account structure
+    if (!serviceAccount.project_id || !serviceAccount.private_key) {
+      throw new FirebaseInitializationError(
+        'Invalid service account configuration'
+      );
+    }
+
+    // Initialize Firebase Admin SDK
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
+      // Optional: Add other configuration if needed
+      // projectId: serviceAccount.project_id,
     });
 
-    logger.info("✅ Firebase Admin SDK initialized successfully");
+    logger.info('Firebase Admin SDK initialized successfully');
     return true;
   } catch (error) {
+    // Detailed error logging
     if (error instanceof FirebaseInitializationError) {
-      logger.error(`Firebase Initialization Error: ${error.message}`);
+      logger.error(`Firebase Initialization Failed: ${error.message}`);
+    } else if (error.code === 'ENOENT') {
+      logger.error('Service account file could not be read');
+    } else if (error.code === 'app/invalid-credential') {
+      logger.error('Invalid Firebase credentials. Check service account.');
     } else {
-      logger.error(`Unexpected Firebase Initialization Error: ${error.message}`);
+      logger.error(`Unexpected Firebase Init Error: ${error.message}`);
     }
+
+    // Rethrow to allow caller to handle
     throw error;
   }
 };
 
-/**
- * Send a notification to a device via Firebase Cloud Messaging
- * @param {string} token - FCM device token
- * @param {string} title - Notification title
- * @param {string} body - Notification body text
- * @param {Object} eventData - Additional data to send with notification
- * @returns {Promise<string>} - Notification ID or null if failed
- */
+
 const sendNotification = async (token, title, body, eventData = {}) => {
   try {
     // Validate input
     if (!token) {
       throw new NotificationError(
-        'No FCM token provided',
+        'No FCM token provided', 
         'INVALID_TOKEN'
       );
     }
@@ -109,7 +105,7 @@ const sendNotification = async (token, title, body, eventData = {}) => {
       initializeFirebase();
     } catch (initError) {
       throw new NotificationError(
-        'Failed to initialize Firebase',
+        'Failed to initialize Firebase', 
         'INIT_FAILED'
       );
     }
@@ -136,7 +132,7 @@ const sendNotification = async (token, title, body, eventData = {}) => {
 
     // Send notification
     const response = await admin.messaging().send(message);
-
+    
     logger.info(`Notification sent successfully: ${response}`);
     return response;
 
@@ -147,7 +143,7 @@ const sendNotification = async (token, title, body, eventData = {}) => {
         logger.warn(`Invalid FCM message argument: ${error.message}`);
         break;
       case 'messaging/invalid-recipient':
-        logger.warn(`Invalid FCM token (${token?.substring(0, 10)}...)`);
+        logger.warn(`Invalid FCM token (${token.substring(0, 10)}...)`);
         break;
       case 'app/invalid-credential':
         logger.error('Firebase credential error. Check service account.');

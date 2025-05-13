@@ -493,17 +493,29 @@ exports.findRider = async (id, io, app) => {
 
             debug(`Found ${validRiders.length} eligible drivers at ${currentRadius / 1000} km radius.`);
 
-            // Get driver socket map to send targeted notifications
             const driverSocketMap = getDriverSocketMap();
             const notifiedDrivers = [];
             const unavailableDrivers = [];
-            let driverInfo
+            let driverInfo;
+
+            console.log('=== RIDE REQUEST NOTIFICATION PROCESS STARTED ===');
+            console.log(`Total eligible drivers found: ${validRiders.length}`);
+            console.log(`Ride request ID: ${rideRequestId}`);
+            console.log('Driver socket map:', Array.from(driverSocketMap.entries()));
+            console.log('Ride info:', rideInfo);
+            console.log('Price data:', priceData);
+
             // Emit ride request only to eligible drivers with active socket connections
             for (const rider of validRiders) {
                 const riderId = rider._id.toString();
+                console.log(`\n----- Processing driver ID: ${riderId} -----`);
+                console.log(`Driver distance: ${rider.distance} meters (${(rider.distance / 1000).toFixed(2)} km)`);
+
                 const driverSocketId = driverSocketMap.get(riderId);
 
                 if (driverSocketId) {
+                    console.log(`✅ Active socket connection found: ${driverSocketId}`);
+
                     // Prepare driver-specific info
                     driverInfo = {
                         ...rideInfo,
@@ -512,29 +524,63 @@ exports.findRider = async (id, io, app) => {
                         message: "New ride request nearby!"
                     };
 
-                    // Emit to specific driver socket
-                    io.to(driverSocketId).emit("ride_come", driverInfo);
+                    console.log('Driver-specific info prepared:', driverInfo);
+                    console.log(`Estimated earnings: $${driverInfo.estimatedEarning?.toFixed(2)}`);
 
-                    debug(`Emitted ride request to driver ${riderId} via socket ${driverSocketId}`);
-                    notifiedDrivers.push(riderId);
-
-                    // Record that this driver was notified about this ride
                     try {
-                        await RideRequestNotification.create({
-                            rideRequestId,
-                            driverId: riderId,
-                            notifiedAt: new Date(),
-                            status: 'sent'
-                        });
-                    } catch (notifError) {
-                        debug(`Failed to record driver notification: ${notifError.message}`);
-                        // Continue even if recording fails
+                        // Emit to specific driver socket
+                        io.to(driverSocketId).emit("ride_come", driverInfo);
+                        console.log(`✅ Successfully emitted 'ride_come' event to socket ${driverSocketId}`);
+
+                        notifiedDrivers.push(riderId);
+                        console.log(`Added driver ${riderId} to notified list. Total notified: ${notifiedDrivers.length}`);
+
+                        // Record that this driver was notified about this ride
+                        try {
+                            const notification = await RideRequestNotification.create({
+                                rideRequestId,
+                                driverId: riderId,
+                                notifiedAt: new Date(),
+                                status: 'sent'
+                            });
+                            console.log(`✅ Notification record created with ID: ${notification._id}`);
+                        } catch (notifError) {
+                            console.error(`❌ Failed to record driver notification: ${notifError.message}`);
+                            console.error(notifError.stack);
+                            // Continue even if recording fails
+                        }
+                    } catch (emitError) {
+                        console.error(`❌ Error emitting to socket: ${emitError.message}`);
+                        console.error(emitError.stack);
                     }
                 } else {
-                    debug(`Driver ${riderId} doesn't have an active socket connection`);
+                    console.log(`❌ Driver ${riderId} doesn't have an active socket connection`);
                     unavailableDrivers.push(riderId);
+                    console.log(`Added driver ${riderId} to unavailable list. Total unavailable: ${unavailableDrivers.length}`);
+
+                    // Optional: Try sending push notification instead
+                    console.log(`Could attempt push notification for driver ${riderId} as fallback`);
                 }
             }
+
+            console.log('\n=== RIDE REQUEST NOTIFICATION SUMMARY ===');
+            console.log(`Total drivers processed: ${validRiders.length}`);
+            console.log(`Drivers notified via socket: ${notifiedDrivers.length}`);
+            console.log(`Drivers without active connection: ${unavailableDrivers.length}`);
+            console.log('Notified driver IDs:', notifiedDrivers);
+            console.log('Unavailable driver IDs:', unavailableDrivers);
+            console.log('=== NOTIFICATION PROCESS COMPLETED ===\n');
+
+            // Return summary object for any further processing
+            const notificationSummary = {
+                totalDrivers: validRiders.length,
+                notifiedCount: notifiedDrivers.length,
+                unavailableCount: unavailableDrivers.length,
+                notifiedDriverIds: notifiedDrivers,
+                unavailableDriverIds: unavailableDrivers
+            };
+
+            debug(`Notification summary: ${JSON.stringify(notificationSummary)}`);
 
             debug(`Notified ${notifiedDrivers.length} drivers, ${unavailableDrivers.length} drivers without active connections`);
 
