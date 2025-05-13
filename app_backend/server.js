@@ -604,49 +604,57 @@ io.on('connection', (socket) => {
      * Updates ride status to 'completed' and notifies the driver
      */
 
-    socket.on('ride_end_by_rider', async (data) => {
-        // console.log("End krdo", data)
-        try {
-            const ride_id = data?.rideDetails.ride?.rideDetails?._id;
-            const user = data?.rideDetails.ride?.rideDetails?.user;
+  socket.on('ride_end_by_rider', async (data) => {
+    try {
+        const ride_id = data?.rideDetails?.ride?.rideDetails?._id;
+        const user = data?.rideDetails?.ride?.rideDetails?.user;
 
-            // 🚫 Invalid data check
-            if (!user || !ride_id) {
-                console.error(`[${new Date().toISOString()}] Invalid ride_end_by_rider data`, data);
-                return;
-            }
-
-            const userSocketId = userSocketMap.get(String(user));
-            const foundUser = await userModel.findOne({
-                _id: user
-            })
-            if (userSocketId) {
-                io.to(userSocketId).emit('your_ride_is_mark_complete', {
-                    message: 'Rider marked your ride as complete. Please confirm if it’s correct.',
-                    rideId: ride_id,
-                });
-
-
-                const userToken = foundUser?.fcmToken;
-                const title = 'Ride Completed! Please Make Your Payment';
-                const body = 'Your ride has ended successfully. Kindly proceed to make the payment. Thank you for riding with us!';
-
-                await sendNotification(userToken, title, body);
-
-                console.log(`[${new Date().toISOString()}] Ride end confirmation sent to user: ${user}`);
-            } else {
-                const userToken = foundUser?.fcmToken;
-                const title = 'Ride Completed! Please Make Your Payment';
-                const body = 'Your ride has ended successfully. Kindly proceed to make the payment. Thank you for riding with us!';
-
-                await sendNotification(userToken, title, body);
-
-                console.log(`[${new Date().toISOString()}] No active socket found for user: ${user}`);
-            }
-        } catch (error) {
-            console.error(`[${new Date().toISOString()}] Error in ride_end_by_rider:`, error);
+        // 🚫 Invalid data check
+        if (!user || !ride_id) {
+            console.error(`[${new Date().toISOString()}] Invalid ride_end_by_rider data`, data);
+            return;
         }
-    });
+
+        const userSocketId = userSocketMap.get(String(user));
+        const foundUser = await userModel.findOne({ _id: user });
+
+        const userToken = foundUser?.fcmToken;
+        const title = 'Ride Completed! Please Make Your Payment';
+        const body = 'Your ride has ended successfully. Kindly proceed to make the payment. Thank you for riding with us!';
+
+        if (userSocketId) {
+            io.to(userSocketId).emit('your_ride_is_mark_complete', {
+                message: 'Rider marked your ride as complete. Please confirm if it’s correct.',
+                rideId: ride_id,
+            });
+
+            try {
+                if (userToken) {
+                    await sendNotification(userToken, title, body);
+                    console.log(`[${new Date().toISOString()}] Notification sent to user (via socket): ${user}`);
+                }
+            } catch (notifError) {
+                console.warn(`[${new Date().toISOString()}] Notification error (socket user):`, notifError);
+            }
+
+        } else {
+            try {
+                if (userToken) {
+                    await sendNotification(userToken, title, body);
+                    console.log(`[${new Date().toISOString()}] Notification sent to user (offline): ${user}`);
+                }
+            } catch (notifError) {
+                console.warn(`[${new Date().toISOString()}] Notification error (offline user):`, notifError);
+            }
+
+            console.log(`[${new Date().toISOString()}] No active socket found for user: ${user}`);
+        }
+
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Error in ride_end_by_rider handler:`, error);
+    }
+});
+
 
     socket.on('ride_end_by_user_', async (data) => {
         try {

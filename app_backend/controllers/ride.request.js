@@ -10,6 +10,7 @@ const RideRequestNotification = require('../models/RideRequestNotification');
 const rideRequestModel = require('../models/ride.request.model');
 const SendWhatsAppMessageNormal = require('../utils/normalWhatsapp');
 const User = require('../models/normal_user/User.model');
+const sendNotification = require('../utils/sendNotification');
 exports.createRequest = async (req, res) => {
     try {
         const user = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
