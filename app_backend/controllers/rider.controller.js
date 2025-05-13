@@ -10,6 +10,8 @@ const moment = require('moment');
 const momentTz = require('moment-timezone');
 
 const fs = require('fs');
+const path = require("path");
+
 const Bonus_Model = require('../models/Bonus_Model/Bonus_Model');
 const Parcel_Request = require('../models/Parcel_Models/Parcel_Request');
 const { sendDltMessage } = require('../utils/DltMessageSend');
@@ -543,109 +545,111 @@ exports.changeLocation = async (req, res) => {
 
 exports.uploadDocuments = async (req, res) => {
   try {
-    console.log("➡️ Endpoint '/uploadDocuments' hit");
+    console.log("➡️ /uploadDocuments called");
 
     const userId = req.user?.userId;
-    console.log("✅ Extracted userId:", userId);
+    if (!userId) {
+      console.log("❌ No user ID found");
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
 
+    console.log("✅ Extracted userId:", userId);
     const findRider = await Rider.findById(userId);
     if (!findRider) {
-      console.log("❌ Rider not found for userId:", userId);
+      console.log("❌ Rider not found");
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
     if (findRider.isDocumentUpload && findRider.DocumentVerify === true) {
-      console.log("⚠️ Documents already uploaded and verified.");
       return res.status(400).json({
         success: false,
-        message: "Documents already uploaded and verified, please login."
+        message: "Documents already uploaded and verified. Please login."
       });
     }
 
-    if (!req.files || req.files.length === 0) {
+    const uploadedDocs = {};
+    const files = req.files || [];
+
+    if (files.length === 0) {
       console.log("❌ No files found in request");
       return res.status(400).json({ success: false, message: "No files uploaded." });
     }
 
-    const uploadedDocs = {};
-    const failedDocs = [];
-
-    console.log("📂 Files received:", req.files.map(f => f.originalname));
-
-    for (const file of req.files) {
+    for (const file of files) {
       try {
-        const fileSizeInKB = file.size / 1024;
-        console.log(`📄 Processing file: ${file.originalname} | Size: ${fileSizeInKB.toFixed(2)}KB`);
+        const fileSizeKB = file.size / 1024;
+        console.log(`📄 File received: ${file.originalname} (${fileSizeKB.toFixed(2)}KB)`);
 
-        if (fileSizeInKB > 1000) {
-          await fs.unlink(file.path);
-          console.log(`❌ File too large: ${file.originalname}, deleted from disk`);
-          failedDocs.push({ name: file.originalname, reason: 'File too large' });
-          continue;
+        if (fileSizeKB > 1024) {
+          console.log("⚠️ File too large:", file.originalname);
+          await fs.unlink(file.path).catch(() => {});
+          return res.status(400).json({
+            success: false,
+            message: `${file.originalname} is larger than 1MB`
+          });
         }
 
-        console.log(`☁️ Uploading ${file.originalname} to Cloudinary`);
-        const uploadResponse = await cloudinary.uploader.upload(file.path, {
+        console.log("☁️ Uploading to Cloudinary:", file.originalname);
+        const uploaded = await cloudinary.uploader.upload(file.path, {
           folder: "rider_documents",
           quality: "auto:low",
-          format: "jpg",
-          timeout: 120000, // 2 min timeout for large uploads
+          format: "jpg"
         });
 
-        console.log(`✅ Uploaded: ${file.originalname} -> ${uploadResponse.secure_url}`);
+        console.log("✅ Uploaded:", uploaded.secure_url);
 
-        if (file.originalname.includes('dl')) uploadedDocs.license = uploadResponse.secure_url;
-        if (file.originalname.includes('rc')) uploadedDocs.rc = uploadResponse.secure_url;
-        if (file.originalname.includes('insurance')) uploadedDocs.insurance = uploadResponse.secure_url;
-        if (file.originalname.includes('aadharBack')) uploadedDocs.aadharBack = uploadResponse.secure_url;
-        if (file.originalname.includes('aadharFront')) uploadedDocs.aadharFront = uploadResponse.secure_url;
-        if (file.originalname.includes('pancard')) uploadedDocs.pancard = uploadResponse.secure_url;
-        if (file.originalname.includes('profile')) uploadedDocs.profile = uploadResponse.secure_url;
+        if (file.originalname.includes("dl")) uploadedDocs.license = uploaded.secure_url;
+        if (file.originalname.includes("rc")) uploadedDocs.rc = uploaded.secure_url;
+        if (file.originalname.includes("insurance")) uploadedDocs.insurance = uploaded.secure_url;
+        if (file.originalname.includes("aadharBack")) uploadedDocs.aadharBack = uploaded.secure_url;
+        if (file.originalname.includes("aadharFront")) uploadedDocs.aadharFront = uploaded.secure_url;
+        if (file.originalname.includes("pancard")) uploadedDocs.pancard = uploaded.secure_url;
+        if (file.originalname.includes("profile")) uploadedDocs.profile = uploaded.secure_url;
 
+        // Delete the temp file
         try {
           await fs.unlink(file.path);
-          console.log(`🗑️ Deleted local file: ${file.originalname}`);
-        } catch (unlinkErr) {
-          console.warn(`⚠️ Failed to delete file ${file.originalname}:`, unlinkErr.message);
+          console.log(`🗑️ Deleted: ${file.originalname}`);
+        } catch (delErr) {
+          console.warn("⚠️ Could not delete temp file:", file.originalname, delErr.message);
         }
-
-      } catch (err) {
-        console.error(`❌ Failed processing file ${file.originalname}:`, err.message);
-        failedDocs.push({ name: file.originalname, reason: err.message });
-
-        try {
-          await fs.unlink(file.path); // attempt cleanup if exists
-        } catch (e) {
-          console.warn(`⚠️ Could not delete failed file ${file.originalname}:`, e.message);
-        }
-        continue;
+      } catch (fileErr) {
+        console.error("❌ Error processing file:", file.originalname, fileErr);
+        return res.status(500).json({
+          success: false,
+          message: `Failed to process ${file.originalname}`,
+          error: fileErr.message
+        });
       }
     }
 
-    console.log("📝 Updating rider document fields...");
-    findRider.documents = { ...findRider.documents, ...uploadedDocs };
+    findRider.documents = uploadedDocs;
     findRider.isDocumentUpload = true;
     findRider.isProfileComplete = true;
-    await findRider.save();
-    console.log("✅ Rider document fields updated successfully.");
+
+    try {
+      await findRider.save();
+      console.log("✅ Rider saved successfully");
+    } catch (dbErr) {
+      console.error("❌ Error saving rider:", dbErr);
+      return res.status(500).json({ success: false, message: "Failed to save documents", error: dbErr.message });
+    }
 
     return res.status(201).json({
       success: true,
-      message: "Documents processed",
-      uploaded: uploadedDocs,
-      failed: failedDocs.length > 0 ? failedDocs : null
+      message: "Documents uploaded successfully",
+      data: uploadedDocs
     });
 
-  } catch (error) {
-    console.error("❌ Fatal error during document upload:", error);
+  } catch (mainErr) {
+    console.error("❌ Unexpected error in /uploadDocuments:", mainErr);
     return res.status(500).json({
       success: false,
-      message: "Documents upload failed",
-      error: error.message
+      message: "Server error",
+      error: mainErr.message
     });
   }
 };
-
 
 
 
