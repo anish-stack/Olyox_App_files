@@ -496,30 +496,58 @@ exports.changeLocation = async (req, res) => {
 
 exports.uploadDocuments = async (req, res) => {
   try {
-    const userId = req.user.userId;
-    const findRider = await Rider.findById(userId);
+    console.log("➡️ Endpoint '/uploadDocuments' hit");
 
+    const userId = req.user?.userId;
+    console.log("✅ Extracted userId:", userId);
+
+    const findRider = await Rider.findById(userId);
     if (!findRider) {
+      console.log("❌ Rider not found for userId:", userId);
       return res.status(404).json({ success: false, message: "User not found" });
     }
+    console.log("✅ Rider found:", findRider._id);
 
     if (findRider.isDocumentUpload && findRider.DocumentVerify === true) {
-      return res.status(400).json({ success: false, message: "Documents already uploaded and verified, please login." });
+      console.log("⚠️ Documents already uploaded and verified.");
+      return res.status(400).json({
+        success: false,
+        message: "Documents already uploaded and verified, please login."
+      });
     }
 
     const uploadedDocs = {};
 
+    if (!req.files || req.files.length === 0) {
+      console.log("❌ No files found in request");
+      return res.status(400).json({ success: false, message: "No files uploaded." });
+    }
+
+    console.log("📂 Files received:", req.files.map(f => f.originalname));
+
     for (const file of req.files) {
       const fileSizeInKB = file.size / 1024;
+      console.log(`📄 Processing file: ${file.originalname} | Size: ${fileSizeInKB.toFixed(2)}KB`);
+
       if (fileSizeInKB > 1000) {
         fs.unlinkSync(file.path);
+        console.log(`❌ File too large: ${file.originalname}, deleted from disk`);
         return res.status(400).json({
           success: false,
           message: `File ${file.originalname} is too large. Max size allowed is 1MB.`
         });
       }
-      const uploadResponse = await cloudinary.uploader.upload(file.path, { folder: "rider_documents", quality: "auto:low", format: "jpg" });
 
+      console.log(`☁️ Uploading ${file.originalname} to Cloudinary`);
+      const uploadResponse = await cloudinary.uploader.upload(file.path, {
+        folder: "rider_documents",
+        quality: "auto:low",
+        format: "jpg"
+      });
+
+      console.log(`✅ Uploaded: ${file.originalname} -> ${uploadResponse.secure_url}`);
+
+      // Assign based on file name
       if (file.originalname.includes('dl')) uploadedDocs.license = uploadResponse.secure_url;
       if (file.originalname.includes('rc')) uploadedDocs.rc = uploadResponse.secure_url;
       if (file.originalname.includes('insurance')) uploadedDocs.insurance = uploadResponse.secure_url;
@@ -527,20 +555,34 @@ exports.uploadDocuments = async (req, res) => {
       if (file.originalname.includes('aadharFront')) uploadedDocs.aadharFront = uploadResponse.secure_url;
       if (file.originalname.includes('pancard')) uploadedDocs.pancard = uploadResponse.secure_url;
       if (file.originalname.includes('profile')) uploadedDocs.profile = uploadResponse.secure_url;
+
       fs.unlinkSync(file.path);
+      console.log(`🗑️ Deleted local file: ${file.originalname}`);
     }
 
+    console.log("📝 Updating rider document fields...");
     findRider.documents = uploadedDocs;
     findRider.isDocumentUpload = true;
     findRider.isProfileComplete = true;
     await findRider.save();
+    console.log("✅ Rider document fields updated successfully.");
 
-    res.status(201).json({ success: true, message: "Documents uploaded successfully", data: uploadedDocs });
+    return res.status(201).json({
+      success: true,
+      message: "Documents uploaded successfully",
+      data: uploadedDocs
+    });
+
   } catch (error) {
-    console.error("Error uploading documents:", error);
-    res.status(500).json({ success: false, message: "Documents upload failed", error: error.message });
+    console.error("❌ Error during document upload:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Documents upload failed",
+      error: error.message
+    });
   }
 };
+
 
 
 exports.uploadPaymentQr = async (req, res) => {

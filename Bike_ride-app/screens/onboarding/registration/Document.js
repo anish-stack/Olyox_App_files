@@ -249,7 +249,7 @@ export default function Documents() {
         );
         
         // Navigate to waiting screen or next step
-        router.navigate('/wait_screen');
+        router.navigate('wait_screen');
       } else {
         throw new Error(response.data.message || 'Upload failed');
       }
