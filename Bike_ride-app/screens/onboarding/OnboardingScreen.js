@@ -12,10 +12,11 @@ import { useNavigation } from "@react-navigation/native"
 const OnboardingScreen = () => {
   const [currentScreen, setCurrentScreen] = useState("onboarding")
   const [loginNumber, setLoginNumber] = useState('')
+  const [type, setType] = useState('')
   const [registrationStep, setRegistrationStep] = useState(1)
-const navigation = useNavigation()
+  const navigation = useNavigation()
 
- 
+
   const handleNextStep = async () => {
     if (validateStep(registrationStep)) {
       if (registrationStep < 2) {
@@ -36,7 +37,7 @@ const navigation = useNavigation()
     }
   }
 
-  
+
 
 
 
@@ -50,17 +51,18 @@ const navigation = useNavigation()
         <View style={styles.content}>
           {currentScreen === "onboarding" && (
             <OnboardingWelcome
-            onRegister={()=>navigation.navigate('enter_bh')}
-            onComplete={()=>navigation.navigate('register')}
+              onRegister={() => navigation.navigate('enter_bh')}
+              onComplete={() => navigation.navigate('register')}
               onLogin={() => setCurrentScreen("login")}
             />
           )}
 
-          {currentScreen === "login" && <LoginForm onLogin={(number) => {
+          {currentScreen === "login" && <LoginForm onLogin={(number, otpType) => {
             setLoginNumber(number)
             setCurrentScreen("otp")
+            setType(otpType)
           }} />}
-          {currentScreen === "otp" && <OtpScreen number={loginNumber} onVerify={() => setCurrentScreen("onboarding")} />}
+          {currentScreen === "otp" && <OtpScreen number={loginNumber} type={type} onVerify={() => setCurrentScreen("onboarding")} />}
         </View>
       </LinearGradient>
     </SafeAreaView>

@@ -248,7 +248,7 @@ const CabHome = () => {
       const isReconnectingHard = await initializeSocket({
         userId: id,
       })
-
+await onHardRefresh()
       // Simulate a delay to show the animation
       setTimeout(() => {
         setShowReconnectAnimation(false)
