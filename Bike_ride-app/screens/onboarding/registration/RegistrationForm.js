@@ -167,8 +167,8 @@ export default function RegistrationForm() {
     setError("")
 
     try {
-      // const endpoint = `${MAIN_API_BASE_URL}/rider/register`
-      const endpoint = `http://192.168.1.10:3100/api/v1/rider/register`
+      const endpoint = `${MAIN_API_BASE_URL}/rider/register`
+      // const endpoint = `http://192.168.1.10:3100/api/v1/rider/register`
 
 
       const payload = {

@@ -266,7 +266,7 @@ export default function RegisterWithBh() {
     setSubmitting(true);
     try {
       const response = await axios.post(
-        'http://192.168.1.10:7000/api/v1/register_vendor',
+        'https://webapi.olyox.com/api/v1/register_vendor',
         formData
       );
 

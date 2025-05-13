@@ -58,7 +58,7 @@ const BhOtpVerification = () => {
         setLoading(true);
         try {
             const response = await axios.post(
-                "http://192.168.1.10:7000/api/v1/resend_Otp",
+                "https://webapi.olyox.com/api/v1/resend_Otp",
                 { email, type:'email' }
             );
             Alert.alert("Success", response.data.message || "OTP sent successfully!");
