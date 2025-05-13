@@ -12,6 +12,7 @@ const momentTz = require('moment-timezone');
 const fs = require('fs');
 const Bonus_Model = require('../models/Bonus_Model/Bonus_Model');
 const Parcel_Request = require('../models/Parcel_Models/Parcel_Request');
+const { sendDltMessage } = require('../utils/DltMessageSend');
 cloudinary.config({
   cloud_name: 'dsd8nepa5',
   api_key: '634914486911329',
@@ -159,7 +160,8 @@ exports.updateRechargeDetails = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { number } = req.body;
+    const { number, otpType } = req.body;
+    console.log("otpType", otpType)
 
     if (!number) {
       return res.status(400).json({
@@ -231,8 +233,15 @@ exports.login = async (req, res) => {
     partner.otp = otp;
     await partner.save();
 
-    const otpMessage = `Your OTP for CaB registration is: ${otp}`;
-    await SendWhatsAppMessage(otpMessage, number);
+
+    if (otpType === 'text') {
+      await sendDltMessage(otp, number)
+    } else {
+
+      const otpMessage = `Your OTP for CaB registration is: ${otp}`;
+      await SendWhatsAppMessage(otpMessage, number);
+    }
+
 
     res.status(201).json({
       success: true,

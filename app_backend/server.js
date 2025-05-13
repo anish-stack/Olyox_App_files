@@ -80,10 +80,10 @@ app.set("socketio", io);
 
 // Middleware Setup
 app.use(cors({
-  origin: (origin, callback) => {
-    callback(null, origin); // allow any origin
-  },
-  credentials: true, // allow cookies, authorization headers, etc.
+    origin: (origin, callback) => {
+        callback(null, origin); // allow any origin
+    },
+    credentials: true, // allow cookies, authorization headers, etc.
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -184,51 +184,58 @@ io.on('connection', (socket) => {
             const updatedRide = await ChangeRideRequestByRider(io, data.data);
             console.log(`[${new Date().toISOString()}] Ride status updated:`, updatedRide.rideStatus);
 
-            console.log("updatedRide", updatedRide?.temp_ride_id)
-            console.log("updatedRide temp_ride_id", updatedRide)
+            const populatedRide = await rideRequestModel
+                .findById(data?.data?.ride_request_id)
+                .populate('rider');
 
-            const populatedRide = await rideRequestModel.findById(data?.data?.ride_request_id).populate('rider');
             if (updatedRide.rideStatus === 'accepted') {
-                // === Notify User ===
                 const userId = String(updatedRide.user);
                 const userSocketId = userSocketMap.get(userId);
 
                 console.log(`[${new Date().toISOString()}] Notifying user ${userId}, socket found: ${Boolean(userSocketId)}`);
+
+                const userToken = populatedRide?.userFcm;
+                const title = '🎉 Ride Accepted!';
+                const body = `🎉 Great news! ${populatedRide?.rider?.name} is on the way to pick you up. Get ready for a smooth ride ahead! 🚗✨`;
 
                 if (userSocketId) {
                     io.to(userSocketId).emit('ride_accepted_message', {
                         message: 'Your ride request has been accepted!',
                         rideDetails: updatedRide,
                     });
-                    if (populatedRide.userFcm) {
-                        const userToken = populatedRide?.userFcm
-                        const title = '🎉 Ride Accepted!';
-                        const body = `🎉 Great news! ${populatedRide?.rider?.name} is on the way to pick you up. Get ready for a smooth ride ahead! 🚗✨`;
 
-                        await sendNotification(userToken, title, body, {
-                            event: 'RIDE_ACCEPTED',
-                            eta: 5, // in minutes
-                            message: 'Your ride request has been accepted!',
-                            rideDetails: updatedRide,
-                            screen: 'TrackRider',
-                            riderId: populatedRide?.rider?.name, // optional, if needed for navigation or context
-                        });
-
+                    if (userToken) {
+                        try {
+                            await sendNotification(userToken, title, body, {
+                                event: 'RIDE_ACCEPTED',
+                                eta: 5,
+                                message: 'Your ride request has been accepted!',
+                                rideDetails: updatedRide,
+                                screen: 'TrackRider',
+                                riderId: populatedRide?.rider?.name,
+                            });
+                        } catch (fcmError) {
+                            console.warn(`[${new Date().toISOString()}] Failed to send FCM to user ${userId}:`, fcmError);
+                        }
                     }
+
                     console.log(`[${new Date().toISOString()}] Acceptance notification sent to user: ${userId}`);
                 } else {
-                    const userToken = populatedRide?.userFcm
-                    const title = '🎉 Ride Accepted!';
-                    const body = `🎉 Great news! ${populatedRide?.rider?.name} is on the way to pick you up. Get ready for a smooth ride ahead! 🚗✨`;
+                    if (userToken) {
+                        try {
+                            await sendNotification(userToken, title, body, {
+                                event: 'RIDE_ACCEPTED',
+                                eta: 5,
+                                message: 'Your ride request has been accepted!',
+                                rideDetails: updatedRide,
+                                screen: 'TrackRider',
+                                riderId: populatedRide?.rider?.name,
+                            });
+                        } catch (fcmError) {
+                            console.warn(`[${new Date().toISOString()}] Failed to send FCM (no socket) to user ${userId}:`, fcmError);
+                        }
+                    }
 
-                    await sendNotification(userToken, title, body, {
-                        event: 'RIDE_ACCEPTED',
-                        eta: 5, // in minutes
-                        message: 'Your ride request has been accepted!',
-                        rideDetails: updatedRide,
-                        screen: 'TrackRider',
-                        riderId: populatedRide?.rider?.name,
-                    });
                     console.log(`[${new Date().toISOString()}] No active socket found for user: ${userId}`);
                 }
 
@@ -256,7 +263,6 @@ io.on('connection', (socket) => {
             socket.emit('ride_error', { message: 'Ride has already been accepted by another rider' });
         }
     });
-
 
 
     socket.on('ride_rejected', async (data) => {
@@ -448,27 +454,48 @@ io.on('connection', (socket) => {
                     const foundUser = await userModel.findOne({
                         _id: ride.user?._id
                     })
-                    if (userSocketId) {
-                        console.log("📡 Sending cancel notification to user:", userSocketId);
-                        io.to(userSocketId).emit('ride_cancelled_message', {
-                            message: "🚕 Ride cancelled by driver",
-                            rideDetails: rideData,
-                        });
-                        const userToken = foundUser?.fcmToken;
-                        const title = 'Ride Cancelled by Driver';
-                        const body = 'Unfortunately, your driver has cancelled the ride. We apologize for the inconvenience. Please try booking another ride.';
+                   if (userSocketId) {
+    console.log("📡 Sending cancel notification to user:", userSocketId);
+    io.to(userSocketId).emit('ride_cancelled_message', {
+        message: "🚕 Ride cancelled by driver",
+        rideDetails: rideData,
+    });
 
-                        await sendNotification(userToken, title, body);
+    const userToken = foundUser?.fcmToken;
+    const title = 'Ride Cancelled by Driver';
+    const body = 'Unfortunately, your driver has cancelled the ride. We apologize for the inconvenience. Please try booking another ride.';
 
-                        console.log("mesage sen to user")
-                    } else {
-                        const userToken = foundUser?.fcmToken;
-                        const title = 'Ride Cancelled by Driver';
-                        const body = 'Unfortunately, your driver has cancelled the ride. We apologize for the inconvenience. Please try booking another ride.';
+    if (userToken) {
+        try {
+            await sendNotification(userToken, title, body);
+            console.log("✅ FCM notification sent to user.");
+        } catch (error) {
+            console.error("❌ Error sending FCM to user:", error);
+        }
+    } else {
+        console.warn("⚠️ No FCM token found for user.");
+    }
 
-                        await sendNotification(userToken, title, body)
-                        console.warn("⚠️ User socket ID not found. User might be offline.");
-                    }
+    console.log("📨 Message sent to user via socket.");
+} else {
+    const userToken = foundUser?.fcmToken;
+    const title = 'Ride Cancelled by Driver';
+    const body = 'Unfortunately, your driver has cancelled the ride. We apologize for the inconvenience. Please try booking another ride.';
+
+    if (userToken) {
+        try {
+            await sendNotification(userToken, title, body);
+            console.log("✅ FCM notification sent to offline user.");
+        } catch (error) {
+            console.error("❌ Error sending FCM to offline user:", error);
+        }
+    } else {
+        console.warn("⚠️ No FCM token found for offline user.");
+    }
+
+    console.warn("⚠️ User socket ID not found. User might be offline.");
+}
+
                 }
             } else {
                 console.error("❌ Ride cancellation failed:", dataOfRide.message);
@@ -512,27 +539,39 @@ io.on('connection', (socket) => {
                 console.error(`[${new Date().toISOString()}] Rider not found for user ID: ${data.data.user}, request ID: ${data.data._id}`);
 
                 if (userSocketId) {
-                    const userToken = data?.data?.userFcm
-                    const title = 'You can retry in a few moments.'
-                    const body = 'Sorry, no riders are currently available nearby. Please try again shortly.'
-                    await sendNotification(userToken, title, body, {
-                        event: "NO_RIDERS_AVAILABLE",
-                        retryAfter: 120,
-                        screen: "RetryBooking"
-                    })
+                    try {
+                        const userToken = data?.data?.userFcm;
+                        const title = 'You can retry in a few moments.';
+                        const body = 'Sorry, no riders are currently available nearby. Please try again shortly.';
+
+                        await sendNotification(userToken, title, body, {
+                            event: "NO_RIDERS_AVAILABLE",
+                            retryAfter: 120,
+                            screen: "RetryBooking"
+                        });
+                    } catch (fcmError) {
+                        console.warn(`[${new Date().toISOString()}] Failed to send FCM notification:`, fcmError);
+                    }
+
                     io.to(userSocketId).emit('sorry_no_rider_available', {
                         success: false,
                         message: "Sorry, no riders are currently available nearby. Please try again shortly.",
                         retrySuggestion: "You can retry in a few moments."
                     });
                 } else {
-                    // push a fcm notification
-                    const userToken = data?.data?.userFcm
-                    const title = 'You can retry in a few moments.'
-                    const body = 'Sorry, no riders are currently available nearby. Please try again shortly.'
-                    await sendNotification(userToken, title, body)
+                    try {
+                        const userToken = data?.data?.userFcm;
+                        const title = 'You can retry in a few moments.';
+                        const body = 'Sorry, no riders are currently available nearby. Please try again shortly.';
+
+                        await sendNotification(userToken, title, body);
+                    } catch (fcmError) {
+                        console.warn(`[${new Date().toISOString()}] Failed to send FCM notification (no socket):`, fcmError);
+                    }
+
                     console.warn(`Socket ID not found for user: ${data.data.user}`);
                 }
+
             }
 
         } catch (error) {
@@ -572,23 +611,37 @@ io.on('connection', (socket) => {
                         message: 'Your ride has started!',
                         rideDetails: data,
                     });
-                    if (foundUser?.fcmToken) {
-                        const userToken = foundUser?.fcmToken
-                        const title = 'Your Ride Has Started! Stay Safe!';
-                        const body = 'Your ride has officially started. Your driver is on the way. Please stay safe and be careful during your journey. We wish you a smooth ride!';
 
-                        await sendNotification(userToken, title, body);
+                    try {
+                        if (foundUser?.fcmToken) {
+                            const userToken = foundUser?.fcmToken;
+                            const title = 'Your Ride Has Started! Stay Safe!';
+                            const body = 'Your ride has officially started. Your driver is on the way. Please stay safe and be careful during your journey. We wish you a smooth ride!';
+
+                            await sendNotification(userToken, title, body);
+                        }
+                    } catch (fcmError) {
+                        console.warn(`[${new Date().toISOString()}] Failed to send ride start FCM:`, fcmError);
                     }
+
                     console.log(`[${new Date().toISOString()}] Start notification sent to user: ${userId}`);
                 } else {
-                    const userToken = foundUser?.fcmToken
-                    const title = 'Your Ride Has Started! Stay Safe!';
-                    const body = 'Your ride has officially started. Your driver is on the way. Please stay safe and be careful during your journey. We wish you a smooth ride!';
+                    try {
+                        if (foundUser?.fcmToken) {
+                            const userToken = foundUser?.fcmToken;
+                            const title = 'Your Ride Has Started! Stay Safe!';
+                            const body = 'Your ride has officially started. Your driver is on the way. Please stay safe and be careful during your journey. We wish you a smooth ride!';
 
-                    await sendNotification(userToken, title, body);
+                            await sendNotification(userToken, title, body);
+                        }
+                    } catch (fcmError) {
+                        console.warn(`[${new Date().toISOString()}] Failed to send ride start FCM (no socket):`, fcmError);
+                    }
+
                     console.log(`[${new Date().toISOString()}] No active socket found for user: ${userId}`);
                 }
-            } else {
+            }
+            else {
                 console.error(`[${new Date().toISOString()}] Error starting ride:`, rideStartResult);
                 socket.emit('ride_error', { message: 'Failed to start ride' });
             }
@@ -604,56 +657,56 @@ io.on('connection', (socket) => {
      * Updates ride status to 'completed' and notifies the driver
      */
 
-  socket.on('ride_end_by_rider', async (data) => {
-    try {
-        const ride_id = data?.rideDetails?.ride?.rideDetails?._id;
-        const user = data?.rideDetails?.ride?.rideDetails?.user;
+    socket.on('ride_end_by_rider', async (data) => {
+        try {
+            const ride_id = data?.rideDetails?.ride?.rideDetails?._id;
+            const user = data?.rideDetails?.ride?.rideDetails?.user;
 
-        // 🚫 Invalid data check
-        if (!user || !ride_id) {
-            console.error(`[${new Date().toISOString()}] Invalid ride_end_by_rider data`, data);
-            return;
-        }
-
-        const userSocketId = userSocketMap.get(String(user));
-        const foundUser = await userModel.findOne({ _id: user });
-
-        const userToken = foundUser?.fcmToken;
-        const title = 'Ride Completed! Please Make Your Payment';
-        const body = 'Your ride has ended successfully. Kindly proceed to make the payment. Thank you for riding with us!';
-
-        if (userSocketId) {
-            io.to(userSocketId).emit('your_ride_is_mark_complete', {
-                message: 'Rider marked your ride as complete. Please confirm if it’s correct.',
-                rideId: ride_id,
-            });
-
-            try {
-                if (userToken) {
-                    await sendNotification(userToken, title, body);
-                    console.log(`[${new Date().toISOString()}] Notification sent to user (via socket): ${user}`);
-                }
-            } catch (notifError) {
-                console.warn(`[${new Date().toISOString()}] Notification error (socket user):`, notifError);
+            // 🚫 Invalid data check
+            if (!user || !ride_id) {
+                console.error(`[${new Date().toISOString()}] Invalid ride_end_by_rider data`, data);
+                return;
             }
 
-        } else {
-            try {
-                if (userToken) {
-                    await sendNotification(userToken, title, body);
-                    console.log(`[${new Date().toISOString()}] Notification sent to user (offline): ${user}`);
+            const userSocketId = userSocketMap.get(String(user));
+            const foundUser = await userModel.findOne({ _id: user });
+
+            const userToken = foundUser?.fcmToken;
+            const title = 'Ride Completed! Please Make Your Payment';
+            const body = 'Your ride has ended successfully. Kindly proceed to make the payment. Thank you for riding with us!';
+
+            if (userSocketId) {
+                io.to(userSocketId).emit('your_ride_is_mark_complete', {
+                    message: 'Rider marked your ride as complete. Please confirm if it’s correct.',
+                    rideId: ride_id,
+                });
+
+                try {
+                    if (userToken) {
+                        await sendNotification(userToken, title, body);
+                        console.log(`[${new Date().toISOString()}] Notification sent to user (via socket): ${user}`);
+                    }
+                } catch (notifError) {
+                    console.warn(`[${new Date().toISOString()}] Notification error (socket user):`, notifError);
                 }
-            } catch (notifError) {
-                console.warn(`[${new Date().toISOString()}] Notification error (offline user):`, notifError);
+
+            } else {
+                try {
+                    if (userToken) {
+                        await sendNotification(userToken, title, body);
+                        console.log(`[${new Date().toISOString()}] Notification sent to user (offline): ${user}`);
+                    }
+                } catch (notifError) {
+                    console.warn(`[${new Date().toISOString()}] Notification error (offline user):`, notifError);
+                }
+
+                console.log(`[${new Date().toISOString()}] No active socket found for user: ${user}`);
             }
 
-            console.log(`[${new Date().toISOString()}] No active socket found for user: ${user}`);
+        } catch (error) {
+            console.error(`[${new Date().toISOString()}] Error in ride_end_by_rider handler:`, error);
         }
-
-    } catch (error) {
-        console.error(`[${new Date().toISOString()}] Error in ride_end_by_rider handler:`, error);
-    }
-});
+    });
 
 
     socket.on('ride_end_by_user_', async (data) => {
@@ -831,30 +884,38 @@ io.on('connection', (socket) => {
                 console.log(`[${new Date().toISOString()}] Payment recorded successfully for user: ${data.ride.user}`);
 
                 const userSocketId = userSocketMap.get(String(data.ride.user));
-                const foundUser = await userModel.findOne({
-                    _id: data.ride.user
-                })
+                const foundUser = await userModel.findOne({ _id: data.ride.user });
+
+                const title = 'Payment Received – Thank You!';
+                const body = 'We’ve received your payment successfully. Please take a moment to rate your ride experience. Your feedback helps us improve!';
+
                 if (userSocketId) {
                     io.to(userSocketId).emit('give-rate', {
                         message: 'Your payment has been received. Please rate your ride.',
                         rideDetails: data,
                     });
-                    const title = 'Payment Received – Thank You!';
-                    const body = 'We’ve received your payment successfully. Please take a moment to rate your ride experience. Your feedback helps us improve!';
 
-                    await sendNotification(foundUser?.fcmToken, title, body);
+                    try {
+                        await sendNotification(foundUser?.fcmToken, title, body);
+                    } catch (fcmError) {
+                        console.warn(`[${new Date().toISOString()}] Failed to send FCM notification to socket user ${data.ride.user}:`, fcmError);
+                    }
+
                     console.log(`[${new Date().toISOString()}] Rating request sent to user: ${data.ride.user}`);
                 } else {
-                    const title = 'Payment Received – Thank You!';
-                    const body = 'We’ve received your payment successfully. Please take a moment to rate your ride experience. Your feedback helps us improve!';
+                    try {
+                        await sendNotification(foundUser?.fcmToken, title, body);
+                    } catch (fcmError) {
+                        console.warn(`[${new Date().toISOString()}] Failed to send FCM notification (no socket) to user ${data.ride.user}:`, fcmError);
+                    }
 
-                    await sendNotification(foundUser?.fcmToken, title, body);
                     console.log(`[${new Date().toISOString()}] No active socket found for user: ${data.ride.user}`);
                 }
             } else {
                 console.error(`[${new Date().toISOString()}] Error recording payment:`, collectResult.error);
                 socket.emit('payment_error', { message: 'Failed to process payment confirmation' });
             }
+
         } catch (error) {
             console.error(`[${new Date().toISOString()}] Error in isPay:`, error);
             socket.emit('payment_error', { message: 'Failed to process payment' });
