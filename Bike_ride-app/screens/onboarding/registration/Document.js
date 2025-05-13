@@ -233,6 +233,7 @@ export default function Documents() {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`,
         },
+        timeout: 300000,
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round(
             (progressEvent.loaded * 100) / progressEvent.total
@@ -254,7 +255,7 @@ export default function Documents() {
         throw new Error(response.data.message || 'Upload failed');
       }
     } catch (err) {
-      console.log("Error during submission:", err);
+      console.log("Error during submission:", err.response);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to submit documents';
       Alert.alert(
         'Error',
