@@ -9,7 +9,6 @@ class FirebaseInitializationError extends Error {
   }
 }
 
-// Add the missing NotificationError class
 class NotificationError extends Error {
   constructor(message, code = 'UNKNOWN_ERROR') {
     super(message);
@@ -27,7 +26,7 @@ const logger = {
 };
 
 /**
- * Initialize Firebase Admin SDK with proper env handling
+ * Initialize Firebase Admin SDK with credentials from environment variables
  */
 const initializeFirebase = () => {
   if (admin.apps.length > 0) {
@@ -36,24 +35,40 @@ const initializeFirebase = () => {
   }
 
   try {
-    if (!process.env.FIREBASE_CREDENTIAL) {
-      throw new FirebaseInitializationError("FIREBASE_CREDENTIAL is missing in environment variables.");
-    }
-    console.log("process.env.FIREBASE_CREDENTIAL", process.env.FIREBASE_CREDENTIAL)
-    // Improved JSON parsing with error handling
-    let serviceAccount;
-    try {
-      serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIAL);
-    } catch (jsonError) {
-      throw new FirebaseInitializationError(
-        `Failed to parse FIREBASE_CREDENTIAL as JSON: ${jsonError.message}. ` +
-        "Ensure credentials are properly escaped."
-      );
+    // Check for required environment variables
+    const requiredVars = [
+      'FIREBASE_TYPE',
+      'FIREBASE_PROJECT_ID',
+      'FIREBASE_PRIVATE_KEY_ID',
+      'FIREBASE_PRIVATE_KEY',
+      'FIREBASE_CLIENT_EMAIL',
+      'FIREBASE_CLIENT_ID',
+      'FIREBASE_AUTH_URI',
+      'FIREBASE_TOKEN_URI',
+      'FIREBASE_AUTH_PROVIDER_CERT_URL',
+      'FIREBASE_CLIENT_CERT_URL',
+      'FIREBASE_UNIVERSE_DOMAIN'
+    ];
+
+    const missingVars = requiredVars.filter(varName => !process.env[varName]);
+    if (missingVars.length > 0) {
+      throw new FirebaseInitializationError(`Missing required environment variables: ${missingVars.join(', ')}`);
     }
 
-    if (!serviceAccount.project_id || !serviceAccount.private_key) {
-      throw new FirebaseInitializationError("Invalid service account JSON structure.");
-    }
+    // Create service account object from environment variables
+    const serviceAccount = {
+      type: process.env.FIREBASE_TYPE,
+      project_id: process.env.FIREBASE_PROJECT_ID,
+      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'), // Replace escaped newlines
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      client_id: process.env.FIREBASE_CLIENT_ID,
+      auth_uri: process.env.FIREBASE_AUTH_URI,
+      token_uri: process.env.FIREBASE_TOKEN_URI,
+      auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
+      client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
+      universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN
+    };
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
@@ -64,8 +79,6 @@ const initializeFirebase = () => {
   } catch (error) {
     if (error instanceof FirebaseInitializationError) {
       logger.error(`Firebase Initialization Error: ${error.message}`);
-    } else if (error instanceof SyntaxError) {
-      logger.error("Invalid JSON in FIREBASE_CREDENTIAL. Ensure it is properly escaped.");
     } else {
       logger.error(`Unexpected Firebase Initialization Error: ${error.message}`);
     }
