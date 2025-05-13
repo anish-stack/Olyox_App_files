@@ -41,7 +41,7 @@ const initializeFirebase = () => {
     // Resolve service account path
     const serviceAccountPath = path.resolve(
       __dirname, 
-      "olyox-6215a-firebase-adminsdk-fbsvc-525198de0b.json"
+      "olyox-6215a-firebase-adminsdk-fbsvc-471080c570.json"
     );
 
     // Validate service account file exists

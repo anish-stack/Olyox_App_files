@@ -1314,6 +1314,91 @@ exports.rideEnd = async (data) => {
     }
 };
 
+
+
+exports.rideEndByFallBack = async (req, res) => {
+    try {
+        const rideId = req.params?._id;
+
+        if (!rideId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ride ID is required',
+            });
+        }
+
+        const ride = await RideRequest.findById(rideId).populate('user', 'number');
+        if (!ride) {
+            return res.status(404).json({
+                success: false,
+                message: 'Ride not found',
+            });
+        }
+
+        // Mark the ride as completed
+        ride.ride_end_time = new Date();
+        ride.rideStatus = 'completed';
+        await ride.save();
+
+        const rider = await Riders.findById(ride.rider);
+        if (!rider) {
+            return res.status(404).json({
+                success: false,
+                message: 'Rider not found',
+            });
+        }
+
+        // Update rider stats
+        rider.TotalRides += 1;
+        if (!rider.rides.includes(ride._id)) {
+            rider.rides.push(ride._id);
+        }
+
+        // Remove on_ride_id from rider
+        rider.on_ride_id = undefined;
+
+        // 🔔 Send FCM Notification
+        if (ride.userFcm) {
+            try {
+                const title = 'Ride Completed! Please Make Payment';
+                const body = 'Your ride has ended successfully. Kindly proceed to make the payment. Thank you for riding with us!';
+
+                await sendNotification(ride.userFcm, title, body);
+            } catch (fcmError) {
+                console.error(`[${new Date().toISOString()}] Error sending FCM notification:`, fcmError.message);
+            }
+        }
+
+        // 💬 Send WhatsApp Message
+        const userNumber = ride?.user?.number;
+        if (userNumber) {
+            try {
+                const message = `Your ride has been marked as completed. Please make the payment to finalize the ride. Thank you!`;
+                await SendWhatsAppMessageNormal(userNumber, message);
+            } catch (waError) {
+                console.error(`[${new Date().toISOString()}] Error sending WhatsApp message:`, waError.message);
+            }
+        }
+
+        await rider.save();
+
+        return res.status(200).json({
+            success: true,
+            driverId: rider._id,
+            message: 'Ride ended successfully',
+        });
+
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Error in rideEndByFallBack:`, error);
+        return res.status(500).json({
+            success: false,
+            message: 'Something went wrong during ride end',
+            error: error.message,
+        });
+    }
+};
+
+
 exports.collectCash = async ({ data, paymentMethod }) => {
     try {
         console.log('Incoming data:', data);
