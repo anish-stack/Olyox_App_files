@@ -176,14 +176,14 @@ export default function Bonus() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#0066cc"]} />}
       >
         {bonusData?.eligibleBonus?.length > 0 ? (
-           <View style={styles.headerContainer}>
-          <Text style={styles.heading}>Eligible Bonuses</Text>
-          {!loading && bonusData?.eligibleBonus?.length === 0 && (
-            <Text style={styles.subHeading}>Complete more hours to unlock bonuses</Text>
-          )}
-        </View>
-        ) :null}
-       
+          <View style={styles.headerContainer}>
+            <Text style={styles.heading}>Eligible Bonuses</Text>
+            {!loading && bonusData?.eligibleBonus?.length === 0 && (
+              <Text style={styles.subHeading}>Complete more hours to unlock bonuses</Text>
+            )}
+          </View>
+        ) : null}
+
 
         {bonusData?.eligibleBonus?.length ? (
           <ScrollView
@@ -192,27 +192,33 @@ export default function Bonus() {
             style={styles.scrollContainer}
             contentContainerStyle={styles.horizontalScrollContent}
           >
-            {bonusData.eligibleBonus.map((bonus, index) => renderBonusCard(bonus, index, true))}
+            {bonusData.eligibleBonus
+              .filter(bonus => bonus.bonusStatus === 'active') // ✅ Only include "active" bonuses
+              .map((bonus, index) => renderBonusCard(bonus, index, true))}
           </ScrollView>
         ) : null}
+
 
         <View style={styles.headerContainer}>
           <Text style={styles.heading}>Upcoming Bonuses</Text>
           <Text style={styles.subHeading}>Keep working to unlock these bonuses</Text>
         </View>
 
-        {bonusData?.notEligibleBonus?.length ? (
+        {bonusData?.notEligibleBonus?.filter(bonus => bonus.bonusStatus === 'active')?.length ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.scrollContainer}
             contentContainerStyle={styles.horizontalScrollContent}
           >
-            {bonusData.notEligibleBonus.map((bonus, index) => renderBonusCard(bonus, index, false))}
+            {bonusData.notEligibleBonus
+              .filter(bonus => bonus.bonusStatus === 'active') // ✅ Filter for active only
+              .map((bonus, index) => renderBonusCard(bonus, index, false))}
           </ScrollView>
         ) : (
           renderEmptyState("No upcoming bonuses available")
         )}
+
       </ScrollView>
     </SafeAreaView>
   )

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Olyox",
     "slug": "olyox",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/appicon.png",
     "userInterfaceStyle": "light",
@@ -53,7 +53,7 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION"
       ],
-      "versionCode": 17,
+      "versionCode": 22,
       "intentFilters": [
         {
           "action": "VIEW",

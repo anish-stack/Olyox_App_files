@@ -186,7 +186,7 @@ export default function RideDetailsScreen() {
       return response.data;
     } catch (error) {
       logError('Failed to fetch ride details', error.response.data);
-     
+
       return null;
     }
   }, []);
@@ -206,7 +206,7 @@ export default function RideDetailsScreen() {
     initializeRideData();
   }, [getRideId, foundRideDetails]);
 
- 
+
   const {
     currentLocation,
     startLocationTracking,
@@ -543,10 +543,10 @@ export default function RideDetailsScreen() {
   useEffect(() => {
     const socketInstance = socket // Get your socket instance
     if (!socketInstance) return;
-  
+
     const handleRideCompleteConfirmation = (data) => {
       console.log('✔️ Ride completed event received', data);
-  
+      startSound();
       Alert.alert(
         'Ride Complete Confirmation',
         data?.message || 'User marked your ride as complete. Is that correct?',
@@ -557,17 +557,18 @@ export default function RideDetailsScreen() {
               try {
                 console.log('❌ Driver denied ride completion');
                 const rideId = await getRideId(); // Ensure this is defined
-                console.log("rideData",rideId)
+                console.log("rideData", rideId)
                 if (rideId) {
                   const rideData = await foundRideDetails(rideId); // Ensure this is defined
-                  console.log("rideDatrideDataa",rideData)
-
-                  setTimeout(()=>{
-                    socketInstance.emit('ride_incorrect_mark_done_user', { rideDetails:rideData });
+                  console.log("rideDatrideDataa", rideData)
+                  stopSound()
+                  setTimeout(() => {
+                    socketInstance.emit('ride_incorrect_mark_done_user', { rideDetails: rideData });
                     console.log("i am send")
-                  },1500)
+                  }, 1500)
                 }
               } catch (error) {
+                stopSound()
                 console.error('❌ Error while denying ride completion:', error);
               }
             },
@@ -577,21 +578,21 @@ export default function RideDetailsScreen() {
             text: 'Yes',
             onPress: () => {
               console.log('✅ Driver confirmed ride completion');
-              handleCompleteRide(); 
+              handleCompleteRide();
             },
           },
         ],
         { cancelable: false }
       );
     };
-  
+
     socketInstance.on('your_ride_is_mark_complete_by_user', handleRideCompleteConfirmation);
-  
+    stopSound()
     return () => {
       socketInstance.off('your_ride_is_mark_complete_by_user', handleRideCompleteConfirmation);
     };
   }, []);
-  
+
 
 
   // Set up ride cancellation listener

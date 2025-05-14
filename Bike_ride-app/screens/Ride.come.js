@@ -491,7 +491,7 @@ export default function RideRequestScreen() {
                                 )}
                                 <View style={styles.userDetails}>
                                     <Text style={styles.userName}>{rideData?.user?.name}</Text>
-                                    <Text style={styles.userContact}>{rideData?.user?.number}</Text>
+                                  
                                 </View>
                                 <View style={styles.ratingContainer}>
                                     <MaterialCommunityIcons name="star" size={20} color="#F59E0B" />
