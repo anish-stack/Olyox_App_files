@@ -21,7 +21,7 @@ import * as SecureStore from "expo-secure-store"
 import { useSocket } from "../context/SocketContext"
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps"
 import * as Location from "expo-location"
-import LottieView from "lottie-react-native"
+
 import { LinearGradient } from "expo-linear-gradient"
 
 import RideCome from "./Ride.come"
@@ -245,15 +245,17 @@ const CabHome = () => {
 
       setShowReconnectAnimation(true)
 
+      // The issue is likely here - ensure the userId is correctly passed as a string
       const isReconnectingHard = await initializeSocket({
-        userId: id,
+        userId: id ? String(id) : "",
       })
-
+      
+      await onHardRefresh()
       // Simulate a delay to show the animation
       setTimeout(() => {
         setShowReconnectAnimation(false)
 
-        if (isReconnectingHard) {
+        if (isReconnectingHard === true) {
           Alert.alert("Connection Successful", "You are now connected to the server")
         }
       }, 2000)
@@ -293,10 +295,13 @@ const CabHome = () => {
         })
         if (response.data.partner) {
           setUserData(response.data.partner)
-          setIsOnline(response.data.partner.isAvailable)
+          setIsOnline(response.data.partner.isAvailable === true)
+          
+          // Ensure proper type handling when initializing socket
           await initializeSocket({
-            userId: response?.data?.partner?._id,
+            userId: response?.data?.partner?._id ? String(response.data.partner._id) : "",
           })
+          
           return response.data.partner
         }
       }
@@ -336,7 +341,7 @@ const CabHome = () => {
       // Always allow the API call if going OFFLINE regardless of recharge status
       const response = await axios.post(
         "https://appapi.olyox.com/api/v1/rider/toggleWorkStatusOfRider",
-        { status: goingOnline },
+        { status: goingOnline }, // Make sure this is a boolean
         { headers: { Authorization: `Bearer ${token}` } }
       )
 
@@ -348,10 +353,8 @@ const CabHome = () => {
       setUserData(partnerData)
 
       if (response.data.success) {
-        setIsOnline(response.data.cabRider?.status === "online" ? true : false)
-        // await SecureStore.setItemAsync("isOnline", JSON.stringify(goingOnline));
+        setIsOnline(response.data.cabRider?.status === "online")
 
-        // Pulse animation for status change
         Animated.sequence([
           Animated.timing(fadeAnim, {
             toValue: 0.7,

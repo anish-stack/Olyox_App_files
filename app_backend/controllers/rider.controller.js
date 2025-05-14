@@ -10,77 +10,115 @@ const moment = require('moment');
 const momentTz = require('moment-timezone');
 
 const fs = require('fs');
+const path = require("path");
+
 const Bonus_Model = require('../models/Bonus_Model/Bonus_Model');
 const Parcel_Request = require('../models/Parcel_Models/Parcel_Request');
+const { sendDltMessage } = require('../utils/DltMessageSend');
 cloudinary.config({
-  cloud_name: 'dsd8nepa5',
-  api_key: '634914486911329',
-  api_secret: 'dOXqEsWHQMjHNJH_FU6_iHlUHBE'
+  cloud_name: 'daxbcusb5',
+  api_key: '984861767987573',
+  api_secret: 'tCBu9JNxC_iaUENm1kDwLrdXL0k'
 })
 // Register a new rider
 exports.registerRider = async (req, res) => {
   try {
-
-    const { name, phone, rideVehicleInfo, BH, role } = req.body;
+    const { name, phone, rideVehicleInfo, BH, role, aadharNumber } = req.body;
     const { vehicleName, vehicleType, PricePerKm, VehicleNumber, RcExpireDate } = rideVehicleInfo;
 
-    if (!BH) {
-      return res.status(400).json({ message: "Please enter your BH Number" });
+    // Validate input
+    if (!BH) return res.status(400).json({ success: false, message: "Please enter your BH Number." });
+    if (!name || !phone || !vehicleName || !vehicleType || !VehicleNumber)
+      return res.status(400).json({ success: false, message: "All required fields must be filled." });
+
+    // Check if BH number already exists
+    const bhExists = await Rider.findOne({ BH });
+    if (bhExists) {
+      return res.status(400).json({
+        success: false,
+        message: `A rider is already registered with BH Number: ${BH}. Please use a different BH Number.`,
+      });
     }
 
-    if (!name || !phone || !vehicleName || !vehicleType || !VehicleNumber) {
-      return res.status(400).json({ success: false, message: "All fields are required." });
-    }
-
-    let BhAlready = await Rider.findOne({ BH: BH })
-    if (BhAlready) {
-      return res.status(400).json({ success: false, message: "BH Number already exists " })
-    }
-
-
+    // Check if phone number is already registered
     let existingRider = await Rider.findOne({ phone });
 
     if (existingRider) {
       if (!existingRider.isOtpVerify) {
-        const otp = generateOtp();
-
         if (existingRider.howManyTimesHitResend >= 5) {
           existingRider.isOtpBlock = true;
           existingRider.isDocumentUpload = false;
-          existingRider.otpUnblockAfterThisTime = new Date(Date.now() + 30 * 60000); // Block for 30 minutes
+          existingRider.otpUnblockAfterThisTime = new Date(Date.now() + 30 * 60 * 1000); // 30 mins block
           await existingRider.save();
-          await SendWhatsAppMessage(`Your account is blocked for 30 minutes.`, phone);
-          return res.status(400).json({ success: false, message: "Your account is blocked for 30 minutes." });
+
+          await SendWhatsAppMessage(
+            `Hi ${existingRider.name || 'User'},\n\nYou’ve attempted OTP verification too many times.\nYour account has been temporarily locked for 30 minutes. Please try again later.\n\n- Team Olyox`,
+            phone
+          );
+
+          return res.status(429).json({
+            success: false,
+            message: "Too many OTP attempts. You are blocked for 30 minutes.",
+          });
         }
 
+        // Resend OTP
+        const otp = generateOtp();
         existingRider.otp = otp;
         existingRider.howManyTimesHitResend += 1;
         existingRider.isDocumentUpload = false;
         await existingRider.save();
 
-        await SendWhatsAppMessage(`Your OTP for Cab registration is: ${otp}`, phone);
-        return res.status(201).json({ success: true, message: "Existing rider found. Please verify OTP." });
+        await SendWhatsAppMessage(
+          `Hi ${existingRider.name || 'User'},\n\nYour OTP for registering as ${role} rider is: ${otp}\n\nPlease use this to complete your registration.\n\n- Team Olyox`,
+          phone
+        );
+
+        return res.status(200).json({
+          success: true,
+          message: `OTP resent. Please verify to continue registration.`,
+        });
       }
 
-      return res.status(400).json({ success: false, message: "Phone number already registered." });
+      return res.status(409).json({
+        success: false,
+        message: `Phone number already registered with a verified account.`,
+      });
     }
 
-    // Check if the vehicle number is already registered
-    const existingRiderWithVehicle = await Rider.findOne({ 'rideVehicleInfo.VehicleNumber': VehicleNumber });
-
-    if (existingRiderWithVehicle) {
-      return res.status(400).json({ success: false, message: "Vehicle number already registered." });
+    // Check if Aadhar already exists
+    const existingAadhar = await Rider.findOne({ aadharNumber });
+    if (existingAadhar) {
+      return res.status(409).json({
+        success: false,
+        message: `Aadhar number already exists. Please use a different Aadhar or log in if it's your account.`,
+      });
     }
 
-    // Generate OTP for new registration
+    // Check if vehicle number is already registered
+    const existingVehicle = await Rider.findOne({ 'rideVehicleInfo.VehicleNumber': VehicleNumber });
+    if (existingVehicle) {
+      return res.status(409).json({
+        success: false,
+        message: `Vehicle number ${VehicleNumber} is already registered with another rider.`,
+      });
+    }
+
+    // Create new rider with OTP
     const otp = generateOtp();
-
     const newRider = new Rider({
       name,
       phone,
-      rideVehicleInfo: { vehicleName, vehicleType, VehicleNumber, RcExpireDate },
+      rideVehicleInfo: {
+        vehicleName,
+        vehicleType,
+        PricePerKm,
+        VehicleNumber,
+        RcExpireDate,
+      },
       BH,
       category: role,
+      aadharNumber,
       otp,
       isOtpVerify: false,
       isDocumentUpload: false,
@@ -89,12 +127,23 @@ exports.registerRider = async (req, res) => {
     });
 
     const savedRider = await newRider.save();
-    await SendWhatsAppMessage(`Your OTP for Cab registration is: ${otp}`, phone);
 
-    res.status(201).json({ success: true, message: 'Rider registered successfully. Please verify OTP.', rider: savedRider });
+    // Send OTP via WhatsApp
+    const message = `Hi ${name},\n\nWelcome to Olyox!\nYour OTP for registering as a ${role} rider is: ${otp}.\n\nPlease verify your OTP to complete your registration.\n\nThank you for choosing us!\n- Team Olyox`;
+    await SendWhatsAppMessage(message, phone);
+
+    return res.status(201).json({
+      success: true,
+      message: "Rider registration initiated. OTP sent successfully.",
+      rider: savedRider,
+    });
+
   } catch (error) {
-    console.error('Error registering rider:', error);
-    res.status(500).json({ success: false, message: 'Failed to register rider' });
+    console.error("Error registering rider:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong during registration. Please try again later.",
+    });
   }
 };
 
@@ -159,7 +208,8 @@ exports.updateRechargeDetails = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { number } = req.body;
+    const { number, otpType } = req.body;
+    console.log("otpType", otpType)
 
     if (!number) {
       return res.status(400).json({
@@ -231,8 +281,15 @@ exports.login = async (req, res) => {
     partner.otp = otp;
     await partner.save();
 
-    const otpMessage = `Your OTP for CaB registration is: ${otp}`;
-    await SendWhatsAppMessage(otpMessage, number);
+
+    if (otpType === 'text') {
+      await sendDltMessage(otp, number)
+    } else {
+
+      const otpMessage = `Your OTP for CaB registration is: ${otp}`;
+      await SendWhatsAppMessage(otpMessage, number);
+    }
+
 
     res.status(201).json({
       success: true,
@@ -485,53 +542,115 @@ exports.changeLocation = async (req, res) => {
   }
 };
 
+
 exports.uploadDocuments = async (req, res) => {
   try {
-    const userId = req.user.userId;
-    const findRider = await Rider.findById(userId);
+    console.log("➡️ /uploadDocuments called");
 
+    const userId = req.user?.userId;
+    if (!userId) {
+      console.log("❌ No user ID found");
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    console.log("✅ Extracted userId:", userId);
+    const findRider = await Rider.findById(userId);
     if (!findRider) {
+      console.log("❌ Rider not found");
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
     if (findRider.isDocumentUpload && findRider.DocumentVerify === true) {
-      return res.status(400).json({ success: false, message: "Documents already uploaded and verified, please login." });
+      return res.status(400).json({
+        success: false,
+        message: "Documents already uploaded and verified. Please login."
+      });
     }
 
     const uploadedDocs = {};
+    const files = req.files || [];
 
-    for (const file of req.files) {
-      const fileSizeInKB = file.size / 1024;
-      if (fileSizeInKB > 1000) {
-        fs.unlinkSync(file.path);
-        return res.status(400).json({
+    if (files.length === 0) {
+      console.log("❌ No files found in request");
+      return res.status(400).json({ success: false, message: "No files uploaded." });
+    }
+
+    for (const file of files) {
+      try {
+        const fileSizeKB = file.size / 1024;
+        console.log(`📄 File received: ${file.originalname} (${fileSizeKB.toFixed(2)}KB)`);
+
+        if (fileSizeKB > 1024) {
+          console.log("⚠️ File too large:", file.originalname);
+          await fs.unlink(file.path).catch(() => { });
+          return res.status(400).json({
+            success: false,
+            message: `${file.originalname} is larger than 1MB`
+          });
+        }
+
+        console.log("☁️ Uploading to Cloudinary:", file.originalname);
+        const uploaded = await cloudinary.uploader.upload(file.path, {
+          folder: "rider_documents",
+          quality: "auto:low",
+          format: "jpg"
+        });
+
+        console.log("✅ Uploaded:", uploaded.secure_url);
+
+        if (file.originalname.includes("dl")) uploadedDocs.license = uploaded.secure_url;
+        if (file.originalname.includes("rc")) uploadedDocs.rc = uploaded.secure_url;
+        if (file.originalname.includes("insurance")) uploadedDocs.insurance = uploaded.secure_url;
+        if (file.originalname.includes("aadharBack")) uploadedDocs.aadharBack = uploaded.secure_url;
+        if (file.originalname.includes("aadharFront")) uploadedDocs.aadharFront = uploaded.secure_url;
+        if (file.originalname.includes("pancard")) uploadedDocs.pancard = uploaded.secure_url;
+        if (file.originalname.includes("profile")) uploadedDocs.profile = uploaded.secure_url;
+
+        // Delete the temp file
+        try {
+          await fs.promises.unlink(file.path); // ✅ Promise-based
+          console.log(`✅ Temp file deleted: ${file.originalname}`);
+        } catch (err) {
+          console.warn(`⚠️ Could not delete temp file: ${file.originalname}`, err.message);
+        }
+      } catch (fileErr) {
+        console.error("❌ Error processing file:", file.originalname, fileErr);
+        return res.status(500).json({
           success: false,
-          message: `File ${file.originalname} is too large. Max size allowed is 1MB.`
+          message: `Failed to process ${file.originalname}`,
+          error: fileErr.message
         });
       }
-      const uploadResponse = await cloudinary.uploader.upload(file.path, { folder: "rider_documents", quality: "auto:low", format: "jpg" });
-
-      if (file.originalname.includes('dl')) uploadedDocs.license = uploadResponse.secure_url;
-      if (file.originalname.includes('rc')) uploadedDocs.rc = uploadResponse.secure_url;
-      if (file.originalname.includes('insurance')) uploadedDocs.insurance = uploadResponse.secure_url;
-      if (file.originalname.includes('aadharBack')) uploadedDocs.aadharBack = uploadResponse.secure_url;
-      if (file.originalname.includes('aadharFront')) uploadedDocs.aadharFront = uploadResponse.secure_url;
-      if (file.originalname.includes('pancard')) uploadedDocs.pancard = uploadResponse.secure_url;
-      if (file.originalname.includes('profile')) uploadedDocs.profile = uploadResponse.secure_url;
-      fs.unlinkSync(file.path);
     }
 
     findRider.documents = uploadedDocs;
     findRider.isDocumentUpload = true;
     findRider.isProfileComplete = true;
-    await findRider.save();
 
-    res.status(201).json({ success: true, message: "Documents uploaded successfully", data: uploadedDocs });
-  } catch (error) {
-    console.error("Error uploading documents:", error);
-    res.status(500).json({ success: false, message: "Documents upload failed", error: error.message });
+    try {
+      await findRider.save();
+      console.log("✅ Rider saved successfully");
+    } catch (dbErr) {
+      console.error("❌ Error saving rider:", dbErr);
+      return res.status(500).json({ success: false, message: "Failed to save documents", error: dbErr.message });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Documents uploaded successfully",
+      data: uploadedDocs
+    });
+
+  } catch (mainErr) {
+    console.error("❌ Unexpected error in /uploadDocuments:", mainErr);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: mainErr.message
+    });
   }
 };
+
 
 
 exports.uploadPaymentQr = async (req, res) => {

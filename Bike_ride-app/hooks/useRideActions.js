@@ -6,11 +6,12 @@ import { Audio } from "expo-av"
 import { CommonActions, useNavigation } from '@react-navigation/native'
 import * as SecureStore from 'expo-secure-store'
 import { useRideStatus } from "../context/CheckRideHaveOrNot.context"
+import { fetchUserData } from "../context/socketService"
 const API_BASE_URL = "https://appapi.olyox.com/api/v1"
 
 export function useRideActions({ state, setState, rideDetails, socket, mapRef, soundRef }) {
   const navigation = useNavigation()
-  const { onRide, updateRideStatus } = useRideStatus(); 
+  const { onRide, updateRideStatus } = useRideStatus();
 
   const updateState = (newState) => {
     setState((prevState) => ({ ...prevState, ...newState }))
@@ -70,7 +71,7 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
 
   // Get ride ID from params or auth check
   const getRideId = useCallback(async () => {
-   
+
 
     // If not, check from auth token
     const authRideId = await checkAuthToken();
@@ -372,7 +373,7 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
       ])
       updateRideStatus(false)
 
-      
+
 
       updateState({ showCancelModal: false })
     } catch (error) {
@@ -382,33 +383,80 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
   }, [state.selectedReason, getCurrentRideDetails, socket, resetToHome])
 
   // Complete ride
-  const handleCompleteRide = useCallback(async () => {
-
+const handleCompleteRide = useCallback(async () => {
+  try {
+    // Get current ride details
     const currentRideDetails = await getCurrentRideDetails();
     if (!currentRideDetails) {
       Alert.alert("Error", "Could not find ride details to complete.");
       return;
     }
 
-    Alert.alert("Complete Ride", "Are you sure you want to complete this ride?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Complete",
-        onPress: async () => {
-          if (socket && socket.connected) {
-            socket.emit("ride_end_by_rider", {
-              rideDetails: currentRideDetails
-            }, (response) => {
-              if (response && response.error) {
-                Alert.alert("Error", response.error || "Failed to complete ride. Please try again.");
-                return;
-              }
+    // Get user data
+    const user = await fetchUserData();
+    if (!user || !user._id) {
+      throw new Error("❌ Invalid user");
+    }
 
-              // Handle successful completion
-              Alert.alert(
-                "Success",
-                "Ride completed successfully.",
-                [
+    // Socket reconnection logic
+    let activeSocket = socket;
+
+    if (!activeSocket || !activeSocket.connected) {
+      try {
+        console.log("Socket not connected, attempting to reconnect...");
+        activeSocket = await initializeSocket({
+          userType: "driver",
+          userId: user._id,
+        });
+      } catch (socketError) {
+        console.error("Failed to initialize socket:", socketError);
+      }
+    }
+
+    Alert.alert(
+      "Complete Ride",
+      "Are you sure you want to complete this ride?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Complete",
+          onPress: async () => {
+            if (activeSocket && activeSocket.connected) {
+              activeSocket.emit(
+                "ride_end_by_rider",
+                { rideDetails: currentRideDetails },
+                (response) => {
+                  if (response && response.error) {
+                    Alert.alert("Error", response.error || "Failed to complete ride. Please try again.");
+                    return;
+                  }
+
+                  Alert.alert("Success", "Ride completed successfully.", [
+                    {
+                      text: "OK",
+                      onPress: () => {
+                        updateRideStatus(false);
+                        resetToHome();
+                      },
+                    },
+                  ]);
+                }
+              );
+            } else {
+              // Fallback to API using axios
+              try {
+                const rideId = currentRideDetails.id || currentRideDetails._id;
+                const response = await axios.post(
+                  `${API_BASE_URL}/rider/rider-end-fallback/${rideId}`,
+                  {
+                    rideId,
+                    userId: user._id,
+                  }
+                );
+
+                const result = response.data;
+
+                Alert.alert("Success", "Ride completed successfully.", [
                   {
                     text: "OK",
                     onPress: () => {
@@ -416,18 +464,24 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
                       resetToHome();
                     },
                   },
-                ]
-              );
-              
-            })
-          } else {
-            logError("Socket not connected for ride completion")
-            Alert.alert("Connection Error", "Please check your internet connection and try again.");
-          }
+                ]);
+              } catch (apiError) {
+                console.error("API fallback failed:", apiError);
+                const errorMsg =
+                  apiError.response?.data?.message || "Could not complete ride. Please try again.";
+                Alert.alert("Connection Error", errorMsg);
+              }
+            }
+          },
         },
-      },
-    ])
-  }, [getCurrentRideDetails, socket, navigation])
+      ]
+    );
+  } catch (error) {
+    console.error("Error in handleCompleteRide:", error);
+    Alert.alert("Error", "An unexpected error occurred. Please try again.");
+  }
+}, [getCurrentRideDetails, socket, navigation, updateRideStatus, resetToHome]);
+
 
   // Socket event listeners
   useEffect(() => {

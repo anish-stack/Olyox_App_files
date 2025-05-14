@@ -9,37 +9,34 @@ const tempRideDetailsSchema = require('../models/tempRideDetailsSchema');
 const RideRequestNotification = require('../models/RideRequestNotification');
 const rideRequestModel = require('../models/ride.request.model');
 const SendWhatsAppMessageNormal = require('../utils/normalWhatsapp');
+const User = require('../models/normal_user/User.model');
+const sendNotification = require('../utils/sendNotification');
 exports.createRequest = async (req, res) => {
     try {
         const user = Array.isArray(req.user.user) ? req.user.user[0] : req.user.user;
         const { vehicleType, pickupLocation, dropLocation, currentLocation, pick_desc, drop_desc, fcmToken } = req.body;
 
-        if (!pickupLocation || !dropLocation || !pick_desc || !drop_desc) {
-
+        // Validate required fields
+        if (!pickupLocation || !dropLocation || !pick_desc || !drop_desc || !currentLocation) {
+            console.warn("Missing required fields in ride request.");
             return res.status(400).json({ error: 'All fields are required' });
         }
 
-
-
-        const pickup_coords = [pickupLocation.longitude, pickupLocation.latitude];
-        const drop_coords = [dropLocation.longitude, dropLocation.latitude];
-        const current_coords = [currentLocation.longitude, currentLocation.latitude];
-
-
+        // Construct geo points
         const pickupLocationGeo = {
             type: 'Point',
-            coordinates: pickup_coords
+            coordinates: [pickupLocation.longitude, pickupLocation.latitude]
         };
         const dropLocationGeo = {
             type: 'Point',
-            coordinates: drop_coords
+            coordinates: [dropLocation.longitude, dropLocation.latitude]
         };
         const currentLocationGeo = {
             type: 'Point',
-            coordinates: current_coords
+            coordinates: [currentLocation.longitude, currentLocation.latitude]
         };
 
-
+        // Create a new ride request
         const newRideRequest = new RideRequest({
             vehicleType,
             user: user,
@@ -49,11 +46,36 @@ exports.createRequest = async (req, res) => {
             rideStatus: 'pending',
             pickup_desc: pick_desc,
             drop_desc: drop_desc,
-            userFcm:fcmToken
+            userFcm: fcmToken
         });
 
+        // Find and update user FCM token
+        const findUser = await User.findById(user);
 
+        if (!findUser) {
+            console.error("User not found for ID:", user);
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        if (findUser.fcmToken) {
+            console.log(`FCM token exists: ${findUser.fcmToken}`);
+            if (findUser.fcmToken !== fcmToken) {
+                console.log(`Updating FCM token to: ${fcmToken}`);
+                findUser.fcmToken = fcmToken;
+                await findUser.save();
+            } else {
+                console.log("FCM token is already up to date.");
+            }
+        } else {
+            console.log("No FCM token found. Saving new token.");
+            findUser.fcmToken = fcmToken;
+            await findUser.save();
+        }
+
+        // Save ride request
         await newRideRequest.save();
+
+        console.log("✅ Ride request created successfully:", newRideRequest._id);
 
         res.status(201).json({
             message: 'Ride request created successfully',
@@ -61,8 +83,7 @@ exports.createRequest = async (req, res) => {
         });
 
     } catch (error) {
-        // Handle errors and send an appropriate response
-        console.error(error);
+        console.error("❌ Error creating ride request:", error.message);
         res.status(500).json({ error: 'Server error, please try again' });
     }
 };
@@ -473,17 +494,29 @@ exports.findRider = async (id, io, app) => {
 
             debug(`Found ${validRiders.length} eligible drivers at ${currentRadius / 1000} km radius.`);
 
-            // Get driver socket map to send targeted notifications
             const driverSocketMap = getDriverSocketMap();
             const notifiedDrivers = [];
             const unavailableDrivers = [];
-            let driverInfo
+            let driverInfo;
+
+            console.log('=== RIDE REQUEST NOTIFICATION PROCESS STARTED ===');
+            console.log(`Total eligible drivers found: ${validRiders.length}`);
+            console.log(`Ride request ID: ${rideRequestId}`);
+            console.log('Driver socket map:', Array.from(driverSocketMap.entries()));
+            console.log('Ride info:', rideInfo);
+            console.log('Price data:', priceData);
+
             // Emit ride request only to eligible drivers with active socket connections
             for (const rider of validRiders) {
                 const riderId = rider._id.toString();
+                console.log(`\n----- Processing driver ID: ${riderId} -----`);
+                console.log(`Driver distance: ${rider.distance} meters (${(rider.distance / 1000).toFixed(2)} km)`);
+
                 const driverSocketId = driverSocketMap.get(riderId);
 
                 if (driverSocketId) {
+                    console.log(`✅ Active socket connection found: ${driverSocketId}`);
+
                     // Prepare driver-specific info
                     driverInfo = {
                         ...rideInfo,
@@ -492,29 +525,63 @@ exports.findRider = async (id, io, app) => {
                         message: "New ride request nearby!"
                     };
 
-                    // Emit to specific driver socket
-                    io.to(driverSocketId).emit("ride_come", driverInfo);
+                    console.log('Driver-specific info prepared:', driverInfo);
+                    console.log(`Estimated earnings: $${driverInfo.estimatedEarning?.toFixed(2)}`);
 
-                    debug(`Emitted ride request to driver ${riderId} via socket ${driverSocketId}`);
-                    notifiedDrivers.push(riderId);
-
-                    // Record that this driver was notified about this ride
                     try {
-                        await RideRequestNotification.create({
-                            rideRequestId,
-                            driverId: riderId,
-                            notifiedAt: new Date(),
-                            status: 'sent'
-                        });
-                    } catch (notifError) {
-                        debug(`Failed to record driver notification: ${notifError.message}`);
-                        // Continue even if recording fails
+                        // Emit to specific driver socket
+                        io.to(driverSocketId).emit("ride_come", driverInfo);
+                        console.log(`✅ Successfully emitted 'ride_come' event to socket ${driverSocketId}`);
+
+                        notifiedDrivers.push(riderId);
+                        console.log(`Added driver ${riderId} to notified list. Total notified: ${notifiedDrivers.length}`);
+
+                        // Record that this driver was notified about this ride
+                        try {
+                            const notification = await RideRequestNotification.create({
+                                rideRequestId,
+                                driverId: riderId,
+                                notifiedAt: new Date(),
+                                status: 'sent'
+                            });
+                            console.log(`✅ Notification record created with ID: ${notification._id}`);
+                        } catch (notifError) {
+                            console.error(`❌ Failed to record driver notification: ${notifError.message}`);
+                            console.error(notifError.stack);
+                            // Continue even if recording fails
+                        }
+                    } catch (emitError) {
+                        console.error(`❌ Error emitting to socket: ${emitError.message}`);
+                        console.error(emitError.stack);
                     }
                 } else {
-                    debug(`Driver ${riderId} doesn't have an active socket connection`);
+                    console.log(`❌ Driver ${riderId} doesn't have an active socket connection`);
                     unavailableDrivers.push(riderId);
+                    console.log(`Added driver ${riderId} to unavailable list. Total unavailable: ${unavailableDrivers.length}`);
+
+                    // Optional: Try sending push notification instead
+                    console.log(`Could attempt push notification for driver ${riderId} as fallback`);
                 }
             }
+
+            console.log('\n=== RIDE REQUEST NOTIFICATION SUMMARY ===');
+            console.log(`Total drivers processed: ${validRiders.length}`);
+            console.log(`Drivers notified via socket: ${notifiedDrivers.length}`);
+            console.log(`Drivers without active connection: ${unavailableDrivers.length}`);
+            console.log('Notified driver IDs:', notifiedDrivers);
+            console.log('Unavailable driver IDs:', unavailableDrivers);
+            console.log('=== NOTIFICATION PROCESS COMPLETED ===\n');
+
+            // Return summary object for any further processing
+            const notificationSummary = {
+                totalDrivers: validRiders.length,
+                notifiedCount: notifiedDrivers.length,
+                unavailableCount: unavailableDrivers.length,
+                notifiedDriverIds: notifiedDrivers,
+                unavailableDriverIds: unavailableDrivers
+            };
+
+            debug(`Notification summary: ${JSON.stringify(notificationSummary)}`);
 
             debug(`Notified ${notifiedDrivers.length} drivers, ${unavailableDrivers.length} drivers without active connections`);
 
@@ -1247,8 +1314,96 @@ exports.rideEnd = async (data) => {
     }
 };
 
+
+
+exports.rideEndByFallBack = async (req, res) => {
+    try {
+        const rideId = req.params?._id;
+
+        if (!rideId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ride ID is required',
+            });
+        }
+
+        const ride = await RideRequest.findById(rideId).populate('user', 'number');
+        if (!ride) {
+            return res.status(404).json({
+                success: false,
+                message: 'Ride not found',
+            });
+        }
+
+        // Mark the ride as completed
+        ride.ride_end_time = new Date();
+        ride.rideStatus = 'completed';
+        await ride.save();
+
+        const rider = await Riders.findById(ride.rider);
+        if (!rider) {
+            return res.status(404).json({
+                success: false,
+                message: 'Rider not found',
+            });
+        }
+
+        // Update rider stats
+        rider.TotalRides += 1;
+        if (!rider.rides.includes(ride._id)) {
+            rider.rides.push(ride._id);
+        }
+
+        // Remove on_ride_id from rider
+        rider.on_ride_id = undefined;
+
+        // 🔔 Send FCM Notification
+        if (ride.userFcm) {
+            try {
+                const title = 'Ride Completed! Please Make Payment';
+                const body = 'Your ride has ended successfully. Kindly proceed to make the payment. Thank you for riding with us!';
+
+                await sendNotification(ride.userFcm, title, body);
+            } catch (fcmError) {
+                console.error(`[${new Date().toISOString()}] Error sending FCM notification:`, fcmError.message);
+            }
+        }
+
+        // 💬 Send WhatsApp Message
+        const userNumber = ride?.user?.number;
+        if (userNumber) {
+            try {
+                const message = `Your ride has been marked as completed. Please make the payment to finalize the ride. Thank you!`;
+                await SendWhatsAppMessageNormal(userNumber, message);
+            } catch (waError) {
+                console.error(`[${new Date().toISOString()}] Error sending WhatsApp message:`, waError.message);
+            }
+        }
+
+        await rider.save();
+
+        return res.status(200).json({
+            success: true,
+            driverId: rider._id,
+            message: 'Ride ended successfully',
+        });
+
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Error in rideEndByFallBack:`, error);
+        return res.status(500).json({
+            success: false,
+            message: 'Something went wrong during ride end',
+            error: error.message,
+        });
+    }
+};
+
+
 exports.collectCash = async ({ data, paymentMethod }) => {
     try {
+        console.log('Incoming data:', data);
+        console.log('Payment method:', paymentMethod);
+
         const ride = await RideRequest.findById(data?._id);
         if (!ride) {
             return { success: false, message: 'Ride not found' };
@@ -1258,72 +1413,82 @@ exports.collectCash = async ({ data, paymentMethod }) => {
         ride.is_ride_paid = true;
         ride.paymentMethod = paymentMethod;
         await ride.save();
+        console.log('Ride marked as paid and saved.');
 
         const findRider = await Riders.findById(ride?.rider);
         if (!findRider) {
             return { success: false, message: 'Rider not found' };
         }
 
-        // Find past completed rides
-        const rechargeDate = new Date(findRider?.RechargeData?.whichDateRecharge);
+        // Recharge Date Check
+        const rechargeDateRaw = findRider?.RechargeData?.whichDateRecharge;
+        const rechargeDate = rechargeDateRaw ? new Date(rechargeDateRaw) : null;
+        console.log('Recharge date:', rechargeDate);
 
-        // Fetch only rides completed after (or on) the recharge date
-        const pastRides = await rideRequestModel.find({
-            rider: findRider._id,
-            rideStatus: "completed",
-            createdAt: { $gte: rechargeDate }  // Only rides after or on recharge date
-        });
+        let currentEarning = 0;
+        let totalEarnings = 0;
 
+        if (rechargeDate && !isNaN(rechargeDate.getTime())) {
+            // Calculate earnings only if recharge date is valid
+            const pastRides = await rideRequestModel.find({
+                rider: findRider._id,
+                rideStatus: "completed",
+                createdAt: { $gte: rechargeDate }
+            });
 
-        // Calculate earnings from past rides
-        const pastEarnings = pastRides.reduce((acc, cur) => acc + Number(cur.kmOfRide || 0), 0);
+            const pastEarnings = pastRides.reduce((acc, cur) => acc + Number(cur.kmOfRide || 0), 0);
+            currentEarning = Number(ride.kmOfRide || 0);
+            totalEarnings = pastEarnings + currentEarning;
 
-        // Current ride earning
-        const currentEarning = Number(ride.kmOfRide || 0);
+            const earningLimit = Number(findRider?.RechargeData?.onHowManyEarning || 0);
+            const remaining = earningLimit - totalEarnings;
+            const number = findRider?.phone;
 
-        // Total earnings = past + current
-        const totalEarnings = pastEarnings + currentEarning;
+            console.log('Earning limit:', earningLimit);
+            console.log('Total earnings:', totalEarnings);
 
-        const earningLimit = Number(findRider?.RechargeData?.onHowManyEarning || 0);
-        const remaining = earningLimit - totalEarnings;
-        const number = findRider?.phone;
+            // Earning limit logic
+            if (totalEarnings >= earningLimit) {
+                const message = `🎉 You’ve crossed your earning limit according to your current plan. Thank you for using Olyox! Please recharge now to continue earning more.`;
+                await SendWhatsAppMessageNormal(message, number);
 
-        // Handle earning limit
-        if (totalEarnings >= earningLimit) {
-            const message = `🎉 You’ve crossed your earning limit according to your current plan. Thank you for using Olyox! Please recharge now to continue earning more.`;
-            await SendWhatsAppMessageNormal(message, number);
-
-            findRider.isAvailable = false;
-            findRider.RechargeData = {
-                expireData: new Date(Date.now() - 5 * 60 * 1000),
-                rechargePlan: '',
-                onHowManyEarning: '',
-                approveRecharge: false,
-            };
-            findRider.isPaid = false;
-        } else if (remaining < 300) {
-            const reminderMessage = `🛎️ Reminder: You have ₹${remaining} earning potential left on your plan. Recharge soon to avoid interruptions in your earnings. – Team Olyox`;
-            await SendWhatsAppMessageNormal(reminderMessage, number);
+                findRider.isAvailable = false;
+                findRider.RechargeData = {
+                    expireData: new Date(Date.now() - 5 * 60 * 1000),
+                    rechargePlan: '',
+                    onHowManyEarning: '',
+                    approveRecharge: false,
+                    whichDateRecharge: null
+                };
+                findRider.isPaid = false;
+            } else if (remaining < 300) {
+                const reminderMessage = `🛎️ Reminder: You have ₹${remaining} earning potential left on your plan. Recharge soon to avoid interruptions in your earnings. – Team Olyox`;
+                await SendWhatsAppMessageNormal(reminderMessage, number);
+            }
+        } else {
+            console.log('Skipping earnings calculation due to invalid recharge date');
         }
 
-        // Reset rider state
+        // Finalize rider status update
         findRider.isAvailable = true;
         findRider.on_ride_id = null;
-
         await findRider.save();
 
         return {
             success: true,
-            message: 'Ride ended and payment recorded successfully',
+            message: rechargeDate && !isNaN(rechargeDate.getTime())
+                ? 'Ride ended and payment recorded with earnings tracked.'
+                : 'Ride ended and payment recorded. Earnings not tracked due to invalid recharge date.',
             currentEarning,
             totalEarnings
         };
 
     } catch (error) {
         console.error('Error in collectCash:', error.message);
-        return { success: false, message: error.message };
+        return { success: false, message: error.message || 'Internal server error' };
     }
 };
+
 
 
 
@@ -1797,79 +1962,112 @@ exports.deleleteRidersRideOrder = async (req, res) => {
 }
 
 exports.changeRidersRideStatusByAdmin = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { status } = req.body;
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
 
-        const order = await RideRequest.findById(id)
-            .populate('rider', 'name phone')
-            .populate('user', 'name number');
+    const order = await RideRequest.findById(id)
+      .populate('rider', 'name phone')
+      .populate('user', 'name number');
 
-        if (!order) {
-            return res.status(400).json({
-                success: false,
-                message: "Ride request not found"
-            });
-        }
-
-        order.rideStatus = status;
-        await order.save();
-
-        // Safe fallback values
-        const riderName = order?.rider?.name || "Rider";
-        const riderPhone = order?.rider?.phone || null;
-        const userName = order?.user?.name || "User";
-        const userPhone = order?.user?.number || null;
-
-        let riderMessage = "";
-        let userMessage = "";
-
-        switch (status) {
-            case 'pending':
-                riderMessage = `🚕 Hello ${riderName},\n\nA new ride request (ID: ${order._id}) is now *PENDING*. Please review and take action.`;
-                userMessage = `🕒 Hi ${userName},\n\nYour ride request (ID: ${order._id}) is currently *PENDING*. We will notify you once a rider accepts it.`;
-                break;
-
-            case 'accepted':
-                riderMessage = `✅ Hello ${riderName},\n\nYou have *ACCEPTED* the ride (ID: ${order._id}). Please proceed to pick up the user.`;
-                userMessage = `👏 Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *ACCEPTED* by ${riderName}. They will be on their way soon.`;
-                break;
-
-            case 'in_progress':
-                riderMessage = `🚗 Ride (ID: ${order._id}) is now *IN PROGRESS*. Stay safe on the road, ${riderName}.`;
-                userMessage = `🚕 Your ride (ID: ${order._id}) is now *IN PROGRESS*. Enjoy your journey!`;
-                break;
-
-            case 'completed':
-                riderMessage = `✅ Great job, ${riderName}!\n\nYou have *COMPLETED* the ride (ID: ${order._id}).`;
-                userMessage = `🎉 Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *COMPLETED*. Thank you for riding with us!`;
-                break;
-
-            case 'cancelled':
-                riderMessage = `❌ The ride (ID: ${order._id}) has been *CANCELLED*. No further action is required.`;
-                userMessage = `⚠️ Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *CANCELLED*. We apologize for the inconvenience.`;
-                break;
-
-            default:
-                riderMessage = `ℹ️ Ride (ID: ${order._id}) status has been changed to *${status}*.`;
-                userMessage = `ℹ️ Ride (ID: ${order._id}) status is now *${status}*.`;
-        }
-
-        // Send messages only if numbers are available
-        if (riderPhone) SendWhatsAppMessageNormal(riderMessage, riderPhone);
-        if (userPhone) SendWhatsAppMessageNormal(userMessage, userPhone);
-
-        return res.status(200).json({
-            success: true,
-            message: `Ride status updated to "${status}" and notifications sent`
-        });
-
-    } catch (error) {
-        console.error("Internal server error", error);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-            error: error.message
-        });
+    if (!order) {
+      return res.status(400).json({ success: false, message: "Ride request not found" });
     }
+
+    order.rideStatus = status;
+    await order.save();
+
+    // Safe fallback values
+    const riderName = order?.rider?.name || "Rider";
+    const riderPhone = order?.rider?.phone || null;
+    const userName = order?.user?.name || "User";
+    const userPhone = order?.user?.number || null;
+    const userFcmToken = order?.userFcm; // Get FCM token from the order
+
+    let riderMessage = "";
+    let userMessage = "";
+    let notificationTitle = "";
+    let notificationBody = "";
+
+    switch (status) {
+      case 'pending':
+        riderMessage = `🚕 Hello ${riderName},\n\nA new ride request (ID: ${order._id}) is now *PENDING*. Please review and take action. Refresh the app to see the latest status.`;
+        userMessage = `🕒 Hi ${userName},\n\nYour ride request (ID: ${order._id}) is currently *PENDING*. We will notify you once a rider accepts it. Please refresh the app for updates.`;
+        notificationTitle = '🕒 Ride Status Update';
+        notificationBody = `Your ride request is currently PENDING. We'll notify you once a rider accepts it. Refresh your app for the latest status.`;
+        break;
+      case 'accepted':
+        riderMessage = `✅ Hello ${riderName},\n\nYou have *ACCEPTED* the ride (ID: ${order._id}). Please proceed to pick up the user. Refresh the app to see the latest status.`;
+        userMessage = `👏 Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *ACCEPTED* by ${riderName}. They will be on their way soon. Please refresh the app for updates.`;
+        notificationTitle = '✅ Ride Accepted!';
+        notificationBody = `Your ride has been ACCEPTED by ${riderName}. They'll be on their way soon. Refresh your app for the latest status.`;
+        break;
+      case 'in_progress':
+        riderMessage = `🚗 Ride (ID: ${order._id}) is now *IN PROGRESS*. Stay safe on the road, ${riderName}. Refresh the app to see the latest status.`;
+        userMessage = `🚕 Your ride (ID: ${order._id}) is now *IN PROGRESS*. Enjoy your journey! Please refresh the app for updates.`;
+        notificationTitle = '🚗 Ride In Progress';
+        notificationBody = `Your ride is now IN PROGRESS. Enjoy your journey! Refresh your app for the latest status.`;
+        break;
+      case 'completed':
+        riderMessage = `✅ Great job, ${riderName}!\n\nYou have *COMPLETED* the ride (ID: ${order._id}). Refresh the app to see the latest status.`;
+        userMessage = `🎉 Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *COMPLETED*. Thank you for riding with us! Please refresh the app for updates.`;
+        notificationTitle = '🎉 Ride Completed';
+        notificationBody = `Your ride has been COMPLETED. Thank you for riding with us! Refresh your app for the latest status.`;
+        break;
+      case 'cancelled':
+        riderMessage = `❌ The ride (ID: ${order._id}) has been *CANCELLED*. No further action is required. Refresh the app to see the latest status.`;
+        userMessage = `⚠️ Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *CANCELLED*. We apologize for the inconvenience. Please refresh the app for updates.`;
+        notificationTitle = '⚠️ Ride Cancelled';
+        notificationBody = `Your ride has been CANCELLED. We apologize for the inconvenience. Refresh your app for the latest status.`;
+        break;
+      default:
+        riderMessage = `ℹ️ Ride (ID: ${order._id}) status has been changed to *${status}*. Refresh the app to see the latest status.`;
+        userMessage = `ℹ️ Ride (ID: ${order._id}) status is now *${status}*. Please refresh the app for updates.`;
+        notificationTitle = 'ℹ️ Ride Status Updated';
+        notificationBody = `Your ride status is now "${status}". Refresh your app for the latest status.`;
+    }
+
+    // Send WhatsApp messages if phone numbers are available
+    if (riderPhone) {
+      SendWhatsAppMessageNormal(riderMessage, riderPhone);
+    }
+    
+    if (userPhone) {
+      SendWhatsAppMessageNormal(userMessage, userPhone);
+    }
+
+    // Send FCM notification if token is available
+    if (userFcmToken) {
+      try {
+        // Include ride ID in the notification data for deep linking in the app
+        const notificationData = {
+          event: "RIDE_STATUS_UPDATE",
+          ride_id: order._id.toString(),
+          status: status,
+          timestamp: new Date().toISOString()
+        };
+
+        await sendNotification(userFcmToken, notificationTitle, notificationBody, notificationData);
+        console.log(`FCM notification sent to user for ride ${order._id}`);
+      } catch (notificationError) {
+        console.error("Failed to send FCM notification:", notificationError);
+        // Continue execution even if notification fails
+      }
+    } else {
+      console.log(`No FCM token available for user of ride ${order._id}`);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Ride status updated to "${status}" and notifications sent`
+    });
+    
+  } catch (error) {
+    console.error("Internal server error", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
 };

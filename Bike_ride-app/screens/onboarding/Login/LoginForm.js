@@ -12,11 +12,13 @@ import Input from "../../../components/Input";
 import Button from "../../../components/Button";
 import axios from 'axios';
 import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from '@expo/vector-icons'; // Make sure to install expo vector icons if not already
 
 const LoginForm = ({ onLogin }) => {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [otpType, setOtpType] = useState("text"); // "text" or "whatsapp"
   const navigation = useNavigation();
 
   const validateAndFormatPhone = (number) => {
@@ -52,22 +54,21 @@ const LoginForm = ({ onLogin }) => {
     try {
       const response = await axios.post(
         'https://appapi.olyox.com/api/v1/rider/rider-login', 
-        { number: formattedPhone }
+        { 
+          number: formattedPhone,
+          otpType: otpType // Add otpType to the request body
+        }
       );
       
       if (response.data.success) {
         console.log("Login successful", response.data);
-        setError("");
-        onLogin(formattedPhone);
+        onLogin(formattedPhone ,otpType);
       } else {
         setError(response.data.message || "Login failed");
         console.log("Login failed", response.data.message);
       }
     } catch (error) {
-      // console.error("Error during login:", error?.response?.data);
-      
       if (error?.response?.status === 403) {
-        
         Alert.alert(
           'Complete Profile', 
           error?.response?.data?.message, 
@@ -123,14 +124,64 @@ const LoginForm = ({ onLogin }) => {
         
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         
+        <Text style={styles.otpSectionTitle}>Select OTP Method</Text>
+        
+        <View style={styles.optTypeContainer}>
+          <TouchableOpacity
+            style={[
+              styles.otpTypeButton,
+              otpType === "text" && styles.otpTypeButtonActive
+            ]}
+            onPress={() => setOtpType("text")}
+          >
+            <Ionicons 
+              name="chatbubble-outline" 
+              size={22} 
+              color={otpType === "text" ? "#ffffff" : "#666666"} 
+            />
+            <Text
+              style={[
+                styles.otpTypeText,
+                otpType === "text" && styles.otpTypeTextActive
+              ]}
+            >
+              SMS Text
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
+              styles.otpTypeButton,
+              otpType === "whatsapp" && styles.otpTypeButtonActive
+            ]}
+            onPress={() => setOtpType("whatsapp")}
+          >
+            <Ionicons 
+              name="logo-whatsapp" 
+              size={22} 
+              color={otpType === "whatsapp" ? "#ffffff" : "#666666"} 
+            />
+            <Text
+              style={[
+                styles.otpTypeText,
+                otpType === "whatsapp" && styles.otpTypeTextActive
+              ]}
+            >
+              WhatsApp
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
         {loading ? (
           <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color="#e51e25" style={styles.loader} />
-            <Text style={styles.loaderText}>Sending OTP...</Text>
+            <Text style={styles.loaderText}>
+              Sending OTP via {otpType === "text" ? "SMS" : "WhatsApp"}...
+            </Text>
           </View>
         ) : (
           <Button 
-            title="Send OTP" 
+            title={`Send OTP via ${otpType === "text" ? "SMS" : "WhatsApp"}`}
             onPress={handleLogin} 
             style={styles.button}
             textStyle={styles.buttonText} 
@@ -156,12 +207,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
   logoContainer: {
-    marginBottom: 40,
+    marginBottom: 30,
     alignItems: "center",
+    marginTop: 20,
   },
   logo: {
-    width: 120,
-    height: 120,
+    width: 100,
+    height: 100,
   },
   title: {
     fontSize: 28,
@@ -184,16 +236,56 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderColor: "#e0e0e0",
     backgroundColor: "#f9f9f9",
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 15,
     width: "100%",
   },
+  otpSectionTitle: {
+    alignSelf: "flex-start",
+    marginLeft: 5,
+    marginTop: 10,
+    marginBottom: 10,
+    fontSize: 16,
+    color: "#444444",
+    fontWeight: "500",
+  },
+  optTypeContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 20,
+  },
+  otpTypeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 10,
+    width: "48%",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  otpTypeButtonActive: {
+    backgroundColor: "#e51e25",
+    borderColor: "#e51e25",
+  },
+  otpTypeText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: "#666666",
+    fontWeight: "500",
+  },
+  otpTypeTextActive: {
+    color: "#ffffff",
+  },
   button: {
-    marginTop: 20,
+    marginTop: 10,
     backgroundColor: "#e51e25",
     width: "100%",
     paddingVertical: 15,
-    borderRadius: 8,
+    borderRadius: 10,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,

@@ -8,9 +8,11 @@ const BhOtpVerification = () => {
     const route = useRoute();
     const { type, email, number } = route.params;
 
+    console.log("type",type)
+
     const [formData, setFormData] = useState({
         otp: '',
-        type: type,
+        type: "email",
         email: email,
     });
     const [loading, setLoading] = useState(false);
@@ -56,12 +58,13 @@ const BhOtpVerification = () => {
         setLoading(true);
         try {
             const response = await axios.post(
-                "https://www.api.olyox.com/api/v1/resend_Otp",
-                { email, type }
+                "https://webapi.olyox.com/api/v1/resend_Otp",
+                { email, type:'email' }
             );
             Alert.alert("Success", response.data.message || "OTP sent successfully!");
             setTimer(120);
         } catch (error) {
+            console.log("error.response",error.response)
             Alert.alert("Error", error.response?.data?.message || "Failed to resend OTP.");
         } finally {
             setLoading(false);
@@ -72,7 +75,7 @@ const BhOtpVerification = () => {
         <View style={styles.container}>
             <View style={styles.card}>
                 <Text style={styles.title}>Enter OTP</Text>
-                <Text style={styles.subtitle}>We have sent a 6-digit OTP to <Text style={styles.bold}>{number}</Text></Text>
+                <Text style={styles.subtitle}>We have sent a 6-digit OTP to Whatsapp <Text style={styles.bold}>{number}</Text></Text>
 
                 <TextInput
                     style={styles.input}

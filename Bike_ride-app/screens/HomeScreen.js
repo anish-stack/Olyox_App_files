@@ -15,7 +15,7 @@ export default function HomeScreen() {
   const [role, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
-  const [retrying, setRetrying] = useState(false);
+  const [retrying, setRetrying] = useState(false); // Make sure this is boolean
   const { isSocketReady, socket } = useSocket();
 
   const fetchUserDetails = async (showLoader = true) => {
@@ -50,9 +50,12 @@ export default function HomeScreen() {
       setUserRole(partner.category);
       setErrorMsg(null);
       
-      // Initialize socket connection
+      // Initialize socket connection with explicit type conversion for any potential boolean flags
       await initializeSocket({
         userId: partner._id,
+        // Convert any potential string booleans to actual booleans if needed
+        // For example, if there were any boolean flags:
+        // isActive: String(someValue) === 'true' || someValue === true
       });
       
     } catch (error) {
@@ -108,9 +111,11 @@ export default function HomeScreen() {
         return;
       }
       
+      // Ensure parcelId is properly handled as string if needed
+      const parcelId = response.parcel;
       navigation.reset({
         index: 0,
-        routes: [{ name: 'ParcelDetails', params: { parcelId: response.parcel } }],
+        routes: [{ name: 'ParcelDetails', params: { parcelId } }],
       });
     };
     
@@ -135,8 +140,14 @@ export default function HomeScreen() {
     return null;
   }, [role]);
 
+  // Convert any boolean checks to be explicit
+  const isLoading = loading === true;
+  const hasError = errorMsg !== null;
+  const isRetrying = retrying === true;
+  const hasRole = role !== null;
+
   // Loading state
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#0d6efd" />
@@ -146,7 +157,7 @@ export default function HomeScreen() {
   }
 
   // Error state
-  if (errorMsg) {
+  if (hasError) {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorTitle}>Unable to load</Text>
@@ -154,9 +165,9 @@ export default function HomeScreen() {
         <TouchableOpacity 
           style={styles.retryButton} 
           onPress={handleRetry}
-          disabled={retrying}
+          disabled={isRetrying}
         >
-          {retrying ? (
+          {isRetrying ? (
             <ActivityIndicator size="small" color="#ffffff" />
           ) : (
             <Text style={styles.retryButtonText}>Retry</Text>
@@ -167,7 +178,7 @@ export default function HomeScreen() {
   }
 
   // No role defined (should rarely happen after successful API call)
-  if (!role) {
+  if (!hasRole) {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>User role not defined. Please contact support.</Text>
