@@ -87,9 +87,10 @@ const SettingsSchema = new mongoose.Schema({
     support_number: {
         type: String,
         default: "1234567890"
+    },
+    adminBh:{
+        type: String
     }
-
-
 }, { timestamps: true });
 
 module.exports = mongoose.model('Settings', SettingsSchema);
