@@ -49,13 +49,13 @@ export default function Documents() {
   const [fileSizeError, setFileSizeError] = useState({});
   const [uploadProgress, setUploadProgress] = useState({});
   const router = useNavigation();
-  
+
   // Animation values
   const shake = useSharedValue(0);
   const fadeAnim = useSharedValue(0);
 
   // Check if all required documents are uploaded
-  const isAllUploaded = DOCUMENTS.every(doc => 
+  const isAllUploaded = DOCUMENTS.every(doc =>
     images[doc.id] && !fileSizeError[doc.id]
   );
 
@@ -133,15 +133,15 @@ export default function Documents() {
 
       if (!result.canceled && result.assets?.[0]?.uri) {
         const uri = result.assets[0].uri;
-        
+
         // Check file size
         const { size, isOverLimit } = await checkFileSize(uri);
-        
+
         if (isOverLimit) {
           setFileSizeError(prev => ({ ...prev, [type]: true }));
-          setError(prev => ({ 
-            ...prev, 
-            [type]: `File size (${formatFileSize(size)}) exceeds limit of 1MB` 
+          setError(prev => ({
+            ...prev,
+            [type]: `File size (${formatFileSize(size)}) exceeds limit of 1MB`
           }));
           setImages(prev => ({ ...prev, [type]: uri }));
           startShake();
@@ -166,7 +166,7 @@ export default function Documents() {
           setImages(prev => ({ ...prev, [type]: uri }));
           setUploadProgress(prev => ({ ...prev, [type]: 100 }));
           setFileSizeError(prev => ({ ...prev, [type]: false }));
-          
+
           // Animate success
           fadeAnim.value = withSequence(
             withTiming(1, { duration: 300 }),
@@ -212,7 +212,7 @@ export default function Documents() {
       // Append each image to FormData with its document type
       Object.entries(images).forEach(([docType, uri]) => {
         if (fileSizeError[docType]) return; // Skip files that are too large
-        
+
         // Get file extension from URI
         const uriParts = uri.split('.');
         const fileType = uriParts[uriParts.length - 1];
@@ -233,6 +233,7 @@ export default function Documents() {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`,
         },
+        timeout: 300000,
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round(
             (progressEvent.loaded * 100) / progressEvent.total
@@ -247,14 +248,14 @@ export default function Documents() {
           'Documents uploaded successfully!',
           [{ text: 'OK' }]
         );
-        
+        setError('')
         // Navigate to waiting screen or next step
-        router.navigate('/wait_screen');
+        router.navigate('Wait_Screen');
       } else {
         throw new Error(response.data.message || 'Upload failed');
       }
     } catch (err) {
-      console.log("Error during submission:", err);
+      console.log("Error during submission:", err.response);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to submit documents';
       Alert.alert(
         'Error',
@@ -315,11 +316,11 @@ export default function Documents() {
                       <Text style={styles.loadingText}>Uploading...</Text>
                       {uploadProgress[doc.id] !== undefined && (
                         <View style={styles.progressBarContainer}>
-                          <View 
+                          <View
                             style={[
-                              styles.progressBar, 
+                              styles.progressBar,
                               { width: `${uploadProgress[doc.id]}%` }
-                            ]} 
+                            ]}
                           />
                           <Text style={styles.progressText}>
                             {uploadProgress[doc.id]}%

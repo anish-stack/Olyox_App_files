@@ -29,6 +29,9 @@ const RiderSchema = new Schema({
         VehicleImage: [String]
 
     },
+    aadharNumber:{
+        type:String,
+    },
     isFirstRechargeDone: {
         type: Boolean,
         default: false

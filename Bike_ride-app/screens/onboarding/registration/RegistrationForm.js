@@ -168,6 +168,7 @@ export default function RegistrationForm() {
 
     try {
       const endpoint = `${MAIN_API_BASE_URL}/rider/register`
+      // const endpoint = `http://192.168.1.10:3100/api/v1/rider/register`
 
 
       const payload = {
@@ -175,6 +176,7 @@ export default function RegistrationForm() {
         phone,
         BH: bhId,
         role,
+        aadharNumber: userData?.aadharNumber || '',
         rideVehicleInfo: {
           vehicleName,
           vehicleType,
@@ -297,6 +299,10 @@ export default function RegistrationForm() {
               Category: {userData.category.title}
             </Paragraph>
           )}
+          <Paragraph style={styles.cardParagraph}>
+            Aadhar Number: {userData.aadharNumber || ''}
+          </Paragraph>
+          <Text>  *Note: Aadhar number cannot be changed after registration.</Text>
         </Card.Content>
       </Card>
     )
