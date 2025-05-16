@@ -372,7 +372,12 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
         { text: "OK", onPress: () => resetToHome() },
       ])
       updateRideStatus(false)
-
+   navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        })
+      );
 
 
       updateState({ showCancelModal: false })
