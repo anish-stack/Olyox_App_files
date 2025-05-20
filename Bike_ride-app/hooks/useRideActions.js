@@ -170,28 +170,7 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
       updateState({ sound })
 
       // Wait a little and show alert
-      setTimeout(() => {
-        Alert.alert(
-          "Ride Cancelled",
-          "The ride has been cancelled by the customer.",
-          [
-            {
-              text: "OK",
-              onPress: async () => {
-                stopSound?.()
-
-                logDebug("LocalRideStorage clear sound")
-                navigation.dispatch(
-                  CommonActions.reset({
-                    index: 0,
-                    routes: [{ name: "Home" }],
-                  })
-                )
-              },
-            },
-          ]
-        )
-      }, 100)
+     
 
       logDebug("Sound started successfully")
     } catch (error) {
