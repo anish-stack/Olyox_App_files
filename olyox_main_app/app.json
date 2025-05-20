@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.olyoxuser.olyox",
+      "usesNotifications": true,
       "development": {
         "distribution": "internal",
         "buildType": "simulator"
@@ -28,14 +29,11 @@
         "NSLocationAlwaysUsageDescription": "Olyox uses your location to help with background location tracking for delivery updates, even when you're not using the app.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Olyox requires location access at all times to provide accurate real-time updates for orders and to find nearby service providers.",
         "NSPhotoLibraryUsageDescription": "Olyox uses your photo library to let you upload saved images such as profile photos, mismatched items, or food pictures for order tracking, returns, and support.",
-        "LSApplicationQueriesSchemes": [
-          "tel",
-          "mailto",
-          "whatsapp"
-        ],
+        "LSApplicationQueriesSchemes": ["tel", "mailto", "whatsapp"],
         "ITSAppUsesNonExemptEncryption": false,
         "GMSApiKey": "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8"
-      }
+      },
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -46,9 +44,6 @@
         "apiKey": "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8"
       },
       "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION"
@@ -62,10 +57,7 @@
               "host": "auth/callback"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         },
         {
           "action": "VIEW",
@@ -74,10 +66,7 @@
               "host": "auth/callback"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
       "package": "com.happy_coding.olyox",
@@ -93,12 +82,24 @@
       "clerkFrontendApi": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk",
       "clerkApiKey": "pk_test_c2VjdXJlLWdudS0zNi5jbGVyay5hY2NvdW50cy5kZXYk",
       "eas": {
-        "projectId": "075eee97-be99-4529-bfdc-58d44dfce7f2"
+        "projectId": "e73c718b-d6aa-45ea-a12a-c496424892ba"
       }
     },
     "plugins": [
       "expo-secure-store",
-      "@react-native-firebase/app"
+      "@react-native-firebase/app",
+      "expo-notifications",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static",
+            "podfileProperties": {
+              "use_modular_headers!": true
+            }
+          }
+        }
+      ]
     ]
   }
 }

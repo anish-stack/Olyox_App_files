@@ -570,13 +570,14 @@ export function Recharge() {
                                 <>
                                     <Icon name="credit-card-outline" size={20} color="#FFFFFF" />
                                     <Text style={styles.paymentButtonText}>
-                                        Pay ₹{calculateDiscountedPrice()} + 18% = ₹{(calculateDiscountedPrice() * 1.18).toFixed(2)} with Razorpay
+                                        Pay ₹{calculateDiscountedPrice()} + ₹{(calculateDiscountedPrice() * 0.18).toFixed(2)} (18% GST) = ₹{(calculateDiscountedPrice() * 1.18).toFixed(2)} with Razorpay
                                         {appliedCoupon && (
                                             <Text style={styles.discountText}>
-                                                {' '} (₹{selectedPlan.price} - {appliedCoupon.discount}% + 18% GST)
+                                                {' '} (Original: ₹{selectedPlan.price}, Discount: {appliedCoupon.discount}%)
                                             </Text>
                                         )}
                                     </Text>
+
 
 
                                 </>
@@ -773,7 +774,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
     },
     paymentButtonText: {
-        fontSize: 14,
+        fontSize: 10,
         fontWeight: "600",
         color: "#FFFFFF",
         marginLeft: 8,

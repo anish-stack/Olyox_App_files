@@ -196,6 +196,9 @@ const restaurantSchema = new mongoose.Schema({
          onHowManyEarning: String,
          whichDateRecharge:Date,
     },
+    isPaid:{
+        type:Boolean,
+    },
     lastNotificationSent: {
         type: Date,
         default: null,

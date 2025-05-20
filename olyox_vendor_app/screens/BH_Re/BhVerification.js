@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
+import useSettings from '../../hooks/Settings';
 
 const BhVerification = () => {
-  const [bh, setBh] = useState('');
+  const [bh, setBh] = useState('BH');
   const [name, setName] = useState('');
   const [response, setResponse] = useState(null);
+  const { settings } = useSettings();
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [skipping, setSkipping] = useState(false);
   const navigation = useNavigation();
 
   const checkBhId = async () => {
@@ -28,25 +31,44 @@ const BhVerification = () => {
 
       setTimeout(() => {
         navigation.navigate('Register', { bh_id: bh });
-      }, 4500);
+      }, 1200);
     } catch (err) {
       setResponse(null);
+      console.log(err);
       setError(err.response?.data?.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSkip = () => {
+    console.log('Skip button pressed');
+    setSkipping(true);
+
+    // Check if adminBh exists in settings
+    if (settings && settings.adminBh) {
+      console.log(`Using admin BH ID from settings: ${settings.adminBh}`);
+      setTimeout(() => {
+        navigation.navigate('Register', { bh_id: settings.adminBh });
+        setSkipping(false);
+      }, 1000);
+    } else {
+      console.log('No admin BH ID found in settings');
+      setError('No default BH ID available. Please enter a valid BH ID or contact support.');
+      setSkipping(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        <Image 
+        <Image
           source={{ uri: 'https://res.cloudinary.com/dlasn7jtv/image/upload/v1735719280/llocvfzlg1mojxctm7v0.png' }}
           style={styles.logo}
         />
 
         <Text style={styles.title}>Enter Your BH ID</Text>
-        <Text style={styles.subtitle}>Register at oloyox.com and start earning today</Text>
+        <Text style={styles.subtitle}>Register at olyox.com and start earning today</Text>
 
         <TextInput
           style={styles.input}
@@ -58,7 +80,7 @@ const BhVerification = () => {
         <TouchableOpacity
           style={styles.button}
           onPress={checkBhId}
-          disabled={loading}
+          disabled={loading || skipping}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
@@ -67,9 +89,27 @@ const BhVerification = () => {
           )}
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={handleSkip}
+          disabled={loading || skipping}
+        >
+          {skipping ? (
+            <ActivityIndicator color="#666" />
+          ) : (
+            <Text style={styles.skipButtonText}>Don't have a BH ID? Skip</Text>
+          )}
+        </TouchableOpacity>
+
         {response && (
           <View style={styles.successBox}>
             <Text style={styles.successText}>{response.message || 'BH ID verified successfully!'} Redirecting...</Text>
+          </View>
+        )}
+
+        {skipping && (
+          <View style={styles.successBox}>
+            <Text style={styles.successText}>Using default BH ID. Redirecting...</Text>
           </View>
         )}
 
@@ -137,10 +177,22 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
+    marginBottom: 12,
   },
   buttonText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  skipButton: {
+    width: '100%',
+    backgroundColor: 'transparent',
+    padding: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    color: '#666',
+    textDecorationLine: 'underline',
   },
   successBox: {
     marginTop: 16,

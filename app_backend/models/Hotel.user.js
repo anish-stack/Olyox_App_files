@@ -62,7 +62,7 @@ const HotelUserSchema = new Schema({
         type: Boolean,
         default: false
     },
-    isBlockByAdmin:{
+    isBlockByAdmin: {
         type: Boolean,
         default: false
     },
@@ -104,13 +104,25 @@ const HotelUserSchema = new Schema({
     lastNotificationSent: {
         type: Date,
         default: null,
-      },
-      
+    },
+
     otp: {
         type: Number
     },
     otp_expires: {
         type: Date
+    },
+    isPaid: {
+        type: Boolean,
+        default: false
+    },
+    RechargeData: {
+        rechargePlan: String,
+        expireData: Date,
+        approveRecharge: Boolean,
+        onHowManyEarning: String,
+        whichDateRecharge: Date,
+
     },
     Documents: [{
         d_type: {

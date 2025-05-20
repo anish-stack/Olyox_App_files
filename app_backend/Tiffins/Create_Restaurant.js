@@ -10,6 +10,7 @@ const bcrypt = require('bcrypt');
 const RestaurantPackageModel = require('../models/Tiifins/Restaurant.package.model');
 const { uploadSingleImage, deleteImage } = require('../utils/cloudinary');
 const generateOtp = require('../utils/Otp.Genreator');
+const { checkBhAndDoRechargeOnApp } = require('../PaymentWithWebDb/razarpay');
 exports.register_restaurant = async (req, res) => {
     try {
         const {
@@ -854,7 +855,11 @@ exports.verify_otp = async (req, res) => {
     try {
         const { otp, restaurant_BHID } = req.body;
 
+        console.log("OTP Verification Requested For:", restaurant_BHID);
+
+        // Step 1: Check required fields
         if (!otp || !restaurant_BHID) {
+            console.log("Missing OTP or Restaurant BHID");
             return res.status(400).json({
                 success: false,
                 message: "OTP and Restaurant BHID are required",
@@ -862,9 +867,10 @@ exports.verify_otp = async (req, res) => {
             });
         }
 
+        // Step 2: Find restaurant by BHID
         const restaurant = await Restaurant.findOne({ restaurant_BHID });
-
         if (!restaurant) {
+            console.log("Restaurant not found for BHID:", restaurant_BHID);
             return res.status(404).json({
                 success: false,
                 message: "Restaurant not found",
@@ -872,8 +878,9 @@ exports.verify_otp = async (req, res) => {
             });
         }
 
-        // Check if OTP matches and is not expired
+        // Step 3: Validate OTP match
         if (restaurant.otp !== otp) {
+            console.log("Invalid OTP for restaurant:", restaurant_BHID);
             return res.status(400).json({
                 success: false,
                 message: "Invalid OTP",
@@ -881,7 +888,9 @@ exports.verify_otp = async (req, res) => {
             });
         }
 
+        // Step 4: Check OTP expiry
         if (new Date() > restaurant.otpExpiry) {
+            console.log("OTP expired for restaurant:", restaurant_BHID);
             return res.status(400).json({
                 success: false,
                 message: "OTP has expired",
@@ -889,21 +898,50 @@ exports.verify_otp = async (req, res) => {
             });
         }
 
+        console.log("OTP Validated Successfully");
 
+        // Step 5: Clear OTP-related fields and verify
         restaurant.otp = null;
         restaurant.otpExpiry = null;
-        restaurant.isOtpVerify = true
-        restaurant.howManyTimesHitResend = 0; // Reset resend attempts
-        restaurant.isOtpBlock = false; // Unblock OTP if it was previously blocked
-        restaurant.otpUnblockAfterThisTime = null; // Clear the OTP unblock time
+        restaurant.isOtpVerify = true;
+        restaurant.howManyTimesHitResend = 0;
+        restaurant.isOtpBlock = false;
+        restaurant.otpUnblockAfterThisTime = null;
 
+        // Step 6: Try fetching recharge info
+        try {
+            const { success, payment_id, member_id } =
+                await checkBhAndDoRechargeOnApp({ number: restaurant.restaurant_phone });
 
+            console.log("Recharge API Response:", { success, payment_id, member_id });
 
+            if (success && payment_id && member_id) {
+                restaurant.RechargeData = {
+                    rechargePlan: member_id?.title,
+                    expireData: payment_id?.end_date,
+                    onHowManyEarning: member_id?.HowManyMoneyEarnThisPlan,
+                    whichDateRecharge: payment_id?.createdAt,
+                    approveRecharge: payment_id?.payment_approved,
+                };
+                restaurant.is_restaurant_in_has_valid_recharge = true;
+                restaurant.isPaid = true;
+
+                console.log("Recharge details saved in restaurant profile");
+            } else {
+                console.log("No valid recharge data found.");
+            }
+
+        } catch (rechargeErr) {
+            console.error("Recharge Fetch Failed:", rechargeErr.message);
+        }
+
+        // Step 7: Save restaurant info
         await restaurant.save();
+        console.log("Restaurant saved after OTP verification");
 
+        // Step 8: Send token to client
         await sendToken(restaurant, res, 200);
-
-
+        console.log("Token sent successfully");
 
     } catch (error) {
         console.error("Error verifying OTP:", error.message);
@@ -914,6 +952,7 @@ exports.verify_otp = async (req, res) => {
         });
     }
 };
+
 
 exports.passwordChange = async (req, res) => {
     try {

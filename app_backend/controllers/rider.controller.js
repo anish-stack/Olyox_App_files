@@ -1,35 +1,50 @@
-const CabRiderTimes = require('../models/CabRiderTimes');
-const rideRequestModel = require('../models/ride.request.model');
-const Rider = require('../models/Rider.model');
-const generateOtp = require('../utils/Otp.Genreator');
-const send_token = require('../utils/send_token');
-const SendWhatsAppMessage = require('../utils/whatsapp_send');
-const axios = require('axios')
-const cloudinary = require('cloudinary').v2
-const moment = require('moment');
-const momentTz = require('moment-timezone');
+const CabRiderTimes = require("../models/CabRiderTimes");
+const rideRequestModel = require("../models/ride.request.model");
+const Rider = require("../models/Rider.model");
+const generateOtp = require("../utils/Otp.Genreator");
+const send_token = require("../utils/send_token");
+const SendWhatsAppMessage = require("../utils/whatsapp_send");
+const axios = require("axios");
+const cloudinary = require("cloudinary").v2;
+const moment = require("moment");
+const momentTz = require("moment-timezone");
 
-const fs = require('fs');
+const fs = require("fs");
 const path = require("path");
 
-const Bonus_Model = require('../models/Bonus_Model/Bonus_Model');
-const Parcel_Request = require('../models/Parcel_Models/Parcel_Request');
-const { sendDltMessage } = require('../utils/DltMessageSend');
+const Bonus_Model = require("../models/Bonus_Model/Bonus_Model");
+const Parcel_Request = require("../models/Parcel_Models/Parcel_Request");
+const { sendDltMessage } = require("../utils/DltMessageSend");
+const { checkBhAndDoRechargeOnApp } = require("../PaymentWithWebDb/razarpay");
 cloudinary.config({
-  cloud_name: 'daxbcusb5',
-  api_key: '984861767987573',
-  api_secret: 'tCBu9JNxC_iaUENm1kDwLrdXL0k'
-})
+  cloud_name: "daxbcusb5",
+  api_key: "984861767987573",
+  api_secret: "tCBu9JNxC_iaUENm1kDwLrdXL0k",
+});
 // Register a new rider
 exports.registerRider = async (req, res) => {
   try {
     const { name, phone, rideVehicleInfo, BH, role, aadharNumber } = req.body;
-    const { vehicleName, vehicleType, PricePerKm, VehicleNumber, RcExpireDate } = rideVehicleInfo;
+    const {
+      vehicleName,
+      vehicleType,
+      PricePerKm,
+      VehicleNumber,
+      RcExpireDate,
+    } = rideVehicleInfo;
 
     // Validate input
-    if (!BH) return res.status(400).json({ success: false, message: "Please enter your BH Number." });
+    if (!BH)
+      return res
+        .status(400)
+        .json({ success: false, message: "Please enter your BH Number." });
     if (!name || !phone || !vehicleName || !vehicleType || !VehicleNumber)
-      return res.status(400).json({ success: false, message: "All required fields must be filled." });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "All required fields must be filled.",
+        });
 
     // Check if BH number already exists
     const bhExists = await Rider.findOne({ BH });
@@ -48,11 +63,14 @@ exports.registerRider = async (req, res) => {
         if (existingRider.howManyTimesHitResend >= 5) {
           existingRider.isOtpBlock = true;
           existingRider.isDocumentUpload = false;
-          existingRider.otpUnblockAfterThisTime = new Date(Date.now() + 30 * 60 * 1000); // 30 mins block
+          existingRider.otpUnblockAfterThisTime = new Date(
+            Date.now() + 30 * 60 * 1000
+          ); // 30 mins block
           await existingRider.save();
 
           await SendWhatsAppMessage(
-            `Hi ${existingRider.name || 'User'},\n\nYou’ve attempted OTP verification too many times.\nYour account has been temporarily locked for 30 minutes. Please try again later.\n\n- Team Olyox`,
+            `Hi ${existingRider.name || "User"
+            },\n\nYou’ve attempted OTP verification too many times.\nYour account has been temporarily locked for 30 minutes. Please try again later.\n\n- Team Olyox`,
             phone
           );
 
@@ -70,7 +88,8 @@ exports.registerRider = async (req, res) => {
         await existingRider.save();
 
         await SendWhatsAppMessage(
-          `Hi ${existingRider.name || 'User'},\n\nYour OTP for registering as ${role} rider is: ${otp}\n\nPlease use this to complete your registration.\n\n- Team Olyox`,
+          `Hi ${existingRider.name || "User"
+          },\n\nYour OTP for registering as ${role} rider is: ${otp}\n\nPlease use this to complete your registration.\n\n- Team Olyox`,
           phone
         );
 
@@ -96,7 +115,9 @@ exports.registerRider = async (req, res) => {
     }
 
     // Check if vehicle number is already registered
-    const existingVehicle = await Rider.findOne({ 'rideVehicleInfo.VehicleNumber': VehicleNumber });
+    const existingVehicle = await Rider.findOne({
+      "rideVehicleInfo.VehicleNumber": VehicleNumber,
+    });
     if (existingVehicle) {
       return res.status(409).json({
         success: false,
@@ -137,28 +158,27 @@ exports.registerRider = async (req, res) => {
       message: "Rider registration initiated. OTP sent successfully.",
       rider: savedRider,
     });
-
   } catch (error) {
     console.error("Error registering rider:", error);
     return res.status(500).json({
       success: false,
-      message: "Something went wrong during registration. Please try again later.",
+      message:
+        "Something went wrong during registration. Please try again later.",
     });
   }
 };
 
 exports.getSingleRider = async (req, res) => {
   try {
-
   } catch (error) {
-    console.log("Internal server error", error)
+    console.log("Internal server error", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
-      error: error.message
-    })
+      error: error.message,
+    });
   }
-}
+};
 exports.updateRechargeDetails = async (req, res) => {
   try {
     const { rechargePlan, expireData, approveRecharge, BH } = req.body || {};
@@ -167,13 +187,17 @@ exports.updateRechargeDetails = async (req, res) => {
 
     // Validate required fields
     if (!BH) {
-      return res.status(400).json({ success: false, message: "BH is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "BH is required" });
     }
 
     // Find the rider by BH
     const foundRider = await Rider.findOne({ BH });
     if (!foundRider) {
-      return res.status(404).json({ success: false, message: "Rider not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Rider not found" });
     }
 
     // If approveRecharge is true, update the recharge details
@@ -181,7 +205,7 @@ exports.updateRechargeDetails = async (req, res) => {
       foundRider.RechargeData = {
         rechargePlan,
         expireData,
-        approveRecharge: true
+        approveRecharge: true,
       };
       foundRider.isPaid = true;
 
@@ -190,31 +214,31 @@ exports.updateRechargeDetails = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "Recharge approved and rider marked as paid.",
-        data: foundRider
+        data: foundRider,
       });
     } else {
       return res.status(400).json({
         success: false,
-        message: "Recharge approval is required."
+        message: "Recharge approval is required.",
       });
     }
-
   } catch (error) {
     console.error("Error updating recharge details:", error);
-    return res.status(500).json({ success: false, message: "Internal server error." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error." });
   }
 };
-
 
 exports.login = async (req, res) => {
   try {
     const { number, otpType } = req.body;
-    console.log("otpType", otpType)
+    console.log("otpType", otpType);
 
     if (!number) {
       return res.status(400).json({
         success: false,
-        message: "Phone number is required"
+        message: "Phone number is required",
       });
     }
 
@@ -222,37 +246,37 @@ exports.login = async (req, res) => {
 
     if (!partner) {
       try {
-
-        const response = await axios.post(`https://www.webapi.olyox.com/api/v1/getProviderDetailsByNumber`, {
-          number: number
-        });
+        const response = await axios.post(
+          `https://www.webapi.olyox.com/api/v1/getProviderDetailsByNumber`,
+          {
+            number: number,
+          }
+        );
         if (response.data.success) {
-
           return res.status(403).json({
             success: false,
-            message: "You are  registered with us on website But on vendor Complete Profile First !!",
-            redirect: 'complete-profile'
-          })
+            message:
+              "You are  registered with us on website But on vendor Complete Profile First !!",
+            redirect: "complete-profile",
+          });
+        } else {
+          console.log(response.data);
         }
-        else {
-          console.log(response.data)
-        }
-
       } catch (error) {
-        console.log(error.response.data)
+        console.log(error.response.data);
         return res.status(402).json({
           success: false,
-          message: "Profile is not be found on website and app please register first !!! ",
-        })
+          message:
+            "Profile is not be found on website and app please register first !!! ",
+        });
       }
     }
-
 
     if (partner.isBlockByAdmin) {
       return res.status(401).json({
         success: false,
-        message: 'Your Account Has been Blocked By Admin Contact Support !!'
-      })
+        message: "Your Account Has been Blocked By Admin Contact Support !!",
+      });
     }
 
     // Check if the user is blocked for OTP
@@ -265,7 +289,7 @@ exports.login = async (req, res) => {
       if (currentTime < unblockTime) {
         return res.status(403).json({
           success: false,
-          message: `You are blocked from requesting OTP. Please try again after ${unblockTime.toLocaleTimeString()}`
+          message: `You are blocked from requesting OTP. Please try again after ${unblockTime.toLocaleTimeString()}`,
         });
       }
 
@@ -281,26 +305,22 @@ exports.login = async (req, res) => {
     partner.otp = otp;
     await partner.save();
 
-
-    if (otpType === 'text') {
-      await sendDltMessage(otp, number)
+    if (otpType === "text") {
+      await sendDltMessage(otp, number);
     } else {
-
       const otpMessage = `Your OTP for CaB registration is: ${otp}`;
       await SendWhatsAppMessage(otpMessage, number);
     }
 
-
     res.status(201).json({
       success: true,
       message: "Please verify OTP sent to your phone.",
-      otp: otp
+      otp: otp,
     });
-
   } catch (error) {
     res.status(501).json({
       success: false,
-      error: error.message || "Something went wrong"
+      error: error.message || "Something went wrong",
     });
   }
 };
@@ -321,7 +341,8 @@ exports.logoutRider = async (req, res) => {
     if (foundRider.on_ride_id) {
       return res.status(402).json({
         success: false,
-        message: "You currently have an ongoing ride. Please complete the ride before logging out.",
+        message:
+          "You currently have an ongoing ride. Please complete the ride before logging out.",
       });
     }
 
@@ -331,10 +352,10 @@ exports.logoutRider = async (req, res) => {
     await foundRider.save(); // important to persist the changes
 
     // Clear authentication token
-    res.clearCookie('auth_token', {
+    res.clearCookie("auth_token", {
       httpOnly: true,
       secure: true, // set to true in production
-      sameSite: 'None',
+      sameSite: "None",
     });
 
     return res.status(200).json({
@@ -342,15 +363,14 @@ exports.logoutRider = async (req, res) => {
       message: "You have been logged out successfully. See you next time!",
     });
   } catch (error) {
-    console.error('Logout error:', error);
+    console.error("Logout error:", error);
     return res.status(500).json({
       success: false,
-      message: "Oops! Something went wrong while logging out. Please try again later.",
+      message:
+        "Oops! Something went wrong while logging out. Please try again later.",
     });
   }
 };
-
-
 
 exports.resendOtp = async (req, res) => {
   try {
@@ -359,7 +379,7 @@ exports.resendOtp = async (req, res) => {
     if (!number) {
       return res.status(400).json({
         success: false,
-        message: "Phone number is required"
+        message: "Phone number is required",
       });
     }
 
@@ -368,14 +388,14 @@ exports.resendOtp = async (req, res) => {
     if (!partner) {
       return res.status(400).json({
         success: false,
-        message: "Phone number is not registered"
+        message: "Phone number is not registered",
       });
     }
     if (partner.isOtpVerify) {
       return res.status(400).json({
         success: false,
-        message: "You have already verified your OTP"
-      })
+        message: "You have already verified your OTP",
+      });
     }
 
     // Check if OTP is blocked
@@ -383,10 +403,13 @@ exports.resendOtp = async (req, res) => {
       // Check if the unblock time has passed
       const currentTime = new Date();
       if (currentTime < partner.otpUnblockAfterThisTime) {
-        const timeRemaining = (partner.otpUnblockAfterThisTime - currentTime) / 1000;
+        const timeRemaining =
+          (partner.otpUnblockAfterThisTime - currentTime) / 1000;
         return res.status(400).json({
           success: false,
-          message: `OTP resend is blocked. Try again in ${Math.ceil(timeRemaining)} seconds.`
+          message: `OTP resend is blocked. Try again in ${Math.ceil(
+            timeRemaining
+          )} seconds.`,
         });
       } else {
         // Unblock the OTP after the set time has passed
@@ -406,10 +429,9 @@ exports.resendOtp = async (req, res) => {
 
       return res.status(400).json({
         success: false,
-        message: "OTP resend limit reached. Please try again later."
+        message: "OTP resend limit reached. Please try again later.",
       });
     }
-
 
     const otp = await generateOtp();
     partner.otp = otp;
@@ -418,17 +440,16 @@ exports.resendOtp = async (req, res) => {
 
     const otpMessage = `Your OTP for cab registration is: ${otp}`;
     const data = await SendWhatsAppMessage(otpMessage, number);
-    console.log(data)
+    console.log(data);
     res.status(200).json({
       success: true,
       message: "OTP resent successfully. Please check your phone.",
-      otp: otp
+      otp: otp,
     });
-
   } catch (error) {
     res.status(501).json({
       success: false,
-      error: error.message || "Something went wrong"
+      error: error.message || "Something went wrong",
     });
   }
 };
@@ -440,7 +461,7 @@ exports.verifyOtp = async (req, res) => {
     if (!number || !otp) {
       return res.status(400).json({
         success: false,
-        message: "Phone number and OTP are required"
+        message: "Phone number and OTP are required",
       });
     }
 
@@ -449,7 +470,7 @@ exports.verifyOtp = async (req, res) => {
     if (!partner) {
       return res.status(400).json({
         success: false,
-        message: "Phone number is not registered"
+        message: "Phone number is not registered",
       });
     }
 
@@ -457,28 +478,53 @@ exports.verifyOtp = async (req, res) => {
     if (partner.otp !== otp) {
       return res.status(400).json({
         success: false,
-        message: "Invalid OTP"
+        message: "Invalid OTP",
       });
     }
 
-    partner.otp = null; // Clear the OTP
-    partner.isOtpVerify = true; // Clear the OTP
-    partner.howManyTimesHitResend = 0; // Reset resend attempts
-    partner.isOtpBlock = false; // Unblock OTP if it was previously blocked
-    partner.otpUnblockAfterThisTime = null; // Clear the OTP unblock time
+    // ✅ Clear OTP and update verification status
+    partner.otp = null;
+    partner.isOtpVerify = true;
+    partner.howManyTimesHitResend = 0;
+    partner.isOtpBlock = false;
+    partner.otpUnblockAfterThisTime = null;
 
+    // ✅ Try fetching recharge details
+    try {
+      const { success, payment_id, member_id } =
+        await checkBhAndDoRechargeOnApp({ number: partner.phone });
+
+      if (success && payment_id && member_id) {
+        // ✅ Save recharge data
+        partner.RechargeData = {
+          rechargePlan: member_id?.title,
+          expireData: payment_id?.end_date,
+          onHowManyEarning: member_id?.HowManyMoneyEarnThisPlan,
+          whichDateRecharge: payment_id?.createdAt,
+          approveRecharge: payment_id?.payment_approved,
+        };
+        partner.isPaid = true;
+      }
+    } catch (rechargeErr) {
+      console.error("Recharge Fetch Failed:", rechargeErr.message);
+      // Optional: proceed without saving RechargeData
+    }
+
+    // ✅ Save partner
     await partner.save();
 
-    await send_token(partner, { type: "CAB" }, res, req)
+    // ✅ Send token
+    await send_token(partner, { type: "CAB" }, res, req);
 
   } catch (error) {
-    console.log(error.message)
+    console.error("OTP Verification Error:", error.message);
     res.status(501).json({
       success: false,
-      error: error.message || "Something went wrong"
+      error: error.message || "Something went wrong",
     });
   }
 };
+
 
 // Get all riders
 exports.getAllRiders = async (req, res) => {
@@ -486,8 +532,8 @@ exports.getAllRiders = async (req, res) => {
     const riders = await Rider.find();
     res.status(200).json(riders);
   } catch (error) {
-    console.error('Error fetching riders:', error);
-    res.status(500).json({ error: 'Failed to fetch riders' });
+    console.error("Error fetching riders:", error);
+    res.status(500).json({ error: "Failed to fetch riders" });
   }
 };
 
@@ -497,23 +543,25 @@ exports.riderDocumentsVerify = async (req, res) => {
     const { DocumentVerify } = req.body;
     const rider = await Rider.findById(id);
     if (!rider) {
-      return res.status(404).json({ success: false, message: "Rider not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Rider not found" });
     }
     rider.DocumentVerify = DocumentVerify;
     await rider.save();
     res.status(200).json({
       success: true,
       message: "Documents verified successfully",
-    })
+    });
   } catch (error) {
-    console.log("Internal server error", error)
+    console.log("Internal server error", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
-      error: error.message
-    })
+      error: error.message,
+    });
   }
-}
+};
 
 // Change location of a rider
 exports.changeLocation = async (req, res) => {
@@ -521,8 +569,12 @@ exports.changeLocation = async (req, res) => {
     const { riderId } = req.params;
     const { location } = req.body;
 
-    if (!location || !Array.isArray(location.coordinates) || location.coordinates.length !== 2) {
-      return res.status(400).json({ error: 'Invalid location format' });
+    if (
+      !location ||
+      !Array.isArray(location.coordinates) ||
+      location.coordinates.length !== 2
+    ) {
+      return res.status(400).json({ error: "Invalid location format" });
     }
 
     const updatedRider = await Rider.findByIdAndUpdate(
@@ -532,16 +584,17 @@ exports.changeLocation = async (req, res) => {
     );
 
     if (!updatedRider) {
-      return res.status(404).json({ error: 'Rider not found' });
+      return res.status(404).json({ error: "Rider not found" });
     }
 
-    res.status(200).json({ message: 'Location updated successfully', rider: updatedRider });
+    res
+      .status(200)
+      .json({ message: "Location updated successfully", rider: updatedRider });
   } catch (error) {
-    console.error('Error updating location:', error);
-    res.status(500).json({ error: 'Failed to update location' });
+    console.error("Error updating location:", error);
+    res.status(500).json({ error: "Failed to update location" });
   }
 };
-
 
 exports.uploadDocuments = async (req, res) => {
   try {
@@ -557,13 +610,15 @@ exports.uploadDocuments = async (req, res) => {
     const findRider = await Rider.findById(userId);
     if (!findRider) {
       console.log("❌ Rider not found");
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     if (findRider.isDocumentUpload && findRider.DocumentVerify === true) {
       return res.status(400).json({
         success: false,
-        message: "Documents already uploaded and verified. Please login."
+        message: "Documents already uploaded and verified. Please login.",
       });
     }
 
@@ -572,20 +627,24 @@ exports.uploadDocuments = async (req, res) => {
 
     if (files.length === 0) {
       console.log("❌ No files found in request");
-      return res.status(400).json({ success: false, message: "No files uploaded." });
+      return res
+        .status(400)
+        .json({ success: false, message: "No files uploaded." });
     }
 
     for (const file of files) {
       try {
         const fileSizeKB = file.size / 1024;
-        console.log(`📄 File received: ${file.originalname} (${fileSizeKB.toFixed(2)}KB)`);
+        console.log(
+          `📄 File received: ${file.originalname} (${fileSizeKB.toFixed(2)}KB)`
+        );
 
         if (fileSizeKB > 1024) {
           console.log("⚠️ File too large:", file.originalname);
           await fs.unlink(file.path).catch(() => { });
           return res.status(400).json({
             success: false,
-            message: `${file.originalname} is larger than 1MB`
+            message: `${file.originalname} is larger than 1MB`,
           });
         }
 
@@ -593,32 +652,42 @@ exports.uploadDocuments = async (req, res) => {
         const uploaded = await cloudinary.uploader.upload(file.path, {
           folder: "rider_documents",
           quality: "auto:low",
-          format: "jpg"
+          format: "jpg",
         });
 
         console.log("✅ Uploaded:", uploaded.secure_url);
 
-        if (file.originalname.includes("dl")) uploadedDocs.license = uploaded.secure_url;
-        if (file.originalname.includes("rc")) uploadedDocs.rc = uploaded.secure_url;
-        if (file.originalname.includes("insurance")) uploadedDocs.insurance = uploaded.secure_url;
-        if (file.originalname.includes("aadharBack")) uploadedDocs.aadharBack = uploaded.secure_url;
-        if (file.originalname.includes("aadharFront")) uploadedDocs.aadharFront = uploaded.secure_url;
-        if (file.originalname.includes("pancard")) uploadedDocs.pancard = uploaded.secure_url;
-        if (file.originalname.includes("profile")) uploadedDocs.profile = uploaded.secure_url;
+        if (file.originalname.includes("dl"))
+          uploadedDocs.license = uploaded.secure_url;
+        if (file.originalname.includes("rc"))
+          uploadedDocs.rc = uploaded.secure_url;
+        if (file.originalname.includes("insurance"))
+          uploadedDocs.insurance = uploaded.secure_url;
+        if (file.originalname.includes("aadharBack"))
+          uploadedDocs.aadharBack = uploaded.secure_url;
+        if (file.originalname.includes("aadharFront"))
+          uploadedDocs.aadharFront = uploaded.secure_url;
+        if (file.originalname.includes("pancard"))
+          uploadedDocs.pancard = uploaded.secure_url;
+        if (file.originalname.includes("profile"))
+          uploadedDocs.profile = uploaded.secure_url;
 
         // Delete the temp file
         try {
           await fs.promises.unlink(file.path); // ✅ Promise-based
           console.log(`✅ Temp file deleted: ${file.originalname}`);
         } catch (err) {
-          console.warn(`⚠️ Could not delete temp file: ${file.originalname}`, err.message);
+          console.warn(
+            `⚠️ Could not delete temp file: ${file.originalname}`,
+            err.message
+          );
         }
       } catch (fileErr) {
         console.error("❌ Error processing file:", file.originalname, fileErr);
         return res.status(500).json({
           success: false,
           message: `Failed to process ${file.originalname}`,
-          error: fileErr.message
+          error: fileErr.message,
         });
       }
     }
@@ -632,63 +701,75 @@ exports.uploadDocuments = async (req, res) => {
       console.log("✅ Rider saved successfully");
     } catch (dbErr) {
       console.error("❌ Error saving rider:", dbErr);
-      return res.status(500).json({ success: false, message: "Failed to save documents", error: dbErr.message });
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message: "Failed to save documents",
+          error: dbErr.message,
+        });
     }
 
     return res.status(201).json({
       success: true,
       message: "Documents uploaded successfully",
-      data: uploadedDocs
+      data: uploadedDocs,
     });
-
   } catch (mainErr) {
     console.error("❌ Unexpected error in /uploadDocuments:", mainErr);
     return res.status(500).json({
       success: false,
       message: "Server error",
-      error: mainErr.message
+      error: mainErr.message,
     });
   }
 };
 
-
-
 exports.uploadPaymentQr = async (req, res) => {
   try {
-    const file = req.file || {}
+    const file = req.file || {};
 
     const userId = req.user.userId;
     const findRider = await Rider.findById(userId);
 
     if (!findRider) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
-
 
     const uploadedDocs = {};
 
-    const uploadResponse = await cloudinary.uploader.upload(file.path, { folder: "rider_qrs" });
+    const uploadResponse = await cloudinary.uploader.upload(file.path, {
+      folder: "rider_qrs",
+    });
     fs.unlinkSync(file.path);
-
-
 
     findRider.YourQrCodeToMakeOnline = uploadResponse.secure_url;
 
     await findRider.save();
 
-    res.status(201).json({ success: true, message: "Documents uploaded successfully", data: uploadResponse });
+    res
+      .status(201)
+      .json({
+        success: true,
+        message: "Documents uploaded successfully",
+        data: uploadResponse,
+      });
   } catch (error) {
     console.error("Error uploading documents:", error);
-    res.status(500).json({ success: false, message: "Documents upload failed", error: error.message });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Documents upload failed",
+        error: error.message,
+      });
   }
 };
 
-
-
-
 exports.details = async (req, res) => {
   try {
-
     const userId = req.user?.userId;
 
     // Check if userId exists
@@ -704,16 +785,15 @@ exports.details = async (req, res) => {
       return res.status(404).json({ message: "Partner not found" });
     }
 
-
     // Return response
     return res.status(200).json({ success: true, partner });
-
   } catch (error) {
     console.error("Error fetching partner details:", error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
-
 
 exports.getMyAllDetails = async (req, res) => {
   try {
@@ -722,13 +802,21 @@ exports.getMyAllDetails = async (req, res) => {
       return res.status(400).json({ message: "User ID is required" });
     }
 
-    const findRideDetails = await rideRequestModel.find({ rider: user_id, rideStatus: "completed" });
-
+    const findRideDetails = await rideRequestModel.find({
+      rider: user_id,
+      rideStatus: "completed",
+    });
 
     const totalRides = findRideDetails.length;
-    const totalEarnings = findRideDetails.reduce((acc, cur) => acc + Number(cur.kmOfRide), 0);
+    const totalEarnings = findRideDetails.reduce(
+      (acc, cur) => acc + Number(cur.kmOfRide),
+      0
+    );
 
-    const totalRatings = findRideDetails.reduce((acc, cur) => acc + (cur.RatingOfRide || 0), 0);
+    const totalRatings = findRideDetails.reduce(
+      (acc, cur) => acc + (cur.RatingOfRide || 0),
+      0
+    );
     const averageRating = totalRides > 0 ? totalRatings / totalRides : 0;
 
     // Send response with all computed data
@@ -737,13 +825,11 @@ exports.getMyAllDetails = async (req, res) => {
       totalEarnings,
       averageRating,
     });
-
   } catch (error) {
     console.error("Error fetching ride details:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 exports.getMyAllRides = async (req, res) => {
   try {
@@ -752,23 +838,23 @@ exports.getMyAllRides = async (req, res) => {
       return res.status(400).json({ message: "User ID is required" });
     }
 
-    const findRideDetails = await rideRequestModel.find({ rider: user_id }).sort({
-      createdAt: -1
-    });
+    const findRideDetails = await rideRequestModel
+      .find({ rider: user_id })
+      .sort({
+        createdAt: -1,
+      });
 
     return res.status(200).json({
       success: true,
       message: "Ride details fetched successfully",
       count: findRideDetails.length,
-      data: findRideDetails
+      data: findRideDetails,
     });
-
   } catch (error) {
     console.error("Error fetching ride details:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 exports.toggleWorkStatusOfRider = async (req, res) => {
   try {
@@ -786,7 +872,8 @@ exports.toggleWorkStatusOfRider = async (req, res) => {
 
     if (!rider.isPaid) {
       return res.status(400).json({
-        message: "Oops! It looks like your account isn’t recharged. Please top up to proceed."
+        message:
+          "Oops! It looks like your account isn’t recharged. Please top up to proceed.",
       });
     }
 
@@ -796,7 +883,8 @@ exports.toggleWorkStatusOfRider = async (req, res) => {
     // Check if rider is trying to go offline while having an active ride
     if (!newStatus && rider.on_ride_id) {
       return res.status(400).json({
-        message: "You currently have an active ride. Please complete the ride before going offline."
+        message:
+          "You currently have an active ride. Please complete the ride before going offline.",
       });
     }
 
@@ -812,14 +900,17 @@ exports.toggleWorkStatusOfRider = async (req, res) => {
 
     // Handle CabRider session tracking
     const today = moment().format("YYYY-MM-DD");
-    let cabRider = await CabRiderTimes.findOne({ riderId: user_id, date: today });
+    let cabRider = await CabRiderTimes.findOne({
+      riderId: user_id,
+      date: today,
+    });
 
     if (!cabRider) {
       cabRider = new CabRiderTimes({
         riderId: user_id,
         status: newStatus ? "online" : "offline",
         date: today,
-        sessions: []
+        sessions: [],
       });
     } else {
       // Update status
@@ -831,7 +922,7 @@ exports.toggleWorkStatusOfRider = async (req, res) => {
       cabRider.sessions.push({
         onlineTime: new Date(),
         offlineTime: null,
-        duration: null
+        duration: null,
       });
     } else {
       // Rider is going offline - close the last session
@@ -848,27 +939,28 @@ exports.toggleWorkStatusOfRider = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: `Status updated to ${newStatus ? 'Available (Online)' : 'Unavailable (Offline)'} successfully.`,
-      cabRider
+      message: `Status updated to ${newStatus ? "Available (Online)" : "Unavailable (Offline)"
+        } successfully.`,
+      cabRider,
     });
-
   } catch (error) {
     console.error("Error toggling work status:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-
-
 exports.markPaid = async (req, res) => {
   try {
-    const { rechargePlan, expireData, approveRecharge, riderBh } = req.body || {};
-    console.log("rbody", req.body)
+    const { rechargePlan, expireData, approveRecharge, riderBh } =
+      req.body || {};
+    console.log("rbody", req.body);
     // Find the rider by ID
     const findRider = await Rider.findOne({ BH: riderBh });
 
     if (!findRider) {
-      return res.status(404).json({ success: false, message: "Rider not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Rider not found" });
     }
 
     // If approveRecharge is true, update the recharge details
@@ -904,8 +996,6 @@ exports.markPaid = async (req, res) => {
   }
 };
 
-
-
 exports.getMySessionsByUserId = async (req, res) => {
   try {
     const userId = req.query.userId;
@@ -914,10 +1004,14 @@ exports.getMySessionsByUserId = async (req, res) => {
       return res.status(400).json({ message: "User ID is required in query." });
     }
 
-    const sessionsData = await CabRiderTimes.find({ riderId: userId }).sort({ date: -1 });
+    const sessionsData = await CabRiderTimes.find({ riderId: userId }).sort({
+      date: -1,
+    });
 
     if (!sessionsData.length) {
-      return res.status(404).json({ message: "No session data found for this user." });
+      return res
+        .status(404)
+        .json({ message: "No session data found for this user." });
     }
 
     // Prepare response data
@@ -958,7 +1052,6 @@ exports.getMySessionsByUserId = async (req, res) => {
       message: "Session data fetched successfully.",
       data: result,
     });
-
   } catch (error) {
     console.error("Error fetching session data:", error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -978,7 +1071,10 @@ exports.verifyDocument = async (req, res) => {
       return res.status(200).json({ message: "Document already verified" });
     }
 
-    const verifyDocument = await Rider.updateOne({ BH }, { $set: { DocumentVerify: true } });
+    const verifyDocument = await Rider.updateOne(
+      { BH },
+      { $set: { DocumentVerify: true } }
+    );
 
     if (verifyDocument.modifiedCount === 1) {
       // Send WhatsApp confirmation message
@@ -994,11 +1090,14 @@ Welcome aboard! 🚖💨`;
 
       await SendWhatsAppMessage(congratsMessage, findRider.phone);
 
-      return res.status(200).json({ message: "Document verified successfully" });
+      return res
+        .status(200)
+        .json({ message: "Document verified successfully" });
     }
 
-    return res.status(400).json({ message: "Verification failed, please try again." });
-
+    return res
+      .status(400)
+      .json({ message: "Verification failed, please try again." });
   } catch (error) {
     console.error("Error verifying document:", error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -1011,44 +1110,53 @@ exports.updateBlockStatus = async (req, res) => {
     const { isBlockByAdmin } = req.body;
     const riderData = await Rider.findById(id);
     if (!riderData) {
-      return res.status(404).json({ success: false, message: "Rider not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "Rider not found." });
     }
 
     riderData.isBlockByAdmin = isBlockByAdmin;
     const result = await riderData.save();
-    return res.status(200).json({ success: true, message: "Block status updated successfully", data: result });
+    return res
+      .status(200)
+      .json({
+        success: true,
+        message: "Block status updated successfully",
+        data: result,
+      });
   } catch (error) {
     console.error("Error updating block status:", error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
-      error: error.message
-    })
+      error: error.message,
+    });
   }
-}
-
+};
 
 exports.getSingleRider = async (req, res) => {
   try {
     const { id } = req.params;
     const rider = await Rider.findById(id);
     if (!rider) {
-      return res.status(404).json({ success: false, message: "Rider not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Rider not found" });
     }
     res.status(200).json({
       success: true,
       message: "Rider found successfully",
-      data: rider
-    })
+      data: rider,
+    });
   } catch (error) {
-    console.log("Internal server error", error)
+    console.log("Internal server error", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
-      error: error.message
-    })
+      error: error.message,
+    });
   }
-}
+};
 exports.updateRiderDocumentVerify = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1065,7 +1173,6 @@ exports.updateRiderDocumentVerify = async (req, res) => {
     // Update document verification status
     rider.DocumentVerify = DocumentVerify;
 
-
     async function grantFreeTier(rider) {
       rider.isFreeMember = true;
       rider.isPaid = true;
@@ -1081,7 +1188,8 @@ exports.updateRiderDocumentVerify = async (req, res) => {
       };
 
       await SendWhatsAppMessage(
-        `🎉 Dear ${rider.name}, your documents have been successfully verified, and you've been granted 1 year of Free Tier membership! 🗓️
+        `🎉 Dear ${rider.name
+        }, your documents have been successfully verified, and you've been granted 1 year of Free Tier membership! 🗓️
     
     ✅ Plan: Free Tier  
     ✅ Valid Till: ${oneYearLater.toDateString()}  
@@ -1093,18 +1201,15 @@ exports.updateRiderDocumentVerify = async (req, res) => {
       );
     }
 
-
     const vehicleName = rider.rideVehicleInfo?.vehicleName?.toLowerCase();
     const vehicleType = rider.rideVehicleInfo?.vehicleType?.toLowerCase();
 
     if (rider.category === "parcel") {
-
       grantFreeTier(rider);
     } else if (
       rider.category === "cab" &&
       (vehicleName === "bike" || vehicleType === "bike")
     ) {
-
       grantFreeTier(rider);
     } else {
       // All other cases
@@ -1119,7 +1224,6 @@ exports.updateRiderDocumentVerify = async (req, res) => {
       );
     }
 
-
     const result = await rider.save();
 
     return res.status(200).json({
@@ -1127,7 +1231,6 @@ exports.updateRiderDocumentVerify = async (req, res) => {
       message: "Rider documents verified and updated successfully.",
       data: result,
     });
-
   } catch (error) {
     console.error("Internal server error:", error);
     return res.status(500).json({
@@ -1145,7 +1248,9 @@ exports.updateRiderDetails = async (req, res) => {
     // Find the existing rider
     const existingData = await Rider.findById(id);
     if (!existingData) {
-      return res.status(404).json({ success: false, message: "Rider not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Rider not found" });
     }
 
     console.log("Existing Rider Data:", existingData);
@@ -1170,9 +1275,13 @@ exports.updateRiderDetails = async (req, res) => {
 
       for (const file of req.files) {
         // Upload file to Cloudinary
-        const uploadResponse = await cloudinary.uploader.upload(file.path, { folder: "rider_documents" });
+        const uploadResponse = await cloudinary.uploader.upload(file.path, {
+          folder: "rider_documents",
+        });
 
-        console.log(`Uploading file: ${file.fieldname} -> ${uploadResponse.secure_url}`);
+        console.log(
+          `Uploading file: ${file.fieldname} -> ${uploadResponse.secure_url}`
+        );
 
         // Assign uploaded file URL dynamically based on fieldname
         uploadedDocs[file.fieldname] = uploadResponse.secure_url;
@@ -1191,7 +1300,13 @@ exports.updateRiderDetails = async (req, res) => {
 
     console.log("Updated Rider Data:", await Rider.findById(id));
 
-    res.status(200).json({ success: true, message: "Rider details updated successfully", data: existingData });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "Rider details updated successfully",
+        data: existingData,
+      });
   } catch (error) {
     console.error("Internal server error", error);
     res.status(500).json({
@@ -1207,41 +1322,50 @@ exports.getOnlineTimeByRiderId = async (req, res) => {
     const { id } = req.params;
     const riderStatus = await CabRiderTimes.find({ riderId: id });
     if (!riderStatus) {
-      return res.status(404).json({ success: false, message: "No data found", data: [] })
+      return res
+        .status(404)
+        .json({ success: false, message: "No data found", data: [] });
     }
     res.status(200).json({
       success: true,
       message: "Online time found successfully",
-      data: riderStatus
-    })
+      data: riderStatus,
+    });
   } catch (error) {
-    console.log('Internal server error', error)
+    console.log("Internal server error", error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
-      error: error.message
-    })
+      message: "Internal server error",
+      error: error.message,
+    });
   }
-}
+};
 
 exports.deleteRider = async (req, res) => {
   try {
     const { id } = req.params;
     const deletedRider = await Rider.findByIdAndDelete(id);
     if (!deletedRider) {
-      return res.status(404).json({ success: false, message: "Rider not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Rider not found" });
     }
-    res.status(200).json({ success: true, message: "Rider deleted successfully", data: deletedRider });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "Rider deleted successfully",
+        data: deletedRider,
+      });
   } catch (error) {
-    console.log("Internal server error", error)
+    console.log("Internal server error", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
-      error: error.message
-    })
+      error: error.message,
+    });
   }
-}
-
+};
 
 exports.getMyEligibleBonus = async (req, res) => {
   try {
@@ -1252,11 +1376,15 @@ exports.getMyEligibleBonus = async (req, res) => {
       return res.status(400).json({ message: "User ID is required in query." });
     }
 
-    const sessionsData = await CabRiderTimes.find({ riderId: userId }).sort({ date: -1 });
+    const sessionsData = await CabRiderTimes.find({ riderId: userId }).sort({
+      date: -1,
+    });
     // console.log("Fetched sessionsData:", sessionsData.length);
 
     if (!sessionsData.length) {
-      return res.status(404).json({ message: "No session data found for this user." });
+      return res
+        .status(404)
+        .json({ message: "No session data found for this user." });
     }
 
     const BonusAvailableInDb = await Bonus_Model.find();
@@ -1287,7 +1415,7 @@ exports.getMyEligibleBonus = async (req, res) => {
           continue; // skip this session
         }
 
-        const durationMinutes = offlineTime.diff(onlineTime, 'minutes');
+        const durationMinutes = offlineTime.diff(onlineTime, "minutes");
         const durationHours = durationMinutes / 60;
 
         // console.log("Session durationMinutes:", durationMinutes, "durationHours:", durationHours);
@@ -1309,11 +1437,13 @@ exports.getMyEligibleBonus = async (req, res) => {
       const anyRequiredField = [
         `Complete login hours: ${bonus.requiredHours} hours worked.`,
         "Do not reject more than 5 bonus claims per month to maintain eligibility.",
-        "Requires regular check-ins and updates for performance."
+        "Requires regular check-ins and updates for performance.",
       ];
 
       if (totalDurationHours >= bonus.requiredHours) {
-        console.log(`Eligible: totalDurationHours(${totalDurationHours}) >= requiredHours(${bonus.requiredHours})`);
+        console.log(
+          `Eligible: totalDurationHours(${totalDurationHours}) >= requiredHours(${bonus.requiredHours})`
+        );
 
         eligibleBonus.push({
           requiredHours: bonus.requiredHours,
@@ -1322,7 +1452,9 @@ exports.getMyEligibleBonus = async (req, res) => {
           bonusValue: bonus.bonusValue,
           bonusStatus: bonus.bonusStatus,
           any_required_field: anyRequiredField,
-          remainingHours: parseFloat((totalDurationHours - bonus.requiredHours).toFixed(2))
+          remainingHours: parseFloat(
+            (totalDurationHours - bonus.requiredHours).toFixed(2)
+          ),
         });
       } else {
         // console.log(`Not Eligible: totalDurationHours(${totalDurationHours}) < requiredHours(${bonus.requiredHours})`);
@@ -1334,7 +1466,9 @@ exports.getMyEligibleBonus = async (req, res) => {
           bonusValue: bonus.bonusValue,
           bonusStatus: bonus.bonusStatus,
           any_required_field: anyRequiredField,
-          remainingHours: parseFloat((bonus.requiredHours - totalDurationHours).toFixed(2))
+          remainingHours: parseFloat(
+            (bonus.requiredHours - totalDurationHours).toFixed(2)
+          ),
         });
       }
     });
@@ -1343,16 +1477,16 @@ exports.getMyEligibleBonus = async (req, res) => {
     // console.log("Not Eligible Bonuses:", notEligibleBonus);
 
     return res.status(200).json({
-      message: "Rider's eligible and not eligible bonuses fetched successfully.",
+      message:
+        "Rider's eligible and not eligible bonuses fetched successfully.",
       eligibleBonus,
-      notEligibleBonus
+      notEligibleBonus,
     });
-
   } catch (error) {
     console.error("Error fetching eligible bonus:", error);
     return res.status(500).json({
       message: "An error occurred while fetching eligible bonuses.",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1365,19 +1499,19 @@ exports.inProgressOrder = async (req, res) => {
       return res.status(400).json({ message: "User ID is required in query." });
     }
 
-    const rider = await Rider.findOne({ _id: userId, category: 'parcel' });
+    const rider = await Rider.findOne({ _id: userId, category: "parcel" });
     if (!rider) {
-      return res.status(404).json({ success: false, message: "Rider not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Rider not found" });
     }
-
-
 
     // Fetch all accepted orders for this rider
     const inProgress = await Parcel_Request.find({
       rider_id: userId,
       status: {
-        $not: /^(pending|delivered|cancelled)$/i
-      }
+        $not: /^(pending|delivered|cancelled)$/i,
+      },
     });
 
     if (inProgress.length === 0) {
@@ -1385,28 +1519,24 @@ exports.inProgressOrder = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "No in-progress orders found.",
-        inProgressOrders: []
+        inProgressOrders: [],
       });
     }
-
 
     return res.status(200).json({
       success: true,
       message: "In-progress orders fetched successfully.",
-      inProgressOrders: inProgress
+      inProgressOrders: inProgress,
     });
-
   } catch (error) {
     console.error("Error fetching in-progress orders:", error);
     return res.status(500).json({
       success: false,
       message: "An error occurred while fetching in-progress orders.",
-      error: error.message
+      error: error.message,
     });
   }
 };
-
-
 
 exports.parcelDashboardData = async (req, res) => {
   try {
@@ -1416,40 +1546,45 @@ exports.parcelDashboardData = async (req, res) => {
       return res.status(400).json({ message: "User ID is required in query." });
     }
 
-    const rider = await Rider.findOne({ _id: userId, category: 'parcel' });
+    const rider = await Rider.findOne({ _id: userId, category: "parcel" });
     if (!rider) {
-      return res.status(404).json({ success: false, message: "Rider not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Rider not found" });
     }
 
-
-
-    const howManyDeliverDone = await Parcel_Request.countDocuments({ rider_id: userId, status: "delivered" });
+    const howManyDeliverDone = await Parcel_Request.countDocuments({
+      rider_id: userId,
+      status: "delivered",
+    });
 
     const inProgress = await Parcel_Request.find({
       rider_id: userId,
       status: {
-        $not: /^(pending|delivered|cancelled)$/i
-      }
+        $not: /^(pending|delivered|cancelled)$/i,
+      },
     });
 
-    const deliveredRequests = await Parcel_Request.find({ rider_id: userId, status: "delivered" });
+    const deliveredRequests = await Parcel_Request.find({
+      rider_id: userId,
+      status: "delivered",
+    });
 
-    const totalMoneyEarned = deliveredRequests.reduce((acc, cur) => acc + Number(cur?.fares?.payableAmount || 0), 0);
-
-
+    const totalMoneyEarned = deliveredRequests.reduce(
+      (acc, cur) => acc + Number(cur?.fares?.payableAmount || 0),
+      0
+    );
 
     return res.status(200).json({
       success: true,
       message: "Parcel dashboard data fetched successfully.",
       data: {
-
         totalDeliveries: howManyDeliverDone,
         inProgressDeliveries: inProgress.length,
         totalEarnings: totalMoneyEarned,
         ridesRejected: rider.ridesRejected,
-      }
+      },
     });
-
   } catch (error) {
     console.error("Internal server error:", error);
     return res.status(500).json({

@@ -137,7 +137,7 @@ exports.make_recharge = async (req, res) => {
 
         // Create Razorpay order
         const orderOptions = {
-            amount: Math.round(finalAmount * 100), 
+            amount: Math.round(finalAmount * 100),
             currency: 'INR',
             receipt: `receipt_${Date.now()}`,
             notes: {
@@ -487,3 +487,41 @@ exports.verify_recharge = async (req, res) => {
         });
     }
 };
+
+
+exports.checkBhAndDoRechargeOnApp = async ({ number }) => {
+    try {
+        const response = await axios.post(`http://localhost:7000/api/v1/getProviderDetailsByNumber`, {
+            number
+        });
+
+        if (response.data.success) {
+            const { payment_id, member_id } = response.data.data;
+            console.log("Payment Info:", payment_id);
+            console.log("Member ID Info:", member_id);
+
+            // ✅ Return the data
+            return {
+                success: true,
+                payment_id,
+                member_id
+            };
+        } else {
+            console.log("API Response:", response.data);
+            return {
+                success: false,
+                message: response.data.message || "Unknown error"
+            };
+        }
+
+    } catch (error) {
+        console.error("Error:", error.response?.data || error.message);
+        return {
+            success: false,
+            message: "Profile is not found on website and app. Please register first!",
+        };
+    }
+};
+
+
+// ✅ Correct way to invoke it in a regular JS context

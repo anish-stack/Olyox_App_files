@@ -10,6 +10,7 @@ const axios = require('axios')
 const moment = require("moment");
 const mongoose = require("mongoose");
 const { sendDltMessage } = require("../utils/DltMessageSend");
+const { checkBhAndDoRechargeOnApp } = require("../PaymentWithWebDb/razarpay");
 
 cloudinary.config({
     cloud_name: "dsd8nepa5",
@@ -193,6 +194,27 @@ exports.verifyOtp = async (req, res) => {
         hotelUser.otp = null;
         hotelUser.otp_expires = null;
 
+
+        try {
+            const { success, payment_id, member_id } =
+                await checkBhAndDoRechargeOnApp({ number: hotelUser.hotel_phone });
+
+            if (success && payment_id && member_id) {
+                // ✅ Save recharge data
+                hotelUser.RechargeData = {
+                    rechargePlan: member_id?.title,
+                    expireData: payment_id?.end_date,
+                    onHowManyEarning: member_id?.HowManyMoneyEarnThisPlan,
+                    whichDateRecharge: payment_id?.createdAt,
+                    approveRecharge: payment_id?.payment_approved,
+                };
+                hotelUser.isPaid = true;
+            }
+        } catch (rechargeErr) {
+            console.error("Recharge Fetch Failed:", rechargeErr.message);
+            // Optional: proceed without saving RechargeData
+        }
+
         console.log("Marking user as verified and saving to database...");
         await hotelUser.save();
         console.log("User verification successful. Sending token...");
@@ -292,7 +314,7 @@ exports.find_Hotel_Login = async (req, res) => {
 
 exports.LoginHotel = async (req, res) => {
     try {
-        const { BH ,type} = req.body;
+        const { BH, type } = req.body;
         if (!BH) {
             return res.status(400).json({
                 success: false,
@@ -343,9 +365,9 @@ exports.LoginHotel = async (req, res) => {
         // Construct and send WhatsApp message
         const message = `Please verify your hotel login. Your OTP is ${otpCode}, sent to your WhatsApp number ${foundHotel.hotel_phone}.`;
 
-        if(type === 'text'){
-            await sendDltMessage(otpCode,foundHotel.hotel_phone)
-        }else{
+        if (type === 'text') {
+            await sendDltMessage(otpCode, foundHotel.hotel_phone)
+        } else {
             await SendWhatsAppMessage(message, foundHotel.hotel_phone);
         }
 
