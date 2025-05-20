@@ -45,7 +45,7 @@
         }
       },
       "package": "com.olyox.OlyoxTiffinsApp",
-      "versionCode": 1
+     
     },
     "web": {
       "favicon": "./assets/ic_launcher-web.png"
@@ -62,7 +62,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "d6fa32e9-089c-462f-9f3c-8f650772f864"
+        "projectId": "8efdb8c7-c0a3-4600-8adb-488994202262"
       }
     }
   }

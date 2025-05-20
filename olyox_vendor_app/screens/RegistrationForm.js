@@ -138,12 +138,13 @@ export default function RegistrationForm() {
         setLoading(true);
         try {
             const response = await axios.get(`${API_BASE_URL}/app-get-details?Bh=${bhId}`);
+            console.log(response.data.data.number)
             if (response.data.success) {
                 setUserData(response.data.data);
                 setFormData(prev => ({
                     ...prev,
                     restaurant_owner_name: response.data.data.name || '',
-                    restaurant_phone: response.data.data.phone || ''
+                    restaurant_phone: response.data.data.number || ''
                 }));
                 setStep(2);
             } else {
@@ -555,7 +556,7 @@ export default function RegistrationForm() {
                     color: '#6e6e6e', // gray input text
                 }}
                 theme={{ colors: { text: '#6e6e6e', primary: '#6e6e6e' } }} // gray underline & text
-                error={!!errors.bhId}
+                keyboardType='numeric'
                 error={!!errors['address.zip']}
             />
             <HelperText type="error" visible={!!errors['address.zip']}>
@@ -730,11 +731,11 @@ const styles = StyleSheet.create({
     infoLabel: {
         fontWeight: 'bold',
         width: 80,
-        color:'#000',
+        color: '#000',
 
     },
     infoValue: {
-        color:'#000',
+        color: '#000',
         flex: 1,
     },
     dropdownContainer: {

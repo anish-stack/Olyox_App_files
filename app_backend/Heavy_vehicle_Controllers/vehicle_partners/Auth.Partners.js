@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const SendWhatsAppMessage = require('../../utils/whatsapp_send');
 const axios = require('axios');
 const SendWhatsAppMessageNormal = require('../../utils/normalWhatsapp');
+const { checkBhAndDoRechargeOnApp } = require('../../PaymentWithWebDb/razarpay');
 // Configure Cloudinary
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -244,6 +245,29 @@ exports.verifyOTP = async (req, res) => {
         partner.otp = undefined;
         partner.otp_expires = undefined;
         partner.status = "Active"
+
+
+        // ✅ Try fetching recharge details
+        try {
+            const { success, payment_id, member_id } =
+                await checkBhAndDoRechargeOnApp({ number: partner.phone_number });
+
+            if (success && payment_id && member_id) {
+                // ✅ Save recharge data
+                partner.RechargeData = {
+                    rechargePlan: member_id?.title,
+                    expireData: payment_id?.end_date,
+                    onHowManyEarning: member_id?.HowManyMoneyEarnThisPlan,
+                    whichDateRecharge: payment_id?.createdAt,
+                    approveRecharge: payment_id?.payment_approved,
+                };
+                partner.isPaid = true;
+            }
+        } catch (rechargeErr) {
+            console.error("Recharge Fetch Failed:", rechargeErr.message);
+            // Optional: proceed without saving RechargeData
+        }
+
         await partner.save();
 
 
@@ -521,16 +545,16 @@ exports.updateProfile = async (req, res) => {
             const result = await cloudinary.uploader.upload(req.file.path, {
                 folder: 'heavy_vehicle_partners/profile'
             });
-    
+
             console.log(result)
             // Delete the local file after uploading
             fs.unlinkSync(req.file.path);
-    
+
             updateData.profile_image = result.secure_url
         }
 
         // Upload the file to Cloudinary
-    
+
 
         // Update partner profile
         const updatedPartner = await Heavy_vehicle_partners.findByIdAndUpdate(

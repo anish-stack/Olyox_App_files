@@ -16,8 +16,6 @@ const Profile = () => {
     const [loading, setLoading] = useState(false);
     const { error, data, fetchDetails } = useBhDetails()
 
-    console.log("data of Profile", data)
-
 
     const handleLogout = () => {
         AsyncStorage.removeItem('userToken')
@@ -32,7 +30,7 @@ const Profile = () => {
 
 
     // console.log("data",data)
-    console.log("i am resethdhjdf", restaurant)
+    // console.log("i am resethdhjdf", restaurant)
     useEffect(() => {
         const fetchProfile = async () => {
             try {
@@ -241,7 +239,7 @@ const Profile = () => {
             </View>
 
             {/* Recharge Box */}
-            {data?.data?.recharge === 0 ? (
+            {!restaurant?.isPaid ? (
                 <RechargeSection navigation={navigation} />
             ) : (
                 <View style={styles.rechargeBox}>
