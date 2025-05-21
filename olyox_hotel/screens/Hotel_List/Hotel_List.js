@@ -362,7 +362,7 @@ export default function HotelRegistration() {
                     value={hotelData.hotel_address}
                     onChangeText={(text) => handleInputChange('hotel_address', text)}
                     style={[styles.input, { flex: 1, marginLeft: 10 }]}
-                    editable={!useExistingAddress}
+                   
                   />
                 </View>
                 {useExistingAddress && (

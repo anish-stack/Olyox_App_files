@@ -59,6 +59,7 @@ export default function Login({ navigation }) {
                 setOtpResendTimer(90);
             }
         } catch (err) {
+            console.log(err?.response?.data)
             const res = err?.response?.data;
             if (err.response?.status === 403) {
                 return setTimeout(() => {
@@ -86,7 +87,7 @@ export default function Login({ navigation }) {
                 otp: otpInput,
                 type: 'login',
             });
-
+            console.log(response.data)
             const { token } = response.data;
             await updateToken(token);
             navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
@@ -129,8 +130,9 @@ export default function Login({ navigation }) {
                     <TextInput
                         style={styles.input}
                         placeholder="Enter BH ID (e.g., BH123456)"
-                        keyboardType="default"
+                        keyboardType="number-pad"
                         value={bh}
+                        
                         onChangeText={setBh}
                     />
 

@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Modal
 
 } from "react-native"
 import * as ImagePicker from "expo-image-picker"

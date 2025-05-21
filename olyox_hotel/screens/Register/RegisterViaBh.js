@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -6,7 +6,6 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Alert,
-    Button,
     KeyboardAvoidingView,
     Platform
 } from 'react-native';
@@ -17,22 +16,25 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import AddressForm from './AddressForm';
 import styles from './RegisterStyle';
 import axios from 'axios';
-import { API_BASE_URL_V1, API_BASE_URL_V2 } from '../../constant/Api';
+import { API_BASE_URL_V1 } from '../../constant/Api';
 
 export default function RegisterViaBh() {
     const route = useRoute();
     const navigation = useNavigation();
     const { bh_id } = route.params || {};
-    
+
     // Date state
     const [date, setDate] = useState(new Date());
     const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
-    
+
     // Loading and message states
     const [isLoading, setIsLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
     const [errors, setErrors] = useState({});
+    
+    // Field validation states for real-time validation
+    const [fieldsTouched, setFieldsTouched] = useState({});
 
     // Form data state with proper initialization
     const [formData, setFormData] = useState({
@@ -41,6 +43,7 @@ export default function RegisterViaBh() {
         reEmail: '',
         number: '',
         password: '',
+        aadharNumber: '',
         category: '676ef95b5c75082fcbc59c4b',
         address: {
             area: '',
@@ -52,30 +55,150 @@ export default function RegisterViaBh() {
                 coordinates: [78.2693, 25.369],
             },
         },
-        dob: '', // Initialize with a default date
-        referral_code_which_applied: bh_id,
-        is_referral_applied: true,
+        dob: null, // Initialize as null for proper validation
+        referral_code_which_applied: bh_id || '',
+        is_referral_applied: Boolean(bh_id),
     });
+
+    // Validation regexes
+    const validationRules = {
+        email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        phone: /^\d{10}$/,
+        pincode: /^\d{6}$/,
+        aadhar: /^[2-9]{1}[0-9]{3}\s[0-9]{4}\s[0-9]{4}$/
+    };
 
     useEffect(() => {
         // Set bh_id when route params change
         if (bh_id) {
             setFormData(prev => ({
                 ...prev,
-                referral_code_which_applied: bh_id
+                referral_code_which_applied: bh_id,
+                is_referral_applied: true
             }));
         }
     }, [bh_id]);
 
-    // Form input change handler
-    const handleInputChange = (field, value) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
+    // Format Aadhaar number as user types
+    const formatAadhar = (text) => {
+        // Remove all spaces first
+        const cleaned = text.replace(/\s/g, '');
         
-        // Clear field-specific error
-        if (errors[field]) {
-            setErrors(prev => ({ ...prev, [field]: '' }));
+        // Add spaces after every 4 characters
+        let formatted = '';
+        for (let i = 0; i < cleaned.length && i < 12; i++) {
+            if (i > 0 && i % 4 === 0) {
+                formatted += ' ';
+            }
+            formatted += cleaned[i];
         }
         
+        return formatted;
+    };
+
+    // Field validation function
+    const validateField = useCallback((field, value) => {
+        switch (field) {
+            case 'name':
+                if (!value.trim()) return 'Name is required';
+                if (value.length < 2) return 'Name must be at least 2 characters';
+                return '';
+            
+            case 'email':
+                if (!value) return 'Email is required';
+                if (!validationRules.email.test(value)) return 'Please enter a valid email';
+                return '';
+            
+            case 'reEmail':
+                if (!value) return 'Please confirm your email';
+                if (value !== formData.email) return 'Emails do not match';
+                return '';
+            
+            case 'number':
+                if (!value) return 'Phone number is required';
+                if (!validationRules.phone.test(value)) return 'Please enter a valid 10-digit phone number';
+                return '';
+            
+            case 'password':
+                if (!value) return 'Password is required';
+                if (value.length < 6) return 'Password must be at least 6 characters';
+                return '';
+            
+            case 'aadharNumber':
+                if (value && !validationRules.aadhar.test(value)) return 'Please enter a valid Aadhaar number';
+                return '';
+            
+            case 'dob':
+                if (!value) return 'Date of birth is required';
+                return '';
+            
+            case 'address.area':
+                if (!value) return 'Area is required';
+                return '';
+            
+            case 'address.street_address':
+                if (!value) return 'Street address is required';
+                return '';
+            
+            case 'address.pincode':
+                if (!value) return 'Pincode is required';
+                if (!validationRules.pincode.test(value)) return 'Please enter a valid 6-digit pincode';
+                return '';
+            
+            default:
+                return '';
+        }
+    }, [formData.email]);
+
+    // Form input change handler with real-time validation
+    const handleInputChange = (field, value) => {
+        // Mark field as touched
+        setFieldsTouched(prev => ({ ...prev, [field]: true }));
+        
+        // Update form data
+        setFormData(prev => ({ ...prev, [field]: value }));
+
+        // Special formatting for Aadhaar
+        if (field === 'aadharNumber') {
+            const formattedAadhar = formatAadhar(value);
+            setFormData(prev => ({ ...prev, [field]: formattedAadhar }));
+        }
+
+        // Perform real-time validation
+        const fieldError = validateField(field, field === 'aadharNumber' ? formatAadhar(value) : value);
+        
+        // Update errors state
+        setErrors(prev => ({ 
+            ...prev, 
+            [field]: fieldError 
+        }));
+
+        // Clear general error message
+        if (errorMessage) {
+            setErrorMessage('');
+        }
+    };
+
+    // Address form change handler with real-time validation
+    const handleAddressChange = (field, value) => {
+        // Mark field as touched
+        setFieldsTouched(prev => ({ ...prev, [`address.${field}`]: true }));
+        
+        // Update form data
+        setFormData(prev => ({
+            ...prev,
+            address: { ...prev.address, [field]: value },
+        }));
+
+        // Perform real-time validation
+        const fieldError = validateField(`address.${field}`, value);
+        
+        // Update errors state
+        setErrors(prev => ({ 
+            ...prev, 
+            [`address.${field}`]: fieldError 
+        }));
+
         // Clear general error message
         if (errorMessage) {
             setErrorMessage('');
@@ -85,6 +208,8 @@ export default function RegisterViaBh() {
     // Date picker handlers
     const showDatePicker = () => {
         setIsDatePickerVisible(true);
+        // Mark dob as touched when user tries to select a date
+        setFieldsTouched(prev => ({ ...prev, dob: true }));
     };
 
     const hideDatePicker = () => {
@@ -107,8 +232,14 @@ export default function RegisterViaBh() {
 
             if (age < 18) {
                 Alert.alert("Age Restriction", "You must be at least 18 years old.");
+                setErrors(prev => ({ ...prev, dob: 'You must be at least 18 years old' }));
                 hideDatePicker();
                 return;
+            }
+
+            // Clear error if exists
+            if (errors.dob) {
+                setErrors(prev => ({ ...prev, dob: '' }));
             }
 
             // Store the Date object directly
@@ -117,88 +248,32 @@ export default function RegisterViaBh() {
                 dob: newDate,
             }));
         }
-        
+
         hideDatePicker();
     };
 
-    // Address form change handler
-    const handleAddressChange = (field, value) => {
-        setFormData(prev => ({
-            ...prev,
-            address: { ...prev.address, [field]: value },
-        }));
-        
-        if (errors[`address.${field}`]) {
-            setErrors(prev => ({ ...prev, [`address.${field}`]: '' }));
-        }
-    };
-
-    // Form validation
-    const validateForm = () => {
+    // Validate entire form
+    const validateForm = useCallback(() => {
         const newErrors = {};
 
-        // Name validation
-        if (!formData.name.trim()) {
-            newErrors.name = 'Name is required';
-        } else if (formData.name.length < 2) {
-            newErrors.name = 'Name must be at least 2 characters';
-        }
+        // Validate all fields
+        Object.keys(formData).forEach(field => {
+            if (field !== 'address' && field !== 'is_referral_applied' && 
+                field !== 'referral_code_which_applied' && field !== 'category') {
+                const error = validateField(field, formData[field]);
+                if (error) newErrors[field] = error;
+            }
+        });
 
-        // Email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!formData.email) {
-            newErrors.email = 'Email is required';
-        } else if (!emailRegex.test(formData.email)) {
-            newErrors.email = 'Please enter a valid email';
-        }
+        // Validate address fields
+        ['area', 'street_address', 'pincode'].forEach(field => {
+            const error = validateField(`address.${field}`, formData.address[field]);
+            if (error) newErrors[`address.${field}`] = error;
+        });
 
-        // Email confirmation
-        if (!formData.reEmail) {
-            newErrors.reEmail = 'Please confirm your email';
-        } else if (formData.email !== formData.reEmail) {
-            newErrors.reEmail = 'Emails do not match';
-        }
-
-        // Phone validation
-        const phoneRegex = /^\d{10}$/;
-        if (!formData.number) {
-            newErrors.number = 'Phone number is required';
-        } else if (!phoneRegex.test(formData.number)) {
-            newErrors.number = 'Please enter a valid 10-digit phone number';
-        }
-
-        // Password validation
-        if (!formData.password) {
-            newErrors.password = 'Password is required';
-        } else if (formData.password.length < 6) {
-            newErrors.password = 'Password must be at least 6 characters';
-        }
-
-        // Date of birth validation
-        if (!formData.dob) {
-            newErrors.dob = 'Date of birth is required';
-        }
-
-        // Address validation
-        if (!formData.address.area) {
-            newErrors['address.area'] = 'Area is required';
-        }
-        
-        if (!formData.address.street_address) {
-            newErrors['address.street_address'] = 'Street address is required';
-        }
-
-        // Pincode validation
-        const pincodeRegex = /^\d{6}$/;
-        if (!formData.address.pincode) {
-            newErrors['address.pincode'] = 'Pincode is required';
-        } else if (!pincodeRegex.test(formData.address.pincode)) {
-            newErrors['address.pincode'] = 'Please enter a valid 6-digit pincode';
-        }
-
-        setErrors(newErrors);
+        setErrors(prev => ({ ...prev, ...newErrors }));
         return Object.keys(newErrors).length === 0;
-    };
+    }, [formData, validateField]);
 
     // Format date for display
     const formatDate = (date) => {
@@ -209,7 +284,7 @@ export default function RegisterViaBh() {
         const year = d.getFullYear();
         return `${day}-${month}-${year}`;
     };
-    
+
     // Format date for API
     const formatDateForAPI = (date) => {
         if (!date) return "";
@@ -225,6 +300,19 @@ export default function RegisterViaBh() {
         // Clear previous messages
         setErrorMessage('');
         setSuccessMessage('');
+
+        // Mark all fields as touched for validation
+        const allFields = [
+            'name', 'email', 'reEmail', 'number', 'password', 'dob',
+            'address.area', 'address.street_address', 'address.pincode'
+        ];
+        
+        const touchedState = allFields.reduce((acc, field) => {
+            acc[field] = true;
+            return acc;
+        }, {});
+        
+        setFieldsTouched(prev => ({ ...prev, ...touchedState }));
 
         // Validate form
         if (!validateForm()) {
@@ -273,7 +361,7 @@ export default function RegisterViaBh() {
                         acc[key] = Array.isArray(value) ? value[0] : value;
                         return acc;
                     }, {});
-                    
+
                     setErrors(prev => ({
                         ...prev,
                         ...formattedErrors
@@ -283,6 +371,11 @@ export default function RegisterViaBh() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    // Display error for a field only if it has been touched
+    const getFieldError = (field) => {
+        return fieldsTouched[field] ? errors[field] : '';
     };
 
     return (
@@ -320,41 +413,50 @@ export default function RegisterViaBh() {
                                 label="Name"
                                 value={formData.name}
                                 onChangeText={(text) => handleInputChange('name', text)}
+                                onBlur={() => setFieldsTouched(prev => ({ ...prev, name: true }))}
                                 placeholder="Enter your name"
-                                error={errors.name}
-                                style={[styles.input, errors.name && styles.inputError]}
+                                error={getFieldError('name')}
+                                style={[styles.input, getFieldError('name') && styles.inputError]}
                             />
 
                             <FormInput
                                 label="Email"
                                 value={formData.email}
-                                onChangeText={(text) => handleInputChange('email', text)}
+                                onChangeText={(text) => handleInputChange('email', text.trim())}
+                                onBlur={() => setFieldsTouched(prev => ({ ...prev, email: true }))}
                                 placeholder="Enter your email"
                                 keyboardType="email-address"
-                                error={errors.email}
-                                style={[styles.input, errors.email && styles.inputError]}
+                                error={getFieldError('email')}
+                                style={[styles.input, getFieldError('email') && styles.inputError]}
                                 autoCapitalize="none"
                             />
 
                             <FormInput
                                 label="Re-enter Email"
                                 value={formData.reEmail}
-                                onChangeText={(text) => handleInputChange('reEmail', text)}
+                                onChangeText={(text) => handleInputChange('reEmail', text.trim())}
+                                onBlur={() => setFieldsTouched(prev => ({ ...prev, reEmail: true }))}
                                 placeholder="Re-enter your email"
                                 keyboardType="email-address"
-                                error={errors.reEmail}
-                                style={[styles.input, errors.reEmail && styles.inputError]}
+                                error={getFieldError('reEmail')}
+                                style={[styles.input, getFieldError('reEmail') && styles.inputError]}
                                 autoCapitalize="none"
                             />
 
                             <FormInput
                                 label="Phone Number"
                                 value={formData.number}
-                                onChangeText={(text) => handleInputChange('number', text)}
-                                placeholder="Enter your phone number"
+                                onChangeText={(text) => {
+                                    // Allow only digits
+                                    if (/^\d*$/.test(text)) {
+                                        handleInputChange('number', text);
+                                    }
+                                }}
+                                onBlur={() => setFieldsTouched(prev => ({ ...prev, number: true }))}
+                                placeholder="Enter your 10-digit phone number"
                                 keyboardType="phone-pad"
-                                error={errors.number}
-                                style={[styles.input, errors.number && styles.inputError]}
+                                error={getFieldError('number')}
+                                style={[styles.input, getFieldError('number') && styles.inputError]}
                                 maxLength={10}
                             />
 
@@ -362,25 +464,51 @@ export default function RegisterViaBh() {
                                 label="Password"
                                 value={formData.password}
                                 onChangeText={(text) => handleInputChange('password', text)}
-                                placeholder="Enter your password"
+                                onBlur={() => setFieldsTouched(prev => ({ ...prev, password: true }))}
+                                placeholder="Enter your password (min 6 characters)"
                                 secureTextEntry
-                                error={errors.password}
-                                style={[styles.input, errors.password && styles.inputError]}
+                                error={getFieldError('password')}
+                                style={[styles.input, getFieldError('password') && styles.inputError]}
+                            />
+
+                            <FormInput
+                                label="Aadhaar Number "
+                                value={formData.aadharNumber}
+                                onChangeText={(text) => {
+                                    // Allow only digits and spaces
+                                    if (/^[\d\s]*$/.test(text)) {
+                                        handleInputChange('aadharNumber', text);
+                                    }
+                                }}
+                                onBlur={() => setFieldsTouched(prev => ({ ...prev, aadharNumber: true }))}
+                                placeholder="XXXX XXXX XXXX"
+                                keyboardType="number-pad"
+                                error={getFieldError('aadharNumber')}
+                                style={[styles.input, getFieldError('aadharNumber') && styles.inputError]}
+                                maxLength={14} // 12 digits + 2 spaces
                             />
 
                             {/* Date of Birth Picker */}
                             <View style={styles.datePickerContainer}>
                                 <Text style={styles.label}>Date of Birth</Text>
-                                <TouchableOpacity 
-                                    style={styles.dateButton} 
+                                <TouchableOpacity
+                                    style={[
+                                        styles.dateButton,
+                                        getFieldError('dob') && styles.inputError
+                                    ]}
                                     onPress={showDatePicker}
                                 >
-                                    <Text style={styles.dateButtonText}>
-                                        {formData.dob ? formatDate(formData.dob) : "Select Date of Birth"}
+                                    <Text 
+                                        style={[
+                                            styles.dateButtonText,
+                                            !formData.dob && styles.placeholderText
+                                        ]}
+                                    >
+                                        {formData.dob ? formatDate(formData.dob) : "Select Date of Birth (18+ only)"}
                                     </Text>
                                 </TouchableOpacity>
-                                {errors.dob && <Text style={styles.errorText}>{errors.dob}</Text>}
-                                
+                                {getFieldError('dob') && <Text style={styles.errorText}>{getFieldError('dob')}</Text>}
+
                                 {isDatePickerVisible && (
                                     <DateTimePicker
                                         value={formData.dob || new Date()}
@@ -396,7 +524,15 @@ export default function RegisterViaBh() {
                             <AddressForm
                                 address={formData.address}
                                 onAddressChange={handleAddressChange}
-                                errors={errors}
+                                errors={{
+                                    'area': getFieldError('address.area'),
+                                    'street_address': getFieldError('address.street_address'),
+                                    'pincode': getFieldError('address.pincode')
+                                }}
+                                onBlur={(field) => setFieldsTouched(prev => ({ 
+                                    ...prev, 
+                                    [`address.${field}`]: true 
+                                }))}
                             />
 
                             {/* Submit Button */}
