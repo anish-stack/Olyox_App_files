@@ -92,7 +92,7 @@ exports.createRequest = async (req, res) => {
 
 exports.findRider = async (id, io, app) => {
     // Configuration constants
-    const MAX_RETRIES = 2;
+    const MAX_RETRIES = 5;
     const RETRY_DELAY_MS = 10000;
     const INITIAL_RADIUS = 2500;  // meters
     const RADIUS_INCREMENT = 500; // meters
@@ -1962,112 +1962,131 @@ exports.deleleteRidersRideOrder = async (req, res) => {
 }
 
 exports.changeRidersRideStatusByAdmin = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
 
-    const order = await RideRequest.findById(id)
-      .populate('rider', 'name phone')
-      .populate('user', 'name number');
+        const order = await RideRequest.findById(id)
+            .populate('rider', 'name phone')
+            .populate('user', 'name number');
 
-    if (!order) {
-      return res.status(400).json({ success: false, message: "Ride request not found" });
+        if (!order) {
+            return res.status(400).json({ success: false, message: "Ride request not found" });
+        }
+
+        order.rideStatus = status;
+        await order.save();
+
+        // Safe fallback values
+        const riderName = order?.rider?.name || "Rider";
+        const riderPhone = order?.rider?.phone || null;
+        const userName = order?.user?.name || "User";
+        const userPhone = order?.user?.number || null;
+        const userFcmToken = order?.userFcm; // Get FCM token from the order
+
+        let riderMessage = "";
+        let userMessage = "";
+        let notificationTitle = "";
+        let notificationBody = "";
+
+        switch (status) {
+            case 'pending':
+                riderMessage = `🚕 Hello ${riderName},\n\nA new ride request (ID: ${order._id}) is now *PENDING*. Please review and take action. Refresh the app to see the latest status.`;
+                userMessage = `🕒 Hi ${userName},\n\nYour ride request (ID: ${order._id}) is currently *PENDING*. We will notify you once a rider accepts it. Please refresh the app for updates.`;
+                notificationTitle = '🕒 Ride Status Update';
+                notificationBody = `Your ride request is currently PENDING. We'll notify you once a rider accepts it. Refresh your app for the latest status.`;
+                break;
+            case 'accepted':
+                riderMessage = `✅ Hello ${riderName},\n\nYou have *ACCEPTED* the ride (ID: ${order._id}). Please proceed to pick up the user. Refresh the app to see the latest status.`;
+                userMessage = `👏 Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *ACCEPTED* by ${riderName}. They will be on their way soon. Please refresh the app for updates.`;
+                notificationTitle = '✅ Ride Accepted!';
+                notificationBody = `Your ride has been ACCEPTED by ${riderName}. They'll be on their way soon. Refresh your app for the latest status.`;
+                break;
+            case 'in_progress':
+                riderMessage = `🚗 Ride (ID: ${order._id}) is now *IN PROGRESS*. Stay safe on the road, ${riderName}. Refresh the app to see the latest status.`;
+                userMessage = `🚕 Your ride (ID: ${order._id}) is now *IN PROGRESS*. Enjoy your journey! Please refresh the app for updates.`;
+                notificationTitle = '🚗 Ride In Progress';
+                notificationBody = `Your ride is now IN PROGRESS. Enjoy your journey! Refresh your app for the latest status.`;
+                order.rideCancelBy = 'admin';
+                order.rideCancelReason = "Cancel By Admin ";
+                order.rideStatus = "cancelled";
+                order.rideCancelTime = new Date();
+                const foundRiderId = order?.rider?._id || order?.rider;
+                const foundRider = await Riders.findById(foundRiderId);
+                if (!foundRider) {
+                    console.warn(`⚠️ Rider not found with ID: ${foundRiderId}`);
+                    return {
+                        success: false,
+                        message: "Rider not found",
+                    };
+                }
+
+                foundRider.isAvailable = true;
+                foundRider.on_ride_id = null;
+
+                await ride.save();
+                await foundRider.save();
+                break;
+            case 'completed':
+                riderMessage = `✅ Great job, ${riderName}!\n\nYou have *COMPLETED* the ride (ID: ${order._id}). Refresh the app to see the latest status.`;
+                userMessage = `🎉 Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *COMPLETED*. Thank you for riding with us! Please refresh the app for updates.`;
+                notificationTitle = '🎉 Ride Completed';
+                notificationBody = `Your ride has been COMPLETED. Thank you for riding with us! Refresh your app for the latest status.`;
+                break;
+            case 'cancelled':
+                riderMessage = `❌ The ride (ID: ${order._id}) has been *CANCELLED*. No further action is required. Refresh the app to see the latest status.`;
+                userMessage = `⚠️ Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *CANCELLED*. We apologize for the inconvenience. Please refresh the app for updates.`;
+                notificationTitle = '⚠️ Ride Cancelled';
+                notificationBody = `Your ride has been CANCELLED. We apologize for the inconvenience. Refresh your app for the latest status.`;
+                break;
+            default:
+                riderMessage = `ℹ️ Ride (ID: ${order._id}) status has been changed to *${status}*. Refresh the app to see the latest status.`;
+                userMessage = `ℹ️ Ride (ID: ${order._id}) status is now *${status}*. Please refresh the app for updates.`;
+                notificationTitle = 'ℹ️ Ride Status Updated';
+                notificationBody = `Your ride status is now "${status}". Refresh your app for the latest status.`;
+        }
+
+        // Send WhatsApp messages if phone numbers are available
+        if (riderPhone) {
+            SendWhatsAppMessageNormal(riderMessage, riderPhone);
+        }
+
+        if (userPhone) {
+            SendWhatsAppMessageNormal(userMessage, userPhone);
+        }
+
+        // Send FCM notification if token is available
+        if (userFcmToken) {
+            try {
+                // Include ride ID in the notification data for deep linking in the app
+                const notificationData = {
+                    event: "RIDE_STATUS_UPDATE",
+                    ride_id: order._id.toString(),
+                    status: status,
+                    timestamp: new Date().toISOString()
+                };
+
+                await sendNotification(userFcmToken, notificationTitle, notificationBody, notificationData);
+                console.log(`FCM notification sent to user for ride ${order._id}`);
+            } catch (notificationError) {
+                console.error("Failed to send FCM notification:", notificationError);
+                // Continue execution even if notification fails
+            }
+        } else {
+            console.log(`No FCM token available for user of ride ${order._id}`);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `Ride status updated to "${status}" and notifications sent`
+        });
+
+    } catch (error) {
+        console.error("Internal server error", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
     }
-
-    order.rideStatus = status;
-    await order.save();
-
-    // Safe fallback values
-    const riderName = order?.rider?.name || "Rider";
-    const riderPhone = order?.rider?.phone || null;
-    const userName = order?.user?.name || "User";
-    const userPhone = order?.user?.number || null;
-    const userFcmToken = order?.userFcm; // Get FCM token from the order
-
-    let riderMessage = "";
-    let userMessage = "";
-    let notificationTitle = "";
-    let notificationBody = "";
-
-    switch (status) {
-      case 'pending':
-        riderMessage = `🚕 Hello ${riderName},\n\nA new ride request (ID: ${order._id}) is now *PENDING*. Please review and take action. Refresh the app to see the latest status.`;
-        userMessage = `🕒 Hi ${userName},\n\nYour ride request (ID: ${order._id}) is currently *PENDING*. We will notify you once a rider accepts it. Please refresh the app for updates.`;
-        notificationTitle = '🕒 Ride Status Update';
-        notificationBody = `Your ride request is currently PENDING. We'll notify you once a rider accepts it. Refresh your app for the latest status.`;
-        break;
-      case 'accepted':
-        riderMessage = `✅ Hello ${riderName},\n\nYou have *ACCEPTED* the ride (ID: ${order._id}). Please proceed to pick up the user. Refresh the app to see the latest status.`;
-        userMessage = `👏 Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *ACCEPTED* by ${riderName}. They will be on their way soon. Please refresh the app for updates.`;
-        notificationTitle = '✅ Ride Accepted!';
-        notificationBody = `Your ride has been ACCEPTED by ${riderName}. They'll be on their way soon. Refresh your app for the latest status.`;
-        break;
-      case 'in_progress':
-        riderMessage = `🚗 Ride (ID: ${order._id}) is now *IN PROGRESS*. Stay safe on the road, ${riderName}. Refresh the app to see the latest status.`;
-        userMessage = `🚕 Your ride (ID: ${order._id}) is now *IN PROGRESS*. Enjoy your journey! Please refresh the app for updates.`;
-        notificationTitle = '🚗 Ride In Progress';
-        notificationBody = `Your ride is now IN PROGRESS. Enjoy your journey! Refresh your app for the latest status.`;
-        break;
-      case 'completed':
-        riderMessage = `✅ Great job, ${riderName}!\n\nYou have *COMPLETED* the ride (ID: ${order._id}). Refresh the app to see the latest status.`;
-        userMessage = `🎉 Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *COMPLETED*. Thank you for riding with us! Please refresh the app for updates.`;
-        notificationTitle = '🎉 Ride Completed';
-        notificationBody = `Your ride has been COMPLETED. Thank you for riding with us! Refresh your app for the latest status.`;
-        break;
-      case 'cancelled':
-        riderMessage = `❌ The ride (ID: ${order._id}) has been *CANCELLED*. No further action is required. Refresh the app to see the latest status.`;
-        userMessage = `⚠️ Hi ${userName},\n\nYour ride (ID: ${order._id}) has been *CANCELLED*. We apologize for the inconvenience. Please refresh the app for updates.`;
-        notificationTitle = '⚠️ Ride Cancelled';
-        notificationBody = `Your ride has been CANCELLED. We apologize for the inconvenience. Refresh your app for the latest status.`;
-        break;
-      default:
-        riderMessage = `ℹ️ Ride (ID: ${order._id}) status has been changed to *${status}*. Refresh the app to see the latest status.`;
-        userMessage = `ℹ️ Ride (ID: ${order._id}) status is now *${status}*. Please refresh the app for updates.`;
-        notificationTitle = 'ℹ️ Ride Status Updated';
-        notificationBody = `Your ride status is now "${status}". Refresh your app for the latest status.`;
-    }
-
-    // Send WhatsApp messages if phone numbers are available
-    if (riderPhone) {
-      SendWhatsAppMessageNormal(riderMessage, riderPhone);
-    }
-    
-    if (userPhone) {
-      SendWhatsAppMessageNormal(userMessage, userPhone);
-    }
-
-    // Send FCM notification if token is available
-    if (userFcmToken) {
-      try {
-        // Include ride ID in the notification data for deep linking in the app
-        const notificationData = {
-          event: "RIDE_STATUS_UPDATE",
-          ride_id: order._id.toString(),
-          status: status,
-          timestamp: new Date().toISOString()
-        };
-
-        await sendNotification(userFcmToken, notificationTitle, notificationBody, notificationData);
-        console.log(`FCM notification sent to user for ride ${order._id}`);
-      } catch (notificationError) {
-        console.error("Failed to send FCM notification:", notificationError);
-        // Continue execution even if notification fails
-      }
-    } else {
-      console.log(`No FCM token available for user of ride ${order._id}`);
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: `Ride status updated to "${status}" and notifications sent`
-    });
-    
-  } catch (error) {
-    console.error("Internal server error", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
-  }
 };
