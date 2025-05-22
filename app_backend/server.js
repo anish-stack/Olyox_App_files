@@ -81,9 +81,9 @@ app.set("socketio", io);
 // Middleware Setup
 app.use(cors({
     origin: (origin, callback) => {
-        callback(null, origin); // allow any origin
+        callback(null, origin);
     },
-    credentials: true, // allow cookies, authorization headers, etc.
+    credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -454,47 +454,47 @@ io.on('connection', (socket) => {
                     const foundUser = await userModel.findOne({
                         _id: ride.user?._id
                     })
-                   if (userSocketId) {
-    console.log("📡 Sending cancel notification to user:", userSocketId);
-    io.to(userSocketId).emit('ride_cancelled_message', {
-        message: "🚕 Ride cancelled by driver",
-        rideDetails: rideData,
-    });
+                    if (userSocketId) {
+                        console.log("📡 Sending cancel notification to user:", userSocketId);
+                        io.to(userSocketId).emit('ride_cancelled_message', {
+                            message: "🚕 Ride cancelled by driver",
+                            rideDetails: rideData,
+                        });
 
-    const userToken = foundUser?.fcmToken;
-    const title = 'Ride Cancelled by Driver';
-    const body = 'Unfortunately, your driver has cancelled the ride. We apologize for the inconvenience. Please try booking another ride.';
+                        const userToken = foundUser?.fcmToken;
+                        const title = 'Ride Cancelled by Driver';
+                        const body = 'Unfortunately, your driver has cancelled the ride. We apologize for the inconvenience. Please try booking another ride.';
 
-    if (userToken) {
-        try {
-            await sendNotification(userToken, title, body);
-            console.log("✅ FCM notification sent to user.");
-        } catch (error) {
-            console.error("❌ Error sending FCM to user:", error);
-        }
-    } else {
-        console.warn("⚠️ No FCM token found for user.");
-    }
+                        if (userToken) {
+                            try {
+                                await sendNotification(userToken, title, body);
+                                console.log("✅ FCM notification sent to user.");
+                            } catch (error) {
+                                console.error("❌ Error sending FCM to user:", error);
+                            }
+                        } else {
+                            console.warn("⚠️ No FCM token found for user.");
+                        }
 
-    console.log("📨 Message sent to user via socket.");
-} else {
-    const userToken = foundUser?.fcmToken;
-    const title = 'Ride Cancelled by Driver';
-    const body = 'Unfortunately, your driver has cancelled the ride. We apologize for the inconvenience. Please try booking another ride.';
+                        console.log("📨 Message sent to user via socket.");
+                    } else {
+                        const userToken = foundUser?.fcmToken;
+                        const title = 'Ride Cancelled by Driver';
+                        const body = 'Unfortunately, your driver has cancelled the ride. We apologize for the inconvenience. Please try booking another ride.';
 
-    if (userToken) {
-        try {
-            await sendNotification(userToken, title, body);
-            console.log("✅ FCM notification sent to offline user.");
-        } catch (error) {
-            console.error("❌ Error sending FCM to offline user:", error);
-        }
-    } else {
-        console.warn("⚠️ No FCM token found for offline user.");
-    }
+                        if (userToken) {
+                            try {
+                                await sendNotification(userToken, title, body);
+                                console.log("✅ FCM notification sent to offline user.");
+                            } catch (error) {
+                                console.error("❌ Error sending FCM to offline user:", error);
+                            }
+                        } else {
+                            console.warn("⚠️ No FCM token found for offline user.");
+                        }
 
-    console.warn("⚠️ User socket ID not found. User might be offline.");
-}
+                        console.warn("⚠️ User socket ID not found. User might be offline.");
+                    }
 
                 }
             } else {

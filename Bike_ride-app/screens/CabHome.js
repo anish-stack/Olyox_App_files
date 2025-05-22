@@ -35,7 +35,7 @@ import Bonus from "./Bonus/Bonus"
 
 const CabHome = () => {
   try {
-    console.log("Rendering CabHome component")
+    
     const { isSocketReady, socket } = useSocket()
     const [menuVisible, setMenuVisible] = useState(false)
     const [refreshing, setRefreshing] = useState(false)
@@ -45,7 +45,7 @@ const CabHome = () => {
     const [location, setLocation] = useState(null)
     const [errorMsg, setErrorMsg] = useState(null)
     const [mapVisible, setMapVisible] = useState(true)
-    const [activeRideData, setActiveRideData] = useState(null) // Changed from false to null
+    const [activeRideData, setActiveRideData] = useState(null) 
     const [showReconnectAnimation, setShowReconnectAnimation] = useState(false)
     const { onRide, updateRideStatus } = useRideStatus()
     const navigation = useNavigation()
@@ -690,7 +690,7 @@ const CabHome = () => {
       }
     }, [location, mapVisible, mapHeightAnim])
 
-    console.log("Rendering main CabHome component")
+   console.log("user_data",user_data?.on_ride_id)
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar backgroundColor="#00BCD4" barStyle="light-content" />
