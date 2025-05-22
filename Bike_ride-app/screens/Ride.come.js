@@ -59,8 +59,8 @@ export default function RideRequestScreen() {
     const timeoutRef = useRef(null);
     const soundLoopRef = useRef(null);
     const countdownIntervalRef = useRef(null);
-      const { onRide, updateRideStatus } = useRideStatus(); 
-    
+    const { onRide, updateRideStatus } = useRideStatus();
+
 
     useEffect(() => {
         if (rideData?.polyline) {
@@ -491,7 +491,7 @@ export default function RideRequestScreen() {
                                 )}
                                 <View style={styles.userDetails}>
                                     <Text style={styles.userName}>{rideData?.user?.name}</Text>
-                                  
+
                                 </View>
                                 <View style={styles.ratingContainer}>
                                     <MaterialCommunityIcons name="star" size={20} color="#F59E0B" />
@@ -602,34 +602,34 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F9FAFB',
     },
-   waitingContainer: {
-      backgroundColor: "#FFFFFF",
-      borderRadius: 16,
-      padding: 16,
-      marginBottom: 16,
-      alignItems: "center",
-      ...Platform.select({
-        ios: {
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-        },
-        android: {
-          elevation: 4,
-        },
-      }),
+    waitingContainer: {
+        backgroundColor: "#FFFFFF",
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+        alignItems: "center",
+        ...Platform.select({
+            ios: {
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
     },
     waitingAnimation: {
-      width: 120,
-      height: 120,
+        width: 120,
+        height: 120,
     },
     waitingText: {
-      fontSize: 16,
-      color: "#616161",
-      fontWeight: "500",
-      marginTop: 8,
-      textAlign: "center",
+        fontSize: 16,
+        color: "#616161",
+        fontWeight: "500",
+        marginTop: 8,
+        textAlign: "center",
     },
     mapContainer: {
         width: '100%',
