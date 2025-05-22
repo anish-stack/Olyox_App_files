@@ -1,82 +1,37 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import {
   View,
-  Dimensions,
+  StyleSheet,
+  AppState,
   Alert,
   Animated,
-  AppState,
+  PanResponder,
+  Dimensions,
+  Platform,
+  StatusBar,
+  SafeAreaView,
+  TouchableOpacity,
 } from "react-native";
-import { Text, Button, Divider, ActivityIndicator } from "react-native-paper";
+import { Text, ActivityIndicator } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import {
-  FontAwesome5,
-  MaterialIcons,
-} from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useSocket } from "../context/SocketContext";
 
+// Import components
 import OtpModal from "./OtpModal";
 import CancelReasonsModal from "./CancelReasonsModal";
-import { RideMap } from "./RideMap";
-// import RideMap from './RideMap.js'
-import { RideInfoPanel } from "./RideInfoPanel.js";
+import RideMap from "./RideMap";
+import RideBottomSheet from "./RideBottomSheet";
 import { useRideActions } from "../hooks/useRideActions";
 import { useLocationTrackingTwo } from "../hooks/useLocationTrackingTwo";
 
 // Constants
-const { width, height } = Dimensions.get('window');
-const ASPECT_RATIO = width / height;
-const LATITUDE_DELTA = 0.0922;
-const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
+const { height } = Dimensions.get('window');
 const API_BASE_URL = "https://appapi.olyox.com";
-
-// 🛑 CRITICAL: Location update thresholds to prevent spam
-const LOCATION_UPDATE_THRESHOLD = 0.0001; // ~10 meters
-const LOCATION_UPDATE_INTERVAL = 5000; // 5 seconds minimum between updates
-const APP_STATE_DEBOUNCE_TIME = 2000; // 2 seconds debounce for app state
-
-// Performance timer utility
-const performanceTimer = {
-  start: (label) => {
-    console.time(`⏱️ ${label}`);
-    console.log(`🚀 Starting: ${label}`);
-  },
-  end: (label) => {
-    console.timeEnd(`⏱️ ${label}`);
-    console.log(`✅ Completed: ${label}`);
-  }
-};
-
-// 🛑 CRITICAL: Debounce utility to prevent excessive function calls
-const debounce = (func, wait, immediate) => {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      timeout = null;
-      if (!immediate) func(...args);
-    };
-    const callNow = immediate && !timeout;
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-    if (callNow) func(...args);
-  };
-};
-
-// 🛑 CRITICAL: Throttle utility for location updates
-const throttle = (func, limit) => {
-  let inThrottle;
-  return function() {
-    const args = arguments;
-    const context = this;
-    if (!inThrottle) {
-      func.apply(context, args);
-      inThrottle = true;
-      setTimeout(() => inThrottle = false, limit);
-    }
-  }
-}
+const BOTTOM_SHEET_MIN_HEIGHT = 200;
+const BOTTOM_SHEET_MAX_HEIGHT = height * 1;
 
 export default function RideDetailsScreen() {
   // ===== REFS =====
@@ -88,11 +43,12 @@ export default function RideDetailsScreen() {
   const isInitialMount = useRef(true);
   const socketListenersSet = useRef(false);
   const rideDataRef = useRef(null);
-  const authTokenRef = useRef(null);
-  const rideIdRef = useRef(null);
-  const lastLocationUpdateTime = useRef(0);
-  const lastSignificantLocation = useRef(null);
-  const appStateChangeTimeoutRef = useRef(null);
+  const appStateSubscription = useRef(null);
+  const lastAppStateChange = useRef(Date.now());
+  const isComponentMounted = useRef(true);
+
+  // Bottom sheet animation
+  const bottomSheetTranslateY = useRef(new Animated.Value(BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT)).current;
 
   // ===== NAVIGATION & ROUTE =====
   const route = useRoute();
@@ -102,239 +58,243 @@ export default function RideDetailsScreen() {
   // ===== SOCKET CONTEXT =====
   const { socket } = useSocket();
 
-  // ===== OPTIMIZED STATE - Split into smaller pieces =====
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [rideDetails, setRideDetails] = useState(null);
-  const [rideStarted, setRideStarted] = useState(false);
-  const [rideCompleted, setRideCompleted] = useState(false);
-  const [socketConnected, setSocketConnected] = useState(socket?.connected || false);
-  
-  // UI State
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [cancelReasons, setCancelReasons] = useState([]);
-  const [selectedReason, setSelectedReason] = useState(null);
-  
-  // Map State
-  const [mapReady, setMapReady] = useState(false);
-  const [distanceToPickup, setDistanceToPickup] = useState(null);
-  const [timeToPickup, setTimeToPickup] = useState(null);
+  // ===== STATE =====
+  const [state, setState] = useState({
+    loading: true,
+    showOtpModal: false,
+    otp: "",
+    rideStarted: false,
+    rideCompleted: false,
+    currentLocation: null,
+    mapReady: false,
+    distanceToPickup: null,
+    timeToPickup: null,
+    showDirectionsType: "driver_to_pickup",
+    errorMsg: null,
+    cancelReasons: [],
+    showCancelModal: false,
+    selectedReason: null,
+    sound: null,
+    socketConnected: socket?.connected || false,
+    bottomSheetHeight: BOTTOM_SHEET_MIN_HEIGHT,
+  });
 
-  // 🛑 CRITICAL: Stable coordinates to prevent constant re-renders
-  const [stableDriverCoordinates, setStableDriverCoordinates] = useState(null);
-  const [stablePickupCoordinates, setStablePickupCoordinates] = useState(null);
-  const [stableDropCoordinates, setStableDropCoordinates] = useState(null);
+  const [driverCoordinates, setDriverCoordinates] = useState(null);
+  const [pickupCoordinates, setPickupCoordinates] = useState(null);
+  const [dropCoordinates, setDropCoordinates] = useState(null);
+  const [rideDetails, setRideDetails] = useState({});
 
-  // ===== MEMOIZED VALUES =====
-  const showDirectionsType = useMemo(() => {
-    return rideStarted ? "pickup_to_drop" : "driver_to_pickup";
-  }, [rideStarted]);
-
-  // Extract ride properties with memoization
-  const rideProps = useMemo(() => {
-    if (!rideDetails) return {};
-    
-    return {
-      drop_desc: rideDetails?.ride?.driver?.drop_desc || "",
-      pickup_desc: rideDetails?.ride?.driver?.pickup_desc || "",
-      kmOfRide: rideDetails?.ride?.driver?.kmOfRide || "0",
-      RideOtp: rideDetails?.ride?.driver?.otp || "",
-    };
-  }, [rideDetails]);
-
-  // ===== CRITICAL: Location significance checker =====
-  const isLocationSignificantlyDifferent = useCallback((newLocation, oldLocation) => {
-    if (!oldLocation || !newLocation) return true;
-    
-    const latDiff = Math.abs(newLocation.latitude - oldLocation.latitude);
-    const lngDiff = Math.abs(newLocation.longitude - oldLocation.longitude);
-    
-    return latDiff > LOCATION_UPDATE_THRESHOLD || lngDiff > LOCATION_UPDATE_THRESHOLD;
+  // ===== HELPER FUNCTIONS =====
+  const updateState = useCallback((newState) => {
+    if (!isComponentMounted.current) return;
+    setState(prevState => ({ ...prevState, ...newState }));
   }, []);
 
-  // ===== OPTIMIZED HELPER FUNCTIONS =====
+
+
+  console.log("otp", state.showOtpModal);
   const logDebug = useCallback((message, data = null) => {
     if (__DEV__) {
-      const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
       if (data) {
-        console.log(`✔️ [${timestamp}] ${message}`, data);
+        console.log(`✔️ ${message}`, data);
       } else {
-        console.log(`✔️ [${timestamp}] ${message}`);
+        console.log(`✔️ ${message}`);
       }
     }
   }, []);
 
   const logError = useCallback((message, error = null) => {
-    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
     if (error) {
-      console.error(`❌ [${timestamp}] ${message}`, error);
+      console.error(`❌ ${message}`, error);
     } else {
-      console.error(`❌ [${timestamp}] ${message}`);
+      console.error(`❌ ${message}`);
     }
   }, []);
 
-  // ===== OPTIMIZED API CALLS =====
-  const getAuthToken = useCallback(async () => {
-    if (authTokenRef.current) {
-      return authTokenRef.current;
-    }
+  // ===== BOTTOM SHEET GESTURE HANDLER =====
+  const panResponder = useMemo(() => {
+    return PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dy) > 10; // Increased threshold for better touch handling
+      },
+      onMoveShouldSetPanResponderCapture: () => false,
+      onPanResponderGrant: () => {
+        // Stop any ongoing animations when user starts gesture
+        bottomSheetTranslateY.stopAnimation();
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const currentTranslateY = bottomSheetTranslateY._value;
+        const newTranslateY = Math.max(
+          0, // Max expanded position
+          Math.min(
+            BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT, // Max collapsed position
+            currentTranslateY + gestureState.dy
+          )
+        );
 
-    performanceTimer.start('Auth Token Fetch');
+        bottomSheetTranslateY.setValue(newTranslateY);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const currentTranslateY = bottomSheetTranslateY._value;
+        const velocity = gestureState.vy;
+        const midPoint = (BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT) / 2;
+
+        // Determine target position based on current position and velocity
+        let targetY;
+        if (velocity > 0.5) {
+          // Fast downward swipe - collapse
+          targetY = BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT;
+        } else if (velocity < -0.5) {
+          // Fast upward swipe - expand
+          targetY = 0;
+        } else {
+          // Slow movement - snap to nearest position
+          targetY = currentTranslateY > midPoint
+            ? BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT
+            : 0;
+        }
+
+        // Animate to target position
+        Animated.spring(bottomSheetTranslateY, {
+          toValue: targetY,
+          useNativeDriver: true,
+          tension: 120,
+          friction: 8,
+        }).start();
+
+        // Update state
+        const newHeight = targetY === 0 ? BOTTOM_SHEET_MAX_HEIGHT : BOTTOM_SHEET_MIN_HEIGHT;
+        updateState({ bottomSheetHeight: newHeight });
+      },
+    });
+  }, [updateState, bottomSheetTranslateY]);
+
+  // ===== RIDE DETAILS =====
+  const checkAuthToken = useCallback(async () => {
     try {
       const token = await SecureStore.getItemAsync('auth_token_cab');
-      authTokenRef.current = token;
-      performanceTimer.end('Auth Token Fetch');
-      return token;
-    } catch (error) {
-      performanceTimer.end('Auth Token Fetch');
-      logError('Failed to get auth token', error);
-      return null;
-    }
-  }, [logError]);
 
-  const checkAuthToken = useCallback(async () => {
-    performanceTimer.start('Auth Token Check');
-    
-    try {
-      const token = await getAuthToken();
       if (!token) {
-        performanceTimer.end('Auth Token Check');
         logError('No auth token found');
         return null;
       }
 
       const response = await axios.get(
         `${API_BASE_URL}/api/v1/rider/user-details`,
-        { 
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 10000
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const partner = response.data.partner;
-      const rideId = partner?.on_ride_id || null;
-      
-      performanceTimer.end('Auth Token Check');
-      
-      if (rideId) {
-        logDebug('Found active ride ID from user details', rideId);
-        rideIdRef.current = rideId;
+
+      if (partner?.on_ride_id) {
+        logDebug('Found active ride ID from user details', partner.on_ride_id);
+        return partner.on_ride_id;
       }
 
-      return rideId;
+      return null;
     } catch (error) {
-      performanceTimer.end('Auth Token Check');
       logError('Auth token check failed', error);
       return null;
     }
-  }, [getAuthToken, logDebug, logError]);
+  }, [logDebug, logError]);
 
+  // Get ride ID from params or auth check
   const getRideId = useCallback(async () => {
-    if (rideIdRef.current) {
-      logDebug('Using cached ride ID', rideIdRef.current);
-      return rideIdRef.current;
-    }
-
-    performanceTimer.start('Get Ride ID');
-    
+    // First check if we have an ID from params
     if (params?.temp_ride_id) {
       logDebug('Using ride ID from params', params.temp_ride_id);
-      rideIdRef.current = params.temp_ride_id;
-      performanceTimer.end('Get Ride ID');
       return params.temp_ride_id;
     }
 
+    // If not, check from auth token
     const authRideId = await checkAuthToken();
-    performanceTimer.end('Get Ride ID');
-    
-    return authRideId;
-  }, [params, checkAuthToken, logDebug]);
-
-  const fetchRideDetails = useCallback(async (rideId) => {
-    if (!rideId) {
-      logError('Cannot fetch ride details: No ride ID provided');
-      setLoading(false);
-      setError('No ride ID available');
-      return null;
+    if (authRideId) {
+      logDebug('Using ride ID from auth check', authRideId);
+      return authRideId;
     }
 
-    performanceTimer.start('Fetch Ride Details');
-    
+    return null;
+  }, [params, checkAuthToken, logDebug]);
+
+  // Fetch ride details from API
+  const foundRideDetails = useCallback(async (rideId) => {
+    if (!rideId) {
+      logError('Cannot fetch ride details: No ride ID provided');
+      updateState({ loading: false, errorMsg: 'No ride ID found' });
+      return;
+    }
+
     try {
-      logDebug('Fetching ride details', { rideId });
-      
-      const response = await axios.get(`${API_BASE_URL}/rider/${rideId}`, {
-        timeout: 15000
-      });
-      
-      performanceTimer.end('Fetch Ride Details');
-      
+
+      // const response = await axios.get(`${API_BASE_URL}/rider/${rideId}`);
+      const response = await axios.get(`http://192.168.1.11:3100/rider/${rideId}`);
+
       if (!response.data) {
         throw new Error('No ride data returned from API');
       }
 
       logDebug('Ride details fetched successfully');
-      console.log('📊 Ride Data:', response.data);
 
+      // Save the complete ride data for use throughout component
       setRideDetails(response.data);
-      setRideStarted(!!response?.data?.ride?.rideDetails?.otp_verify_time);
-      setLoading(false);
-      setError(null);
 
-      rideDataRef.current = response.data;
+      // Update component state
+      updateState({
+        loading: false,
+        rideStarted: !!response?.data?.ride?.rideDetails?.otp_verify_time,
+        showDirectionsType: !!response?.data?.ride?.rideDetails?.otp_verify_time
+          ? "pickup_to_drop"
+          : "driver_to_pickup",
+      });
 
       return response.data;
     } catch (error) {
-      performanceTimer.end('Fetch Ride Details');
       logError('Failed to fetch ride details', error);
-      
-      setLoading(false);
-      setError('Failed to load ride details. Please try again.');
+      updateState({
+        loading: false,
+        errorMsg: 'Failed to load ride details. Please try again.'
+      });
       return null;
     }
-  }, [logDebug, logError]);
+  }, [logDebug, logError, updateState]);
 
-  // ===== CRITICAL: Throttled location tracking =====
+  // Initialize ride data
+  useEffect(() => {
+    const initializeRideData = async () => {
+      try {
+        // Get ride ID from any available source
+        const rideId = await getRideId();
+
+        if (rideId) {
+          // Fetch full ride details using the ID
+          const rideData = await foundRideDetails(rideId);
+          rideDataRef.current = rideData;
+        } else {
+          updateState({
+            loading: false,
+            errorMsg: 'No active ride found'
+          });
+        }
+      } catch (error) {
+        logError('Error initializing ride data', error);
+        updateState({
+          loading: false,
+          errorMsg: 'Failed to initialize ride. Please try again.'
+        });
+      }
+    };
+
+    initializeRideData();
+  }, [getRideId, foundRideDetails, updateState, logError]);
+
+  // Get location tracking
   const {
     currentLocation,
     startLocationTracking,
     stopLocationTracking
-  } = useLocationTrackingTwo(socket, rideDetails?._id, rideStarted);
+  } = useLocationTrackingTwo(socket, rideDetails?._id, state.rideStarted);
 
-  // 🛑 CRITICAL: Throttled location update handler
-  const handleLocationUpdate = useCallback(
-    throttle((newLocation) => {
-      const now = Date.now();
-      
-      // Check time threshold
-      if (now - lastLocationUpdateTime.current < LOCATION_UPDATE_INTERVAL) {
-        return;
-      }
-      
-      // Check distance threshold
-      if (!isLocationSignificantlyDifferent(newLocation, lastSignificantLocation.current)) {
-        return;
-      }
-      
-      console.log("📍 SIGNIFICANT Location Update:", newLocation);
-      
-      lastLocationUpdateTime.current = now;
-      lastSignificantLocation.current = newLocation;
-      setStableDriverCoordinates(newLocation);
-      
-    }, LOCATION_UPDATE_INTERVAL),
-    [isLocationSignificantlyDifferent]
-  );
-
-  // Update stable coordinates when location changes significantly
-  useEffect(() => {
-    if (currentLocation) {
-      handleLocationUpdate(currentLocation);
-    }
-  }, [currentLocation, handleLocationUpdate]);
-
-  // ===== OPTIMIZED RIDE ACTIONS =====
+  // Get ride actions
   const {
     handleOtpSubmit,
     handleCancelRide,
@@ -345,28 +305,8 @@ export default function RideDetailsScreen() {
     stopSound,
     fetchCancelReasons
   } = useRideActions({
-    state: {
-      loading,
-      showOtpModal,
-      rideStarted,
-      rideCompleted,
-      currentLocation: stableDriverCoordinates, // Use stable coordinates
-      mapReady,
-      distanceToPickup,
-      timeToPickup,
-      showDirectionsType,
-      errorMsg: error,
-      cancelReasons,
-      showCancelModal,
-      selectedReason,
-      socketConnected,
-    },
-    setState: (newState) => {
-      if (newState.showOtpModal !== undefined) setShowOtpModal(newState.showOtpModal);
-      if (newState.showCancelModal !== undefined) setShowCancelModal(newState.showCancelModal);
-      if (newState.selectedReason !== undefined) setSelectedReason(newState.selectedReason);
-      if (newState.rideCompleted !== undefined) setRideCompleted(newState.rideCompleted);
-    },
+    state,
+    setState,
     rideDetails,
     socket,
     navigation,
@@ -374,61 +314,55 @@ export default function RideDetailsScreen() {
     soundRef
   });
 
-  // ===== OPTIMIZED COORDINATES CALCULATION =====
+  // ===== COORDINATES =====
   useEffect(() => {
-    if (!rideDetails) return;
+    if (!rideDetails?.ride) return;
 
-    performanceTimer.start('Calculate Stable Coordinates');
-
-    // Only update pickup/drop coordinates once when ride details are available
-    if (rideDetails?.ride?.rideDetails?.pickupLocation?.coordinates && !stablePickupCoordinates) {
-      setStablePickupCoordinates({
-        latitude: rideDetails.ride.rideDetails.pickupLocation.coordinates[1],
-        longitude: rideDetails.ride.rideDetails.pickupLocation.coordinates[0],
-      });
-    }
-
-    if (rideDetails?.ride?.rideDetails?.dropLocation?.coordinates && !stableDropCoordinates) {
-      setStableDropCoordinates({
-        latitude: rideDetails.ride.rideDetails.dropLocation.coordinates[1],
-        longitude: rideDetails.ride.rideDetails.dropLocation.coordinates[0],
-      });
-    }
-
-    performanceTimer.end('Calculate Stable Coordinates');
-  }, [rideDetails, stablePickupCoordinates, stableDropCoordinates]);
-
-  // ===== CRITICAL: Debounced app state handler =====
-  const handleAppStateChange = useCallback(
-    debounce((nextAppState) => {
-      const isSignificantChange =
-        (appStateRef.current === 'active' && nextAppState !== 'active') ||
-        (appStateRef.current !== 'active' && nextAppState === 'active');
-
-      if (isSignificantChange) {
-        logDebug(`🔄 AppState SIGNIFICANT change: ${appStateRef.current} → ${nextAppState}`);
-        
-        if (appStateRef.current.match(/inactive|background/) && nextAppState === "active") {
-          logDebug('App became active - checking connections');
-
-          if (socket && !socket.connected) {
-            logDebug('Reconnecting socket after app became active');
-            connectSocket();
-          }
-
-          startLocationTracking();
+    try {
+      const getCoordinates = () => {
+        // Driver/Rider coordinates
+        if (currentLocation) {
+          setDriverCoordinates(currentLocation);
+        } else if (rideDetails?.rider?.location?.coordinates) {
+          setDriverCoordinates({
+            latitude: rideDetails.rider.location.coordinates[1],
+            longitude: rideDetails.rider.location.coordinates[0],
+          });
+        } else {
+          // Default coordinates
+          setDriverCoordinates({ latitude: 28.7041, longitude: 77.1025 });
         }
-      } else {
-        // Suppress frequent logging for non-significant changes
-        console.log(`🔇 AppState minor change suppressed: ${appStateRef.current} → ${nextAppState}`);
-      }
 
-      appStateRef.current = nextAppState;
-    }, APP_STATE_DEBOUNCE_TIME),
-    [logDebug, socket, startLocationTracking]
-  );
+        // Pickup coordinates
+        if (rideDetails?.ride?.rideDetails?.pickupLocation?.coordinates) {
+          setPickupCoordinates({
+            latitude: rideDetails.ride.rideDetails.pickupLocation.coordinates[1],
+            longitude: rideDetails.ride.rideDetails.pickupLocation.coordinates[0],
+          });
+        } else {
+          // Default coordinates
+          setPickupCoordinates({ latitude: 28.7041, longitude: 77.1025 });
+        }
 
-  // ===== OPTIMIZED SOCKET MANAGEMENT =====
+        // Drop coordinates
+        if (rideDetails?.ride?.rideDetails?.dropLocation?.coordinates) {
+          setDropCoordinates({
+            latitude: rideDetails.ride.rideDetails.dropLocation.coordinates[1],
+            longitude: rideDetails.ride.rideDetails.dropLocation.coordinates[0],
+          });
+        } else {
+          // Default coordinates
+          setDropCoordinates({ latitude: 28.6139, longitude: 77.2090 });
+        }
+      };
+
+      getCoordinates();
+    } catch (error) {
+      logError('Error setting coordinates', error);
+    }
+  }, [rideDetails, currentLocation, logError]);
+
+  // ===== SOCKET MANAGEMENT =====
   const connectSocket = useCallback(() => {
     if (!socket) {
       logError('Socket instance not available');
@@ -436,172 +370,199 @@ export default function RideDetailsScreen() {
     }
 
     if (!socket.connected) {
-      performanceTimer.start('Socket Connection');
       logDebug('Connecting socket...');
       socketConnectionAttempts.current += 1;
-      socket.connect();
 
-      setTimeout(() => {
-        if (socket.connected) {
-          performanceTimer.end('Socket Connection');
-          logDebug('Socket connected successfully');
-          setSocketConnected(true);
-          setupSocketListeners();
-        } else {
-          performanceTimer.end('Socket Connection');
-          logError(`Socket connection failed (attempt ${socketConnectionAttempts.current})`);
-          if (socketConnectionAttempts.current < 3) {
-            connectSocket();
+      try {
+        socket.connect();
+
+        // Check connection after a delay
+        setTimeout(() => {
+          if (socket.connected) {
+            logDebug('Socket connected successfully');
+            updateState({ socketConnected: true });
+            setupSocketListeners();
           } else {
-            Alert.alert(
-              "Connection Error",
-              "Unable to establish a connection. Please check your internet connection.",
-              [{ text: "OK" }]
-            );
+            logError(`Socket connection failed (attempt ${socketConnectionAttempts.current})`);
+            if (socketConnectionAttempts.current < 3) {
+              connectSocket(); // Retry
+            } else {
+              Alert.alert(
+                "Connection Error",
+                "Unable to establish a connection. Please check your internet connection.",
+                [{ text: "OK" }]
+              );
+            }
           }
-        }
-      }, 2000);
+        }, 2000);
+      } catch (error) {
+        logError('Error connecting socket', error);
+      }
     } else {
       logDebug('Socket already connected');
-      setSocketConnected(true);
+      updateState({ socketConnected: true });
       return true;
     }
-  }, [socket, logDebug, logError]);
+  }, [socket, logDebug, logError, updateState]);
 
+  // Setup socket listeners
   const setupSocketListeners = useCallback(() => {
     if (!socket || socketListenersSet.current) return;
 
-    performanceTimer.start('Socket Listeners Setup');
-    logDebug('Setting up socket listeners');
+    try {
+      logDebug('Setting up socket listeners');
 
-    socket.off('ride_end');
-    socket.off('ride_cancelled');
-    socket.off('your_ride_is_mark_complete_by_user');
+      // ✅ Always remove existing listeners first
+      socket.off('ride_end');
+      socket.off('ride_cancelled');
+      socket.off('your_ride_is_mark_complete_by_user');
 
-    socket.on('ride_end', (data) => {
-      logDebug('Ride completed event received', data);
-      setRideCompleted(true);
-      navigation.navigate('collect_money', { data: data?.rideDetails });
-      showLocalNotification("Ride Completed", "The ride has been completed successfully!");
-    });
-
-    socket.on('ride_cancelled', (data) => {
-      logDebug('Ride cancelled event received', data);
-      startSound();
-      navigation.navigate('Home');
-      showLocalNotification("🚨 Ride Cancelled", "The ride has been cancelled by the customer.");
-    });
-
-    socket.on('your_ride_is_mark_complete_by_user', (data) => {
-      console.log('✔️ Ride completed event received', data);
-      startSound();
-      Alert.alert(
-        'Ride Complete Confirmation',
-        data?.message || 'User marked your ride as complete. Is that correct?',
-        [
-          {
-            text: 'No',
-            onPress: async () => {
-              try {
-                console.log('❌ Driver denied ride completion');
-                const rideId = rideIdRef.current || await getRideId();
-                console.log("🆔 Ride ID", rideId);
-                if (rideId) {
-                  const rideData = rideDataRef.current || await fetchRideDetails(rideId);
-                  console.log("📊 Ride Data", rideData);
-                  stopSound();
-                  setTimeout(() => {
-                    socket.emit('ride_incorrect_mark_done_user', { rideDetails: rideData });
-                    console.log("📤 Sent ride incorrect mark");
-                  }, 1500);
-                }
-              } catch (error) {
-                stopSound();
-                console.error('❌ Error while denying ride completion:', error);
-              }
-            },
-            style: 'cancel',
-          },
-          {
-            text: 'Yes',
-            onPress: () => {
-              console.log('✅ Driver confirmed ride completion');
-              handleCompleteRide();
-            },
-          },
-        ],
-        { cancelable: false }
-      );
-    });
-
-    socketListenersSet.current = true;
-    performanceTimer.end('Socket Listeners Setup');
-    logDebug('Socket listeners setup complete');
-  }, [socket, logDebug, navigation, startSound, stopSound, handleCompleteRide, getRideId, fetchRideDetails]);
-
-  // ===== OPTIMIZED DISTANCE CALCULATION =====
-  useEffect(() => {
-    if (stableDriverCoordinates && stablePickupCoordinates && !rideStarted && !distanceToPickup) {
-      performanceTimer.start('Distance Calculation');
-      
-      const R = 6371;
-      const dLat = (stablePickupCoordinates.latitude - stableDriverCoordinates.latitude) * Math.PI / 180;
-      const dLon = (stablePickupCoordinates.longitude - stableDriverCoordinates.longitude) * Math.PI / 180;
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(stableDriverCoordinates.latitude * Math.PI / 180) * Math.cos(stablePickupCoordinates.latitude * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      const distance = R * c;
-
-      const distanceFormatted = distance.toFixed(1);
-      const timeInMinutes = (distance / 30) * 60;
-      const timeFormatted = Math.round(timeInMinutes);
-
-      logDebug('Distance calculation complete', {
-        distance: distanceFormatted,
-        time: timeFormatted
+      socket.on('ride_end', (data) => {
+        logDebug('Ride completed event received', data);
+        updateState({ rideCompleted: true });
+        navigation.navigate('collect_money', { data: data?.rideDetails });
+        showLocalNotification("Ride Completed", "The ride has been completed successfully!");
       });
 
-      setDistanceToPickup(distanceFormatted);
-      setTimeToPickup(timeFormatted);
-      
-      performanceTimer.end('Distance Calculation');
-    }
-  }, [stableDriverCoordinates, stablePickupCoordinates, rideStarted, distanceToPickup, logDebug]);
+      socket.on('ride_cancelled', (data) => {
+        logDebug('Ride cancelled event received', data);
+        startSound();
+        navigation.navigate('Home');
+        showLocalNotification("🚨 Ride Cancelled", "The ride has been cancelled by the customer.");
+      });
 
-  // ===== OPTIMIZED MAP READY HANDLER =====
-  const handleMapReady = useCallback(() => {
-    performanceTimer.start('Map Ready Setup');
-    logDebug('Map is ready');
-    setMapReady(true);
-
-    if (mapRef.current && stableDriverCoordinates) {
-      setTimeout(() => {
-        const coordinates = [
-          stableDriverCoordinates,
-          rideStarted ? stableDropCoordinates : stablePickupCoordinates
-        ].filter(Boolean);
-
-        if (coordinates.length > 0) {
-          logDebug('Fitting map to coordinates', coordinates);
-          mapRef.current.fitToCoordinates(
-            coordinates,
+      socket.on('your_ride_is_mark_complete_by_user', (data) => {
+        logDebug('Ride completed by user event received', data);
+        startSound();
+        Alert.alert(
+          'Ride Complete Confirmation',
+          data?.message || 'User marked your ride as complete. Is that correct?',
+          [
             {
-              edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-              animated: true,
-            }
-          );
-        }
-        performanceTimer.end('Map Ready Setup');
-      }, 1000);
-    } else {
-      performanceTimer.end('Map Ready Setup');
-    }
-  }, [logDebug, stableDriverCoordinates, rideStarted, stableDropCoordinates, stablePickupCoordinates]);
+              text: 'No',
+              onPress: async () => {
+                try {
+                  logDebug('Driver denied ride completion');
+                  const rideId = await getRideId();
+                  if (rideId) {
+                    const rideData = await foundRideDetails(rideId);
+                    stopSound();
+                    setTimeout(() => {
+                      socket.emit('ride_incorrect_mark_done_user', { rideDetails: rideData });
+                    }, 1500);
+                  }
+                } catch (error) {
+                  stopSound();
+                  logError('Error while denying ride completion', error);
+                }
+              },
+              style: 'cancel',
+            },
+            {
+              text: 'Yes',
+              onPress: () => {
+                logDebug('Driver confirmed ride completion');
+                handleCompleteRide();
+              },
+            },
+          ],
+          { cancelable: false }
+        );
+      });
 
+      socketListenersSet.current = true;
+      logDebug('Socket listeners setup complete');
+    } catch (error) {
+      logError('Error setting up socket listeners', error);
+    }
+  }, [
+    socket, logDebug, logError, updateState, navigation,
+    startSound, stopSound, getRideId, foundRideDetails,
+    handleCompleteRide
+  ]);
+
+  // Handle map ready
+  const handleMapReady = useCallback(() => {
+    try {
+      logDebug('Map is ready');
+      updateState({ mapReady: true });
+
+      // Fit map to show current location and pickup/drop
+      if (mapRef.current && currentLocation) {
+        setTimeout(() => {
+          const coordinates = [
+            currentLocation,
+            state.rideStarted ? dropCoordinates : pickupCoordinates
+          ].filter(coord => coord); // Filter out any null coordinates
+
+          if (coordinates.length >= 2) {
+            logDebug('Fitting map to coordinates');
+            mapRef.current.fitToCoordinates(
+              coordinates,
+              {
+                edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                animated: true,
+              }
+            );
+          }
+        }, 1000);
+      }
+    } catch (error) {
+      logError('Error in map ready handler', error);
+    }
+  }, [
+    logDebug, logError, updateState, currentLocation,
+    state.rideStarted, dropCoordinates, pickupCoordinates
+  ]);
+
+  // ===== IMPROVED APP STATE HANDLER =====
+  const handleAppStateChange = useCallback((nextAppState) => {
+    const now = Date.now();
+    const timeSinceLastChange = now - lastAppStateChange.current;
+
+    // Throttle app state changes to prevent excessive logging
+    if (timeSinceLastChange < 1000) { // Ignore changes within 1 second
+      return;
+    }
+
+    lastAppStateChange.current = now;
+
+    try {
+      // Only log significant state changes
+      const isSignificantChange =
+        (appStateRef.current === 'active' && nextAppState !== 'active') ||
+        (appStateRef.current !== 'active' && nextAppState === 'active');
+
+      if (isSignificantChange && __DEV__) {
+        console.log(`📱 App: ${appStateRef.current} → ${nextAppState}`);
+      }
+
+      if (appStateRef.current.match(/inactive|background/) && nextAppState === "active") {
+        // App became active - only perform necessary actions
+        if (socket && !socket.connected) {
+          connectSocket();
+        } else if (socket && socket.connected && !socketListenersSet.current) {
+          setupSocketListeners();
+        }
+
+        // Restart location tracking if needed
+        startLocationTracking();
+      }
+
+      appStateRef.current = nextAppState;
+    } catch (error) {
+      logError('Error handling app state change', error);
+    }
+  }, [
+    socket, connectSocket, setupSocketListeners, startLocationTracking, logError
+  ]);
+
+  // Show local notification (replacement for Expo notifications)
   const showLocalNotification = useCallback((title, body) => {
+    // This is a simple Alert-based notification since we're removing Expo notifications
+    // In a production app, you would use a proper notification library compatible with production builds
     if (AppState.currentState !== 'active') {
+      // Only show alert if app is in foreground
       return;
     }
 
@@ -610,69 +571,80 @@ export default function RideDetailsScreen() {
     }, 500);
   }, []);
 
-  // ===== MAIN INITIALIZATION EFFECT =====
+  // ===== EFFECTS =====
+  // Initialize component - runs only once
   useEffect(() => {
     if (!isInitialMount.current) return;
     isInitialMount.current = false;
 
-    performanceTimer.start('Component Initialization');
-    logDebug('🚀 Initializing RideDetailsScreen');
+    try {
+      logDebug('Initializing component');
 
-    const initializeComponent = async () => {
-      try {
-        const initPromises = [
-          getRideId().then(rideId => rideId ? fetchRideDetails(rideId) : null),
-          connectSocket(),
-          startLocationTracking(),
-          fetchCancelReasons(),
-        ];
+      // Connect socket
+      connectSocket();
 
-        const [rideData] = await Promise.all(initPromises);
+      // Start location tracking
+      startLocationTracking();
 
-        if (!rideData) {
-          setError('Unable to load ride details');
-          setLoading(false);
-        }
+      // Fetch cancel reasons
+      fetchCancelReasons();
 
-        performanceTimer.end('Component Initialization');
-        logDebug('✅ Component initialization complete');
+      // Start car animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(carIconAnimation, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true
+          }),
+          Animated.timing(carIconAnimation, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true
+          })
+        ])
+      ).start();
 
-      } catch (error) {
-        performanceTimer.end('Component Initialization');
-        logError('Component initialization failed', error);
-        setError('Failed to initialize. Please try again.');
-        setLoading(false);
+      // ===== FIXED APP STATE LISTENER SETUP =====
+      // Remove existing subscription if any
+      if (appStateSubscription.current) {
+        appStateSubscription.current.remove();
       }
-    };
 
-    initializeComponent();
+      // Create new subscription
+      appStateSubscription.current = AppState.addEventListener('change', handleAppStateChange);
 
-    // Start car animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(carIconAnimation, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true
-        }),
-        Animated.timing(carIconAnimation, {
-          toValue: 0,
-          duration: 1000,
-          useNativeDriver: true
-        })
-      ])
-    ).start();
+      // Initialize bottom sheet position
+      bottomSheetTranslateY.setValue(BOTTOM_SHEET_MAX_HEIGHT - BOTTOM_SHEET_MIN_HEIGHT);
 
-    // 🛑 CRITICAL: Use debounced app state handler
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    } catch (error) {
+      logError('Error in component initialization', error);
+      updateState({
+        loading: false,
+        errorMsg: 'Failed to initialize. Please restart the app.'
+      });
+    }
+  }, []); // Empty dependency array - runs only once
 
+  // Cleanup effect
+  useEffect(() => {
     return () => {
-      logDebug('🧹 Component unmounting, cleaning up resources');
+      logDebug('Component unmounting, cleaning up resources');
+      isComponentMounted.current = false;
 
-      subscription.remove();
+      // Remove app state listener
+      if (appStateSubscription.current) {
+        appStateSubscription.current.remove();
+        appStateSubscription.current = null;
+      }
+
+      // Stop location tracking
       stopLocationTracking();
+
+      // Stop sound
       stopSound();
 
+      // Remove socket listeners
       if (socket) {
         socket.off('ride_end');
         socket.off('ride_cancelled');
@@ -680,79 +652,63 @@ export default function RideDetailsScreen() {
         socketListenersSet.current = false;
       }
 
-      // Clear timeouts
-      if (appStateChangeTimeoutRef.current) {
-        clearTimeout(appStateChangeTimeoutRef.current);
-      }
-
-      authTokenRef.current = null;
-      rideIdRef.current = null;
-      rideDataRef.current = null;
+      // Stop animations
+      carIconAnimation.stopAnimation();
+      bottomSheetTranslateY.stopAnimation();
     };
-  }, []);
+  }, []); // Empty dependency array - cleanup only on unmount
 
+  // Setup socket listeners when socket changes
   useEffect(() => {
     if (socket && socket.connected && !socketListenersSet.current) {
       setupSocketListeners();
     }
   }, [socket, setupSocketListeners]);
 
-  // ===== RENDER OPTIMIZATION =====
-  
-  if (loading) {
+  // ===== RENDER COMPONENTS =====
+  // Loading screen
+  if (state.loading) {
     return (
-      <View style={{
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#fff'
-      }}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#FF3B30" />
-        <Text style={{ marginTop: 20, fontSize: 16 }}>Loading ride details...</Text>
+        <Text style={styles.loadingText}>Loading ride details...</Text>
       </View>
     );
   }
 
-  if (error) {
+  // Error screen
+  if (state.errorMsg) {
     return (
-      <View style={{
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-        backgroundColor: '#fff'
-      }}>
+      <View style={styles.errorContainer}>
         <MaterialIcons name="error" size={60} color="#FF3B30" />
-        <Text style={{ fontSize: 18, fontWeight: 'bold', marginTop: 20, textAlign: 'center' }}>
-          {error}
-        </Text>
-        <Button
-          mode="contained"
-          onPress={() => {
-            setError(null);
-            setLoading(true);
-            getRideId().then(rideId => rideId ? fetchRideDetails(rideId) : null);
-          }}
-          style={{ marginTop: 20, backgroundColor: '#FF3B30' }}
-        >
-          Retry
-        </Button>
-        <Button
-          mode="outlined"
-          onPress={() => navigation.goBack()}
-          style={{ marginTop: 10 }}
-        >
-          Go Back
-        </Button>
+        <Text style={styles.errorText}>{state.errorMsg}</Text>
+        <View style={styles.errorButtonContainer}>
+          <TouchableOpacity
+            style={styles.errorButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.errorButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
-  // 🛑 CRITICAL: Use stable coordinates to prevent re-renders
+  // Extract needed properties from ride details
+  const {
+    drop_desc = rideDetails?.ride?.driver?.drop_desc || rideDetails?.ride?.driver?.rideDetails?.ride?.driver?.drop_desc || "",
+    pickup_desc = rideDetails?.ride?.driver?.pickup_desc || rideDetails?.ride?.driver?.rideDetails?.ride?.driver?.pickup_desc || "",
+    kmOfRide = rideDetails?.ride?.driver?.kmOfRide || rideDetails?.ride?.driver?.rideDetails?.ride?.driver?.kmOfRide || "0",
+  } = rideDetails;
+
+  // Main screen
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-     <RideMap
-           mapRef={mapRef}
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="white" />
+
+      {/* Map */}
+      <RideMap
+        mapRef={mapRef}
         driverCoordinates={driverCoordinates}
         pickupCoordinates={pickupCoordinates}
         dropCoordinates={dropCoordinates}
@@ -769,85 +725,97 @@ export default function RideDetailsScreen() {
         updateState={updateState}
       />
 
-      <RideInfoPanel
-        state={{
-          loading,
-          showOtpModal,
-          rideStarted,
-          rideCompleted,
-          currentLocation: stableDriverCoordinates,
-          mapReady,
-          distanceToPickup,
-          timeToPickup,
-          showDirectionsType,
-          errorMsg: error,
-          cancelReasons,
-          showCancelModal,
-          selectedReason,
-          socketConnected,
+      {/* Bottom Sheet */}
+      <RideBottomSheet
+        state={state}
+        updateState={updateState}
+        rideStarted={state.rideStarted}
+        kmOfRide={kmOfRide}
+        distanceToPickup={state.distanceToPickup}
+        timeToPickup={state.timeToPickup}
+        pickup_desc={pickup_desc}
+        rideDetails={rideDetails}
+        showOtpModel={() =>
+          setState(prev => ({ ...prev, showOtpModal: true }))
+        }
+
+        drop_desc={drop_desc}
+        showCancelModal={()=>{
+          setState(prev => ({ ...prev, showCancelModal: true }))
         }}
-        updateState={(newState) => {
-          if (newState.showOtpModal !== undefined) setShowOtpModal(newState.showOtpModal);
-          if (newState.showCancelModal !== undefined) setShowCancelModal(newState.showCancelModal);
-        }}
-        rideStarted={rideStarted}
-        kmOfRide={rideProps.kmOfRide}
-        distanceToPickup={distanceToPickup}
-        timeToPickup={timeToPickup}
-        pickup_desc={rideProps.pickup_desc}
-        drop_desc={rideProps.drop_desc}
-        params={{ rideDetails }}
         handleCompleteRide={handleCompleteRide}
+        openGoogleMapsDirectionsPickup={openGoogleMapsDirectionsPickup}
+        openGoogleMapsDirections={openGoogleMapsDirections}
+        translateY={bottomSheetTranslateY}
+        onGestureEvent={panResponder.panHandlers}
+        maxHeight={BOTTOM_SHEET_MAX_HEIGHT}
+        minHeight={BOTTOM_SHEET_MIN_HEIGHT}
       />
 
+      {/* Modals */}
       <OtpModal
-        appState={{
-          loading,
-          showOtpModal,
-          rideStarted,
-          rideCompleted,
-          currentLocation: stableDriverCoordinates,
-          mapReady,
-          distanceToPickup,
-          timeToPickup,
-          showDirectionsType,
-          errorMsg: error,
-          cancelReasons,
-          showCancelModal,
-          selectedReason,
-          socketConnected,
-        }}
-        updateState={(newState) => {
-          if (newState.showOtpModal !== undefined) setShowOtpModal(newState.showOtpModal);
-        }}
+        appState={state}
+        updateState={updateState}
         riderDetails={rideDetails}
-        update={fetchRideDetails}
+        update={foundRideDetails}
         handleOtpSubmit={handleOtpSubmit}
       />
 
       <CancelReasonsModal
-        appState={{
-          loading,
-          showOtpModal,
-          rideStarted,
-          rideCompleted,
-          currentLocation: stableDriverCoordinates,
-          mapReady,
-          distanceToPickup,
-          timeToPickup,
-          showDirectionsType,
-          errorMsg: error,
-          cancelReasons,
-          showCancelModal,
-          selectedReason,
-          socketConnected,
+        appState={state}
+        updateState={updateState}
+        handleClose={()=>{
+          setState(prev => ({ ...prev, showCancelModal: false }))
         }}
-        updateState={(newState) => {
-          if (newState.showCancelModal !== undefined) setShowCancelModal(newState.showCancelModal);
-          if (newState.selectedReason !== undefined) setSelectedReason(newState.selectedReason);
-        }}
+        
         handleCancelRide={handleCancelRide}
       />
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  loadingText: {
+    marginTop: 20,
+    fontSize: 16,
+    color: '#333',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 20,
+    textAlign: 'center',
+    color: '#333',
+  },
+  errorButtonContainer: {
+    marginTop: 30,
+  },
+  errorButton: {
+    backgroundColor: '#FF3B30',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  errorButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+});

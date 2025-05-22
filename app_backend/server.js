@@ -52,6 +52,7 @@ const tempRideDetailsSchema = require('./models/tempRideDetailsSchema');
 const { default: mongoose } = require('mongoose');
 const sendNotification = require('./utils/sendNotification');
 const rideRequestModel = require('./models/ride.request.model');
+const User = require('./models/normal_user/User.model');
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -1372,56 +1373,62 @@ app.post('/webhook/receive-location', Protect, async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 app.get('/rider/:tempRide', async (req, res) => {
-    try {
-        const { tempRide } = req.params;
-        console.log("[STEP 1] Received tempRide param:", tempRide);
+  const { tempRide } = req.params;
+  console.log(`[STEP 1] Received tempRide param: ${tempRide}`);
 
-        if (!tempRide || !mongoose.Types.ObjectId.isValid(tempRide)) {
-            console.log("[STEP 2] Invalid ride ID");
-            return res.status(400).json({ error: 'Invalid ride ID' });
+  if (!tempRide || !mongoose.Types.ObjectId.isValid(tempRide)) {
+    console.warn("[STEP 2] Invalid ride ID");
+    return res.status(400).json({ error: 'Invalid ride ID' });
+  }
+
+  const objectId = new mongoose.Types.ObjectId(tempRide);
+  const maxRetries = 3;
+  const delayMs = 12000;
+
+  try {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      console.log(`[STEP 3.${attempt}] Attempt ${attempt} to fetch ride...`);
+
+      const ride = await tempRideDetailsSchema.findOne({
+        $or: [
+          { _id: objectId },
+          { "rideDetails._id": objectId }
+        ]
+      }).lean();
+
+      if (ride) {
+        console.log(`[STEP 4.${attempt}] Ride found, fetching user...`);
+        const user = await User.findById(ride?.rideDetails?.user).lean();
+
+        if (!user) {
+          console.warn(`[STEP 5.${attempt}] User not found for ride`);
+          return res.status(404).json({ error: 'User not found for ride' });
         }
 
-        const objectId = new mongoose.Types.ObjectId(tempRide);
-        console.log("[STEP 3] Converted to ObjectId:", objectId);
+        console.log(`[STEP 6.${attempt}] Ride and user found, returning response`);
+        return res.status(200).json({
+          ride: {
+            ...ride,
+            found:user
+          }
+        });
+      }
 
-        let ride = null;
-        const maxRetries = 3;
-        const delayMs = 12000; // 12 seconds
-
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            console.log(`[STEP 4.${attempt}] Attempt ${attempt} to fetch ride...`);
-            ride = await tempRideDetailsSchema.findOne({
-                $or: [
-                    { _id: objectId },
-                    { "rideDetails._id": objectId }
-                ]
-            });
-
-            if (ride) {
-                console.log(`[STEP 5.${attempt}] Ride found on attempt ${attempt}`);
-                return res.status(200).json({ ride });
-            }
-
-            console.log(`[STEP 6.${attempt}] Ride not found on attempt ${attempt}, retrying in 12 seconds...`);
-            if (attempt < maxRetries) {
-                await delay(delayMs);
-            }
-        }
-
-        console.log("[STEP 7] Ride not found after 3 attempts");
-        return res.status(404).json({ error: 'Ride not found after retrying' });
-
-    } catch (err) {
-        console.error(`[${new Date().toISOString()}] Error fetching temp ride:`, err);
-        return res.status(500).json({ error: 'Internal server error' });
+      console.log(`[STEP 7.${attempt}] Ride not found, retrying in ${delayMs / 1000} seconds...`);
+      if (attempt < maxRetries) await delay(delayMs);
     }
-});
 
+    console.error("[STEP 8] Ride not found after maximum retries");
+    return res.status(404).json({ error: 'Ride not found after retrying' });
+
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Internal error:`, error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 
 

@@ -10,10 +10,12 @@ import { fetchUserData } from "../context/socketService"
 const API_BASE_URL = "https://appapi.olyox.com/api/v1"
 
 export function useRideActions({ state, setState, rideDetails, socket, mapRef, soundRef }) {
+  console.log("setState",setState)
   const navigation = useNavigation()
   const { onRide, updateRideStatus } = useRideStatus();
 
   const updateState = (newState) => {
+    console.log("updateState",newState)
     setState((prevState) => ({ ...prevState, ...newState }))
   }
 
@@ -211,7 +213,7 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
       const { data } = await axios.get(`${API_BASE_URL}/admin/cancel-reasons?active=active`)
 
       if (data.data) {
-        logDebug("Cancel reasons fetched successfully")
+        logDebug("Cancel reasons fetched successfully",data.data)
         updateState({ cancelReasons: data.data })
       } else {
         logDebug("No cancel reasons found")
@@ -241,9 +243,11 @@ export function useRideActions({ state, setState, rideDetails, socket, mapRef, s
       Alert.alert("Error", "OTP information not available. Please contact support.");
       return;
     }
+        logDebug("Submitting OTP", { state })
+
 
     if (!state.otp) {
-      Alert.alert("Error", "Please enter the OTP to continue.");
+      Alert.alert("Error", "Please enter the OTP to continue the.");
       return;
     }
 

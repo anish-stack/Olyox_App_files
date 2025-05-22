@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity } from 'react-native';
 
-const OtpModal = React.memo(({ appState, updateState, handleOtpSubmit,update,riderDetails }) => {
+const OtpModal = React.memo(({ appState, updateState, handleOtpSubmit }) => {
     return useMemo(() => (
         <Modal
             animationType="slide"
@@ -15,7 +15,7 @@ const OtpModal = React.memo(({ appState, updateState, handleOtpSubmit,update,rid
                     <Text style={styles.description}>
                         Please enter the OTP provided by the rider to start the trip
                     </Text>
-
+                    
                     <TextInput
                         style={styles.input}
                         placeholder="Enter OTP"
@@ -23,19 +23,24 @@ const OtpModal = React.memo(({ appState, updateState, handleOtpSubmit,update,rid
                         maxLength={6}
                         value={appState.otp}
                         onChangeText={(text) => updateState({ otp: text })}
+                        autoFocus={appState.showOtpModal}
                     />
-
+                    
                     <View style={styles.buttonContainer}>
                         <TouchableOpacity
                             style={styles.cancelButton}
                             onPress={() => updateState({ showOtpModal: false })}
                         >
-                            <Text>Cancel</Text>
+                            <Text style={styles.cancelText}>Cancel</Text>
                         </TouchableOpacity>
-
+                        
                         <TouchableOpacity
-                            style={styles.verifyButton}
-                            onPress={()=>handleOtpSubmit()}
+                            style={[
+                                styles.verifyButton, 
+                                !appState.otp && styles.disabledButton
+                            ]}
+                            onPress={() => handleOtpSubmit()}
+                            disabled={!appState.otp}
                         >
                             <Text style={styles.verifyText}>Verify</Text>
                         </TouchableOpacity>
@@ -43,7 +48,7 @@ const OtpModal = React.memo(({ appState, updateState, handleOtpSubmit,update,rid
                 </View>
             </View>
         </Modal>
-    ), [appState.showOtpModal, appState.otp]);
+    ), [appState.showOtpModal, appState.otp, handleOtpSubmit]);
 });
 
 // Styles
@@ -59,16 +64,27 @@ const styles = {
         backgroundColor: 'white',
         borderRadius: 10,
         padding: 20,
-        alignItems: 'center'
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
     },
     title: {
         fontSize: 18,
         fontWeight: 'bold',
-        marginBottom: 20
+        marginBottom: 10,
+        color: '#333'
     },
     description: {
         textAlign: 'center',
-        marginBottom: 20
+        marginBottom: 20,
+        color: '#666',
+        lineHeight: 20
     },
     input: {
         width: '100%',
@@ -79,7 +95,8 @@ const styles = {
         marginBottom: 20,
         paddingHorizontal: 15,
         fontSize: 18,
-        textAlign: 'center'
+        textAlign: 'center',
+        backgroundColor: '#f9f9f9'
     },
     buttonContainer: {
         flexDirection: 'row',
@@ -91,7 +108,13 @@ const styles = {
         borderRadius: 8,
         backgroundColor: '#f0f0f0',
         width: '45%',
-        alignItems: 'center'
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#ddd'
+    },
+    cancelText: {
+        color: '#333',
+        fontWeight: '500'
     },
     verifyButton: {
         padding: 15,
@@ -99,6 +122,9 @@ const styles = {
         backgroundColor: '#FF3B30',
         width: '45%',
         alignItems: 'center'
+    },
+    disabledButton: {
+        backgroundColor: '#ccc'
     },
     verifyText: {
         color: 'white',
