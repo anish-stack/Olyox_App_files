@@ -41,7 +41,7 @@ export const LocationProvider = ({ children }) => {
       return;
     }
 
-    // Watch the location continuously
+
     const subscription = await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.High, // Set the accuracy level for location updates
@@ -49,7 +49,7 @@ export const LocationProvider = ({ children }) => {
         distanceInterval: 0, // Only update when the location changes
       },
       (location) => {
-        console.log("Location updated:", location);
+       
         setDriverLocation({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,

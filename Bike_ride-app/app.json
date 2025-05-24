@@ -12,6 +12,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+
     "ios": {
       "supportsTablet": true
     },
@@ -66,6 +67,8 @@
       "policy": "appVersion"
     },
     "updates": {
+       "enabled": true,
+      "fallbackToCacheTimeout": 0,
       "url": "https://u.expo.dev/519fe708-11dc-4f94-bc36-be7f66471700"
     }
   }

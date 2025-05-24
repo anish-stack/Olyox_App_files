@@ -226,8 +226,8 @@ export default function RideDetailsScreen() {
 
     try {
 
-      // const response = await axios.get(`${API_BASE_URL}/rider/${rideId}`);
-      const response = await axios.get(`http://192.168.1.22:3100/rider/${rideId}`);
+      const response = await axios.get(`${API_BASE_URL}/rider/${rideId}`);
+      // const response = await axios.get(`http://192.168.1.22:3100/rider/${rideId}`);
 
       if (!response.data) {
         throw new Error('No ride data returned from API');

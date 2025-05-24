@@ -51,6 +51,7 @@ import DeliveryTracking from './screens/Parcel_Screens/DeliveryTracking/Delivery
 import AvailableOrder from './screens/Parcel_Screens/Available_Orders/AvailableOrder';
 import ProgressOrder from './screens/Parcel_Screens/ProgressOrder/ProgressOrder';
 import UnlockCoupons from './screens/Unlock/UnlockCoupons';
+import CheckAppUpdate from './context/CheckAppUpdate';
 
 LogBox.ignoreLogs(['Setting a timer']);
 
@@ -199,7 +200,7 @@ const App = () => {
                   <NavigationContainer ref={navigationRef}>
                     <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
                       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                      <Stack.Screen name="register" options={{ headerShown: true ,title:'Complete Profile' }} component={RegistrationForm} />
+                      <Stack.Screen name="register" options={{ headerShown: true, title: 'Complete Profile' }} component={RegistrationForm} />
                       <Stack.Screen name="UploadDocuments" component={Document} />
                       <Stack.Screen name="Wait_Screen" component={Wait_Screen} />
                       <Stack.Screen name="Home" component={HomeScreen} />
@@ -224,14 +225,14 @@ const App = () => {
 
                       {/* Parcel Rides */}
                       <Stack.Screen name="ParcelDetails" component={NewParcelLive} />
-                      <Stack.Screen name="DeliveryTracking" options={{headerShown:false}} component={DeliveryTracking} />
-                      <Stack.Screen name="available-orders" options={{headerShown:false , title:"Available Orders"}} component={AvailableOrder} />
-                      <Stack.Screen name="progress-order" options={{headerShown:true , title:"Progress Orders"}} component={ProgressOrder} />
+                      <Stack.Screen name="DeliveryTracking" options={{ headerShown: false }} component={DeliveryTracking} />
+                      <Stack.Screen name="available-orders" options={{ headerShown: false, title: "Available Orders" }} component={AvailableOrder} />
+                      <Stack.Screen name="progress-order" options={{ headerShown: true, title: "Progress Orders" }} component={ProgressOrder} />
 
-                
+
                     </Stack.Navigator>
 
-               
+
                   </NavigationContainer>
                 </SafeAreaProvider>
               </GestureHandlerRootView>
@@ -246,7 +247,9 @@ const App = () => {
 const WrappedApp = Sentry.wrap(App);
 const RootApp = () => (
   <ErrorBoundaryWrapper>
-    <WrappedApp />
+    <CheckAppUpdate>
+      <WrappedApp />
+    </CheckAppUpdate>
   </ErrorBoundaryWrapper>
 );
 

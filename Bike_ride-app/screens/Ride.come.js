@@ -660,7 +660,7 @@ export default function RideRequestScreen() {
 
       const { sound } = await Audio.Sound.createAsync(
         require('./sound.mp3'),
-        { shouldPlay: true, volume: 1.0, isLooping: true }
+        { shouldPlay: true, volume: 1.0, isLooping: false }
       );
 
       setSound(sound);

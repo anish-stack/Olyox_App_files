@@ -38,7 +38,7 @@ TaskManager.defineTask(BACKGROUND_SOCKET_TASK, async () => {
 
 export async function registerBackgroundSocketTask() {
     const status = await BackgroundFetch.getStatusAsync();
-    console.log("📶 Background fetch status:", status);
+    // console.log("📶 Background fetch status:", status);
 
     if (
         status === BackgroundFetch.BackgroundFetchStatus.Restricted ||
