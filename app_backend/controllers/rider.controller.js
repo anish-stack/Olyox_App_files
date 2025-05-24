@@ -489,25 +489,27 @@ exports.verifyOtp = async (req, res) => {
     partner.isOtpBlock = false;
     partner.otpUnblockAfterThisTime = null;
 
-    // ✅ Try fetching recharge details
-    try {
-      const { success, payment_id, member_id } =
-        await checkBhAndDoRechargeOnApp({ number: partner.phone });
+    // ✅ Try fetching recharge details ONLY if not already paid
+    if (!partner.isPaid) {
+      try {
+        const { success, payment_id, member_id } =
+          await checkBhAndDoRechargeOnApp({ number: partner.phone });
 
-      if (success && payment_id && member_id) {
-        // ✅ Save recharge data
-        partner.RechargeData = {
-          rechargePlan: member_id?.title,
-          expireData: payment_id?.end_date,
-          onHowManyEarning: member_id?.HowManyMoneyEarnThisPlan,
-          whichDateRecharge: payment_id?.createdAt,
-          approveRecharge: payment_id?.payment_approved,
-        };
-        partner.isPaid = true;
+        if (success && payment_id && member_id) {
+          // ✅ Save recharge data
+          partner.RechargeData = {
+            rechargePlan: member_id?.title,
+            expireData: payment_id?.end_date,
+            onHowManyEarning: member_id?.HowManyMoneyEarnThisPlan,
+            whichDateRecharge: payment_id?.createdAt,
+            approveRecharge: payment_id?.payment_approved,
+          };
+          partner.isPaid = true;
+        }
+      } catch (rechargeErr) {
+        console.error("Recharge Fetch Failed:", rechargeErr.message);
+        // Optional: continue without saving RechargeData
       }
-    } catch (rechargeErr) {
-      console.error("Recharge Fetch Failed:", rechargeErr.message);
-      // Optional: proceed without saving RechargeData
     }
 
     // ✅ Save partner
