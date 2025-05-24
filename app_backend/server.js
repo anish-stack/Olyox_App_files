@@ -310,10 +310,8 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            console.log(`[${new Date().toISOString()}] Ride accepted by user, notifying driver:`, ride.rider._id);
-
-            const driverSocketId = driverSocketMap.get(ride.rider._id);
-
+            const start = Date.now();
+            console.log(`[${new Date().toISOString()}] Starting DB save process for rider: ${ride.rider._id}`);
 
             const dataSave = await new tempRideDetailsSchema({
                 driver: {
@@ -368,30 +366,38 @@ io.on('connection', (socket) => {
                 message: 'You can start this ride',
             }).save();
 
-            const update_driver = await RiderModel.findById(ride.rider._id)
+            // Update the rider document with on_ride_id
+            const update_driver = await RiderModel.findById(ride.rider._id);
             if (!update_driver) {
-                return res.status(404).send({ message: 'Driver not found' })
+                console.error(`[${new Date().toISOString()}] Rider not found for ID: ${ride.rider._id}`);
+                return;
             }
-            update_driver.on_ride_id = dataSave._id
-            await update_driver.save()
 
+            update_driver.on_ride_id = dataSave._id;
+            await update_driver.save();
 
+            const end = Date.now();
+            console.log(`[${new Date().toISOString()}] DB save completed in ${(end - start)} ms for rider: ${ride.rider._id}`);
+
+            // Now emit to socket
+            const driverSocketId = driverSocketMap.get(ride.rider._id);
             if (driverSocketId) {
                 io.to(driverSocketId).emit('ride_accepted_message', {
                     message: 'You can start this ride',
                     rideDetails: ride,
                     driver: driver,
-                    temp_ride_id: dataSave?._id
+                    temp_ride_id: dataSave._id
                 });
-
-                console.log(`[${new Date().toISOString()}] Message sent to driver: ${ride.rider._id}`);
+                console.log(`[${new Date().toISOString()}] ride_accepted_message emitted to socket for rider: ${ride.rider._id}`);
             } else {
-                console.log(`[${new Date().toISOString()}] No active socket found for driver: ${ride.rider._id}`);
+                console.log(`[${new Date().toISOString()}] No active socket found for rider: ${ride.rider._id}`);
             }
+
         } catch (error) {
             console.error(`[${new Date().toISOString()}] Error in rideAccepted_by_user:`, error);
         }
     });
+
 
     /**
          * Handle ride cancel by user or driver
@@ -1376,58 +1382,58 @@ app.post('/webhook/receive-location', Protect, async (req, res) => {
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 app.get('/rider/:tempRide', async (req, res) => {
-  const { tempRide } = req.params;
-  console.log(`[STEP 1] Received tempRide param: ${tempRide}`);
+    const { tempRide } = req.params;
+    console.log(`[STEP 1] Received tempRide param: ${tempRide}`);
 
-  if (!tempRide || !mongoose.Types.ObjectId.isValid(tempRide)) {
-    console.warn("[STEP 2] Invalid ride ID");
-    return res.status(400).json({ error: 'Invalid ride ID' });
-  }
-
-  const objectId = new mongoose.Types.ObjectId(tempRide);
-  const maxRetries = 3;
-  const delayMs = 12000;
-
-  try {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      console.log(`[STEP 3.${attempt}] Attempt ${attempt} to fetch ride...`);
-
-      const ride = await tempRideDetailsSchema.findOne({
-        $or: [
-          { _id: objectId },
-          { "rideDetails._id": objectId }
-        ]
-      }).lean();
-
-      if (ride) {
-        console.log(`[STEP 4.${attempt}] Ride found, fetching user...`);
-        const user = await User.findById(ride?.rideDetails?.user).lean();
-
-        if (!user) {
-          console.warn(`[STEP 5.${attempt}] User not found for ride`);
-          return res.status(404).json({ error: 'User not found for ride' });
-        }
-
-        console.log(`[STEP 6.${attempt}] Ride and user found, returning response`);
-        return res.status(200).json({
-          ride: {
-            ...ride,
-            found:user
-          }
-        });
-      }
-
-      console.log(`[STEP 7.${attempt}] Ride not found, retrying in ${delayMs / 1000} seconds...`);
-      if (attempt < maxRetries) await delay(delayMs);
+    if (!tempRide || !mongoose.Types.ObjectId.isValid(tempRide)) {
+        console.warn("[STEP 2] Invalid ride ID");
+        return res.status(400).json({ error: 'Invalid ride ID' });
     }
 
-    console.error("[STEP 8] Ride not found after maximum retries");
-    return res.status(404).json({ error: 'Ride not found after retrying' });
+    const objectId = new mongoose.Types.ObjectId(tempRide);
+    const maxRetries = 3;
+    const delayMs = 12000;
 
-  } catch (error) {
-    console.error(`[${new Date().toISOString()}] Internal error:`, error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
+    try {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            console.log(`[STEP 3.${attempt}] Attempt ${attempt} to fetch ride...`);
+
+            const ride = await tempRideDetailsSchema.findOne({
+                $or: [
+                    { _id: objectId },
+                    { "rideDetails._id": objectId }
+                ]
+            }).lean();
+
+            if (ride) {
+                console.log(`[STEP 4.${attempt}] Ride found, fetching user...`);
+                const user = await User.findById(ride?.rideDetails?.user).lean();
+
+                if (!user) {
+                    console.warn(`[STEP 5.${attempt}] User not found for ride`);
+                    return res.status(404).json({ error: 'User not found for ride' });
+                }
+
+                console.log(`[STEP 6.${attempt}] Ride and user found, returning response`);
+                return res.status(200).json({
+                    ride: {
+                        ...ride,
+                        found: user
+                    }
+                });
+            }
+
+            console.log(`[STEP 7.${attempt}] Ride not found, retrying in ${delayMs / 1000} seconds...`);
+            if (attempt < maxRetries) await delay(delayMs);
+        }
+
+        console.error("[STEP 8] Ride not found after maximum retries");
+        return res.status(404).json({ error: 'Ride not found after retrying' });
+
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Internal error:`, error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 
