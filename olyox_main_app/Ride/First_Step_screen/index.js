@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { View, StatusBar, Text } from "react-native"
+import { View, StatusBar, Text, Keyboard } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import * as Location from "expo-location"
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -55,6 +55,7 @@ const RideLocationSelector = () => {
     dropoff: { latitude: 0, longitude: 0, description: "" },
   })
 
+  // Initialize region with user's current location or default to India
   const [region, setRegion] = useState({
     latitude: INDIA_REGION.center.latitude,
     longitude: INDIA_REGION.center.longitude,
@@ -206,10 +207,11 @@ const RideLocationSelector = () => {
   const fetchCurrentLocation = async () => {
     setState((prev) => ({ ...prev, isFetchingLocation: true, error: "" }))
     try {
+      // Use balanced accuracy for faster response
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Highest,
-        timeInterval: 5000,
-        distanceInterval: 10,
+        accuracy: Location.Accuracy.Balanced, // Changed from Highest to Balanced for speed
+        timeout: 10000, // 10 second timeout
+        maximumAge: 60000, // Accept cached location within 1 minute
       })
 
       await AsyncStorage.setItem(
@@ -223,11 +225,22 @@ const RideLocationSelector = () => {
       await updateLocationData(location)
     } catch (error) {
       console.error("Location error:", error)
-      setState((prev) => ({
-        ...prev,
-        error: "Location unavailable. Please enter manually.",
-        isFetchingLocation: false,
-      }))
+      // Try with lower accuracy if high accuracy fails
+      try {
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Low,
+          timeout: 5000,
+          maximumAge: 300000, // Accept 5 minute old cache
+        })
+        await updateLocationData(location)
+      } catch (fallbackError) {
+        console.error("Fallback location error:", fallbackError)
+        setState((prev) => ({
+          ...prev,
+          error: "Location unavailable. Please enter manually.",
+          isFetchingLocation: false,
+        }))
+      }
     }
   }
 
@@ -239,6 +252,7 @@ const RideLocationSelector = () => {
       const latitude = Math.min(Math.max(location.coords.latitude, INDIA_REGION.minLat), INDIA_REGION.maxLat)
       const longitude = Math.min(Math.max(location.coords.longitude, INDIA_REGION.minLng), INDIA_REGION.maxLng)
 
+      // Update region to center on user's location
       setRegion({
         latitude,
         longitude,
@@ -320,6 +334,9 @@ const RideLocationSelector = () => {
 
   const handleLocationSelect = async (location, coordinates = null) => {
     try {
+      // Dismiss keyboard first on iOS
+      Keyboard.dismiss()
+      
       setState((prev) => ({ ...prev, loading: true }))
 
       let latitude, longitude
@@ -335,7 +352,13 @@ const RideLocationSelector = () => {
       }
 
       if (state.activeInput === "pickup") {
-        setState((prev) => ({ ...prev, pickup: location, suggestions: [], loading: false }))
+        setState((prev) => ({ 
+          ...prev, 
+          pickup: location, 
+          suggestions: [], 
+          loading: false,
+          activeInput: null // Clear active input to dismiss keyboard
+        }))
         setRideData((prev) => ({
           ...prev,
           pickup: {
@@ -345,7 +368,13 @@ const RideLocationSelector = () => {
           },
         }))
       } else {
-        setState((prev) => ({ ...prev, dropoff: location, suggestions: [], loading: false }))
+        setState((prev) => ({ 
+          ...prev, 
+          dropoff: location, 
+          suggestions: [], 
+          loading: false,
+          activeInput: null // Clear active input to dismiss keyboard
+        }))
         setRideData((prev) => ({
           ...prev,
           dropoff: {
@@ -355,8 +384,6 @@ const RideLocationSelector = () => {
           },
         }))
       }
-
-      setState((prev) => ({ ...prev, activeInput: null }))
     } catch (error) {
       console.error("Location select error:", error)
       setState((prev) => ({ ...prev, loading: false, error: "Failed to get location coordinates" }))
@@ -379,17 +406,28 @@ const RideLocationSelector = () => {
   }
 
   const handleShowMap = (type) => {
-    // Save current state before showing map
+    // Dismiss keyboard before showing map
+    Keyboard.dismiss()
+    
+    // Set region to current user location if available for pickup
+    if (type === "pickup" && rideData.pickup.latitude && rideData.pickup.longitude) {
+      setRegion({
+        latitude: rideData.pickup.latitude,
+        longitude: rideData.pickup.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      })
+    }
+    
     setState((prev) => ({ 
       ...prev, 
       showMap: true, 
-      mapType: type 
+      mapType: type,
+      activeInput: null // Clear active input
     }))
   }
 
   const handleBackFromMap = () => {
-    // Set a small delay before re-enabling directions fetching
-    // This prevents an immediate API call when returning from map
     setState((prev) => ({ ...prev, showMap: false }))
     
     // After exiting map selection mode, calculate directions if both points are set
@@ -423,6 +461,7 @@ const RideLocationSelector = () => {
         rideData={rideData}
         isFetchingLocation={state.isFetchingLocation}
         onMapSelect={handleShowMap}
+        onLocationSelect={handleLocationSelect} // Pass the handler
       />
 
       {state.error ? (
@@ -431,7 +470,6 @@ const RideLocationSelector = () => {
         </View>
       ) : null}
 
-
       {state.suggestions.length > 0 && (
         <LocationSuggestions
           state={state}
@@ -439,7 +477,6 @@ const RideLocationSelector = () => {
           onSelectLocation={handleLocationSelect}
         />
       )}
-
 
       {rideData?.pickup?.latitude && !state.suggestions.length && !state.activeInput && (
         <MapPreview rideData={rideData} coordinates={coordinates} region={region} setRegion={setRegion} />

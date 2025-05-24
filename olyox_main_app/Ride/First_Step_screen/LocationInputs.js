@@ -1,11 +1,10 @@
-"use client"
 
 import { useRef } from "react"
-import { View, TextInput, TouchableOpacity, Animated, ActivityIndicator } from "react-native"
+import { View, TextInput, TouchableOpacity, Animated, ActivityIndicator, Keyboard } from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import styles from "./Styles"
 
-const LocationInputs = ({ state, setState, isFetchingLocation, onMapSelect }) => {
+const LocationInputs = ({ state, setState, isFetchingLocation, onMapSelect, onLocationSelect }) => {
   const pickupInputRef = useRef(null)
   const dropoffInputRef = useRef(null)
   const loadingAnimation = useRef(new Animated.Value(0)).current
@@ -43,6 +42,49 @@ const LocationInputs = ({ state, setState, isFetchingLocation, onMapSelect }) =>
     }, 300)
   }
 
+  const handleTextChange = (text, type) => {
+    if (type === "pickup") {
+      setState((prev) => ({ ...prev, pickup: text }))
+    } else {
+      setState((prev) => ({ ...prev, dropoff: text }))
+    }
+    fetchSuggestions(text, type)
+  }
+
+  const handleInputBlur = (type) => {
+    // Small delay to allow suggestion selection
+    setTimeout(() => {
+      if (state.activeInput === type) {
+        setState((prev) => ({
+          ...prev,
+          activeInput: null,
+          suggestions: []
+        }))
+      }
+    }, 150)
+  }
+
+  const handleMapSelect = (type) => {
+    // Dismiss keyboard and blur the input
+    if (type === "pickup" && pickupInputRef.current) {
+      pickupInputRef.current.blur()
+    } else if (type === "dropoff" && dropoffInputRef.current) {
+      dropoffInputRef.current.blur()
+    }
+
+    Keyboard.dismiss()
+
+    // Clear suggestions and active input
+    setState((prev) => ({
+      ...prev,
+      suggestions: [],
+      activeInput: null
+    }))
+
+    // Call parent handler
+    onMapSelect(type)
+  }
+
   return (
     <View style={styles.inputsContainer}>
       {/* Pickup Input */}
@@ -57,14 +99,19 @@ const LocationInputs = ({ state, setState, isFetchingLocation, onMapSelect }) =>
           placeholder="Enter pickup location"
           placeholderTextColor="#999"
           value={state.pickup}
-          onChangeText={(text) => {
-            setState((prev) => ({ ...prev, pickup: text }))
-            fetchSuggestions(text, "pickup")
-          }}
+          onChangeText={(text) => handleTextChange(text, "pickup")}
           onFocus={() => {
             setState((prev) => ({ ...prev, activeInput: "pickup" }))
           }}
-          multiline
+          onBlur={() => handleInputBlur("pickup")}
+          onSubmitEditing={() => {
+            // Dismiss keyboard on submit
+            Keyboard.dismiss()
+            pickupInputRef.current?.blur()
+          }}
+          returnKeyType="done"
+          blurOnSubmit={true}
+          multiline={false} // Changed to false for better keyboard handling
         />
 
         {isFetchingLocation && state.activeInput === "pickup" ? (
@@ -84,7 +131,11 @@ const LocationInputs = ({ state, setState, isFetchingLocation, onMapSelect }) =>
             <ActivityIndicator size="small" color="#35C14F" />
           </Animated.View>
         ) : (
-          <TouchableOpacity style={styles.mapButton} onPress={() => onMapSelect("pickup")}>
+          <TouchableOpacity
+            style={styles.mapButton}
+            onPress={() => handleMapSelect("pickup")}
+            activeOpacity={0.7}
+          >
             <Icon name="map-marker" size={24} color="#35C14F" />
           </TouchableOpacity>
         )}
@@ -102,14 +153,19 @@ const LocationInputs = ({ state, setState, isFetchingLocation, onMapSelect }) =>
           placeholder="Enter drop-off location"
           placeholderTextColor="#999"
           value={state.dropoff}
-          onChangeText={(text) => {
-            setState((prev) => ({ ...prev, dropoff: text }))
-            fetchSuggestions(text, "dropoff")
-          }}
+          onChangeText={(text) => handleTextChange(text, "dropoff")}
           onFocus={() => {
             setState((prev) => ({ ...prev, activeInput: "dropoff" }))
           }}
-          multiline
+          onBlur={() => handleInputBlur("dropoff")}
+          onSubmitEditing={() => {
+            // Dismiss keyboard on submit
+            Keyboard.dismiss()
+            dropoffInputRef.current?.blur()
+          }}
+          returnKeyType="done"
+          blurOnSubmit={true}
+          multiline={false} // Changed to false for better keyboard handling
         />
 
         {state.loading && state.activeInput === "dropoff" ? (
@@ -129,7 +185,11 @@ const LocationInputs = ({ state, setState, isFetchingLocation, onMapSelect }) =>
             <ActivityIndicator size="small" color="#D93A2D" />
           </Animated.View>
         ) : (
-          <TouchableOpacity style={styles.mapButton} onPress={() => onMapSelect("dropoff")}>
+          <TouchableOpacity
+            style={styles.mapButton}
+            onPress={() => handleMapSelect("dropoff")}
+            activeOpacity={0.7}
+          >
             <Icon name="map-marker" size={24} color="#D93A2D" />
           </TouchableOpacity>
         )}
