@@ -489,43 +489,62 @@ exports.verifyOtp = async (req, res) => {
     partner.isOtpBlock = false;
     partner.otpUnblockAfterThisTime = null;
 
+    console.log("✅ OTP verified for number:", partner.phone);
+
     // ✅ Try fetching recharge details ONLY if not already paid
     if (!partner.isPaid) {
-      try {
-        const { success, payment_id, member_id } =
-          await checkBhAndDoRechargeOnApp({ number: partner.phone });
+      console.log("ℹ️ Partner is not paid, attempting to fetch recharge data...");
 
-        if (success && payment_id && member_id) {
-          // ✅ Save recharge data
+      try {
+        const { success, payment_id, member_id } = await checkBhAndDoRechargeOnApp({ number: partner.phone });
+
+        console.log("✅ Recharge API response:", { success, payment_id, member_id });
+
+        if (
+          success &&
+          payment_id?.end_date &&
+          member_id?.title &&
+          member_id?.HowManyMoneyEarnThisPlan !== undefined &&
+          payment_id?.createdAt &&
+          typeof payment_id?.payment_approved !== 'undefined'
+        ) {
           partner.RechargeData = {
-            rechargePlan: member_id?.title,
-            expireData: payment_id?.end_date,
-            onHowManyEarning: member_id?.HowManyMoneyEarnThisPlan,
-            whichDateRecharge: payment_id?.createdAt,
-            approveRecharge: payment_id?.payment_approved,
+            rechargePlan: member_id.title,
+            expireData: payment_id.end_date,
+            onHowManyEarning: member_id.HowManyMoneyEarnThisPlan,
+            whichDateRecharge: payment_id.createdAt,
+            approveRecharge: payment_id.payment_approved,
           };
           partner.isPaid = true;
+
+          console.log("✅ Recharge data saved for partner:", partner.phone);
+        } else {
+          console.log("⚠️ Recharge data incomplete or invalid, not updating RechargeData.");
         }
       } catch (rechargeErr) {
-        console.error("Recharge Fetch Failed:", rechargeErr.message);
-        // Optional: continue without saving RechargeData
+        console.error("❌ Recharge Fetch Failed:", rechargeErr.message);
+        // Don't update RechargeData on failure
       }
+    } else {
+      console.log("ℹ️ Partner is already paid, skipping recharge fetch.");
     }
 
     // ✅ Save partner
     await partner.save();
+    console.log("✅ Partner data saved successfully:", partner);
 
     // ✅ Send token
     await send_token(partner, { type: "CAB" }, res, req);
 
   } catch (error) {
-    console.error("OTP Verification Error:", error.message);
+    console.error("❌ OTP Verification Error:", error.message);
     res.status(501).json({
       success: false,
       error: error.message || "Something went wrong",
     });
   }
 };
+
 
 
 // Get all riders

@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Dimensions, 
-  AppState, 
-  ActivityIndicator, 
-  Image, 
+import {
+  View,
+  StyleSheet,
+  Dimensions,
+  AppState,
+  ActivityIndicator,
+  Image,
   Alert,
   Platform,
   TouchableOpacity,
@@ -81,24 +81,24 @@ const showToast = (message, type = 'info') => {
 const Button = ({ onPress, title, variant = 'primary', loading = false, disabled = false, icon, style }) => {
   const buttonStyle = [
     styles.button,
-    variant === 'primary' ? styles.primaryButton : 
-    variant === 'secondary' ? styles.secondaryButton : styles.dangerButton,
+    variant === 'primary' ? styles.primaryButton :
+      variant === 'secondary' ? styles.secondaryButton : styles.dangerButton,
     disabled && styles.disabledButton,
     style
   ];
-  
+
   const textStyle = [
     styles.buttonText,
-    variant === 'primary' ? styles.primaryButtonText : 
-    variant === 'secondary' ? styles.secondaryButtonText : styles.dangerButtonText
+    variant === 'primary' ? styles.primaryButtonText :
+      variant === 'secondary' ? styles.secondaryButtonText : styles.dangerButtonText
   ];
-  
-  const iconColor = variant === 'primary' ? '#fff' : 
-                   variant === 'secondary' ? '#6b7280' : '#ef4444';
-  
+
+  const iconColor = variant === 'primary' ? '#fff' :
+    variant === 'secondary' ? '#6b7280' : '#ef4444';
+
   return (
-    <TouchableOpacity 
-      style={buttonStyle} 
+    <TouchableOpacity
+      style={buttonStyle}
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.8}
@@ -108,10 +108,10 @@ const Button = ({ onPress, title, variant = 'primary', loading = false, disabled
       ) : (
         <View style={styles.buttonContent}>
           {icon && (
-            <MaterialCommunityIcons 
-              name={icon} 
-              size={18} 
-              color={iconColor} 
+            <MaterialCommunityIcons
+              name={icon}
+              size={18}
+              color={iconColor}
               style={styles.buttonIcon}
             />
           )}
@@ -126,7 +126,7 @@ const Button = ({ onPress, title, variant = 'primary', loading = false, disabled
 const CircularTimer = ({ timeLeft, total }) => {
   const progress = timeLeft / total;
   const animatedValue = useRef(new Animated.Value(progress)).current;
-  
+
   useEffect(() => {
     Animated.timing(animatedValue, {
       toValue: progress,
@@ -134,17 +134,17 @@ const CircularTimer = ({ timeLeft, total }) => {
       useNativeDriver: false,
     }).start();
   }, [progress]);
-  
+
   const size = 90;
   const strokeWidth = 6;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  
+
   return (
     <View style={styles.timerContainer}>
       <View style={[styles.timerCircle, { width: size, height: size }]}>
         {/* Background circle */}
-        <View 
+        <View
           style={[
             styles.progressRing,
             {
@@ -157,7 +157,7 @@ const CircularTimer = ({ timeLeft, total }) => {
           ]}
         />
         {/* Progress circle */}
-        <Animated.View 
+        <Animated.View
           style={[
             styles.progressRing,
             {
@@ -195,7 +195,7 @@ const CircularTimer = ({ timeLeft, total }) => {
 const StatusIndicator = ({ online, connected }) => (
   <View style={styles.statusIndicator}>
     <View style={[
-      styles.statusDot, 
+      styles.statusDot,
       { backgroundColor: online ? (connected ? '#10b981' : '#f59e0b') : '#ef4444' }
     ]} />
     <Text style={styles.statusText}>
@@ -209,7 +209,7 @@ const LocationRow = ({ type, address, isLast = false }) => (
   <View style={styles.locationRow}>
     <View style={styles.locationIcon}>
       <View style={[
-        styles.locationDot, 
+        styles.locationDot,
         type === 'pickup' ? styles.pickupDot : styles.dropDot
       ]} />
       {!isLast && <View style={styles.locationLine} />}
@@ -234,32 +234,32 @@ const TripStats = ({ distance, duration, price, currency, estimatedEarning }) =>
         <Text style={styles.statLabel}>Distance</Text>
         <Text style={styles.statValue}>{distance} km</Text>
       </View>
-      
+
       <View style={styles.statDivider} />
-      
+
       <View style={styles.statItem}>
         <MaterialCommunityIcons name="clock-outline" size={20} color="#6366f1" />
         <Text style={styles.statLabel}>Duration</Text>
         <Text style={styles.statValue}>{duration} min</Text>
       </View>
-      
+
       <View style={styles.statDivider} />
-      
+
       <View style={styles.statItem}>
         <MaterialCommunityIcons name="currency-inr" size={20} color="#6366f1" />
         <Text style={styles.statLabel}>Fare</Text>
         <Text style={styles.statValue}>₹{price}</Text>
       </View>
     </View>
-    
-    {estimatedEarning && (
+
+    {/* {estimatedEarning && (
       <View style={styles.earningsContainer}>
         <MaterialCommunityIcons name="wallet" size={16} color="#10b981" />
         <Text style={styles.earningsText}>
           Estimated Earning: ₹{parseFloat(estimatedEarning).toFixed(0)}
         </Text>
       </View>
-    )}
+    )} */}
   </View>
 );
 
@@ -284,14 +284,14 @@ const VehicleInfo = ({ rider }) => (
 );
 
 // Enhanced Ride Request Modal
-const RideRequestModal = ({ 
-  visible, 
-  rideData, 
-  timeLeft, 
-  onAccept, 
-  onDecline, 
+const RideRequestModal = ({
+  visible,
+  rideData,
+  timeLeft,
+  onAccept,
+  onDecline,
   confirmLoading,
-  error 
+  error
 }) => {
   const slideAnim = useRef(new Animated.Value(height)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -340,30 +340,30 @@ const RideRequestModal = ({
       statusBarTranslucent
     >
       <View style={styles.modalContainer}>
-        <Animated.View 
-          style={[styles.modalBackdrop, { opacity: backdropOpacity }]} 
+        <Animated.View
+          style={[styles.modalBackdrop, { opacity: backdropOpacity }]}
         />
-        
-        <Animated.View 
+
+        <Animated.View
           style={[
             styles.modalContent,
             { transform: [{ translateY: slideAnim }] }
           ]}
         >
-          <ScrollView 
+          <ScrollView
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
             {/* Handle */}
             <View style={styles.modalHandle} />
-            
+
             {/* Header with Timer */}
             <View style={styles.modalHeader}>
               <CircularTimer timeLeft={timeLeft} total={RIDE_REQUEST_TIMEOUT} />
               <Text style={styles.modalTitle}>New Ride Request</Text>
               <Text style={styles.modalSubtitle}>{rideData.message}</Text>
             </View>
-            
+
             {/* Error Display */}
             {error && (
               <View style={styles.errorContainer}>
@@ -371,7 +371,7 @@ const RideRequestModal = ({
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             )}
-            
+
             {/* User Info */}
             <View style={styles.userSection}>
               <View style={styles.userAvatar}>
@@ -388,7 +388,7 @@ const RideRequestModal = ({
               </View>
               <View style={styles.userInfo}>
                 <Text style={styles.userName}>{user?.name || 'Guest User'}</Text>
-                <Text style={styles.userPhone}>{user?.number || 'No phone'}</Text>
+                {/* <Text style={styles.userPhone}>{user?.number || 'No phone'}</Text> */}
                 {rider?.rating && (
                   <View style={styles.ratingContainer}>
                     <MaterialCommunityIcons name="star" size={14} color="#f59e0b" />
@@ -398,27 +398,27 @@ const RideRequestModal = ({
                 )}
               </View>
             </View>
-            
+
             {/* Vehicle Info */}
-            {rider && <VehicleInfo rider={rider} />}
-            
+            {/* {rider && <VehicleInfo rider={rider} />} */}
+
             {/* Trip Details */}
             <View style={styles.tripSection}>
               {/* Locations */}
               <View style={styles.locationsContainer}>
-                <LocationRow 
-                  type="pickup" 
-                  address={rideData.pickup_desc} 
+                <LocationRow
+                  type="pickup"
+                  address={rideData.pickup_desc}
                 />
-                <LocationRow 
-                  type="drop" 
-                  address={rideData.drop_desc} 
-                  isLast 
+                <LocationRow
+                  type="drop"
+                  address={rideData.drop_desc}
+                  isLast
                 />
               </View>
-              
+
               {/* Trip Stats */}
-              <TripStats 
+              <TripStats
                 distance={rideData.distance}
                 duration={rideData.trafficDuration || rideData.duration}
                 price={rideData.price}
@@ -426,7 +426,7 @@ const RideRequestModal = ({
                 estimatedEarning={rideData.estimatedEarning}
               />
             </View>
-            
+
             {/* Additional Info */}
             <View style={styles.additionalInfo}>
               <View style={styles.infoRow}>
@@ -442,7 +442,7 @@ const RideRequestModal = ({
                 </View>
               )}
             </View>
-            
+
             {/* Action Buttons */}
             <View style={styles.actionButtons}>
               <Button
@@ -477,12 +477,12 @@ export default function RideRequestScreen() {
   const timeoutRef = useRef(null);
   const countdownIntervalRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(0)).current;
-  
+
   // Context
   const { driverLocation } = useLocation();
   const { socket, isSocketReady } = useSocket();
   const { onRide, updateRideStatus } = useRideStatus();
-  
+
   // State
   const [rideData, setRideData] = useState(null);
   const [riderDetails, setRiderDetails] = useState(null);
@@ -495,7 +495,7 @@ export default function RideRequestScreen() {
   const [showRideModal, setShowRideModal] = useState(false);
   const [error, setError] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
-  
+
   // Clear error after 5 seconds
   useEffect(() => {
     if (error) {
@@ -503,7 +503,7 @@ export default function RideRequestScreen() {
       return () => clearTimeout(timer);
     }
   }, [error]);
-  
+
   // Pulse animation for waiting state
   useEffect(() => {
     Animated.loop(
@@ -521,7 +521,7 @@ export default function RideRequestScreen() {
       ])
     ).start();
   }, []);
-  
+
   // Enhanced location tracking with error handling
   useEffect(() => {
     let interval;
@@ -570,7 +570,7 @@ export default function RideRequestScreen() {
       if (interval) clearInterval(interval);
     };
   }, [isSocketReady]);
-  
+
   // Enhanced location sending with retry logic
   const sendLocationToServer = async (latitude, longitude, retryCount = 0) => {
     try {
@@ -597,7 +597,7 @@ export default function RideRequestScreen() {
     } catch (error) {
       console.error('Location send error:', error);
       setConnectionStatus('error');
-      
+
       // Retry logic
       if (retryCount < 3) {
         setTimeout(() => {
@@ -608,7 +608,7 @@ export default function RideRequestScreen() {
       }
     }
   };
-  
+
   // Enhanced rider details fetching
   const getRiderDetails = useCallback(async () => {
     try {
@@ -620,7 +620,7 @@ export default function RideRequestScreen() {
 
       const response = await axios.get(
         'https://appapi.olyox.com/api/v1/rider/user-details',
-        { 
+        {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 10000
         }
@@ -643,11 +643,11 @@ export default function RideRequestScreen() {
       }
     }
   }, []);
-  
+
   useEffect(() => {
     getRiderDetails();
   }, []);
-  
+
   // Enhanced sound management
   const playSound = async () => {
     try {
@@ -670,7 +670,7 @@ export default function RideRequestScreen() {
       // Don't show error for sound issues as it's not critical
     }
   };
-  
+
   const stopSound = async () => {
     if (sound) {
       try {
@@ -682,7 +682,7 @@ export default function RideRequestScreen() {
       }
     }
   };
-  
+
   // Enhanced route coordinates with error handling
   useEffect(() => {
     if (rideData?.polyline) {
@@ -705,7 +705,7 @@ export default function RideRequestScreen() {
           };
 
           setRegion(newRegion);
-          
+
           if (mapRef.current && mapReady) {
             setTimeout(() => {
               mapRef.current?.animateToRegion(newRegion, 1000);
@@ -718,26 +718,26 @@ export default function RideRequestScreen() {
       }
     }
   }, [rideData, mapReady]);
-  
+
   // Enhanced socket events with better error handling
   useEffect(() => {
     const handleRideRequest = async (data) => {
       try {
         console.log("New ride request:", data);
-        
+
         // Validate ride data
         if (!data || !data.requestId || !data.pickup_desc || !data.drop_desc) {
           throw new Error('Invalid ride request data received');
         }
-        
+
         setRideData(data);
         setTimeLeft(RIDE_REQUEST_TIMEOUT);
         setShowRideModal(true);
         setError(null);
-        
+
         await playSound();
         startTimeout();
-        
+
         // Enhanced notification
         await Notifications.scheduleNotificationAsync({
           content: {
@@ -806,7 +806,7 @@ export default function RideRequestScreen() {
       }
     };
   }, [isSocketReady, socket, riderDetails, rideData]);
-  
+
   // Timer management
   const startTimeout = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -826,7 +826,7 @@ export default function RideRequestScreen() {
       });
     }, 1000);
   };
-  
+
   // Enhanced cleanup
   const cleanupRideRequest = () => {
     if (timeoutRef.current) {
@@ -845,12 +845,12 @@ export default function RideRequestScreen() {
     setConfirmLoading(false);
     setError(null);
   };
-  
+
   // Enhanced reject handling
   const handleRejectRide = async (isTimeout = false) => {
     try {
       setConfirmLoading(true);
-      
+
       if (socket && rideData && riderDetails) {
         socket.emit('ride_rejected', {
           ride_id: rideData.requestId,
@@ -859,7 +859,7 @@ export default function RideRequestScreen() {
         });
 
         showToast(
-          isTimeout ? "Request timed out" : "Ride declined", 
+          isTimeout ? "Request timed out" : "Ride declined",
           "info"
         );
       } else {
@@ -874,13 +874,13 @@ export default function RideRequestScreen() {
       cleanupRideRequest();
     }
   };
-  
+
   // Enhanced accept handling
   const handleAcceptRide = async () => {
     try {
       setConfirmLoading(true);
       setError(null);
-      
+
       if (!socket || !rideData || !riderDetails) {
         throw new Error('Missing required data for acceptance');
       }
@@ -909,10 +909,10 @@ export default function RideRequestScreen() {
       };
 
       socket.emit('ride_accepted', acceptanceData);
-      
+
       showToast("Ride accepted successfully!", "success");
       updateRideStatus(true);
-      
+
     } catch (error) {
       console.error('Accept error:', error);
       showToast("Failed to accept ride", "error");
@@ -922,7 +922,7 @@ export default function RideRequestScreen() {
       setConfirmLoading(false);
     }
   };
-  
+
   // Handle rider confirmation
   useEffect(() => {
     if (socket) {
@@ -935,7 +935,7 @@ export default function RideRequestScreen() {
           if (driver && rideDetails) {
             updateRideStatus(true);
             cleanupRideRequest();
-            
+
             navigation.dispatch(
               CommonActions.navigate({
                 name: 'start',
@@ -954,27 +954,27 @@ export default function RideRequestScreen() {
         }
       });
     }
-    
+
     return () => {
       if (socket) {
         socket.off('rider_confirm_message');
       }
     };
   }, [socket, navigation]);
-  
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       cleanupRideRequest();
     };
   }, []);
-  
+
   // Waiting screen when no ride request
   if (!showRideModal) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-        
+
         <View style={styles.waitingContainer}>
           {/* Header */}
           <View style={styles.waitingHeader}>
@@ -983,11 +983,11 @@ export default function RideRequestScreen() {
               You'll be notified when a new request comes in
             </Text>
           </View>
-          
+
           {/* Animation */}
           <View style={styles.animationContainer}>
             <Animated.View style={{
-              transform: [{ 
+              transform: [{
                 scale: pulseAnim.interpolate({
                   inputRange: [0, 1],
                   outputRange: [1, 1.1]
@@ -1002,15 +1002,15 @@ export default function RideRequestScreen() {
               />
             </Animated.View>
           </View>
-          
+
           {/* Status */}
           <View style={styles.statusContainer}>
-            <StatusIndicator 
-              online={true} 
-              connected={isSocketReady && connectionStatus === 'connected'} 
+            <StatusIndicator
+              online={true}
+              connected={isSocketReady && connectionStatus === 'connected'}
             />
           </View>
-          
+
           {/* Error Display */}
           {error && (
             <View style={styles.errorContainer}>
@@ -1018,7 +1018,7 @@ export default function RideRequestScreen() {
               <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
-          
+
           {/* Tips */}
           <View style={styles.tipsContainer}>
             <Text style={styles.tipsTitle}>Tips while waiting</Text>
@@ -1041,12 +1041,12 @@ export default function RideRequestScreen() {
       </SafeAreaView>
     );
   }
-  
+
   // Main screen with map and ride request modal
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       {/* Map */}
       <View style={styles.mapContainer}>
         <MapView
@@ -1076,7 +1076,7 @@ export default function RideRequestScreen() {
               lineJoin="round"
             />
           )}
-          
+
           {/* Pickup Marker */}
           {rideData?.pickupLocation?.coordinates && (
             <Marker
@@ -1094,7 +1094,7 @@ export default function RideRequestScreen() {
               </View>
             </Marker>
           )}
-          
+
           {/* Drop Marker */}
           {rideData?.dropLocation?.coordinates && (
             <Marker
@@ -1114,7 +1114,7 @@ export default function RideRequestScreen() {
           )}
         </MapView>
       </View>
-      
+
       {/* Ride Request Modal */}
       <RideRequestModal
         visible={showRideModal}
@@ -1134,7 +1134,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  
+
   // Waiting Screen
   waitingContainer: {
     flex: 1,
@@ -1216,7 +1216,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     flex: 1,
   },
-  
+
   // Error Container
   errorContainer: {
     flexDirection: 'row',
@@ -1235,7 +1235,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     flex: 1,
   },
-  
+
   // Map
   mapContainer: {
     flex: 1,
@@ -1271,7 +1271,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  
+
   // Modal
   modalContainer: {
     flex: 1,
@@ -1318,7 +1318,7 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: 4,
   },
-  
+
   // Timer
   timerContainer: {
     alignItems: 'center',
@@ -1343,7 +1343,7 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: -2,
   },
-  
+
   // User Section
   userSection: {
     flexDirection: 'row',
@@ -1408,7 +1408,7 @@ const styles = StyleSheet.create({
     color: '#92400e',
     marginLeft: 2,
   },
-  
+
   // Vehicle Section
   vehicleContainer: {
     flexDirection: 'row',
@@ -1459,7 +1459,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '500',
   },
-  
+
   // Trip Section
   tripSection: {
     marginBottom: 20,
@@ -1514,7 +1514,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 20,
   },
-  
+
   // Trip Stats
   tripStatsContainer: {
     backgroundColor: '#f9fafb',
@@ -1563,7 +1563,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 6,
   },
-  
+
   // Additional Info
   additionalInfo: {
     backgroundColor: '#f9fafb',
@@ -1583,7 +1583,7 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginLeft: 8,
   },
-  
+
   // Action Buttons
   actionButtons: {
     flexDirection: 'row',
