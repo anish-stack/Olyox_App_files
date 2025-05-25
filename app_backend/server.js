@@ -68,7 +68,7 @@ const io = socketIo(server, {
         origin: '*',
         methods: ['GET', 'POST']
     },
-    pingInterval: 6000,  // Add ping interval for connection health monitoring
+    pingInterval: 6000, 
 });
 
 // Connect to the database
@@ -1206,10 +1206,51 @@ io.on('connection', (socket) => {
      * Handle client disconnections
      * Removes the disconnected client from appropriate connection maps
      */
-    socket.on('disconnect', (reason) => {
+socket.on('disconnect', (reason) => {
+    try {
         console.log(`[${new Date().toISOString()}] Client disconnected. Socket ID: ${socket.id}, Reason: ${reason}`);
 
-        // Remove user from userSocketMap if found
+        // Handle different disconnect reasons
+        switch (reason) {
+            case 'io server disconnect':
+                // The server forcefully disconnected the client, manual reconnect needed
+                console.warn('Server disconnected the socket, attempting to reconnect...');
+                socket.connect();
+                console.log('Manual reconnect triggered due to server disconnect.');
+                break;
+
+            case 'io client disconnect':
+                // Client disconnected intentionally, no auto reconnect
+                console.info('Client disconnected intentionally.');
+                break;
+
+            case 'ping timeout':
+                console.warn('Ping timeout, attempting to reconnect...');
+                socket.connect();
+                console.log('Manual reconnect triggered due to ping timeout.');
+                break;
+
+            case 'transport close':
+                console.warn('Transport closed unexpectedly, attempting to reconnect...');
+                socket.connect();
+                console.log('Manual reconnect triggered due to transport close.');
+                break;
+
+            case 'transport error':
+                console.error('Transport error occurred, attempting to reconnect...');
+                socket.connect();
+                console.log('Manual reconnect triggered due to transport error.');
+                break;
+
+            default:
+                console.log('Unknown disconnect reason:', reason);
+                // Optionally reconnect on unknown reasons
+                socket.connect();
+                console.log('Manual reconnect triggered due to unknown disconnect reason.');
+                break;
+        }
+
+        // Remove from userSocketMap if present
         for (const [userId, socketId] of userSocketMap.entries()) {
             if (socketId === socket.id) {
                 userSocketMap.delete(userId);
@@ -1218,7 +1259,7 @@ io.on('connection', (socket) => {
             }
         }
 
-        // Remove driver from driverSocketMap if found
+        // Remove from driverSocketMap if present
         for (const [driverId, socketId] of driverSocketMap.entries()) {
             if (socketId === socket.id) {
                 driverSocketMap.delete(driverId);
@@ -1227,7 +1268,7 @@ io.on('connection', (socket) => {
             }
         }
 
-        // Remove tiffin partner from tiffinPartnerMap if found
+        // Remove from tiffinPartnerMap if present
         for (const [partnerId, socketId] of tiffinPartnerMap.entries()) {
             if (socketId === socket.id) {
                 tiffinPartnerMap.delete(partnerId);
@@ -1235,7 +1276,12 @@ io.on('connection', (socket) => {
                 break;
             }
         }
-    });
+
+    } catch (err) {
+        console.error('Error handling disconnect:', err);
+    }
+});
+
 });
 
 // API Routes

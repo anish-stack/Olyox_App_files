@@ -434,7 +434,17 @@ const CabHome = () => {
             [
               {
                 text: "OK",
-                onPress: () => navigation.navigate("Recharge"),
+                onPress: () => navigation.navigate("Recharge", {
+                  showOnlyBikePlan:
+                    user_data?.rideVehicleInfo?.vehicleName ===
+                      "2 Wheeler" ||
+                      user_data?.rideVehicleInfo?.vehicleName === "Bike"
+                      ? true
+                      : false,
+                  role: user_data?.category,
+                  firstRecharge: user_data?.isFirstRechargeDone || false,
+                }),
+
               },
             ]
           );
@@ -550,7 +560,7 @@ const CabHome = () => {
     // const ConnectionStatus = useMemo(() => {
     //   try {
     //     const isConnected = socket?.connected === true;
-   
+
 
     //     return (
     //       <Animated.View
@@ -706,7 +716,7 @@ const CabHome = () => {
 
     const StatusCard = useMemo(() => {
       try {
-      
+
 
         // Ensure we're using boolean values
         const isAvailable = user_data?.isAvailable === true;
@@ -1048,7 +1058,24 @@ const CabHome = () => {
                 )}
               </TouchableOpacity>
             </View>
-
+            {/* Tips */}
+            <View style={styles.tipsContainer}>
+              <Text style={styles.tipsTitle}>Tips while waiting</Text>
+              <View style={styles.tipsList}>
+                <View style={styles.tipItem}>
+                  <MaterialCommunityIcons name="battery" size={16} color="#10b981" />
+                  <Text style={styles.tipText}>Keep your phone charged</Text>
+                </View>
+                <View style={styles.tipItem}>
+                  <MaterialCommunityIcons name="volume-high" size={16} color="#10b981" />
+                  <Text style={styles.tipText}>Turn up your volume</Text>
+                </View>
+                <View style={styles.tipItem}>
+                  <MaterialCommunityIcons name="signal" size={16} color="#10b981" />
+                  <Text style={styles.tipText}>Stay in good network areas</Text>
+                </View>
+              </View>
+            </View>
             {!mapVisible && (
               <TouchableOpacity
                 style={styles.showMapButton}
@@ -1063,7 +1090,7 @@ const CabHome = () => {
               </TouchableOpacity>
             )}
 
-            {mapVisible && DriverMap}
+            {/* {mapVisible && DriverMap} */}
             <Report isRefresh={refreshing} />
 
             <Bonus />

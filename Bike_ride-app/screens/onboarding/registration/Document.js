@@ -31,7 +31,7 @@ import { useNavigation } from '@react-navigation/native';
 // Document definitions
 const DOCUMENTS = [
   { id: 'dl', title: 'Driver\'s License', label: 'Driver\'s License', icon: 'car-outline' },
-  { id: 'rc', title: 'Registration Certificate', label: 'Registration Certificate', icon: 'document-text-outline' },
+  { id: 'rc', title: 'Registration Certificate', label: 'RC', icon: 'document-text-outline' },
   { id: 'insurance', title: 'Insurance', label: 'Insurance', icon: 'shield-checkmark-outline' },
   { id: 'aadharFront', title: 'aadharFront', label: 'Front Side Of Aadhar', icon: 'id-card-outline' },
   { id: 'aadharBack', title: 'aadharBack', label: 'Back Side Of Aadhar', icon: 'id-card-outline' },

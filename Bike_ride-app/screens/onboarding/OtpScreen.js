@@ -291,7 +291,7 @@ const OtpScreen = ({ onVerify, number, type }) => {
             value={otp}
             onChangeText={handleOtpChange}
             keyboardType="numeric"
-            icon="lock-closed-outline"
+            icon="lock"
             style={[styles.input, errorMessage ? styles.inputError : null]}
             maxLength={6}
           />

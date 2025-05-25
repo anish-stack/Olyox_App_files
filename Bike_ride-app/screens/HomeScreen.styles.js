@@ -290,4 +290,32 @@ export default StyleSheet.create({
     height: 1,
     backgroundColor: "#E0E0E0",
   },
+  tipsContainer: {
+    width: '100%',
+    backgroundColor: '#f0fdf4',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#dcfce7',
+  },
+  tipsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#166534',
+    marginBottom: 16,
+  },
+  tipsList: {
+    gap: 12,
+  },
+  tipItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  tipText: {
+    fontSize: 12,
+    color: '#166534',
+    marginLeft: 12,
+    flex: 1,
+  },
+
 })

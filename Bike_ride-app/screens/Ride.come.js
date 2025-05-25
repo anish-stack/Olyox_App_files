@@ -977,12 +977,12 @@ export default function RideRequestScreen() {
 
         <View style={styles.waitingContainer}>
           {/* Header */}
-          <View style={styles.waitingHeader}>
+          {/* <View style={styles.waitingHeader}>
             <Text style={styles.waitingTitle}>Looking for rides</Text>
             <Text style={styles.waitingSubtitle}>
               You'll be notified when a new request comes in
             </Text>
-          </View>
+          </View> */}
 
           {/* Animation */}
           <View style={styles.animationContainer}>
@@ -1020,7 +1020,7 @@ export default function RideRequestScreen() {
           )}
 
           {/* Tips */}
-          <View style={styles.tipsContainer}>
+          {/* <View style={styles.tipsContainer}>
             <Text style={styles.tipsTitle}>Tips while waiting</Text>
             <View style={styles.tipsList}>
               <View style={styles.tipItem}>
@@ -1036,7 +1036,7 @@ export default function RideRequestScreen() {
                 <Text style={styles.tipText}>Stay in good network areas</Text>
               </View>
             </View>
-          </View>
+          </View> */}
         </View>
       </SafeAreaView>
     );
@@ -1138,13 +1138,14 @@ const styles = StyleSheet.create({
   // Waiting Screen
   waitingContainer: {
     flex: 1,
+    // height: '100%',
     padding: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
   waitingHeader: {
     alignItems: 'center',
-    marginBottom: 48,
+    // marginBottom: 48,
   },
   waitingTitle: {
     fontSize: 28,
@@ -1159,11 +1160,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   animationContainer: {
-    marginBottom: 48,
+    // marginBottom: 48,
   },
   waitingAnimation: {
-    width: 180,
-    height: 180,
+    width: 120,
+    height: 120,
   },
   statusContainer: {
     marginBottom: 24,
@@ -1198,7 +1199,7 @@ const styles = StyleSheet.create({
     borderColor: '#dcfce7',
   },
   tipsTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#166534',
     marginBottom: 16,
@@ -1211,7 +1212,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tipText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#166534',
     marginLeft: 12,
     flex: 1,

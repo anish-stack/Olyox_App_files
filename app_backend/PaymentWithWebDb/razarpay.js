@@ -491,7 +491,7 @@ exports.verify_recharge = async (req, res) => {
 
 exports.checkBhAndDoRechargeOnApp = async ({ number }) => {
     try {
-        const response = await axios.post(`http://localhost:7000/api/v1/getProviderDetailsByNumber`, {
+        const response = await axios.post(`https://webapi.olyox.com/api/v1/getProviderDetailsByNumber`, {
             number
         });
 
