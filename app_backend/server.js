@@ -1206,47 +1206,33 @@ io.on('connection', (socket) => {
      * Handle client disconnections
      * Removes the disconnected client from appropriate connection maps
      */
-socket.on('disconnect', (reason) => {
+ socket.on('disconnect', (reason) => {
     try {
         console.log(`[${new Date().toISOString()}] Client disconnected. Socket ID: ${socket.id}, Reason: ${reason}`);
 
-        // Handle different disconnect reasons
         switch (reason) {
             case 'io server disconnect':
-                // The server forcefully disconnected the client, manual reconnect needed
-                console.warn('Server disconnected the socket, attempting to reconnect...');
-                socket.connect();
-                console.log('Manual reconnect triggered due to server disconnect.');
+                console.warn('Server disconnected the socket, client needs to reconnect manually.');
                 break;
 
             case 'io client disconnect':
-                // Client disconnected intentionally, no auto reconnect
                 console.info('Client disconnected intentionally.');
                 break;
 
             case 'ping timeout':
-                console.warn('Ping timeout, attempting to reconnect...');
-                socket.connect();
-                console.log('Manual reconnect triggered due to ping timeout.');
+                console.warn('Ping timeout.');
                 break;
 
             case 'transport close':
-                console.warn('Transport closed unexpectedly, attempting to reconnect...');
-                socket.connect();
-                console.log('Manual reconnect triggered due to transport close.');
+                console.warn('Transport closed unexpectedly.');
                 break;
 
             case 'transport error':
-                console.error('Transport error occurred, attempting to reconnect...');
-                socket.connect();
-                console.log('Manual reconnect triggered due to transport error.');
+                console.error('Transport error occurred.');
                 break;
 
             default:
                 console.log('Unknown disconnect reason:', reason);
-                // Optionally reconnect on unknown reasons
-                socket.connect();
-                console.log('Manual reconnect triggered due to unknown disconnect reason.');
                 break;
         }
 
@@ -1259,7 +1245,7 @@ socket.on('disconnect', (reason) => {
             }
         }
 
-        // Remove from driverSocketMap if present
+        // Same cleanup for other maps...
         for (const [driverId, socketId] of driverSocketMap.entries()) {
             if (socketId === socket.id) {
                 driverSocketMap.delete(driverId);
@@ -1267,8 +1253,6 @@ socket.on('disconnect', (reason) => {
                 break;
             }
         }
-
-        // Remove from tiffinPartnerMap if present
         for (const [partnerId, socketId] of tiffinPartnerMap.entries()) {
             if (socketId === socket.id) {
                 tiffinPartnerMap.delete(partnerId);
@@ -1276,7 +1260,6 @@ socket.on('disconnect', (reason) => {
                 break;
             }
         }
-
     } catch (err) {
         console.error('Error handling disconnect:', err);
     }
