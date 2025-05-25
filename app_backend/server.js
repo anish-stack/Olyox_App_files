@@ -138,13 +138,18 @@ io.on('connection', (socket) => {
         console.log(`[${new Date().toISOString()}] Current driver connections:`, Array.from(driverSocketMap.entries()));
     });
 
-    socket.on("ping-custom", (payload) => {
-        socket.emit("pong-custom", {
-            message: "Pong from server!",
-            timestamp: Date.now(),
-            echo: payload,
-        });
+socket.on("ping-custom", (payload) => {
+    console.log(`[${new Date().toISOString()}] 🔄 Received ping-custom from ${socket.id}:`, payload);
+
+    socket.emit("pong-custom", {
+        message: "Pong from server!",
+        timestamp: Date.now(),
+        echo: payload,
     });
+
+    console.log(`[${new Date().toISOString()}] ✅ Sent pong-custom to ${socket.id}`);
+});
+
     /**
      * Handle tiffin partner connections
      * Maps a tiffin partner's ID to their socket ID for targeted communications
