@@ -132,6 +132,8 @@ app.use(cors({
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
+     standardHeaders: true,
+  legacyHeaders: false,
     max: 500, // Limit each IP to 100 requests per windowMs
     message: 'Too many requests from this IP, please try again later.'
 });
@@ -139,6 +141,7 @@ app.use(limiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookies_parser());
+app.set('trust proxy', true);
 
 
 const userSocketMap = new Map();     // Regular users
