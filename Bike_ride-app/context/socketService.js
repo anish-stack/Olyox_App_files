@@ -4,6 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const SOCKET_URL = "https://appapi.olyox.com";
 let socket = null;
+let pingIntervalRef = null;
 
 // Fetch user details
 export const fetchUserData = async () => {
@@ -34,15 +35,15 @@ export const initializeSocket = async ({ userType = "driver", userId }) => {
         return null;
     }
 
-
     if (!socket) {
         socket = io(SOCKET_URL, {
             transports: ["websocket"],
             reconnection: true,
             reconnectionAttempts: Infinity,
             reconnectionDelay: 2000,
-             randomizationFactor: 0.5,
+            randomizationFactor: 0.5,
             timeout: 20000,
+            autoConnect: true,
         });
 
         socket.userType = userType;
@@ -50,25 +51,58 @@ export const initializeSocket = async ({ userType = "driver", userId }) => {
 
         return new Promise((resolve, reject) => {
             socket.on("connect", () => {
-                console.log("Socket connected:", socket.id);
+                console.log("✅ Socket connected:", socket.id);
                 socket.emit("driver_connect", { userType, userId });
+
+                // Start heartbeat (custom ping)
+                if (!pingIntervalRef) {
+                    pingIntervalRef = setInterval(() => {
+                        if (socket && socket.connected) {
+                            socket.emit("ping-custom", { time: Date.now() });
+                        }
+                    }, 20000); // Every 20 seconds
+                }
+
                 resolve(socket);
             });
 
             socket.on("connect_error", (error) => {
-                console.error("Connection error:", error.message);
+                console.error("❌ Connection error:", error.message);
                 reject(error);
             });
 
             socket.on("disconnect", (reason) => {
-                console.warn("Socket disconnected:", reason);
+                console.warn("⚠️ Socket disconnected:", reason);
+
+                // Cleanup heartbeat on disconnect
+                if (pingIntervalRef) {
+                    clearInterval(pingIntervalRef);
+                    pingIntervalRef = null;
+                }
+            });
+
+            socket.on("reconnect_attempt", (attempt) => {
+                console.log(`🔁 Reconnection attempt #${attempt}`);
+            });
+
+            socket.on("reconnect", (attempt) => {
+                console.log(`✅ Reconnected successfully after ${attempt} attempt(s)`);
+                socket.emit("driver_connect", { userType, userId });
+            });
+
+            socket.on("reconnect_failed", () => {
+                console.error("❌ Reconnection failed");
+            });
+
+            // Optional: Log custom ping response if implemented server-side
+            socket.on("pong-custom", (data) => {
+                console.log("Pong received from server:", data);
             });
         });
     }
 
     return socket;
 };
-
 
 // Get socket instance
 export const getSocket = () => {
@@ -83,5 +117,10 @@ export const cleanupSocket = () => {
     if (socket) {
         socket.disconnect();
         socket = null;
+    }
+
+    if (pingIntervalRef) {
+        clearInterval(pingIntervalRef);
+        pingIntervalRef = null;
     }
 };

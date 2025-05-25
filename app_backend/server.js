@@ -68,7 +68,7 @@ const io = socketIo(server, {
         origin: '*',
         methods: ['GET', 'POST']
     },
-    pingInterval: 6000, 
+    pingInterval: 6000,
 });
 
 // Connect to the database
@@ -138,6 +138,13 @@ io.on('connection', (socket) => {
         console.log(`[${new Date().toISOString()}] Current driver connections:`, Array.from(driverSocketMap.entries()));
     });
 
+    socket.on("ping-custom", (payload) => {
+        socket.emit("pong-custom", {
+            message: "Pong from server!",
+            timestamp: Date.now(),
+            echo: payload,
+        });
+    });
     /**
      * Handle tiffin partner connections
      * Maps a tiffin partner's ID to their socket ID for targeted communications
@@ -1206,64 +1213,64 @@ io.on('connection', (socket) => {
      * Handle client disconnections
      * Removes the disconnected client from appropriate connection maps
      */
- socket.on('disconnect', (reason) => {
-    try {
-        console.log(`[${new Date().toISOString()}] Client disconnected. Socket ID: ${socket.id}, Reason: ${reason}`);
+    socket.on('disconnect', (reason) => {
+        try {
+            console.log(`[${new Date().toISOString()}] Client disconnected. Socket ID: ${socket.id}, Reason: ${reason}`);
 
-        switch (reason) {
-            case 'io server disconnect':
-                console.warn('Server disconnected the socket, client needs to reconnect manually.');
-                break;
+            switch (reason) {
+                case 'io server disconnect':
+                    console.warn('Server disconnected the socket, client needs to reconnect manually.');
+                    break;
 
-            case 'io client disconnect':
-                console.info('Client disconnected intentionally.');
-                break;
+                case 'io client disconnect':
+                    console.info('Client disconnected intentionally.');
+                    break;
 
-            case 'ping timeout':
-                console.warn('Ping timeout.');
-                break;
+                case 'ping timeout':
+                    console.warn('Ping timeout.');
+                    break;
 
-            case 'transport close':
-                console.warn('Transport closed unexpectedly.');
-                break;
+                case 'transport close':
+                    console.warn('Transport closed unexpectedly.');
+                    break;
 
-            case 'transport error':
-                console.error('Transport error occurred.');
-                break;
+                case 'transport error':
+                    console.error('Transport error occurred.');
+                    break;
 
-            default:
-                console.log('Unknown disconnect reason:', reason);
-                break;
-        }
-
-        // Remove from userSocketMap if present
-        for (const [userId, socketId] of userSocketMap.entries()) {
-            if (socketId === socket.id) {
-                userSocketMap.delete(userId);
-                console.log(`[${new Date().toISOString()}] User ${userId} disconnected and removed from map`);
-                break;
+                default:
+                    console.log('Unknown disconnect reason:', reason);
+                    break;
             }
-        }
 
-        // Same cleanup for other maps...
-        for (const [driverId, socketId] of driverSocketMap.entries()) {
-            if (socketId === socket.id) {
-                driverSocketMap.delete(driverId);
-                console.log(`[${new Date().toISOString()}] Driver ${driverId} disconnected and removed from map`);
-                break;
+            // Remove from userSocketMap if present
+            for (const [userId, socketId] of userSocketMap.entries()) {
+                if (socketId === socket.id) {
+                    userSocketMap.delete(userId);
+                    console.log(`[${new Date().toISOString()}] User ${userId} disconnected and removed from map`);
+                    break;
+                }
             }
-        }
-        for (const [partnerId, socketId] of tiffinPartnerMap.entries()) {
-            if (socketId === socket.id) {
-                tiffinPartnerMap.delete(partnerId);
-                console.log(`[${new Date().toISOString()}] Tiffin partner ${partnerId} disconnected and removed from map`);
-                break;
+
+            // Same cleanup for other maps...
+            for (const [driverId, socketId] of driverSocketMap.entries()) {
+                if (socketId === socket.id) {
+                    driverSocketMap.delete(driverId);
+                    console.log(`[${new Date().toISOString()}] Driver ${driverId} disconnected and removed from map`);
+                    break;
+                }
             }
+            for (const [partnerId, socketId] of tiffinPartnerMap.entries()) {
+                if (socketId === socket.id) {
+                    tiffinPartnerMap.delete(partnerId);
+                    console.log(`[${new Date().toISOString()}] Tiffin partner ${partnerId} disconnected and removed from map`);
+                    break;
+                }
+            }
+        } catch (err) {
+            console.error('Error handling disconnect:', err);
         }
-    } catch (err) {
-        console.error('Error handling disconnect:', err);
-    }
-});
+    });
 
 });
 
