@@ -63,6 +63,7 @@ import RideLocationSelector from './Ride/First_Step_screen';
 import useNotificationPermission from './hooks/notification';
 import { find_me } from './utils/helpers';
 import axios from 'axios';
+import OlyoxAppUpdate from './context/CheckAppUpdate';
 
 const Stack = createNativeStackNavigator();
 
@@ -78,7 +79,7 @@ Sentry.init({
 const MAX_LOADING_TIME = 5000; // 5 seconds max loading time
 const MIN_UPDATE_INTERVAL = 10000; // Minimum time between location state updates
 const MAX_RETRY_ATTEMPTS = 3; // Maximum location retry attempts
-const API_URL = "https://appapi.olyox.com/api/v1";
+const API_URL = "http://192.168.1.11:3100/api/v1";
 
 // Define location error types
 const ERROR_TYPES = {
@@ -383,7 +384,7 @@ const App = () => {
       <Stack.Screen name="Checkout" options={{ headerShown: Platform.OS === "ios" ? false : true }} component={Checkout} />
       <Stack.Screen name="Order_Process" options={{ headerShown: false }} component={OrderTracking} />
       {/* User Profile and Auth */}
-      <Stack.Screen name="Profile" options={{ headerShown: true }} component={UserProfile} />
+      <Stack.Screen name="Profile" options={{ headerShown: false }} component={UserProfile} />
       {/* Transport */}
       <Stack.Screen name="Transport" options={{ headerShown: false }} component={MainTransport} />
       <Stack.Screen name="delivery_parcel" options={{ headerShown: false }} component={Parcel_Transport} />
@@ -436,7 +437,7 @@ const App = () => {
     );
   }
 
-  
+
   return (
 
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -533,7 +534,9 @@ const WrappedApp = Sentry.wrap(App);
 
 const RootApp = () => (
   <FoodProvider>
-    <WrappedApp />
+    <OlyoxAppUpdate>
+      <WrappedApp />
+    </OlyoxAppUpdate>
   </FoodProvider>
 );
 

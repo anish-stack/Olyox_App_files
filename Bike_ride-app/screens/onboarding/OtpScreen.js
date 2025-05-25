@@ -154,7 +154,7 @@ const OtpScreen = ({ onVerify, number, type }) => {
     
     try {
       const response = await axios.post(
-        'https://appapi.olyox.com/api/v1/rider/rider-verify',
+        'http://192.168.1.11:3100/api/v1/rider/rider-verify',
         { 
           otp, 
           number,
@@ -225,7 +225,7 @@ const OtpScreen = ({ onVerify, number, type }) => {
     
     try {
       const response = await axios.post(
-        'https://appapi.olyox.com/api/v1/rider/rider-login',
+        'http://192.168.1.11:3100/api/v1/rider/rider-login',
         { 
           number,
           otpType: type // Send OTP type in request body

@@ -5,6 +5,7 @@ import { styles } from './Styles';
 import * as Location from 'expo-location';
 import HotelCard from './Top_Hotel_cards';
 import SkeletonLoader from '../../components/common/SkeletonLoader';
+import { useLocation } from '../../context/LocationContext';
 
 export default function Top_Hotel({ show = false ,onRefresh,refreshing }) {
     const [showAll, setShowAll] = useState(show);
@@ -12,6 +13,8 @@ export default function Top_Hotel({ show = false ,onRefresh,refreshing }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const isMounted = useRef(false);
+    const {location} = useLocation()
+    console.log(location)
 
     useEffect(() => {
         const fetchData = async () => {
@@ -19,27 +22,7 @@ export default function Top_Hotel({ show = false ,onRefresh,refreshing }) {
                 if (isMounted.current) return;
                 isMounted.current = true;
 
-                // Fetch last known location first (faster)
-                let location = await Location.getLastKnownPositionAsync({});
-                if (!location) {
-                    // Fetch current location if last known is unavailable
-                    const { status } = await Location.requestForegroundPermissionsAsync();
-                    if (status !== 'granted') {
-                        setError('Location permission denied. Enable it in settings.');
-                        setLoading(false);
-                        return;
-                    }
-                    location = await Location.getCurrentPositionAsync({
-                        accuracy: Location.Accuracy.Low,
-                    });
-                }
-
-                if (!location || !location.coords) {
-                    setError('Unable to fetch location. Please try again.');
-                    setLoading(false);
-                    return;
-                }
-
+         
                 const { latitude, longitude } = location.coords;
                 console.log("Latitude:", latitude, "Longitude:", longitude);
 

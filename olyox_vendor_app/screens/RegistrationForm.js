@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Location from 'expo-location';
 const API_BASE_URL = 'https://www.webapi.olyox.com/api/v1';
-const MAIN_API_BASE_URL = 'https://appapi.olyox.com/api/v1/tiffin';
+const MAIN_API_BASE_URL = 'http://192.168.1.11:3100/api/v1/tiffin';
 
 const { width } = Dimensions.get('window');
 

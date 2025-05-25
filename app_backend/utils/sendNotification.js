@@ -26,38 +26,33 @@ const logger = {
 };
 
 const initializeFirebase = () => {
-  // Check if already initialized
   if (admin.apps && admin.apps.length > 0) {
     logger.info('Firebase already initialized');
-    return true;
+    return admin;
   }
 
   try {
-    const config = {
-      credential: admin.credential.cert({
-        type: process.env.FIREBASE_TYPE,
-        project_id: process.env.FIREBASE_PROJECT_ID,
-        private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-        private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-        client_email: process.env.FIREBASE_CLIENT_EMAIL,
-        client_id: process.env.FIREBASE_CLIENT_ID,
-        auth_uri: process.env.FIREBASE_AUTH_URI,
-        token_uri: process.env.FIREBASE_TOKEN_URI,
-        auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
-        client_x509_cert_url: process.env.FIREBASE_CERT_URL,
-        universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN
-      }),
+    const credentialConfig = {
+      type: process.env.FIREBASE_TYPE,
+      project_id: process.env.FIREBASE_PROJECT_ID,
+      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      client_id: process.env.FIREBASE_CLIENT_ID,
+      auth_uri: process.env.FIREBASE_AUTH_URI,
+      token_uri: process.env.FIREBASE_TOKEN_URI,
+      auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
+      client_x509_cert_url: process.env.FIREBASE_CERT_URL
     };
 
-    // Initialize Firebase Admin SDK
     admin.initializeApp({
-      credential: admin.credential.cert(config.credential)
+      credential: admin.credential.cert(credentialConfig),
+      databaseURL: process.env.FIREBASE_DATABASE_URL  // <-- here
     });
 
     logger.info('Firebase Admin SDK initialized successfully');
-    return true;
+    return admin;
   } catch (error) {
-    // Detailed error logging
     if (error.code === 'ENOENT') {
       logger.error('Service account file could not be read');
     } else if (error.code === 'app/invalid-credential') {
@@ -65,13 +60,11 @@ const initializeFirebase = () => {
     } else {
       logger.error(`Unexpected Firebase Init Error: ${error.message}`);
     }
-
     logger.error('Firebase initialization failed');
-
-    // Rethrow to allow caller to handle
     throw error;
   }
 };
+
 
 
 // Rest of the code remains the same...
@@ -161,4 +154,7 @@ if (require.main === module) {
   }
 }
 
-module.exports = sendNotification;
+module.exports = {
+  initializeFirebase,
+  sendNotification,
+};

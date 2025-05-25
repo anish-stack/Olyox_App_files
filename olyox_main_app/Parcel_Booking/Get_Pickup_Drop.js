@@ -648,6 +648,7 @@ export default function Get_Pickup_Drop({ navigation }) {
                             style={styles.input}
                             placeholder="Pickup location"
                             selection={selection}
+                            multiline={true}
                             value={state.locations.pickup.address}
                             onChangeText={(text) => handleInputChange(text, 'pickup')}
                             onFocus={() => handleInputFocus('pickup')}
@@ -678,6 +679,7 @@ export default function Get_Pickup_Drop({ navigation }) {
                             style={styles.input}
                             placeholder="Where to?"
                             selection={selection}
+                            multiline={true}
                             value={state.locations.dropoff.address}
                             onChangeText={(text) => handleInputChange(text, 'dropoff')}
                             onFocus={() => handleInputFocus('dropoff')}
@@ -713,6 +715,7 @@ export default function Get_Pickup_Drop({ navigation }) {
                                 style={styles.input}
                                 placeholder={`Stop ${index + 1}`}
                                 value={stop.address}
+                                 multiline={true}
                                 onChangeText={(text) => handleInputChange(text, 'stop', index)}
                                 onFocus={() => handleInputFocus(`stop-${index}`)}
                             />

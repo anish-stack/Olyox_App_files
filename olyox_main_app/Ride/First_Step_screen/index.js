@@ -18,22 +18,22 @@ import {
   fetchPastRidesData,
   fetchDirectionsPolyline,
 } from "./api"
-import { CACHE_EXPIRY, INDIA_REGION } from "./constants"
+import {  INDIA_REGION } from "./constants"
 import styles from "./Styles"
+import { useLocation } from "../../context/LocationContext"
 
 const RideLocationSelector = () => {
   const navigation = useNavigation()
   const { isGuest } = useGuest()
   const [coordinates, setCoordinates] = useState([])
-  const [distance, setDistance] = useState(null)
-  const [duration, setDuration] = useState(null)
+
   const [pastRides, setPastRides] = useState([])
+  const { location } = useLocation()
   const [pastRideSuggestions, setPastRideSuggestions] = useState({
     pickup: [],
     dropoff: [],
   })
 
-  // Debounce timer reference
   const directionsTimerRef = useRef(null)
   const isMapSelectionModeRef = useRef(false)
 
@@ -66,7 +66,7 @@ const RideLocationSelector = () => {
   useEffect(() => {
     checkLocationPermission()
     fetchPastRides()
-  }, [])
+  }, [location])
 
   // Process past rides to extract unique locations
   useEffect(() => {
@@ -139,8 +139,8 @@ const RideLocationSelector = () => {
           )
 
           setCoordinates(polylineCoordinates)
-          setDistance(distanceValue)
-          setDuration(durationValue)
+          // setDistance(distanceValue)
+          // setDuration(durationValue)
         }
       } catch (error) {
         console.error("Error fetching directions:", error)
@@ -158,93 +158,58 @@ const RideLocationSelector = () => {
     }
   }, [rideData.pickup, rideData.dropoff])
 
-  const checkLocationPermission = async () => {
+ const checkLocationPermission = async () => {
     try {
-      setState((prev) => ({ ...prev, isFetchingLocation: true }))
-      const { status } = await Location.requestForegroundPermissionsAsync()
-      setState((prev) => ({
-        ...prev,
-        locationPermissionGranted: status === "granted",
-        isFetchingLocation: status !== "granted",
-      }))
+      setState((prev) => ({ ...prev, isFetchingLocation: true, error: null }));
 
-      if (status === "granted") {
-        await getCachedOrCurrentLocation()
-      } else {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== 'granted') {
         setState((prev) => ({
           ...prev,
-          error: "Location permission denied. Some features may be limited.",
+          locationPermissionGranted: false,
           isFetchingLocation: false,
-        }))
+          error: '📍 Location permission denied.',
+        }));
+        return;
       }
-    } catch (error) {
-      console.error("Permission error:", error)
-      setState((prev) => ({
-        ...prev,
-        error: "Failed to request location permission",
-        isFetchingLocation: false,
-      }))
-    }
-  }
 
-  const getCachedOrCurrentLocation = async () => {
-    try {
-      const cachedLocation = await AsyncStorage.getItem("lastKnownLocation")
-      if (cachedLocation) {
-        const { location, timestamp } = JSON.parse(cachedLocation)
-        if (Date.now() - timestamp < CACHE_EXPIRY) {
-          updateLocationData(location)
-          return
-        }
-      }
-      await fetchCurrentLocation()
-    } catch (error) {
-      console.error("Location cache error:", error)
-      await fetchCurrentLocation()
-    }
-  }
-
-  const fetchCurrentLocation = async () => {
-    setState((prev) => ({ ...prev, isFetchingLocation: true, error: "" }))
-    try {
-      // Use balanced accuracy for faster response
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced, // Changed from Highest to Balanced for speed
-        timeout: 10000, // 10 second timeout
-        maximumAge: 60000, // Accept cached location within 1 minute
-      })
+        accuracy: Location.Accuracy.High,
+      });
 
-      await AsyncStorage.setItem(
-        "lastKnownLocation",
-        JSON.stringify({
-          location,
-          timestamp: Date.now(),
-        }),
-      )
-
-      await updateLocationData(location)
-    } catch (error) {
-      console.error("Location error:", error)
-      // Try with lower accuracy if high accuracy fails
-      try {
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Low,
-          timeout: 5000,
-          maximumAge: 300000, // Accept 5 minute old cache
-        })
-        await updateLocationData(location)
-      } catch (fallbackError) {
-        console.error("Fallback location error:", fallbackError)
+      if (!location) {
         setState((prev) => ({
           ...prev,
-          error: "Location unavailable. Please enter manually.",
           isFetchingLocation: false,
-        }))
+          error: '⚠️ Could not retrieve location.',
+        }));
+        return;
       }
-    }
-  }
 
-  const updateLocationData = async (location) => {
+      setState((prev) => ({
+        ...prev,
+        location,
+        locationPermissionGranted: true,
+        isFetchingLocation: false,
+      }));
+
+      console.log('✅ Location obtained:', location);
+    } catch (error) {
+      // console.error('❌ Location error:', error);
+      setState((prev) => ({
+        ...prev,
+        isFetchingLocation: false,
+        error: 'Something went wrong while fetching location.',
+      }));
+    }
+  };
+
+
+ 
+
+  const updateLocationData = async () => {
+    console.log("Updating location data with:", location)
     try {
       const address = await fetchCurrentLocationAddress(location.coords.latitude, location.coords.longitude)
 
@@ -256,7 +221,7 @@ const RideLocationSelector = () => {
       setRegion({
         latitude,
         longitude,
-        latitudeDelta: 0.01, // More zoomed in by default
+        latitudeDelta: 0.01, 
         longitudeDelta: 0.01,
       })
 
@@ -283,6 +248,12 @@ const RideLocationSelector = () => {
       }))
     }
   }
+
+  useEffect(() => {
+    if (location.coords) {
+      updateLocationData()
+    }
+  }, [location.coords])
 
   const handleMapRegionChange = async (newRegion) => {
     try {

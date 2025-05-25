@@ -111,7 +111,7 @@ const LocationInputs = ({ state, setState, isFetchingLocation, onMapSelect, onLo
           }}
           returnKeyType="done"
           blurOnSubmit={true}
-          multiline={false} // Changed to false for better keyboard handling
+          multiline={true} // Changed to false for better keyboard handling
         />
 
         {isFetchingLocation && state.activeInput === "pickup" ? (
@@ -165,7 +165,7 @@ const LocationInputs = ({ state, setState, isFetchingLocation, onMapSelect, onLo
           }}
           returnKeyType="done"
           blurOnSubmit={true}
-          multiline={false} // Changed to false for better keyboard handling
+          multiline={true} // Changed to false for better keyboard handling
         />
 
         {state.loading && state.activeInput === "dropoff" ? (

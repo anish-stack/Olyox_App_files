@@ -493,7 +493,7 @@ export default function Recharge() {
     }
 
     setLoading(true);
-    const baseUrl = `https://appapi.olyox.com/api/v1/rider/recharge-wallet/${selectedMemberId}/${userData?.BH}`;
+    const baseUrl = `http://192.168.1.11:3100/api/v1/rider/recharge-wallet/${selectedMemberId}/${userData?.BH}`;
     const urlWithParams = appliedCoupon ? `${baseUrl}?coupon=${appliedCoupon.code}&type=cab` : baseUrl;
 
     try {
@@ -521,7 +521,7 @@ export default function Recharge() {
 
       // After payment, call your backend verification API
       const verifyResponse = await axios.post(
-        `https://appapi.olyox.com/api/v1/rider/recharge-verify/${userData?.BH}`,
+        `http://192.168.1.11:3100/api/v1/rider/recharge-verify/${userData?.BH}`,
         {
           razorpay_order_id: paymentResponse?.razorpay_order_id,
           razorpay_payment_id: paymentResponse?.razorpay_payment_id,
@@ -563,7 +563,7 @@ export default function Recharge() {
     try {
       // Replace with your actual API endpoint
       const response = await axios.post(
-        `https://appapi.olyox.com/api/v1/rider/verify-qr-payment/${userData?.BH}`,
+        `http://192.168.1.11:3100/api/v1/rider/verify-qr-payment/${userData?.BH}`,
         {
           transactionId,
           planId: selectedMemberId,

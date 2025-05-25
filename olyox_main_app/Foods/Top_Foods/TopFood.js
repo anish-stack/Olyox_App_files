@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import TopFoodCard from './TopFoodCard';
 import { styles } from './FoodStyles';
+import { useLocation } from '../../context/LocationContext';
 
 // Define storage key for cached location
 const LOCATION_CACHE_KEY = 'cached_user_location';
@@ -17,9 +18,10 @@ const CATEGORIES = ['All', 'Veg', 'Non-Veg', 'Veg-Non-Veg'];
 
 export default function TopFood({ show = false, refreshing, onRefresh }) {
     const isMounted = useRef(true);
-    
+
     const [foodData, setFoodData] = useState([]);
     const [originalFoodData, setOriginalFoodData] = useState([]);
+    const { location } = useLocation()
     const [showAll, setShowAll] = useState(show);
     const [loading, setLoading] = useState(true);
     const [loadingText, setLoadingText] = useState('Finding restaurants near you...');
@@ -29,88 +31,29 @@ export default function TopFood({ show = false, refreshing, onRefresh }) {
     const [priceSort, setPriceSort] = useState(null); // null, 'asc', 'desc'
     const [showFilters, setShowFilters] = useState(false);
     const navigation = useNavigation();
-    
+
     const fetchRestaurants = async () => {
         if (!isMounted.current) return;
-        
+
         try {
             setLoading(true);
-            
-            // Try to get location from AsyncStorage first
-            let latitude, longitude;
-            try {
-                const cachedLocationJSON = await AsyncStorage.getItem(LOCATION_CACHE_KEY);
-                
-                if (cachedLocationJSON) {
-                    const cachedLocation = JSON.parse(cachedLocationJSON);
-                    
-                    // Check if cached location is recent (within last 24 hours)
-                    const cacheTime = cachedLocation.timestamp || 0;
-                    const cacheAgeHours = (Date.now() - cacheTime) / (1000 * 60 * 60);
-                    
-                    if (cacheAgeHours < 24) {
-                        latitude = cachedLocation.latitude;
-                        longitude = cachedLocation.longitude;
-                    }
-                }
-            } catch (cacheError) {
-                console.error("Error reading cached location:", cacheError);
-                // Continue with fetching new location if cache read fails
-            }
-            
-            // If no valid cached location, fetch a new one
-            if (!latitude || !longitude) {
-                setLoadingText('Getting your location...');
-                
-                // Check if we already have permission
-                const { status } = await Location.getForegroundPermissionsAsync();
-                
-                if (status !== 'granted') {
-                    const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
-                    if (newStatus !== 'granted') {
-                        setError('Location permission denied. Enable it in settings.');
-                        setLoading(false);
-                        return;
-                    }
-                }
-                
-                // Get location with lower accuracy for speed
-                const location = await Location.getCurrentPositionAsync({
-                    accuracy: Location.Accuracy.Balanced
-                });
-                
-                if (!location || !location.coords) {
-                    setError('Unable to fetch location.');
-                    setLoading(false);
-                    return;
-                }
-                
-                ({ latitude, longitude } = location.coords);
-                
-                // Cache the new location with timestamp
-                try {
-                    await AsyncStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify({
-                        latitude,
-                        longitude,
-                        timestamp: Date.now()
-                    }));
-                } catch (storageError) {
-                    console.error("Error caching location:", storageError);
-                    // Continue even if caching fails
-                }
-            }
-            
+
+
+
+            const { latitude, longitude } = location.coords;
+            console.log("Latitude:", latitude, "Longitude:", longitude);
+
             setLoadingText('Finding restaurants near you...');
-            
+
             // Fetch restaurants based on location
-            const response = await axios.get(`https://appapi.olyox.com/api/v1/tiffin/find_RestaurantTop`, {
+            const response = await axios.get(`http://192.168.1.11:3100/api/v1/tiffin/find_RestaurantTop`, {
                 params: {
                     lat: latitude,
                     lng: longitude
                 },
                 timeout: 8000
             });
-            
+
             if (response.data?.data?.length > 0) {
                 // Shuffle the restaurant data for variety
                 const shuffledData = shuffleArray([...response.data.data]);
@@ -128,7 +71,7 @@ export default function TopFood({ show = false, refreshing, onRefresh }) {
             }
         }
     };
-    
+
     // Fisher-Yates shuffle algorithm
     const shuffleArray = (array) => {
         const newArray = [...array];
@@ -138,18 +81,18 @@ export default function TopFood({ show = false, refreshing, onRefresh }) {
         }
         return newArray;
     };
-    
+
     // Apply filters and search
     const applyFiltersAndSearch = () => {
         let filteredData = [...originalFoodData];
-        
+
         // Apply category filter
         if (selectedCategory !== 'All') {
             filteredData = filteredData.filter(
                 restaurant => restaurant.restaurant_category === selectedCategory
             );
         }
-        
+
         // Apply search filter
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase().trim();
@@ -157,22 +100,22 @@ export default function TopFood({ show = false, refreshing, onRefresh }) {
                 restaurant => restaurant.restaurant_name.toLowerCase().includes(query)
             );
         }
-        
+
         // Apply price sort
         if (priceSort === 'asc') {
             filteredData.sort((a, b) => a.priceForTwoPerson - b.priceForTwoPerson);
         } else if (priceSort === 'desc') {
             filteredData.sort((a, b) => b.priceForTwoPerson - a.priceForTwoPerson);
         }
-        
+
         setFoodData(filteredData);
     };
-    
+
     // Handle search input changes
     const handleSearch = (text) => {
         setSearchQuery(text);
     };
-    
+
     // Handle manual refresh
     const handleRefresh = () => {
         setSearchQuery('');
@@ -180,31 +123,31 @@ export default function TopFood({ show = false, refreshing, onRefresh }) {
         setPriceSort(null);
         fetchRestaurants();
     };
-    
+
     useEffect(() => {
         fetchRestaurants();
-        
+
         return () => {
             isMounted.current = false;
         };
     }, [refreshing]);
-    
+
     // Apply filters when any filter changes
     useEffect(() => {
         if (originalFoodData.length > 0) {
             applyFiltersAndSearch();
         }
     }, [searchQuery, selectedCategory, priceSort]);
-    
+
     const displayedRestaurants = showAll ? foodData : foodData.slice(0, 4);
-    
+
     const renderLoader = () => (
         <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color="#FF6B00" />
             <Text style={styles.loaderText}>{loadingText}</Text>
         </View>
     );
-    
+
     const renderFilters = () => (
         <View style={styles.filtersContainer}>
             {/* Search bar */}
@@ -223,7 +166,7 @@ export default function TopFood({ show = false, refreshing, onRefresh }) {
                     </TouchableOpacity>
                 ) : null}
             </View>
-            
+
             {/* Filter options */}
             {showFilters && (
                 <View style={styles.filterOptionsContainer}>
@@ -240,7 +183,7 @@ export default function TopFood({ show = false, refreshing, onRefresh }) {
                                     ]}
                                     onPress={() => setSelectedCategory(category)}
                                 >
-                                    <Text 
+                                    <Text
                                         style={[
                                             styles.categoryChipText,
                                             selectedCategory === category && styles.selectedCategoryChipText
@@ -252,7 +195,7 @@ export default function TopFood({ show = false, refreshing, onRefresh }) {
                             ))}
                         </ScrollView>
                     </View>
-                    
+
                     {/* Price filter */}
                     <View style={styles.filterSection}>
                         <Text style={styles.filterLabel}>Price:</Text>
@@ -281,7 +224,7 @@ export default function TopFood({ show = false, refreshing, onRefresh }) {
             )}
         </View>
     );
-    
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -302,15 +245,15 @@ export default function TopFood({ show = false, refreshing, onRefresh }) {
                     )}
                 </View>
             </View>
-            
+
             {renderFilters()}
-            
+
             {loading ? (
                 renderLoader()
             ) : error ? (
                 <View style={styles.errorContainer}>
                     <Text style={styles.errorText}>{error}</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.retryButton}
                         onPress={() => {
                             setError('');

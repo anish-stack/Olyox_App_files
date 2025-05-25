@@ -6,9 +6,14 @@ const cors = require('cors');
 const connectDb = require('./database/db');
 const cookies_parser = require('cookie-parser');
 const axios = require('axios');
+const rateLimit = require('express-rate-limit');
+const timeout = require('express-timeout-handler');
 const multer = require('multer');
 require('dotenv').config();
 
+// Redis Adapter and Client
+const { createAdapter } = require('@socket.io/redis-adapter');
+const { createClient } = require('redis');
 // Routes
 const router = require('./routes/routes');
 const rides = require('./routes/rides.routes');
@@ -62,14 +67,52 @@ const upload = multer({ storage: storage });
 const app = express();
 const server = http.createServer(app);
 
+
+//initialize Redis clients for Socket.IO
+
+const redisOptions = {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: process.env.REDIS_PORT || 6379,
+    password: process.env.REDIS_PASSWORD || '',
+    retry_strategy: (options) => {
+        if (options.error && options.error.code === 'ECONNREFUSED') {
+            console.error(`[${new Date().toISOString()}] Redis connection refused, retrying...`);
+            return Math.min(options.attempt * 100, 3000);
+        }
+        return undefined
+    }
+}
+
+const pubClient = createClient(redisOptions)
+const subClient = pubClient.duplicate();
+
+pubClient.on('error', (err) => console.error(`[${new Date().toISOString()}] Redis Pub Client Error:`, err));
+subClient.on('error', (err) => console.error(`[${new Date().toISOString()}] Redis Sub Client Error:`, err));
+pubClient.on('connect', () => console.log(`[${new Date().toISOString()}] Redis Pub Client Connected`));
+subClient.on('connect', () => console.log(`[${new Date().toISOString()}] Redis Sub Client Connected`));
+
+app.set('pubClient', pubClient);
+
 // Initialize Socket.IO with appropriate CORS and ping settings
 const io = socketIo(server, {
     cors: {
         origin: '*',
-        methods: ['GET', 'POST']
+        methods: ['GET', 'POST'],
+        credentials: true,
     },
+    adapter: createAdapter(pubClient, subClient),
     pingInterval: 6000,
 });
+
+
+// Connect to Redis clients with error handling
+Promise.all([pubClient.connect(), subClient.connect()])
+    .then(() => {
+        console.log(`[${new Date().toISOString()}] Redis clients connected successfully`);
+    })
+    .catch((err) => {
+        console.error(`[${new Date().toISOString()}] Failed to connect Redis clients:`, err);
+    });
 
 // Connect to the database
 connectwebDb()
@@ -86,14 +129,18 @@ app.use(cors({
     },
     credentials: true,
 }));
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 500, // Limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.'
+});
+app.use(limiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookies_parser());
 
-/**
- * Socket connection maps to track active connections
- * These maps store userId/driverId -> socketId mappings
- */
+
 const userSocketMap = new Map();     // Regular users
 const driverSocketMap = new Map();   // Drivers
 const tiffinPartnerMap = new Map();  // Tiffin service partners
@@ -102,15 +149,130 @@ const tiffinPartnerMap = new Map();  // Tiffin service partners
 app.set('driverSocketMap', driverSocketMap);
 app.set('userSocketMap', userSocketMap);
 
+
+
+const saveTempRideToFirebase = async (rideData) => {
+    try {
+        const adminSDK = await sendNotification.initializeFirebase();
+
+        if (!adminSDK.apps || adminSDK.apps.length === 0) {
+            console.log('No Firebase Admin SDK apps found');
+            throw new Error('Firebase not initialized');
+        }
+
+        const db = adminSDK.database();
+        const ref = db.ref(`tempRides/${rideData._id}`);
+
+        const startTime = Date.now(); // start timer
+
+        await ref.set(rideData);
+
+        const endTime = Date.now(); // end timer
+        const durationMs = endTime - startTime;
+        console.log(
+          `[${new Date().toISOString()}] Saved temp ride to Firebase: ${rideData._id} (took ${durationMs} ms)`
+        );
+
+        return { success: true, _id: rideData._id };
+
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Failed to save temp ride to Firebase:`, error);
+
+        const startTime = Date.now();
+
+        // Fallback to MongoDB
+        const dataSave = await new tempRideDetailsSchema(rideData).save();
+
+        const endTime = Date.now();
+        const durationMs = endTime - startTime;
+        console.log(
+          `[${new Date().toISOString()}] Fallback: Saved temp ride to MongoDB: ${dataSave._id} (took ${durationMs} ms)`
+        );
+
+        return { success: true, _id: dataSave._id };
+    }
+};
+
+
+
+const fetchTempRideFromFirebase = async (rideId) => {
+    try {
+        const adminSDK = await sendNotification.initializeFirebase();
+
+        console.log('adminSDK.apps:', adminSDK.apps);
+
+        if (!adminSDK.apps || adminSDK.apps.length === 0) {
+            console.log('No Firebase Admin SDK apps found');
+            throw new Error('Firebase not initialized');
+        }
+        const db = adminSDK.database();
+        const ref = db.ref('tempRides');
+        const snapshot = await ref.once('value');
+        const rides = snapshot.val();
+
+        // console.log('rides from Firebase:', rides);
+
+        if (!rides) {
+            console.warn(`[${new Date().toISOString()}] No temp rides found in Firebase`);
+            // Fallback to MongoDB
+            const mongoRide = await tempRideDetailsSchema.findOne({
+                $or: [{ _id: rideId }, { "rideDetails._id": rideId }]
+            }).lean();
+            if (mongoRide) {
+                console.log(`[${new Date().toISOString()}] Fallback: Found temp ride in MongoDB: ${rideId}`);
+                return mongoRide;
+            }
+            return null;
+        }
+
+        // Search by either outer _id or inner rideDetails._id
+        const ride = Object.values(rides).find(r => r._id === rideId || r.rideDetails?._id === rideId);
+
+        console.log(`[${new Date().toISOString()}] Searching for temp ride in Firebase: ${rideId}`);
+
+        if (!ride) {
+            console.warn(`[${new Date().toISOString()}] Temp ride not found in Firebase: ${rideId}`);
+            // Fallback to MongoDB
+            const mongoRide = await tempRideDetailsSchema.findOne({
+                $or: [{ _id: rideId }, { "rideDetails._id": rideId }]
+            }).lean();
+            if (mongoRide) {
+                console.log(`[${new Date().toISOString()}] Fallback: Found temp ride in MongoDB: ${rideId}`);
+                return mongoRide;
+            }
+            return null;
+        }
+        console.log(`[${new Date().toISOString()}] Fetched temp ride from Firebase: ${rideId}`);
+        return ride;
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Error fetching temp ride from Firebase:`, error);
+        // Fallback to MongoDB
+        const mongoRide = await tempRideDetailsSchema.findOne({
+            $or: [{ _id: rideId }, { "rideDetails._id": rideId }]
+        }).lean();
+        if (mongoRide) {
+            console.log(`[${new Date().toISOString()}] Fallback: Found temp ride in MongoDB: ${rideId}`);
+            return mongoRide;
+        }
+        return null;
+    }
+};
+
+
+// Health check endpoint for load balancer
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'UP',
+        timestamp: new Date().toISOString(),
+        redisConnected: pubClient.isOpen && subClient.isOpen,
+        mongodbConnected: mongoose.connection.readyState === 1,
+  
+    });
+});
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log(`[${new Date().toISOString()}] New client connected: ${socket.id}`);
 
-    /**
-     * 
-     * Handle user connections
-     * Maps a user's ID to their socket ID for targeted communications
-     */
     socket.on('user_connect', (data) => {
         if (!data || !data.userId || !data.userType) {
             console.error(`[${new Date().toISOString()}] Invalid user connect data:`, data);
@@ -138,17 +300,28 @@ io.on('connection', (socket) => {
         console.log(`[${new Date().toISOString()}] Current driver connections:`, Array.from(driverSocketMap.entries()));
     });
 
-socket.on("ping-custom", (payload) => {
-    console.log(`[${new Date().toISOString()}] 🔄 Received ping-custom from ${socket.id}:`, payload);
+    socket.on("ping-custom", (payload) => {
+        console.log(`[${new Date().toISOString()}] 🔄 Received ping-custom from ${socket.id}:`, payload);
 
-    socket.emit("pong-custom", {
-        message: "Pong from server!",
-        timestamp: Date.now(),
-        echo: payload,
+        socket.emit("pong-custom", {
+            message: "Pong from server!",
+            timestamp: Date.now(),
+            echo: payload,
+        });
+
+        console.log(`[${new Date().toISOString()}] ✅ Sent pong-custom to ${socket.id}`);
     });
+    socket.on("ping-custom-user", (payload) => {
+        console.log(`[${new Date().toISOString()}] 🔄 Received ping-custom  from user app ${socket.id}:`, payload);
 
-    console.log(`[${new Date().toISOString()}] ✅ Sent pong-custom to ${socket.id}`);
-});
+        socket.emit("pong-custom-user", {
+            message: "Pong from server!",
+            timestamp: Date.now(),
+            echo: payload,
+        });
+
+        console.log(`[${new Date().toISOString()}] ✅ Sent pong-custom to ${socket.id}`);
+    });
 
     /**
      * Handle tiffin partner connections
@@ -169,18 +342,18 @@ socket.on("ping-custom", (payload) => {
      * Broadcasts ride data to all connected drivers
      * @param {Object} rideData - The ride data to be sent to drivers
      */
-    const emitRideToDrivers = (rideData) => {
-        console.log(`[${new Date().toISOString()}] Broadcasting ride to ${driverSocketMap.size} drivers`);
+    // const emitRideToDrivers = (rideData) => {
+    //     console.log(`[${new Date().toISOString()}] Broadcasting ride to ${driverSocketMap.size} drivers`);
 
-        let emittedCount = 0;
-        driverSocketMap.forEach((driverSocketId, driverId) => {
-            console.log(`[${new Date().toISOString()}] Sending ride data to driver ${driverId} (socket: ${driverSocketId})`);
-            io.to(driverSocketId).emit('ride_come', rideData);
-            emittedCount++;
-        });
+    //     let emittedCount = 0;
+    //     driverSocketMap.forEach((driverSocketId, driverId) => {
+    //         console.log(`[${new Date().toISOString()}] Sending ride data to driver ${driverId} (socket: ${driverSocketId})`);
+    //         io.to(driverSocketId).emit('ride_come', rideData);
+    //         emittedCount++;
+    //     });
 
-        console.log(`[${new Date().toISOString()}] Emitted ride data to ${emittedCount} drivers`);
-    };
+    //     console.log(`[${new Date().toISOString()}] Emitted ride data to ${emittedCount} drivers`);
+    // };
 
 
 
@@ -219,7 +392,7 @@ socket.on("ping-custom", (payload) => {
 
                     if (userToken) {
                         try {
-                            await sendNotification(userToken, title, body, {
+                            await sendNotification.sendNotification(userToken, title, body, {
                                 event: 'RIDE_ACCEPTED',
                                 eta: 5,
                                 message: 'Your ride request has been accepted!',
@@ -236,7 +409,7 @@ socket.on("ping-custom", (payload) => {
                 } else {
                     if (userToken) {
                         try {
-                            await sendNotification(userToken, title, body, {
+                            await sendNotification.sendNotification(userToken, title, body, {
                                 event: 'RIDE_ACCEPTED',
                                 eta: 5,
                                 message: 'Your ride request has been accepted!',
@@ -316,16 +489,14 @@ socket.on("ping-custom", (payload) => {
     socket.on('rideAccepted_by_user', async (data) => {
         try {
             const { driver, ride } = data;
-
             if (!driver || !ride || !ride.rider) {
                 console.error(`[${new Date().toISOString()}] Invalid rideAccepted_by_user data:`, data);
                 return;
             }
-
             const start = Date.now();
             console.log(`[${new Date().toISOString()}] Starting DB save process for rider: ${ride.rider._id}`);
-
-            const dataSave = await new tempRideDetailsSchema({
+            const rideData = {
+                _id: new mongoose.Types.ObjectId().toString(), // Generate unique ID for Firebase
                 driver: {
                     name: driver.name,
                     carModel: driver.carModel,
@@ -376,22 +547,17 @@ socket.on("ping-custom", (payload) => {
                     },
                 },
                 message: 'You can start this ride',
-            }).save();
-
-            // Update the rider document with on_ride_id
+            };
+            const dataSave = await saveTempRideToFirebase(rideData);
             const update_driver = await RiderModel.findById(ride.rider._id);
             if (!update_driver) {
                 console.error(`[${new Date().toISOString()}] Rider not found for ID: ${ride.rider._id}`);
                 return;
             }
-
             update_driver.on_ride_id = dataSave._id;
             await update_driver.save();
-
             const end = Date.now();
             console.log(`[${new Date().toISOString()}] DB save completed in ${(end - start)} ms for rider: ${ride.rider._id}`);
-
-            // Now emit to socket
             const driverSocketId = driverSocketMap.get(ride.rider._id);
             if (driverSocketId) {
                 io.to(driverSocketId).emit('ride_accepted_message', {
@@ -404,7 +570,6 @@ socket.on("ping-custom", (payload) => {
             } else {
                 console.log(`[${new Date().toISOString()}] No active socket found for rider: ${ride.rider._id}`);
             }
-
         } catch (error) {
             console.error(`[${new Date().toISOString()}] Error in rideAccepted_by_user:`, error);
         }
@@ -486,7 +651,7 @@ socket.on("ping-custom", (payload) => {
 
                         if (userToken) {
                             try {
-                                await sendNotification(userToken, title, body);
+                                await sendNotification.sendNotification(userToken, title, body);
                                 console.log("✅ FCM notification sent to user.");
                             } catch (error) {
                                 console.error("❌ Error sending FCM to user:", error);
@@ -503,7 +668,7 @@ socket.on("ping-custom", (payload) => {
 
                         if (userToken) {
                             try {
-                                await sendNotification(userToken, title, body);
+                                await sendNotification.sendNotification(userToken, title, body);
                                 console.log("✅ FCM notification sent to offline user.");
                             } catch (error) {
                                 console.error("❌ Error sending FCM to offline user:", error);
@@ -563,7 +728,7 @@ socket.on("ping-custom", (payload) => {
                         const title = 'You can retry in a few moments.';
                         const body = 'Sorry, no riders are currently available nearby. Please try again shortly.';
 
-                        await sendNotification(userToken, title, body, {
+                        await sendNotification.sendNotification(userToken, title, body, {
                             event: "NO_RIDERS_AVAILABLE",
                             retryAfter: 120,
                             screen: "RetryBooking"
@@ -583,7 +748,7 @@ socket.on("ping-custom", (payload) => {
                         const title = 'You can retry in a few moments.';
                         const body = 'Sorry, no riders are currently available nearby. Please try again shortly.';
 
-                        await sendNotification(userToken, title, body);
+                        await sendNotification.sendNotification(userToken, title, body);
                     } catch (fcmError) {
                         console.warn(`[${new Date().toISOString()}] Failed to send FCM notification (no socket):`, fcmError);
                     }
@@ -637,7 +802,7 @@ socket.on("ping-custom", (payload) => {
                             const title = 'Your Ride Has Started! Stay Safe!';
                             const body = 'Your ride has officially started. Your driver is on the way. Please stay safe and be careful during your journey. We wish you a smooth ride!';
 
-                            await sendNotification(userToken, title, body);
+                            await sendNotification.sendNotification(userToken, title, body);
                         }
                     } catch (fcmError) {
                         console.warn(`[${new Date().toISOString()}] Failed to send ride start FCM:`, fcmError);
@@ -651,7 +816,7 @@ socket.on("ping-custom", (payload) => {
                             const title = 'Your Ride Has Started! Stay Safe!';
                             const body = 'Your ride has officially started. Your driver is on the way. Please stay safe and be careful during your journey. We wish you a smooth ride!';
 
-                            await sendNotification(userToken, title, body);
+                            await sendNotification.sendNotification(userToken, title, body);
                         }
                     } catch (fcmError) {
                         console.warn(`[${new Date().toISOString()}] Failed to send ride start FCM (no socket):`, fcmError);
@@ -702,7 +867,7 @@ socket.on("ping-custom", (payload) => {
 
                 try {
                     if (userToken) {
-                        await sendNotification(userToken, title, body);
+                        await sendNotification.sendNotification(userToken, title, body);
                         console.log(`[${new Date().toISOString()}] Notification sent to user (via socket): ${user}`);
                     }
                 } catch (notifError) {
@@ -712,7 +877,7 @@ socket.on("ping-custom", (payload) => {
             } else {
                 try {
                     if (userToken) {
-                        await sendNotification(userToken, title, body);
+                        await sendNotification.sendNotification(userToken, title, body);
                         console.log(`[${new Date().toISOString()}] Notification sent to user (offline): ${user}`);
                     }
                 } catch (notifError) {
@@ -915,7 +1080,7 @@ socket.on("ping-custom", (payload) => {
                     });
 
                     try {
-                        await sendNotification(foundUser?.fcmToken, title, body);
+                        await sendNotification.sendNotification(foundUser?.fcmToken, title, body);
                     } catch (fcmError) {
                         console.warn(`[${new Date().toISOString()}] Failed to send FCM notification to socket user ${data.ride.user}:`, fcmError);
                     }
@@ -923,7 +1088,7 @@ socket.on("ping-custom", (payload) => {
                     console.log(`[${new Date().toISOString()}] Rating request sent to user: ${data.ride.user}`);
                 } else {
                     try {
-                        await sendNotification(foundUser?.fcmToken, title, body);
+                        await sendNotification.sendNotification(foundUser?.fcmToken, title, body);
                     } catch (fcmError) {
                         console.warn(`[${new Date().toISOString()}] Failed to send FCM notification (no socket) to user ${data.ride.user}:`, fcmError);
                     }
@@ -1313,49 +1478,73 @@ app.post('/image-upload', upload.any(), async (req, res) => {
 // Define the route to fetch directions
 app.post('/directions', async (req, res) => {
     try {
-        console.log("i am hits", req.body)
-        // Extract pickup and drop locations from the request body
         const data = req.body || {};
-        console.log("I am pickup", data);
 
-        // Check if the pickup and dropoff coordinates exist
+        console.log(data)
+
         if (!data?.pickup?.latitude || !data?.pickup?.longitude || !data?.dropoff?.latitude || !data?.dropoff?.longitude) {
             return res.status(400).json({ error: 'Invalid pickup or dropoff location data' });
         }
 
-        // Construct the Google Maps API URL
+        // Create a unique cache key based on coordinates
+        const cacheKey = `directions:${data.pickup.latitude},${data.pickup.longitude}:${data.dropoff.latitude},${data.dropoff.longitude}`;
+
+        const startTime = Date.now();
+
+        // Try fetching from Redis cache
+        const cachedData = await pubClient.get(cacheKey);
+        if (cachedData) {
+            const timeTakenMs = Date.now() - startTime;
+            const result = JSON.parse(cachedData);
+
+            console.log(`[${new Date().toISOString()}] Successfully fetched directions from cache for key: ${cacheKey} (took ${timeTakenMs} ms)`);
+            console.log('Passing cached result to client:', result);
+
+            return res.json({
+                ...result,
+                source: 'cache',
+                timeTakenMs
+            });
+        }
+
+        // If no cache, call Google Maps API
         const googleMapsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${data?.pickup?.latitude},${data?.pickup?.longitude}&destination=${data?.dropoff?.latitude},${data?.dropoff?.longitude}&key=AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8`;
-
-        // Make the request to Google Maps API
+        const apiStartTime = Date.now();
         const response = await axios.get(googleMapsUrl);
+        const apiTimeTakenMs = Date.now() - apiStartTime;
 
-        // Check if the API returned valid data
         if (response.data.routes && response.data.routes[0] && response.data.routes[0].legs) {
             const leg = response.data.routes[0].legs[0];
-
-            // Get the polyline encoded path for the directions
             const polyline = response.data.routes[0].overview_polyline.points;
 
-            // Return the distance, duration, and polyline for frontend rendering
-            return res.json({
+            const result = {
                 distance: leg.distance.text,
                 duration: leg.duration.text,
-                polyline: polyline, // Send polyline for rendering on the map
+                polyline,
+            };
+
+            // Save to Redis cache with expiration (e.g., 1 hour = 3600 seconds)
+            await pubClient.setEx(cacheKey, 3600, JSON.stringify(result));
+
+            console.log(`[${new Date().toISOString()}] Successfully fetched directions from Google API for key: ${cacheKey} (took ${apiTimeTakenMs} ms)`);
+            console.log('Passing API result to client:', result);
+
+            return res.json({
+                ...result,
+                source: 'google-api',
+                timeTakenMs: apiTimeTakenMs
             });
         } else {
             return res.status(404).json({ error: 'No route found' });
         }
+
     } catch (error) {
         console.error('Error fetching directions:', error);
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-/**
- * Location webhook for parcel delivery personnela
- * Updates the current location of a parcel delivery person
- */
-// Conditionally apply the Protect middleware based on riderId presence
+
 app.post('/webhook/cab-receive-location', async (req, res, next) => {
     if (!req.body.riderId) {
         // Apply Protect middleware only if riderId is not provided
@@ -1372,7 +1561,7 @@ app.post('/webhook/cab-receive-location', async (req, res, next) => {
             userId = req.user.userId;  // Otherwise, get userId from the authenticated user
         }
 
-        console.log("body hits");
+   
 
         const data = await RiderModel.findOneAndUpdate(
             { _id: userId },
@@ -1386,7 +1575,7 @@ app.post('/webhook/cab-receive-location', async (req, res, next) => {
             { upsert: true, new: true }
         );
 
-        console.log("data of rider updated");
+        // console.log("data of rider updated");
 
         res.status(200).json({ message: 'Location updated successfully' });
     } catch (error) {
@@ -1420,6 +1609,7 @@ app.post('/webhook/receive-location', Protect, async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 app.get('/rider/:tempRide', async (req, res) => {
@@ -1431,31 +1621,32 @@ app.get('/rider/:tempRide', async (req, res) => {
         return res.status(400).json({ error: 'Invalid ride ID' });
     }
 
-    const objectId = new mongoose.Types.ObjectId(tempRide);
     const maxRetries = 3;
     const delayMs = 12000;
 
     try {
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            console.log(`[STEP 3.${attempt}] Attempt ${attempt} to fetch ride...`);
+        let ride = null;
 
-            const ride = await tempRideDetailsSchema.findOne({
-                $or: [
-                    { _id: objectId },
-                    { "rideDetails._id": objectId }
-                ]
-            }).lean();
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            console.log(`[STEP 3.${attempt}] Attempt ${attempt} to fetch ride from Firebase/MongoDB...`);
+
+            ride = await fetchTempRideFromFirebase(tempRide);
 
             if (ride) {
                 console.log(`[STEP 4.${attempt}] Ride found, fetching user...`);
-                const user = await User.findById(ride?.rideDetails?.user).lean();
-
-                if (!user) {
-                    console.warn(`[STEP 5.${attempt}] User not found for ride`);
+                const userId = ride?.rideDetails?.user || ride?.user; // fallback if user is directly on ride
+                if (!userId) {
+                    console.warn(`[STEP 5.${attempt}] User ID not found in ride data`);
                     return res.status(404).json({ error: 'User not found for ride' });
                 }
 
-                console.log(`[STEP 6.${attempt}] Ride and user found, returning response`);
+                const user = await User.findById(userId).lean();
+                if (!user) {
+                    console.warn(`[STEP 6.${attempt}] User not found for ride`);
+                    return res.status(404).json({ error: 'User not found for ride' });
+                }
+
+                console.log(`[STEP 7.${attempt}] Ride and user found, returning response`);
                 return res.status(200).json({
                     ride: {
                         ...ride,
@@ -1464,11 +1655,11 @@ app.get('/rider/:tempRide', async (req, res) => {
                 });
             }
 
-            console.log(`[STEP 7.${attempt}] Ride not found, retrying in ${delayMs / 1000} seconds...`);
+            console.log(`[STEP 8.${attempt}] Ride not found, retrying in ${delayMs / 1000} seconds...`);
             if (attempt < maxRetries) await delay(delayMs);
         }
 
-        console.error("[STEP 8] Ride not found after maximum retries");
+        console.error("[STEP 9] Ride not found after maximum retries");
         return res.status(404).json({ error: 'Ride not found after retrying' });
 
     } catch (error) {
@@ -1476,8 +1667,6 @@ app.get('/rider/:tempRide', async (req, res) => {
         return res.status(500).json({ error: 'Internal server error' });
     }
 });
-
-
 
 app.get('/rider', async (req, res) => {
     try {
@@ -1487,9 +1676,6 @@ app.get('/rider', async (req, res) => {
         res.status(500).send('Error retrieving riders');
     }
 });
-
-
-
 
 app.get('/', (req, res) => {
     res.status(201).json({
@@ -1505,152 +1691,147 @@ app.use((err, req, res, next) => {
 
 
 app.post('/Fetch-Current-Location', async (req, res) => {
-    const { lat, lng } = req.body;
-    console.log("body", req.body)
-    // Check if latitude and longitude are provided
-    if (!lat || !lng) {
-        return res.status(400).json({
-            success: false,
-            message: "Latitude and longitude are required",
-        });
+  const { lat, lng } = req.body;
+  if (!lat || !lng) {
+    return res.status(400).json({ success: false, message: "Latitude and longitude are required" });
+  }
+
+  const cacheKey = `geocode:${lat},${lng}`;
+
+  try {
+    // Check Redis cache first
+    const cachedData = await pubClient.get(cacheKey);
+    if (cachedData) {
+      return res.status(200).json({
+        success: true,
+        data: JSON.parse(cachedData),
+        message: "Location fetch successful (from cache)"
+      });
     }
 
-    try {
+    // If no cache, fetch from Google
+    const addressResponse = await axios.get(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU`
+    );
 
+    if (addressResponse.data.results.length > 0) {
+      const addressComponents = addressResponse.data.results[0].address_components;
 
-        // Fetch address details using the provided latitude and longitude
-        const addressResponse = await axios.get(
-            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8`
-        );
+      let city = null, area = null, postalCode = null, district = null;
 
+      addressComponents.forEach(component => {
+        if (component.types.includes('locality')) city = component.long_name;
+        else if (component.types.includes('sublocality_level_1')) area = component.long_name;
+        else if (component.types.includes('postal_code')) postalCode = component.long_name;
+        else if (component.types.includes('administrative_area_level_3')) district = component.long_name;
+      });
 
+      const addressDetails = {
+        completeAddress: addressResponse.data.results[0].formatted_address,
+        city,
+        area,
+        district,
+        postalCode,
+        landmark: null,
+        lat: addressResponse.data.results[0].geometry.location.lat,
+        lng: addressResponse.data.results[0].geometry.location.lng,
+      };
 
+      const responseData = {
+        location: { lat, lng },
+        address: addressDetails,
+      };
 
-        // Check if any results are returned
-        if (addressResponse.data.results.length > 0) {
-            const addressComponents = addressResponse.data.results[0].address_components;
-            // console.log(addressComponents)
+      // Cache the result for 1 hour (3600 seconds)
+      await pubClient.setEx(cacheKey, 3600, JSON.stringify(responseData));
 
-            let city = null;
-            let area = null;
-            let postalCode = null;
-            let district = null;
-
-            // Extract necessary address components
-            addressComponents.forEach(component => {
-                if (component.types.includes('locality')) {
-                    city = component.long_name;
-                } else if (component.types.includes('sublocality_level_1')) {
-                    area = component.long_name;
-                } else if (component.types.includes('postal_code')) {
-                    postalCode = component.long_name;
-                } else if (component.types.includes('administrative_area_level_3')) {
-                    district = component.long_name; // Get district
-                }
-            });
-
-
-            // Prepare the address details object
-            const addressDetails = {
-                completeAddress: addressResponse.data.results[0].formatted_address,
-                city: city,
-                area: area,
-                district: district,
-                postalCode: postalCode,
-                landmark: null, // Placeholder for landmark if needed
-                lat: addressResponse.data.results[0].geometry.location.lat,
-                lng: addressResponse.data.results[0].geometry.location.lng,
-            };
-
-            // console.log("Address Details:", addressDetails);
-
-            // Respond with the location and address details
-            return res.status(200).json({
-                success: true,
-                data: {
-                    location: { lat, lng },
-                    address: addressDetails,
-                },
-                message: "Location fetch successful"
-            });
-        } else {
-            return res.status(404).json({
-                success: false,
-                message: "No address found for the given location",
-            });
-        }
-    } catch (error) {
-        console.error('Error fetching address:', error);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to fetch address",
-        });
+      return res.status(200).json({
+        success: true,
+        data: responseData,
+        message: "Location fetch successful"
+      });
+    } else {
+      return res.status(404).json({ success: false, message: "No address found for the given location" });
     }
+  } catch (error) {
+    console.error('Error fetching address:', error);
+    return res.status(500).json({ success: false, message: "Failed to fetch address" });
+  }
 });
 
+
 app.post("/geo-code-distance", async (req, res) => {
-    try {
-        const { pickup, dropOff } = req.body;
-
-        if (!pickup || !dropOff) {
-            return res.status(400).json({ message: "Pickup and DropOff addresses are required" });
-        }
-
-        // Geocode Pickup Location
-        const pickupResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
-            params: { address: pickup, key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8' },
-        });
-
-        if (pickupResponse.data.status !== "OK") {
-            return res.status(400).json({ message: "Invalid Pickup location" });
-        }
-        const pickupData = pickupResponse.data.results[0].geometry.location;
-
-        // Geocode Dropoff Location
-        const dropOffResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
-            params: { address: dropOff, key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8' },
-        });
-
-        if (dropOffResponse.data.status !== "OK") {
-            return res.status(400).json({ message: "Invalid Dropoff location" });
-        }
-        const dropOffData = dropOffResponse.data.results[0].geometry.location;
-
-        // Calculate Distance using Google Distance Matrix API
-        const distanceResponse = await axios.get("https://maps.googleapis.com/maps/api/distancematrix/json", {
-            params: {
-                origins: `${pickupData.lat},${pickupData.lng}`,
-                destinations: `${dropOffData.lat},${dropOffData.lng}`,
-                key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8',
-            },
-        });
-
-        if (distanceResponse.data.status !== "OK") {
-            return res.status(400).json({ message: "Failed to calculate distance" });
-        }
-
-        const distanceInfo = distanceResponse.data.rows[0].elements[0];
-
-        if (distanceInfo.status !== "OK") {
-            return res.status(400).json({ message: "Invalid distance calculation" });
-        }
-
-        const settings = await Settings.findOne()
-
-        const distanceInKm = distanceInfo.distance.value / 1000; // Convert meters to kilometers
-        const price = distanceInKm * settings.foodDeliveryPrice; // ₹20 per km
-
-        return res.status(200).json({
-            pickupLocation: pickupData,
-            dropOffLocation: dropOffData,
-            distance: distanceInfo.distance.text,
-            duration: distanceInfo.duration.text,
-            price: `₹${price.toFixed(2)}`, // Show price with 2 decimal places
-        });
-    } catch (error) {
-        console.error("Error in geo-code-distance:", error);
-        return res.status(500).json({ message: "Internal server error", error: error.message });
+  try {
+    const { pickup, dropOff } = req.body;
+    if (!pickup || !dropOff) {
+      return res.status(400).json({ message: "Pickup and DropOff addresses are required" });
     }
+
+    const cacheKey = `distance:${pickup}:${dropOff}`;
+
+    // Check Redis cache
+    const cachedDistance = await pubClient.get(cacheKey);
+    if (cachedDistance) {
+      return res.status(200).json(JSON.parse(cachedDistance));
+    }
+
+    // Geocode pickup
+    const pickupResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
+      params: { address: pickup, key: 'AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU' },
+    });
+    if (pickupResponse.data.status !== "OK") {
+      return res.status(400).json({ message: "Invalid Pickup location" });
+    }
+    const pickupData = pickupResponse.data.results[0].geometry.location;
+
+    // Geocode dropoff
+    const dropOffResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
+      params: { address: dropOff, key: 'AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU' },
+    });
+    if (dropOffResponse.data.status !== "OK") {
+      return res.status(400).json({ message: "Invalid Dropoff location" });
+    }
+    const dropOffData = dropOffResponse.data.results[0].geometry.location;
+
+    // Distance Matrix API call
+    const distanceResponse = await axios.get("https://maps.googleapis.com/maps/api/distancematrix/json", {
+      params: {
+        origins: `${pickupData.lat},${pickupData.lng}`,
+        destinations: `${dropOffData.lat},${dropOffData.lng}`,
+        key: 'AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU',
+      },
+    });
+
+    if (distanceResponse.data.status !== "OK") {
+      return res.status(400).json({ message: "Failed to calculate distance" });
+    }
+
+    const distanceInfo = distanceResponse.data.rows[0].elements[0];
+    if (distanceInfo.status !== "OK") {
+      return res.status(400).json({ message: "Invalid distance calculation" });
+    }
+
+    const settings = await Settings.findOne();
+
+    const distanceInKm = distanceInfo.distance.value / 1000;
+    const price = distanceInKm * settings.foodDeliveryPrice;
+
+    const responseData = {
+      pickupLocation: pickupData,
+      dropOffLocation: dropOffData,
+      distance: distanceInfo.distance.text,
+      duration: distanceInfo.duration.text,
+      price: `₹${price.toFixed(2)}`,
+    };
+
+    // Cache distance result for 30 minutes
+    await pubClient.setEx(cacheKey, 1800, JSON.stringify(responseData));
+
+    return res.status(200).json(responseData);
+  } catch (error) {
+    console.error("Error in geo-code-distance:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
 });
 
 

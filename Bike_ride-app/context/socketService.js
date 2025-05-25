@@ -2,7 +2,7 @@ import io from "socket.io-client";
 import axios from "axios";
 import * as SecureStore from 'expo-secure-store';
 
-const SOCKET_URL = "https://appapi.olyox.com";
+const SOCKET_URL = "http://192.168.1.11:3100";
 let socket = null;
 let pingIntervalRef = null;
 
@@ -16,7 +16,7 @@ export const fetchUserData = async () => {
         }
 
         const response = await axios.get(
-            "https://appapi.olyox.com/api/v1/rider/user-details",
+            "http://192.168.1.11:3100/api/v1/rider/user-details",
             {
                 headers: { Authorization: `Bearer ${token}` },
             }

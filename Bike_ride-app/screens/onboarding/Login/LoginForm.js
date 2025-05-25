@@ -53,7 +53,7 @@ const LoginForm = ({ onLogin }) => {
     
     try {
       const response = await axios.post(
-        'https://appapi.olyox.com/api/v1/rider/rider-login', 
+        'http://192.168.1.11:3100/api/v1/rider/rider-login', 
         { 
           number: formattedPhone,
           otpType: otpType // Add otpType to the request body

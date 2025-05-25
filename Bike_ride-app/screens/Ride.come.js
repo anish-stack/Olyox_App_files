@@ -361,7 +361,7 @@ const RideRequestModal = ({
             <View style={styles.modalHeader}>
               <CircularTimer timeLeft={timeLeft} total={RIDE_REQUEST_TIMEOUT} />
               <Text style={styles.modalTitle}>New Ride Request</Text>
-              <Text style={styles.modalSubtitle}>{rideData.message}</Text>
+              {/* <Text style={styles.modalSubtitle}>{rideData.message}</Text> */}
             </View>
 
             {/* Error Display */}
@@ -428,20 +428,6 @@ const RideRequestModal = ({
             </View>
 
             {/* Additional Info */}
-            <View style={styles.additionalInfo}>
-              <View style={styles.infoRow}>
-                <MaterialCommunityIcons name="map-marker-radius" size={16} color="#6b7280" />
-                <Text style={styles.infoText}>
-                  Search Radius: {rideData.searchRadius} km
-                </Text>
-              </View>
-              {rider?.rain && (
-                <View style={styles.infoRow}>
-                  <MaterialCommunityIcons name="weather-rainy" size={16} color="#3b82f6" />
-                  <Text style={styles.infoText}>Rain conditions detected</Text>
-                </View>
-              )}
-            </View>
 
             {/* Action Buttons */}
             <View style={styles.actionButtons}>
@@ -580,7 +566,7 @@ export default function RideRequestScreen() {
         return;
       }
 
-      const response = await fetch('https://appapi.olyox.com/webhook/cab-receive-location', {
+      const response = await fetch('http://192.168.1.11:3100/webhook/cab-receive-location', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -619,7 +605,7 @@ export default function RideRequestScreen() {
       }
 
       const response = await axios.get(
-        'https://appapi.olyox.com/api/v1/rider/user-details',
+        'http://192.168.1.11:3100/api/v1/rider/user-details',
         {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 10000
@@ -1379,10 +1365,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   userName: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   userPhone: {
     fontSize: 14,
@@ -1510,10 +1496,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   locationText: {
-    fontSize: 15,
+    fontSize: 13,
     color: '#111827',
     fontWeight: '500',
-    lineHeight: 20,
   },
 
   // Trip Stats

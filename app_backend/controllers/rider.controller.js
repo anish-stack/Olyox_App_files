@@ -1432,7 +1432,7 @@ exports.getMyEligibleBonus = async (req, res) => {
         // console.log("OfflineTime:", offlineTime.isValid() ? offlineTime.format() : "Invalid");
 
         if (!onlineTime.isValid() || !offlineTime.isValid()) {
-          console.log("Skipping invalid session times.");
+          // console.log("Skipping invalid session times.");
           continue; // skip this session
         }
 

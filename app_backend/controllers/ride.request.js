@@ -89,7 +89,6 @@ exports.createRequest = async (req, res) => {
 };
 
 
-
 exports.findRider = async (id, io, app) => {
     // Configuration constants
     const MAX_RETRIES = 5;
@@ -97,6 +96,7 @@ exports.findRider = async (id, io, app) => {
     const INITIAL_RADIUS = 2500;  // meters
     const RADIUS_INCREMENT = 500; // meters
     const API_TIMEOUT = 8000;     // 8 seconds for API calls
+    const MIN_ACTIVE_DRIVERS_THRESHOLD = 1; // Minimum active drivers before considering retry
 
     // Debugging helper
     const debug = (message, data = null) => {
@@ -135,6 +135,54 @@ exports.findRider = async (id, io, app) => {
             return new Map();
         }
         return driverSocketMap;
+    };
+
+    // Get Redis pub client
+    const getPubClient = () => {
+        const pubClient = app.get('pubClient');
+        if (!pubClient) {
+            debug("Warning: Redis pubClient not found in app context");
+            return null;
+        }
+        return pubClient;
+    };
+
+    // Function to publish ride request to Redis for offline drivers
+    const publishRideRequestToRedis = async (rideInfo, driverIds) => {
+        const pubClient = getPubClient();
+        if (!pubClient) {
+            debug("Redis pubClient not available, skipping Redis notification");
+            return false;
+        }
+
+        try {
+            const redisMessage = {
+                type: 'ride_request',
+                rideRequestId,
+                rideInfo,
+                targetDrivers: driverIds,
+                timestamp: new Date().toISOString(),
+                expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minutes expiry
+            };
+
+            await pubClient.publish('driver_notifications', JSON.stringify(redisMessage));
+            debug(`Published ride request to Redis for ${driverIds.length} offline drivers`);
+            return true;
+        } catch (error) {
+            debug(`Error publishing to Redis: ${error.message}`);
+            return false;
+        }
+    };
+
+    // Function to check if we should retry based on active connections
+    const shouldRetryForActiveConnections = (totalDrivers, activeDrivers, retryCount) => {
+        // Retry if:
+        // 1. We found drivers but none are actively connected
+        // 2. We haven't exceeded max retries
+        // 3. The number of active drivers is below threshold
+        return totalDrivers > 0 && 
+               activeDrivers < MIN_ACTIVE_DRIVERS_THRESHOLD && 
+               retryCount < MAX_RETRIES;
     };
 
     // Function to find riders with retry logic and expanding radius
@@ -232,7 +280,7 @@ exports.findRider = async (id, io, app) => {
                     },
                 ]);
 
-                debug(`Found ${riders} potential riders before filtering`);
+                debug(`Found ${riders.length} potential riders before filtering`);
 
             } catch (aggregateError) {
                 debug(`Error in riders aggregation: ${aggregateError.message}`);
@@ -281,7 +329,8 @@ exports.findRider = async (id, io, app) => {
                             $set: {
                                 retryCount,
                                 lastRetryAt: new Date(),
-                                currentSearchRadius: currentRadius + RADIUS_INCREMENT
+                                currentSearchRadius: currentRadius + RADIUS_INCREMENT,
+                                retryReason: 'no_drivers_found'
                             }
                         });
                     } catch (updateError) {
@@ -350,7 +399,7 @@ exports.findRider = async (id, io, app) => {
                         departure_time: "now",
                         alternatives: true
                     },
-                    timeout: 5000
+                    timeout: API_TIMEOUT
                 });
 
                 if (response.status !== 200) {
@@ -475,24 +524,7 @@ exports.findRider = async (id, io, app) => {
                 timestamp: new Date(),
             };
 
-            console.log("rideInfo", rideInfo)
-
-            // Reset ride request retry count on success and store found radius
-            try {
-                await RideRequest.findByIdAndUpdate(rideRequestId, {
-                    $set: {
-                        retryCount: 0,
-                        lastUpdatedAt: new Date(),
-                        searchRadiusUsed: currentRadius / 1000,
-                        rideStatus: 'drivers_found'
-                    }
-                });
-            } catch (updateError) {
-                debug(`Warning: Failed to update ride request after finding drivers: ${updateError.message}`);
-                // Continue even if update fails
-            }
-
-            debug(`Found ${validRiders.length} eligible drivers at ${currentRadius / 1000} km radius.`);
+            console.log("rideInfo", rideInfo);
 
             const driverSocketMap = getDriverSocketMap();
             const notifiedDrivers = [];
@@ -503,8 +535,6 @@ exports.findRider = async (id, io, app) => {
             console.log(`Total eligible drivers found: ${validRiders.length}`);
             console.log(`Ride request ID: ${rideRequestId}`);
             console.log('Driver socket map:', Array.from(driverSocketMap.entries()));
-            console.log('Ride info:', rideInfo);
-            console.log('Price data:', priceData);
 
             // Emit ride request only to eligible drivers with active socket connections
             for (const rider of validRiders) {
@@ -558,9 +588,6 @@ exports.findRider = async (id, io, app) => {
                     console.log(`❌ Driver ${riderId} doesn't have an active socket connection`);
                     unavailableDrivers.push(riderId);
                     console.log(`Added driver ${riderId} to unavailable list. Total unavailable: ${unavailableDrivers.length}`);
-
-                    // Optional: Try sending push notification instead
-                    console.log(`Could attempt push notification for driver ${riderId} as fallback`);
                 }
             }
 
@@ -570,38 +597,138 @@ exports.findRider = async (id, io, app) => {
             console.log(`Drivers without active connection: ${unavailableDrivers.length}`);
             console.log('Notified driver IDs:', notifiedDrivers);
             console.log('Unavailable driver IDs:', unavailableDrivers);
+
+            // **NEW RETRY LOGIC FOR INACTIVE CONNECTIONS**
+            // Check if we should retry due to lack of active connections
+            if (shouldRetryForActiveConnections(validRiders.length, notifiedDrivers.length, retryCount)) {
+                debug(`Found ${validRiders.length} drivers but only ${notifiedDrivers.length} with active connections. Retrying...`);
+
+                // Publish to Redis for offline drivers
+                if (unavailableDrivers.length > 0) {
+                    await publishRideRequestToRedis(rideInfo, unavailableDrivers);
+                }
+
+                // Update ride request with retry information
+                try {
+                    await RideRequest.findByIdAndUpdate(rideRequestId, {
+                        $set: {
+                            retryCount: retryCount + 1,
+                            lastRetryAt: new Date(),
+                            currentSearchRadius: currentRadius + RADIUS_INCREMENT,
+                            retryReason: 'insufficient_active_connections',
+                            driversFoundButInactive: unavailableDrivers.length
+                        }
+                    });
+                } catch (updateError) {
+                    debug(`Error updating ride request for connection retry: ${updateError.message}`);
+                }
+
+                // Notify user about retry due to inactive connections
+                io.to(userId).emit("finding_driver", {
+                    message: `Found ${validRiders.length} drivers but most are offline. Expanding search... (${retryCount + 1}/${MAX_RETRIES})`,
+                    retryCount: retryCount + 1,
+                    maxRetries: MAX_RETRIES,
+                    reason: 'inactive_connections',
+                    driversFound: validRiders.length,
+                    activeDrivers: notifiedDrivers.length,
+                    currentRadius: (currentRadius / 1000).toFixed(1),
+                    nextRadius: ((currentRadius + RADIUS_INCREMENT) / 1000).toFixed(1)
+                });
+
+                retryCount++;
+
+                // Schedule retry after delay
+                return new Promise(resolve => {
+                    setTimeout(async () => {
+                        resolve(await attemptFindRiders());
+                    }, RETRY_DELAY_MS);
+                });
+            }
+
             console.log('=== NOTIFICATION PROCESS COMPLETED ===\n');
 
-            // Return summary object for any further processing
-            const notificationSummary = {
-                totalDrivers: validRiders.length,
-                notifiedCount: notifiedDrivers.length,
-                unavailableCount: unavailableDrivers.length,
-                notifiedDriverIds: notifiedDrivers,
-                unavailableDriverIds: unavailableDrivers
-            };
-
-            debug(`Notification summary: ${JSON.stringify(notificationSummary)}`);
-
-            debug(`Notified ${notifiedDrivers.length} drivers, ${unavailableDrivers.length} drivers without active connections`);
-
-            // Emit success event to user
-            io.to(userId).emit("drivers_found", {
-                message: `Found ${notifiedDrivers.length} drivers within ${currentRadius / 1000} km of your location`,
-                rideInfo: {
-                    ...rideInfo,
-                    driversNotified: notifiedDrivers.length
+            // If we have some active drivers or have exhausted retries, proceed
+            if (notifiedDrivers.length > 0) {
+                // Reset ride request retry count on success and store found radius
+                try {
+                    await RideRequest.findByIdAndUpdate(rideRequestId, {
+                        $set: {
+                            retryCount: 0,
+                            lastUpdatedAt: new Date(),
+                            searchRadiusUsed: currentRadius / 1000,
+                            rideStatus: 'drivers_found',
+                            activeDriversNotified: notifiedDrivers.length,
+                            totalDriversFound: validRiders.length
+                        }
+                    });
+                } catch (updateError) {
+                    debug(`Warning: Failed to update ride request after finding drivers: ${updateError.message}`);
                 }
-            });
 
-            return {
-                success: true,
-                data: driverInfo,
-                message: `Found and notified ${notifiedDrivers.length} drivers`,
-                driversNotified: notifiedDrivers.length,
-                searchRadius: currentRadius / 1000,
-                rideRequestId
-            };
+                debug(`Found ${validRiders.length} eligible drivers, notified ${notifiedDrivers.length} with active connections at ${currentRadius / 1000} km radius.`);
+
+                // Emit success event to user
+                io.to(userId).emit("drivers_found", {
+                    message: `Found ${notifiedDrivers.length} active drivers within ${currentRadius / 1000} km of your location`,
+                    rideInfo: {
+                        ...rideInfo,
+                        driversNotified: notifiedDrivers.length,
+                        totalDriversFound: validRiders.length
+                    }
+                });
+
+                // Also publish to Redis for any offline drivers for future connections
+                if (unavailableDrivers.length > 0) {
+                    await publishRideRequestToRedis(rideInfo, unavailableDrivers);
+                }
+
+                return {
+                    success: true,
+                    data: driverInfo,
+                    message: `Found and notified ${notifiedDrivers.length} active drivers out of ${validRiders.length} total`,
+                    driversNotified: notifiedDrivers.length,
+                    totalDriversFound: validRiders.length,
+                    searchRadius: currentRadius / 1000,
+                    rideRequestId
+                };
+            } else {
+                // No active drivers found, but we may have published to Redis
+                if (unavailableDrivers.length > 0) {
+                    await publishRideRequestToRedis(rideInfo, unavailableDrivers);
+                }
+
+                // Update ride request status
+                try {
+                    await RideRequest.findByIdAndUpdate(rideRequestId, {
+                        $set: {
+                            rideStatus: 'no_active_drivers',
+                            totalDriversFound: validRiders.length,
+                            activeDriversFound: 0,
+                            maxSearchRadius: currentRadius / 1000
+                        }
+                    });
+                } catch (updateError) {
+                    debug(`Error updating ride request status: ${updateError.message}`);
+                }
+
+                // Notify user
+                io.to(userId).emit("no_active_drivers", {
+                    message: `Found ${validRiders.length} drivers but none are currently active. We've notified them and will retry shortly.`,
+                    rideRequestId,
+                    driversFound: validRiders.length,
+                    activeDrivers: 0,
+                    searchRadius: currentRadius / 1000
+                });
+
+                return {
+                    warning: "No active drivers available",
+                    rideRequestId,
+                    driversFound: validRiders.length,
+                    activeDrivers: 0,
+                    searchRadius: currentRadius / 1000,
+                    redisNotified: unavailableDrivers.length > 0
+                };
+            }
 
         } catch (error) {
             debug(`Error in findRider attempt ${retryCount + 1}/${MAX_RETRIES}: ${error.message}`);
@@ -682,7 +809,6 @@ exports.findRider = async (id, io, app) => {
     // Start the initial attempt and return the result
     return await attemptFindRiders();
 };
-
 
 
 // exports.ChangeRideRequestByRider = async (io, data) => {
@@ -1704,111 +1830,275 @@ const calculateRidePrice = async (origin, destination, waitingTimeInMinutes, rat
 };
 
 exports.calculateRidePriceForUser = async (req, res) => {
+    const startTime = performance.now();
+    
     try {
         const { origin, destination, waitingTimeInMinutes = 0, ratePerKm } = req.body;
         console.log("Request Body:", req.body);
-
-        // Convert ratePerKm to a valid number, defaulting to 15 if invalid
-        const perKmRate = Number(ratePerKm?.match(/\d+/)?.[0]) || 15;
-
-        // Format coordinates for API request
-        const formattedOrigin = `${origin.latitude},${origin.longitude}`;
-        const formattedDestination = `${destination.latitude},${destination.longitude}`;
-
-        // Fetch route details from Google Maps Directions API
-        const response = await axios.get("https://maps.googleapis.com/maps/api/directions/json", {
-            params: {
-                origin: formattedOrigin,
-                destination: formattedDestination,
-                key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8',
-                traffic_model: "best_guess",
-                departure_time: Math.floor(Date.now() / 1000),
-            },
-        });
-
-        if (!response.data.routes || !response.data.routes.length) {
+        
+        // Input validation
+        if (!origin?.latitude || !origin?.longitude || !destination?.latitude || !destination?.longitude) {
             return res.status(400).json({
                 success: false,
-                message: "Unable to fetch directions from Google Maps API",
+                message: "Invalid origin or destination coordinates",
+                executionTime: `${((performance.now() - startTime) / 1000).toFixed(3)}s`
             });
         }
 
-        const route = response.data.routes[0];
-        const distance = route.legs[0].distance.value / 1000; // Convert meters to km
-        const duration = route.legs[0].duration.value / 60; // Convert seconds to minutes
-        const trafficDuration = route.legs[0].duration_in_traffic?.value / 60 || duration;
+        const redisClient = req.app.get('pubClient');
+        const perKmRate = Number(ratePerKm?.match(/\d+/)?.[0]) || 15;
 
-        // Check weather conditions
-        const checkWeather = await FindWeather(origin.latitude, origin.longitude);
-        const rain = checkWeather && checkWeather[0]?.main === 'Rain';
+        const originKey = `${origin.latitude},${origin.longitude}`;
+        const destinationKey = `${destination.latitude},${destination.longitude}`;
 
-        // Check for tolls on the route
-        const checkTolls = await CheckTolls(origin, destination);
-        console.log("Travel Advisory Data:", checkTolls?.travelAdvisory);
+        // Generate cache keys
+        const directionsCacheKey = `directions:${originKey}:${destinationKey}`;
+        const weatherCacheKey = `weather:${originKey}`;
+        const tollsCacheKey = `tolls:${originKey}:${destinationKey}`;
+        const settingsCacheKey = 'fare_settings';
 
+        // Parallel execution for better performance
+        const [directionsResult, weatherResult, tollsResult, settingsResult] = await Promise.allSettled([
+            getCachedOrFetchDirections(redisClient, directionsCacheKey, originKey, destinationKey),
+            getCachedOrFetchWeather(redisClient, weatherCacheKey, origin.latitude, origin.longitude),
+            getCachedOrFetchTolls(redisClient, tollsCacheKey, origin, destination),
+            getCachedOrFetchSettings(redisClient, settingsCacheKey)
+        ]);
 
-
-        const tolls = checkTolls?.travelAdvisory?.tollInfo && Object.keys(checkTolls?.travelAdvisory?.tollInfo).length > 0;
-        console.log("Tolls Check:", tolls);
-        console.log("tolls", tolls)
-        let tollPrice
-        if (tolls) {
-            tollPrice = checkTolls?.travelAdvisory?.tollInfo?.estimatedPrice[0]?.units || 0;
+        // Handle directions with comprehensive validation
+        if (directionsResult.status === 'rejected' || !directionsResult.value) {
+            console.error('Directions fetch failed:', directionsResult.reason);
+            return res.status(400).json({
+                success: false,
+                message: "Unable to fetch directions",
+                executionTime: `${((performance.now() - startTime) / 1000).toFixed(3)}s`
+            });
         }
 
-        // Retrieve fare settings from the database
-        const settingData = await Settings.findOne();
+        const directions = directionsResult.value;
+        let distance, duration, trafficDuration;
 
-        const baseFare = settingData?.BasicFare || 94;
-        const trafficDurationPricePerMinute = settingData?.trafficDurationPricePerMinute || 0;
-        const rainModeFare = settingData?.RainModeFareOnEveryThreeKm || 0;
-        const waitingTimeCost = waitingTimeInMinutes * (settingData?.waitingTimeInMinutes || 0);
+        // Handle different data formats (cached vs Google Maps API)
+        if (directions.legs && Array.isArray(directions.legs) && directions.legs.length > 0) {
+            // Standard Google Maps API format
+            const leg = directions.legs[0];
+            if (!leg || !leg.distance || !leg.duration) {
+                console.error('Invalid leg structure:', leg);
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid route leg data",
+                    executionTime: `${((performance.now() - startTime) / 1000).toFixed(3)}s`
+                });
+            }
+            
+            distance = leg.distance.value / 1000; // km
+            duration = leg.duration.value / 60; // minutes
+            trafficDuration = leg.duration_in_traffic?.value / 60 || duration;
+            
+        } else if (directions.distance && directions.duration) {
+            // Custom/simplified format (from cache)
+            console.log('Using simplified cached directions format');
+            
+            // Parse distance - extract number from string like "3.3 km"
+            const distanceMatch = directions.distance.toString().match(/[\d.]+/);
+            distance = distanceMatch ? parseFloat(distanceMatch[0]) : 0;
+            
+            // Parse duration - extract number from string like "8 mins"
+            const durationMatch = directions.duration.toString().match(/[\d.]+/);
+            duration = durationMatch ? parseFloat(durationMatch[0]) : 0;
+            trafficDuration = duration; // No traffic data in simplified format
+            
+        } else {
+            console.error('Invalid directions structure:', directions);
+            return res.status(400).json({
+                success: false,
+                message: "Invalid route data format",
+                executionTime: `${((performance.now() - startTime) / 1000).toFixed(3)}s`
+            });
+        }
 
+        // Handle weather (with comprehensive validation)
+        const weather = weatherResult.status === 'fulfilled' && weatherResult.value ? weatherResult.value : [];
+        const rain = Array.isArray(weather) && weather.length > 0 && weather[0]?.main === 'Rain';
 
-        const totalBaseFare = baseFare
+        // Handle tolls (with comprehensive validation)
+        const tollInfo = tollsResult.status === 'fulfilled' && tollsResult.value ? tollsResult.value : {};
+        const tolls = tollInfo && tollInfo.tollInfo && typeof tollInfo.tollInfo === 'object' && Object.keys(tollInfo.tollInfo).length > 0;
+        const tollPrice = tolls && tollInfo.tollInfo.estimatedPrice && Array.isArray(tollInfo.tollInfo.estimatedPrice) && tollInfo.tollInfo.estimatedPrice[0]?.units ? tollInfo.tollInfo.estimatedPrice[0].units : 0;
 
-        // Calculate total fare
-        let totalPrice = totalBaseFare + (trafficDuration * trafficDurationPricePerMinute) + waitingTimeCost;
+        // Handle settings (with comprehensive validation)  
+        const settingData = settingsResult.status === 'fulfilled' && settingsResult.value ? settingsResult.value : {};
+        
+        const baseFare = Number(settingData?.BasicFare) || 94;
+        const trafficDurationPricePerMinute = Number(settingData?.trafficDurationPricePerMinute) || 0;
+        const rainModeFare = Number(settingData?.RainModeFareOnEveryThreeKm) || 0;
+        const waitingTimeCost = waitingTimeInMinutes * (Number(settingData?.waitingTimeInMinutes) || 0);
+
+        // Calculate price
+        let totalPrice = baseFare + 
+                        (trafficDuration * trafficDurationPricePerMinute) + 
+                        waitingTimeCost + 
+                        (distance * perKmRate);
+        
         if (rain) totalPrice += rainModeFare;
         if (tolls) totalPrice += Number(tollPrice) / 2;
-        totalPrice += distance * perKmRate;
 
-        console.log("Total Price Calculation:", {
-            totalPrice,
-            distance,
+        const executionTime = `${((performance.now() - startTime) / 1000).toFixed(3)}s`;
+
+        console.log("Price Calculation Details:", {
+            distance: `${distance} km`,
+            duration: `${duration} mins`,
+            trafficDuration: `${trafficDuration} mins`,
+            perKmRate,
+            baseFare,
             rain,
+            rainModeFare: rain ? rainModeFare : 0,
             tolls,
             tollPrice,
-            RainFare: settingData?.RainModeFareOnEveryThreeKm,
-            trafficDuration,
             waitingTimeCost,
-            totalBaseFare,
+            totalPrice,
+            executionTime
         });
 
-        // Return the calculated ride price
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Ride price calculated successfully",
-            totalPrice,
-            distanceInKm: distance,
-            rain,
-            RainFare: settingData?.RainModeFareOnEveryThreeKm,
-            tolls,
-            tollPrice,
-            durationInMinutes: trafficDuration,
-            waitingTimeCost,
-
-            totalBaseFare,
+            totalPrice: Math.round(totalPrice * 100) / 100, // Round to 2 decimal places
+            distanceInKm: Math.round(distance * 100) / 100,
+            durationInMinutes: Math.round(trafficDuration * 100) / 100,
+            pricing: {
+                baseFare,
+                distanceCost: Math.round(distance * perKmRate * 100) / 100,
+                trafficCost: Math.round(trafficDuration * trafficDurationPricePerMinute * 100) / 100,
+                waitingTimeCost,
+                rainFare: rain ? rainModeFare : 0,
+                tollPrice: tolls ? Math.round(tollPrice / 2 * 100) / 100 : 0
+            },
+            conditions: {
+                rain,
+                tolls
+            },
+            executionTime
         });
+
     } catch (error) {
+        const executionTime = `${((performance.now() - startTime) / 1000).toFixed(3)}s`;
         console.error("Error calculating ride price:", error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "Failed to calculate the ride price",
+            executionTime
         });
     }
 };
 
+// Helper functions for caching and fetching
+async function getCachedOrFetchDirections(redisClient, cacheKey, originKey, destinationKey) {
+    try {
+        let directions = await redisClient.get(cacheKey);
+        if (directions) {
+            directions = JSON.parse(directions);
+            console.log('Using cached directions');
+            return directions;
+        }
+
+        const response = await axios.get("https://maps.googleapis.com/maps/api/directions/json", {
+            params: {
+                origin: originKey,
+                destination: destinationKey,
+                key: 'AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8',
+                traffic_model: "best_guess",
+                departure_time: Math.floor(Date.now() / 1000),
+            },
+            timeout: 5000 // 5 second timeout
+        });
+
+        if (!response.data || !response.data.routes || !response.data.routes.length) {
+            console.error('Google Maps API response:', response.data);
+            throw new Error("No routes found from Google Maps API");
+        }
+
+        const route = response.data.routes[0];
+        if (!route || !route.legs || !Array.isArray(route.legs) || route.legs.length === 0) {
+            console.error('Invalid route structure:', route);
+            throw new Error("Invalid route structure from Google Maps API");
+        }
+
+        directions = route;
+        // Don't await the cache operation to speed up response
+        redisClient.setEx(cacheKey, 900, JSON.stringify(directions)).catch(console.error);
+        console.log('Fetched and cached new directions');
+        return directions;
+    } catch (error) {
+        console.error('Error fetching directions:', error);
+        throw error;
+    }
+}
+
+async function getCachedOrFetchWeather(redisClient, cacheKey, latitude, longitude) {
+    try {
+        let weather = await redisClient.get(cacheKey);
+        if (weather) {
+            weather = JSON.parse(weather);
+            console.log('Using cached weather');
+            return weather;
+        }
+
+        weather = await FindWeather(latitude, longitude);
+        if (weather) {
+            // Don't await the cache operation
+            redisClient.setEx(cacheKey, 600, JSON.stringify(weather)).catch(console.error);
+            console.log('Fetched and cached new weather data');
+        }
+        return weather || [];
+    } catch (error) {
+        console.error('Error fetching weather:', error);
+        return []; // Return empty array as fallback
+    }
+}
+
+async function getCachedOrFetchTolls(redisClient, cacheKey, origin, destination) {
+    try {
+        let tollInfo = await redisClient.get(cacheKey);
+        if (tollInfo) {
+            tollInfo = JSON.parse(tollInfo);
+            console.log('Using cached toll info');
+            return tollInfo;
+        }
+
+        const tollCheck = await CheckTolls(origin, destination);
+        tollInfo = tollCheck?.travelAdvisory || {};
+        // Don't await the cache operation
+        redisClient.setEx(cacheKey, 900, JSON.stringify(tollInfo)).catch(console.error);
+        console.log('Fetched and cached new toll info');
+        return tollInfo;
+    } catch (error) {
+        console.error('Error fetching tolls:', error);
+        return {}; // Return empty object as fallback
+    }
+}
+
+async function getCachedOrFetchSettings(redisClient, cacheKey) {
+    try {
+        let settings = await redisClient.get(cacheKey);
+        if (settings) {
+            settings = JSON.parse(settings);
+            console.log('Using cached settings');
+            return settings;
+        }
+
+        const settingData = await Settings.findOne();
+        if (settingData) {
+            // Cache settings for 1 hour since they don't change often
+            redisClient.setEx(cacheKey, 3600, JSON.stringify(settingData)).catch(console.error);
+            console.log('Fetched and cached new settings');
+        }
+        return settingData || {};
+    } catch (error) {
+        console.error('Error fetching settings:', error);
+        return {}; // Return empty object as fallback
+    }
+}
 
 const calculateRidePriceForConfirmRide = async (data) => {
     try {
