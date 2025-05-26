@@ -231,7 +231,7 @@ export function Recharge() {
 
         try {
             // Construct URL with or without coupon
-            const baseUrl = `http://192.168.1.11:3100/api/v1/rider/recharge-wallet/${selectedPlan._id}/${restaurant?.restaurant_BHID}`
+            const baseUrl = `https://appapi.olyox.com/api/v1/rider/recharge-wallet/${selectedPlan._id}/${restaurant?.restaurant_BHID}`
             const urlWithParams = appliedCoupon ? `${baseUrl}?coupon=${appliedCoupon.code}&type=tiffin` : baseUrl
 
             const response = await axios.get(urlWithParams)
@@ -262,7 +262,7 @@ export function Recharge() {
                 throw new Error("Payment failed or was cancelled")
             }
 
-            const verifyResponse = await axios.post(`http://192.168.1.11:3100/api/v1/rider/recharge-verify/${restaurant?.restaurant_BHID}`, {
+            const verifyResponse = await axios.post(`https://appapi.olyox.com/api/v1/rider/recharge-verify/${restaurant?.restaurant_BHID}`, {
                 razorpay_order_id: paymentResponse.razorpay_order_id,
                 razorpay_payment_id: paymentResponse.razorpay_payment_id,
                 razorpay_signature: paymentResponse.razorpay_signature,

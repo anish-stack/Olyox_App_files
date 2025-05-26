@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import useHotelApi from "../context/HotelDetails";
 
-const API_URL_APP = `http://192.168.1.11:3100`;
+const API_URL_APP = `https://appapi.olyox.com`;
 
 const useGetCoupons = () => {
   const [coupons, setCoupons] = useState([]);

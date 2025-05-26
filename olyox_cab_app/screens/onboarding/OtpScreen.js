@@ -29,7 +29,7 @@ const OtpScreen = ({ onVerify, number }) => {
     try {
         InteractionManager.runAfterInteractions(async () => {
             const response = await axios.post(
-                'http://192.168.1.11:3100/api/v1/parcel/login_parcel_otp_verify',
+                'https://appapi.olyox.com/api/v1/parcel/login_parcel_otp_verify',
                 { otp, number }
             );
 
@@ -55,7 +55,7 @@ const OtpScreen = ({ onVerify, number }) => {
   const handleResendOtp = async () => {
     try {
       const response = await axios.post(
-        'http://192.168.1.11:3100/api/v1/parcel/login_parcel_otp_resend',
+        'https://appapi.olyox.com/api/v1/parcel/login_parcel_otp_resend',
         { number }
       );
 

@@ -19,7 +19,7 @@ export default function Status({isRefresh}) {
                 }
 
                 const { data } = await axios.get(
-                    'http://192.168.1.11:3100/api/v1/tiffin/get_single_tiffin_profile',
+                    'https://appapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
                     {
                         headers: {
                             'Authorization': `Bearer ${storedToken}`
@@ -52,7 +52,7 @@ export default function Status({isRefresh}) {
             const newStatus = !isActive;
 
             const response = await axios.put(
-                `http://192.168.1.11:3100/api/v1/tiffin/update_is_working/${restaurantId}`,
+                `https://appapi.olyox.com/api/v1/tiffin/update_is_working/${restaurantId}`,
                 { isWorking: newStatus }
             );
 

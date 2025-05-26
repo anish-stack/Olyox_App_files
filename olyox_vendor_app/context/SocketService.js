@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import io from "socket.io-client";
 import axios from "axios";
 
-const SOCKET_URL = "http://192.168.1.11:3100";
+const SOCKET_URL = "https://appapi.olyox.com";
 let socket = null;
 
 export const fetchUserData = async () => {
@@ -13,7 +13,7 @@ export const fetchUserData = async () => {
         }
 
         const { data } = await axios.get(
-            'http://192.168.1.11:3100/api/v1/tiffin/get_single_tiffin_profile',
+            'https://appapi.olyox.com/api/v1/tiffin/get_single_tiffin_profile',
             {
                 headers: {
                     'Authorization': `Bearer ${token}`

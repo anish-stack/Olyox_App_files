@@ -132,8 +132,8 @@ app.use(cors({
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-     standardHeaders: true,
-  legacyHeaders: false,
+    standardHeaders: true,
+    legacyHeaders: false,
     max: 500, // Limit each IP to 100 requests per windowMs
     message: 'Too many requests from this IP, please try again later.'
 });
@@ -173,7 +173,7 @@ const saveTempRideToFirebase = async (rideData) => {
         const endTime = Date.now(); // end timer
         const durationMs = endTime - startTime;
         console.log(
-          `[${new Date().toISOString()}] Saved temp ride to Firebase: ${rideData._id} (took ${durationMs} ms)`
+            `[${new Date().toISOString()}] Saved temp ride to Firebase: ${rideData._id} (took ${durationMs} ms)`
         );
 
         return { success: true, _id: rideData._id };
@@ -189,7 +189,7 @@ const saveTempRideToFirebase = async (rideData) => {
         const endTime = Date.now();
         const durationMs = endTime - startTime;
         console.log(
-          `[${new Date().toISOString()}] Fallback: Saved temp ride to MongoDB: ${dataSave._id} (took ${durationMs} ms)`
+            `[${new Date().toISOString()}] Fallback: Saved temp ride to MongoDB: ${dataSave._id} (took ${durationMs} ms)`
         );
 
         return { success: true, _id: dataSave._id };
@@ -269,7 +269,7 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString(),
         redisConnected: pubClient.isOpen && subClient.isOpen,
         mongodbConnected: mongoose.connection.readyState === 1,
-  
+
     });
 });
 // Socket.IO connection handling
@@ -1564,7 +1564,7 @@ app.post('/webhook/cab-receive-location', async (req, res, next) => {
             userId = req.user.userId;  // Otherwise, get userId from the authenticated user
         }
 
-   
+
 
         const data = await RiderModel.findOneAndUpdate(
             { _id: userId },
@@ -1694,147 +1694,147 @@ app.use((err, req, res, next) => {
 
 
 app.post('/Fetch-Current-Location', async (req, res) => {
-  const { lat, lng } = req.body;
-  if (!lat || !lng) {
-    return res.status(400).json({ success: false, message: "Latitude and longitude are required" });
-  }
-
-  const cacheKey = `geocode:${lat},${lng}`;
-
-  try {
-    // Check Redis cache first
-    const cachedData = await pubClient.get(cacheKey);
-    if (cachedData) {
-      return res.status(200).json({
-        success: true,
-        data: JSON.parse(cachedData),
-        message: "Location fetch successful (from cache)"
-      });
+    const { lat, lng } = req.body;
+    if (!lat || !lng) {
+        return res.status(400).json({ success: false, message: "Latitude and longitude are required" });
     }
 
-    // If no cache, fetch from Google
-    const addressResponse = await axios.get(
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU`
-    );
+    const cacheKey = `geocode:${lat},${lng}`;
 
-    if (addressResponse.data.results.length > 0) {
-      const addressComponents = addressResponse.data.results[0].address_components;
+    try {
+        // Check Redis cache first
+        const cachedData = await pubClient.get(cacheKey);
+        if (cachedData) {
+            return res.status(200).json({
+                success: true,
+                data: JSON.parse(cachedData),
+                message: "Location fetch successful (from cache)"
+            });
+        }
 
-      let city = null, area = null, postalCode = null, district = null;
+        // If no cache, fetch from Google
+        const addressResponse = await axios.get(
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU`
+        );
 
-      addressComponents.forEach(component => {
-        if (component.types.includes('locality')) city = component.long_name;
-        else if (component.types.includes('sublocality_level_1')) area = component.long_name;
-        else if (component.types.includes('postal_code')) postalCode = component.long_name;
-        else if (component.types.includes('administrative_area_level_3')) district = component.long_name;
-      });
+        if (addressResponse.data.results.length > 0) {
+            const addressComponents = addressResponse.data.results[0].address_components;
 
-      const addressDetails = {
-        completeAddress: addressResponse.data.results[0].formatted_address,
-        city,
-        area,
-        district,
-        postalCode,
-        landmark: null,
-        lat: addressResponse.data.results[0].geometry.location.lat,
-        lng: addressResponse.data.results[0].geometry.location.lng,
-      };
+            let city = null, area = null, postalCode = null, district = null;
 
-      const responseData = {
-        location: { lat, lng },
-        address: addressDetails,
-      };
+            addressComponents.forEach(component => {
+                if (component.types.includes('locality')) city = component.long_name;
+                else if (component.types.includes('sublocality_level_1')) area = component.long_name;
+                else if (component.types.includes('postal_code')) postalCode = component.long_name;
+                else if (component.types.includes('administrative_area_level_3')) district = component.long_name;
+            });
 
-      // Cache the result for 1 hour (3600 seconds)
-      await pubClient.setEx(cacheKey, 3600, JSON.stringify(responseData));
+            const addressDetails = {
+                completeAddress: addressResponse.data.results[0].formatted_address,
+                city,
+                area,
+                district,
+                postalCode,
+                landmark: null,
+                lat: addressResponse.data.results[0].geometry.location.lat,
+                lng: addressResponse.data.results[0].geometry.location.lng,
+            };
 
-      return res.status(200).json({
-        success: true,
-        data: responseData,
-        message: "Location fetch successful"
-      });
-    } else {
-      return res.status(404).json({ success: false, message: "No address found for the given location" });
+            const responseData = {
+                location: { lat, lng },
+                address: addressDetails,
+            };
+
+            // Cache the result for 1 hour (3600 seconds)
+            await pubClient.setEx(cacheKey, 3600, JSON.stringify(responseData));
+
+            return res.status(200).json({
+                success: true,
+                data: responseData,
+                message: "Location fetch successful"
+            });
+        } else {
+            return res.status(404).json({ success: false, message: "No address found for the given location" });
+        }
+    } catch (error) {
+        console.error('Error fetching address:', error);
+        return res.status(500).json({ success: false, message: "Failed to fetch address" });
     }
-  } catch (error) {
-    console.error('Error fetching address:', error);
-    return res.status(500).json({ success: false, message: "Failed to fetch address" });
-  }
 });
 
 
 app.post("/geo-code-distance", async (req, res) => {
-  try {
-    const { pickup, dropOff } = req.body;
-    if (!pickup || !dropOff) {
-      return res.status(400).json({ message: "Pickup and DropOff addresses are required" });
+    try {
+        const { pickup, dropOff } = req.body;
+        if (!pickup || !dropOff) {
+            return res.status(400).json({ message: "Pickup and DropOff addresses are required" });
+        }
+
+        const cacheKey = `distance:${pickup}:${dropOff}`;
+
+        // Check Redis cache
+        const cachedDistance = await pubClient.get(cacheKey);
+        if (cachedDistance) {
+            return res.status(200).json(JSON.parse(cachedDistance));
+        }
+
+        // Geocode pickup
+        const pickupResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
+            params: { address: pickup, key: 'AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU' },
+        });
+        if (pickupResponse.data.status !== "OK") {
+            return res.status(400).json({ message: "Invalid Pickup location" });
+        }
+        const pickupData = pickupResponse.data.results[0].geometry.location;
+
+        // Geocode dropoff
+        const dropOffResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
+            params: { address: dropOff, key: 'AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU' },
+        });
+        if (dropOffResponse.data.status !== "OK") {
+            return res.status(400).json({ message: "Invalid Dropoff location" });
+        }
+        const dropOffData = dropOffResponse.data.results[0].geometry.location;
+
+        // Distance Matrix API call
+        const distanceResponse = await axios.get("https://maps.googleapis.com/maps/api/distancematrix/json", {
+            params: {
+                origins: `${pickupData.lat},${pickupData.lng}`,
+                destinations: `${dropOffData.lat},${dropOffData.lng}`,
+                key: 'AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU',
+            },
+        });
+
+        if (distanceResponse.data.status !== "OK") {
+            return res.status(400).json({ message: "Failed to calculate distance" });
+        }
+
+        const distanceInfo = distanceResponse.data.rows[0].elements[0];
+        if (distanceInfo.status !== "OK") {
+            return res.status(400).json({ message: "Invalid distance calculation" });
+        }
+
+        const settings = await Settings.findOne();
+
+        const distanceInKm = distanceInfo.distance.value / 1000;
+        const price = distanceInKm * settings.foodDeliveryPrice;
+
+        const responseData = {
+            pickupLocation: pickupData,
+            dropOffLocation: dropOffData,
+            distance: distanceInfo.distance.text,
+            duration: distanceInfo.duration.text,
+            price: `₹${price.toFixed(2)}`,
+        };
+
+        // Cache distance result for 30 minutes
+        await pubClient.setEx(cacheKey, 1800, JSON.stringify(responseData));
+
+        return res.status(200).json(responseData);
+    } catch (error) {
+        console.error("Error in geo-code-distance:", error);
+        return res.status(500).json({ message: "Internal server error", error: error.message });
     }
-
-    const cacheKey = `distance:${pickup}:${dropOff}`;
-
-    // Check Redis cache
-    const cachedDistance = await pubClient.get(cacheKey);
-    if (cachedDistance) {
-      return res.status(200).json(JSON.parse(cachedDistance));
-    }
-
-    // Geocode pickup
-    const pickupResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
-      params: { address: pickup, key: 'AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU' },
-    });
-    if (pickupResponse.data.status !== "OK") {
-      return res.status(400).json({ message: "Invalid Pickup location" });
-    }
-    const pickupData = pickupResponse.data.results[0].geometry.location;
-
-    // Geocode dropoff
-    const dropOffResponse = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
-      params: { address: dropOff, key: 'AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU' },
-    });
-    if (dropOffResponse.data.status !== "OK") {
-      return res.status(400).json({ message: "Invalid Dropoff location" });
-    }
-    const dropOffData = dropOffResponse.data.results[0].geometry.location;
-
-    // Distance Matrix API call
-    const distanceResponse = await axios.get("https://maps.googleapis.com/maps/api/distancematrix/json", {
-      params: {
-        origins: `${pickupData.lat},${pickupData.lng}`,
-        destinations: `${dropOffData.lat},${dropOffData.lng}`,
-        key: 'AIzaSyCBATa-tKn2Ebm1VbQ5BU8VOqda2nzkoTU',
-      },
-    });
-
-    if (distanceResponse.data.status !== "OK") {
-      return res.status(400).json({ message: "Failed to calculate distance" });
-    }
-
-    const distanceInfo = distanceResponse.data.rows[0].elements[0];
-    if (distanceInfo.status !== "OK") {
-      return res.status(400).json({ message: "Invalid distance calculation" });
-    }
-
-    const settings = await Settings.findOne();
-
-    const distanceInKm = distanceInfo.distance.value / 1000;
-    const price = distanceInKm * settings.foodDeliveryPrice;
-
-    const responseData = {
-      pickupLocation: pickupData,
-      dropOffLocation: dropOffData,
-      distance: distanceInfo.distance.text,
-      duration: distanceInfo.duration.text,
-      price: `₹${price.toFixed(2)}`,
-    };
-
-    // Cache distance result for 30 minutes
-    await pubClient.setEx(cacheKey, 1800, JSON.stringify(responseData));
-
-    return res.status(200).json(responseData);
-  } catch (error) {
-    console.error("Error in geo-code-distance:", error);
-    return res.status(500).json({ message: "Internal server error", error: error.message });
-  }
 });
 
 

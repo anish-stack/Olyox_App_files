@@ -29,11 +29,21 @@
         "NSLocationAlwaysUsageDescription": "Olyox uses your location to help with background location tracking for delivery updates, even when you're not using the app.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Olyox requires location access at all times to provide accurate real-time updates for orders and to find nearby service providers.",
         "NSPhotoLibraryUsageDescription": "Olyox uses your photo library to let you upload saved images such as profile photos, mismatched items, or food pictures for order tracking, returns, and support.",
-        "LSApplicationQueriesSchemes": ["tel", "mailto", "whatsapp"],
+        "LSApplicationQueriesSchemes": [
+          "tel",
+          "mailto",
+          "whatsapp",
+          "tel",
+          "mailto",
+          "whatsapp"
+        ],
         "ITSAppUsesNonExemptEncryption": false,
         "GMSApiKey": "AIzaSyBvyzqhO8Tq3SvpKLjW7I5RonYAtfOVIn8"
       },
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -54,24 +64,19 @@
           "action": "VIEW",
           "data": [
             {
-              "host": "auth/callback"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        },
-        {
-          "action": "VIEW",
-          "data": [
-            {
-              "host": "auth/callback"
+              "scheme": "https",
+              "host": "auth",
+              "pathPrefix": "/callback"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
       "package": "com.happy_coding.olyox",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "runtimeVersion": "1.0.0"
     },
+
     "web": {
       "favicon": "./assets/appicon.png",
       "build": {
@@ -100,6 +105,11 @@
           }
         }
       ]
-    ]
+    ],
+    "updates": {
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/e73c718b-d6aa-45ea-a12a-c496424892ba"
+    }
   }
 }

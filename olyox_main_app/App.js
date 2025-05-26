@@ -79,7 +79,7 @@ Sentry.init({
 const MAX_LOADING_TIME = 5000; // 5 seconds max loading time
 const MIN_UPDATE_INTERVAL = 10000; // Minimum time between location state updates
 const MAX_RETRY_ATTEMPTS = 3; // Maximum location retry attempts
-const API_URL = "http://192.168.1.11:3100/api/v1";
+const API_URL = "https://appapi.olyox.com/api/v1";
 
 // Define location error types
 const ERROR_TYPES = {
