@@ -755,10 +755,10 @@ export default function BookingConfirmation() {
                 text: "Cash",
                 onPress: () => setPaymentMethod("Cash"),
             },
-            {
-                text: "Card",
-                onPress: () => setPaymentMethod("Card"),
-            },
+            // {
+            //     text: "Card",
+            //     onPress: () => setPaymentMethod("Card"),
+            // },
             {
                 text: "Cancel",
                 style: "cancel",
