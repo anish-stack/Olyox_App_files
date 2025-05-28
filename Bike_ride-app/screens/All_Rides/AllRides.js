@@ -44,6 +44,7 @@ import {
         );
   
         setAllRides(response.data.data);
+        console.log(response.data.data)
         setError(null);
       } catch (err) {
         console.error('Error fetching rides:', err);
@@ -95,6 +96,18 @@ import {
           return filteredRides;
       }
     };
+
+    const findRideCompleteTime= (startTime,endTime)=>{
+      const startTimeObject = new Date(startTime);
+      const endTimeObject = new Date(endTime);
+      const timeDifference = endTimeObject - startTimeObject; // in milliseconds
+      const hours = Math.floor(timeDifference / (1000 * 60 * 60));
+      const minutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((timeDifference % (1000 * 60)) / 100)
+
+      return `${hours}h ${minutes}m ${seconds}s`;
+
+    }
   
     const getStatusColor = (status) => {
       switch (status.toLowerCase()) {
@@ -276,14 +289,16 @@ import {
                       <View style={styles.rideDetails}>
                         <View style={styles.detailItem}>
                           <MaterialCommunityIcons
-                            name="map-marker-distance"
+                            name="currency-inr"
                             size={20}
                             color="#2196F3"
                           />
                           <Text style={styles.detailText}>
-                            {ride.kmOfRide} km
+                            {ride.kmOfRide} Total Fare
                           </Text>
                         </View>
+                        {ride.is_ride_paid && (
+
                         <View style={styles.detailItem}>
                           <MaterialCommunityIcons
                             name="clock-outline"
@@ -291,19 +306,11 @@ import {
                             color="#2196F3"
                           />
                           <Text style={styles.detailText}>
-                            ETA: {ride.EtaOfRide}
+                            ETA: {findRideCompleteTime(ride.ride_start_time,ride.ride_end_time)}
                           </Text>
                         </View>
-                        <View style={styles.detailItem}>
-                          <MaterialCommunityIcons
-                            name="key-outline"
-                            size={20}
-                            color="#2196F3"
-                          />
-                          <Text style={styles.detailText}>
-                            OTP: {ride.RideOtp}
-                          </Text>
-                        </View>
+                        )}
+                       
                       </View>
   
                       <View style={styles.rideStatus}>
